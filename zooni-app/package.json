@@ -1,0 +1,27 @@
+{
+  "name": "zooni-app",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@gorhom/bottom-sheet": "^4.6.4",
+    "@react-native-async-storage/async-storage": "^1.24.0",
+    "@react-native-community/netinfo": "^11.5.2",
+    "expo": "~54.0.33",
+    "expo-status-bar": "~3.0.9",
+    "multer": "1.4.5-lts.1",
+    "prop-types": "^15.8.1",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-image-picker": "^7.2.3",
+    "react-native-map-clustering": "^1.3.2",
+    "react-native-maps": "^1.27.2"
+  },
+  "devDependencies": {},
+  "private": true
+}
