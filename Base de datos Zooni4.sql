@@ -1,6 +1,6 @@
 USE [master]
 GO
-/****** Object:  Database [Zooni]    Script Date: 4/5/2026 09:58:07 ******/
+/****** Object:  Database [Zooni]    Script Date: 4/5/2026 09:58:07 *****  */
 CREATE DATABASE [Zooni]
  CONTAINMENT = NONE
  ON  PRIMARY 
