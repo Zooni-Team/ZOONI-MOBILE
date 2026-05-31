@@ -9,19 +9,25 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@gorhom/bottom-sheet": "^4.6.4",
-    "@react-native-async-storage/async-storage": "^1.24.0",
-    "@react-native-community/netinfo": "^11.5.2",
-    "expo": "~54.0.33",
-    "expo-status-bar": "~3.0.9",
-    "multer": "1.4.5-lts.1",
-    "prop-types": "^15.8.1",
-    "react": "19.1.0",
-    "react-native": "0.81.5",
-    "react-native-image-picker": "^7.2.3",
-    "react-native-map-clustering": "^1.3.2",
-    "react-native-maps": "^1.27.2"
+    "@expo/metro-runtime": "~3.2.3",
+    "@expo/vector-icons": "^14.0.2",
+    "@react-navigation/native": "^6.1.17",
+    "@react-navigation/native-stack": "^6.9.17",
+    "axios": "^1.7.2",
+    "expo": "~51.0.0",
+    "expo-haptics": "~13.0.1",
+    "expo-secure-store": "~13.0.2",
+    "expo-status-bar": "~1.12.1",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-native": "0.74.5",
+    "react-native-gesture-handler": "~2.16.1",
+    "react-native-reanimated": "~3.10.1",
+    "react-native-safe-area-context": "4.10.5",
+    "react-native-screens": "3.31.1",
+    "react-native-web": "~0.19.10"
   },
-  "devDependencies": {},
-  "private": true
+  "devDependencies": {
+    "@babel/core": "^7.24.0"
+  }
 }

@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+  <title>Zooni – Home Preview</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;700;800&display=swap" rel="stylesheet"/>
+  <script src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js" type="module"></script>
+  <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+  <style>
+    /* ============================================================
+       ESTILOS GLOBALES — reset y body
+    ============================================================ */
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Nunito',sans-serif;background:#e8e8e8;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+    /* Etiqueta de preview que aparece arriba del celular */
+    .preview-label{font-family:'Nunito',sans-serif;font-size:13px;color:#555;margin-bottom:12px;background:#fff;padding:6px 16px;border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
+    /* Marco del celular (iPhone 14 390x844) */
+    .phone{width:390px;height:844px;border-radius:44px;overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,0.3),inset 0 0 0 2px #bbb;background:#C8F0D8}
+
+    /* ============================================================
+       ZONA 1 — STATUS BAR (hora + íconos de señal)
+    ============================================================ */
+    .status-bar{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;flex-shrink:0}
+    .status-time{font-size:15px;font-weight:800;color:#2C2C2C}
+    .status-icons{display:flex;gap:5px;align-items:center}
+    .status-icons ion-icon{font-size:16px;color:#2C2C2C}
+
+    /* ============================================================
+       ZONA 1 — HEADER (hamburguesa izquierda + campana derecha)
+    ============================================================ */
+    .header{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;flex-shrink:0;position:relative;z-index:10}
+    .hbtn{background:none;border:none;cursor:pointer;padding:8px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:background .15s}
+    .hbtn:hover{background:rgba(0,0,0,0.07)}
+    .hbtn ion-icon{font-size:28px;color:#2C2C2C}
+    .bell-wrap{position:relative}
+    .bell-wrap ion-icon{font-size:26px;color:#F5A623}
+    .badge{position:absolute;top:-3px;right:-5px;background:#E63946;border-radius:8px;min-width:16px;height:16px;display:flex;align-items:center;justify-content:center;padding:0 3px}
+    .badge span{color:#fff;font-size:9px;font-weight:800}
+
+    /* ============================================================
+       SCROLL — contenedor principal desplazable (hero + botones)
+    ============================================================ */
+    .scroll{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+    .scroll::-webkit-scrollbar{display:none}
+
+    /* ============================================================
+       ZONA 2 — HERO (fondo verde degradado + pasto SVG + mascota)
+       - .hero-bg     → fondo degradado verde
+       - .grass       → pasto SVG en la parte inferior del hero
+       - .pet-name    → nombre de la mascota activa (ej: "Titán")
+       - .pet-subtitle→ raza y edad
+       - .pet-img     → imagen imagen.png (reemplazar con foto real)
+       - .pet-placeholder → fallback si imagen.png no existe
+    ============================================================ */
+    .hero{height:360px;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+    .hero-bg{position:absolute;inset:0;background:linear-gradient(180deg,#a8dfc0 0%,#B8EDD0 55%,#7ec99a 100%)}
+    /* pasto SVG inline */
+    .grass{position:absolute;bottom:0;left:0;width:100%;height:90px;z-index:1}
+    .pet-name-wrap{margin-top:22px;z-index:3;text-align:center;animation:fadeIn .3s ease-in-out}
+    .pet-name{font-size:30px;font-weight:800;color:#27AE60;text-shadow:0 1px 4px rgba(255,255,255,0.6)}
+    .pet-subtitle{font-size:13px;font-weight:600;color:#3a9e6a;margin-top:2px}
+    .pet-image-wrap{position:absolute;bottom:0;z-index:2;display:flex;align-items:flex-end;justify-content:center;animation:scaleIn .4s ease-out}
+    .pet-img{width:200px;height:200px;object-fit:contain;filter:drop-shadow(0 8px 16px rgba(0,0,0,0.15))}
+    .pet-placeholder{width:200px;height:200px;display:flex;align-items:center;justify-content:center}
+    .pet-placeholder ion-icon{font-size:100px;color:#27AE60;filter:drop-shadow(0 4px 8px rgba(39,174,96,0.3))}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes scaleIn{from{transform:scale(0.9)}to{transform:scale(1)}}
+
+    /* ============================================================
+       ZONA 3 — BOTONES DE NAVEGACIÓN
+       - .nav-btn.primary → botones amarillos (#F5C842)
+       - .nav-btn.danger  → botón S.O.S rojo (#E63946), siempre último
+       - Máximo 3 botones amarillos + 1 S.O.S = 4 en total
+    ============================================================ */
+    .buttons-zone{padding:20px 24px 100px;background:#C8F0D8}
+    .nav-btn{height:54px;border-radius:30px;display:flex;align-items:center;padding:0 16px;margin-bottom:12px;border:none;cursor:pointer;width:100%;box-shadow:0 4px 10px rgba(0,0,0,0.15);transition:transform .1s,box-shadow .1s;font-family:'Nunito',sans-serif;position:relative}
+    .nav-btn:hover{transform:scale(0.98)}
+    .nav-btn:active{transform:scale(0.96)}
+    .nav-btn.primary{background:#F5C842}
+    .nav-btn.danger{background:#E63946;box-shadow:0 4px 14px rgba(230,57,70,0.45)}
+    .nav-btn ion-icon{font-size:20px;margin-right:12px;flex-shrink:0}
+    .nav-btn.primary ion-icon{color:#2C2C2C}
+    .nav-btn.danger ion-icon{color:#fff}
+    .nav-btn-label{flex:1;font-size:17px;font-weight:700;text-align:center}
+    .nav-btn.primary .nav-btn-label{color:#2C2C2C}
+    .nav-btn.danger .nav-btn-label{color:#fff}
+    /* EDIT MODE */
+    .drag-icon{font-size:22px;color:#888;margin-right:10px;cursor:grab;flex-shrink:0}
+    .del-icon{font-size:20px;color:#E63946;cursor:pointer;flex-shrink:0;background:none;border:none;padding:4px;display:flex;align-items:center}
+    .nav-btn.dragging{opacity:0.5;transform:scale(0.97)}
+    .nav-btn.drag-over{border:2px dashed #2DBD72}
+
+    /* Botón GUARDAR — aparece solo en modo edición, color verde */
+    .save-btn{height:54px;border-radius:30px;background:#2DBD72;border:none;cursor:pointer;width:100%;font-family:'Nunito',sans-serif;font-size:17px;font-weight:700;color:#fff;margin-bottom:12px;box-shadow:0 4px 10px rgba(45,189,114,0.35);display:none}
+    .save-btn.visible{display:block}
+
+    /* ============================================================
+       ZONA 4 — FABs (botones flotantes esquina inferior derecha)
+       - fabEdit (#grid-outline)  → activa modo edición/reorden
+       - fabAdd  (#add)           → abre modal para agregar sección
+    ============================================================ */
+    .fab-container{position:absolute;bottom:16px;right:16px;display:flex;gap:10px;z-index:20}
+    .fab{width:48px;height:48px;border-radius:50%;background:#2DBD72;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.2);transition:background .15s,transform .1s}
+    .fab:hover{background:#27AE60;transform:scale(1.05)}
+    .fab.active{background:#1a9e5c}
+    .fab ion-icon{font-size:22px;color:#fff}
+
+    /* ============================================================
+       OVERLAY — fondo oscuro semitransparente al abrir drawer/modal
+    ============================================================ */
+    .overlay{position:absolute;inset:0;background:rgba(0,0,0,0.4);z-index:30;display:none;border-radius:44px}
+    .overlay.open{display:block}
+
+    /* ============================================================
+       MENÚ LATERAL — HAMBURGER DRAWER
+       Se desliza desde la izquierda. Contiene avatar del usuario,
+       nombre de mascota activa y todos los ítems de navegación.
+       - .mitem.active  → ítem resaltado (pantalla actual = Home)
+       - .mitem.logout  → "Cerrar sesión" en rojo, con confirmación
+    ============================================================ */
+    .drawer{position:absolute;top:0;left:0;bottom:0;width:300px;background:#fff;border-top-right-radius:20px;border-bottom-right-radius:20px;z-index:40;transform:translateX(-300px);transition:transform .25s ease;display:flex;flex-direction:column;padding-top:50px;box-shadow:4px 0 20px rgba(0,0,0,0.15)}
+    .drawer.open{transform:translateX(0)}
+    .drawer-header{display:flex;align-items:center;padding:0 20px 16px}
+    .avatar-fb{width:48px;height:48px;border-radius:50%;background:#C8F0D8;border:2px solid #2DBD72;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0}
+    .avatar-initials{font-size:16px;font-weight:700;color:#27AE60}
+    .hinfo{flex:1;overflow:hidden}
+    .hnombre{font-size:16px;font-weight:700;color:#2C2C2C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .hmascota{font-size:13px;color:#6B6B6B;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .divider{height:1px;background:#E0E0E0;margin:4px 0}
+    .drawer-scroll{flex:1;overflow-y:auto;scrollbar-width:none}
+    .drawer-scroll::-webkit-scrollbar{display:none}
+    .mitem{display:flex;align-items:center;height:52px;padding:0 20px;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background .1s;font-family:'Nunito',sans-serif}
+    .mitem:hover{background:rgba(45,189,114,0.08)}
+    .mitem.active{background:rgba(45,189,114,0.12)}
+    .mitem ion-icon{font-size:22px;margin-right:14px;flex-shrink:0;color:#2C2C2C}
+    .mitem.active ion-icon{color:#2DBD72}
+    .mitem .mlabel{font-size:15px;color:#2C2C2C;font-weight:500}
+    .mitem.active .mlabel{color:#2DBD72;font-weight:700}
+    .mitem.logout ion-icon{color:#E63946}
+    .mitem.logout .mlabel{color:#E63946}
+
+    /* ============================================================
+       PANEL DE NOTIFICACIONES
+       Se desliza desde la derecha (85% del ancho).
+       Muestra lista de notifs con badge, punto verde si no leída.
+       Al tocar una notif → se marca leída + navega a la sección.
+       - .notif-item.unread → fondo verde suave para no leídas
+       - .notif-dot         → punto verde indicador de no leída
+    ============================================================ */
+    .notif-panel{position:absolute;top:0;right:0;bottom:0;width:85%;background:#fff;z-index:50;border-top-left-radius:20px;border-bottom-left-radius:20px;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s ease;box-shadow:-4px 0 20px rgba(0,0,0,0.15)}
+    .notif-panel.open{transform:translateX(0)}
+    .notif-header{display:flex;align-items:center;padding:54px 16px 14px;border-bottom:1px solid #E0E0E0;flex-shrink:0}
+    .notif-title{flex:1;text-align:center;font-size:17px;font-weight:700;color:#2C2C2C}
+    .notif-back{background:none;border:none;cursor:pointer;padding:4px;display:flex}
+    .notif-back ion-icon{font-size:24px;color:#2C2C2C}
+    .notif-mark-all{font-size:13px;color:#2DBD72;font-weight:600;background:none;border:none;cursor:pointer;font-family:'Nunito',sans-serif}
+    .notif-list{flex:1;overflow-y:auto;scrollbar-width:none}
+    .notif-list::-webkit-scrollbar{display:none}
+    .notif-item{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #F0F0F0;cursor:pointer;transition:background .1s}
+    .notif-item:hover{background:#f9f9f9}
+    .notif-item.unread{background:rgba(45,189,114,0.08)}
+    .notif-avatar{width:40px;height:40px;border-radius:50%;background:#C8F0D8;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0}
+    .notif-avatar ion-icon{font-size:18px;color:#2DBD72}
+    .notif-text{flex:1;margin-right:8px}
+    .notif-titulo{font-size:14px;font-weight:700;color:#2C2C2C}
+    .notif-cuerpo{font-size:13px;color:#6B6B6B;margin-top:2px;line-height:1.3}
+    .notif-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
+    .notif-time{font-size:11px;color:#AAAAAA}
+    .notif-dot{width:8px;height:8px;border-radius:50%;background:#2DBD72}
+    .notif-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+    .notif-empty ion-icon{font-size:64px;color:#AAAAAA}
+    .notif-empty p{font-size:15px;color:#AAAAAA;text-align:center}
+
+    /* ============================================================
+       MODAL AGREGAR SECCIÓN (bottom sheet)
+       Lista todas las secciones disponibles.
+       Las que ya están en la home aparecen en gris con tilde ✓.
+       Límite: máximo 3 botones amarillos (+ S.O.S fijo = 4 total)
+    ============================================================ */
+    .modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.4);z-index:60;display:none;align-items:flex-end;border-radius:44px}
+    .modal-overlay.open{display:flex}
+    .modal-sheet{background:#fff;border-top-left-radius:20px;border-top-right-radius:20px;width:100%;max-height:75%;display:flex;flex-direction:column;padding-bottom:24px}
+    .modal-handle{width:40px;height:4px;border-radius:2px;background:#D0D0D0;align-self:center;margin:10px 0 4px}
+    .modal-header{display:flex;align-items:center;justify-content:space-between;padding:0 20px 14px;border-bottom:1px solid #E0E0E0}
+    .modal-title{font-size:17px;font-weight:700;color:#2C2C2C}
+    .modal-close{background:none;border:none;cursor:pointer;display:flex}
+    .modal-close ion-icon{font-size:24px;color:#2C2C2C}
+    .modal-list{overflow-y:auto;scrollbar-width:none}
+    .modal-list::-webkit-scrollbar{display:none}
+    .modal-item{display:flex;align-items:center;padding:14px 20px;border-bottom:1px solid #F5F5F5;cursor:pointer;transition:background .1s;border:none;background:none;width:100%;font-family:'Nunito',sans-serif}
+    .modal-item:hover:not(.disabled){background:rgba(45,189,114,0.06)}
+    .modal-item.disabled{opacity:0.5;cursor:default}
+    .modal-item ion-icon{font-size:22px;margin-right:14px;color:#2DBD72;flex-shrink:0}
+    .modal-item.disabled ion-icon{color:#AAAAAA}
+    .modal-item-label{flex:1;font-size:15px;color:#2C2C2C;font-weight:500;text-align:left}
+    .modal-item.disabled .modal-item-label{color:#AAAAAA}
+
+    /* Toast — mensaje temporal que aparece abajo de la pantalla */
+    #toast{position:fixed;bottom:40px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(0,0,0,0.75);color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;font-family:'Nunito',sans-serif;opacity:0;transition:all .2s;pointer-events:none;white-space:nowrap;z-index:9999}
+
+    /* Diálogo de confirmación para cerrar sesión */
+    .confirm-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.5);z-index:70;display:none;align-items:center;justify-content:center;border-radius:44px}
+    .confirm-overlay.open{display:flex}
+    .confirm-box{background:#fff;border-radius:20px;padding:24px;margin:20px;width:100%}
+    .confirm-title{font-size:17px;font-weight:700;color:#2C2C2C;margin-bottom:8px}
+    .confirm-msg{font-size:14px;color:#6B6B6B;margin-bottom:20px;line-height:1.4}
+    .confirm-btns{display:flex;gap:10px}
+    .confirm-btn{flex:1;height:44px;border-radius:22px;border:none;cursor:pointer;font-family:'Nunito',sans-serif;font-size:15px;font-weight:700}
+    .confirm-btn.cancel{background:#F0F0F0;color:#2C2C2C}
+    .confirm-btn.confirm{background:#E63946;color:#fff}
+  </style>
+</style>
+</head>
+<body>
+<div class="preview-label">📱 Zooni — Preview Home (sin Expo)</div>
+<div class="phone">
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <div class="status-icons">
+      <ion-icon name="cellular-outline"></ion-icon>
+      <ion-icon name="wifi-outline"></ion-icon>
+      <ion-icon name="battery-full-outline"></ion-icon>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <div class="header">
+    <button class="hbtn" onclick="toggleDrawer()" aria-label="Menú">
+      <ion-icon name="menu-outline"></ion-icon>
+    </button>
+    <button class="hbtn bell-wrap" onclick="toggleNotif()" aria-label="Notificaciones">
+      <ion-icon name="notifications-outline"></ion-icon>
+      <div class="badge" id="badge"><span>3</span></div>
+    </button>
+  </div>
+
+  <!-- SCROLL -->
+  <div class="scroll">
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-bg"></div>
+      <!-- Pasto SVG -->
+      <svg class="grass" viewBox="0 0 390 90" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M0,60 Q20,30 40,55 Q60,80 80,45 Q100,20 120,50 Q140,75 160,40 Q180,15 200,50 Q220,78 240,42 Q260,18 280,52 Q300,78 320,44 Q340,20 360,55 Q375,72 390,50 L390,90 L0,90 Z" fill="#5cb87a" opacity="0.6"/>
+        <path d="M0,70 Q30,45 60,65 Q90,82 120,58 Q150,38 180,62 Q210,82 240,55 Q270,35 300,62 Q330,82 360,60 Q375,50 390,65 L390,90 L0,90 Z" fill="#4aaa6e" opacity="0.8"/>
+        <path d="M0,80 Q40,60 80,75 Q120,88 160,70 Q200,55 240,72 Q280,86 320,70 Q355,58 390,75 L390,90 L0,90 Z" fill="#3d9960"/>
+        <!-- Pastos individuales -->
+        <path d="M30,80 Q28,55 32,45 Q34,55 30,80" fill="#2d7a4a"/>
+        <path d="M70,78 Q67,50 72,38 Q75,50 70,78" fill="#2d7a4a"/>
+        <path d="M130,76 Q128,52 133,42 Q136,52 130,76" fill="#2d7a4a"/>
+        <path d="M200,80 Q198,56 203,46 Q206,56 200,80" fill="#2d7a4a"/>
+        <path d="M260,77 Q258,53 263,43 Q266,53 260,77" fill="#2d7a4a"/>
+        <path d="M320,79 Q318,55 323,45 Q326,55 320,79" fill="#2d7a4a"/>
+        <path d="M360,78 Q358,54 363,44 Q366,54 360,78" fill="#2d7a4a"/>
+      </svg>
+      <div class="pet-name-wrap">
+        <div class="pet-name">Titán</div>
+        <div class="pet-subtitle">Labrador Retriever · 4 años</div>
+      </div>
+      <div class="pet-image-wrap">
+        <img src="imagen.png" alt="Titán" class="pet-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+        <div class="pet-placeholder" style="display:none">
+          <ion-icon name="paw"></ion-icon>
+        </div>
+      </div>
+    </div>
+
+    <!-- BUTTONS ZONE -->
+    <div class="buttons-zone" id="buttonsZone">
+      <button class="save-btn" id="saveBtn" onclick="saveConfig()">Guardar</button>
+      <div id="btnList"></div>
+      <!-- SOS siempre fijo al final -->
+      <button class="nav-btn danger" onclick="showToast('🚨 Flujo S.O.S Veterinario')">
+        <ion-icon name="alert-circle-outline"></ion-icon>
+        <span class="nav-btn-label">S.O.S Veterinario</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- FABs -->
+  <div class="fab-container">
+    <button class="fab" id="fabEdit" onclick="toggleEditMode()" aria-label="Reordenar botones">
+      <ion-icon name="grid-outline"></ion-icon>
+    </button>
+    <button class="fab" id="fabAdd" onclick="openAddModal()" aria-label="Agregar sección">
+      <ion-icon name="add"></ion-icon>
+    </button>
+  </div>
+
+  <!-- OVERLAY -->
+  <div class="overlay" id="overlay" onclick="closeAll()"></div>
+
+  <!-- DRAWER -->
+  <div class="drawer" id="drawer">
+    <div class="drawer-header">
+      <div class="avatar-fb"><span class="avatar-initials">SG</span></div>
+      <div class="hinfo">
+        <div class="hnombre">Sofía García</div>
+        <div class="hmascota">Titán · Labrador Retriever</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="drawer-scroll">
+      <button class="mitem active"><ion-icon name="home-outline" style="color:#2DBD72"></ion-icon><span class="mlabel">Inicio</span></button>
+      <button class="mitem" onclick="navTo('Comunidad')"><ion-icon name="people-outline"></ion-icon><span class="mlabel">Comunidad</span></button>
+      <button class="mitem" onclick="navTo('Match')"><ion-icon name="paw-outline"></ion-icon><span class="mlabel">Match</span></button>
+      <button class="mitem" onclick="navTo('Planificador de Servicios')"><ion-icon name="calendar-outline"></ion-icon><span class="mlabel">Planificador de Servicios</span></button>
+      <button class="mitem" onclick="navTo('Ficha Médica')"><ion-icon name="medkit-outline"></ion-icon><span class="mlabel">Ficha Médica</span></button>
+      <button class="mitem" onclick="navTo('Calendario')"><ion-icon name="today-outline"></ion-icon><span class="mlabel">Calendario</span></button>
+      <button class="mitem" onclick="navTo('Eventos')"><ion-icon name="sparkles-outline"></ion-icon><span class="mlabel">Eventos</span></button>
+      <button class="mitem" onclick="navTo('ChatBot')"><ion-icon name="chatbubble-ellipses-outline"></ion-icon><span class="mlabel">ChatBot</span></button>
+      <button class="mitem" onclick="navTo('Closet')"><ion-icon name="shirt-outline"></ion-icon><span class="mlabel">Closet</span></button>
+      <button class="mitem" onclick="navTo('Perfil')"><ion-icon name="person-outline"></ion-icon><span class="mlabel">Perfil</span></button>
+      <button class="mitem" onclick="navTo('Configuración')"><ion-icon name="settings-outline"></ion-icon><span class="mlabel">Configuración</span></button>
+      <div class="divider"></div>
+      <button class="mitem logout" onclick="confirmLogout()"><ion-icon name="log-out-outline"></ion-icon><span class="mlabel">Cerrar sesión</span></button>
+    </div>
+  </div>
+
+  <!-- NOTIF PANEL -->
+  <div class="notif-panel" id="notifPanel">
+    <div class="notif-header">
+      <button class="notif-back" onclick="toggleNotif()"><ion-icon name="arrow-back"></ion-icon></button>
+      <span class="notif-title">Notificaciones</span>
+      <button class="notif-mark-all" onclick="markAllRead()">Marcar todas</button>
+    </div>
+    <div class="notif-list" id="notifList"></div>
+  </div>
+
+  <!-- ADD MODAL -->
+  <div class="modal-overlay" id="addModal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <span class="modal-title">Agregar sección</span>
+        <button class="modal-close" onclick="closeAddModal()"><ion-icon name="close"></ion-icon></button>
+      </div>
+      <div class="modal-list" id="modalList"></div>
+    </div>
+  </div>
+
+  <!-- CONFIRM LOGOUT -->
+  <div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-box">
+      <div class="confirm-title">¿Cerrar sesión?</div>
+      <div class="confirm-msg">¿Seguro que querés salir de tu cuenta?</div>
+      <div class="confirm-btns">
+        <button class="confirm-btn cancel" onclick="closeConfirm()">Cancelar</button>
+        <button class="confirm-btn confirm" onclick="doLogout()">Sí, salir</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /phone -->
+
+<div id="toast"></div>
+
+<script>
+// ============================================================
+// DATOS DE DEMO
+// SECCIONES → todas las secciones disponibles para agregar
+// NOTIFS    → notificaciones de ejemplo (reemplazar con API real)
+// botones   → botones activos en la home (se persiste en backend)
+// ============================================================
+const SECCIONES = [
+  {key:'comunidad',    label:'Comunidad',               icono:'people-outline'},
+  {key:'ficha_medica', label:'Ficha Médica',             icono:'medkit-outline'},
+  {key:'mis_mascotas', label:'Mis Mascotas',             icono:'paw-outline'},
+  {key:'match',        label:'Match',                    icono:'heart-outline'},
+  {key:'planificador', label:'Planificador de Servicios',icono:'calendar-outline'},
+  {key:'calendario',   label:'Calendario',               icono:'today-outline'},
+  {key:'eventos',      label:'Eventos',                  icono:'sparkles-outline'},
+  {key:'chatbot',      label:'ChatBot',                  icono:'chatbubble-ellipses-outline'},
+  {key:'closet',       label:'Closet',                   icono:'shirt-outline'},
+  {key:'perfil',       label:'Perfil',                   icono:'person-outline'},
+  {key:'configuracion',label:'Configuración',            icono:'settings-outline'},
+];
+
+const NOTIFS = [
+  {id:1,tipo:'match',titulo:'¡Nuevo Match!',cuerpo:'Titán y Rocky hacen match 💛',leida:false,icono:'heart',tiempo:'hace 2 min',ruta:'Match'},
+  {id:2,tipo:'follow',titulo:'Nueva seguidora',cuerpo:'Luna empezó a seguirte 🐶',leida:false,icono:'person-add',tiempo:'hace 15 min',ruta:'Perfil'},
+  {id:3,tipo:'reminder',titulo:'Recordatorio',cuerpo:'Es hora de la vacuna de Titán 💊',leida:false,icono:'medkit',tiempo:'hace 1 h',ruta:'FichaMedica'},
+  {id:4,tipo:'event',titulo:'Nuevo evento',cuerpo:'Hay un evento cerca tuyo 🎉',leida:true,icono:'sparkles',tiempo:'ayer',ruta:'Eventos'},
+  {id:5,tipo:'friend',titulo:'Solicitud de amistad',cuerpo:'Tomás te envió una solicitud 👤',leida:true,icono:'people',tiempo:'hace 2 días',ruta:'Comunidad'},
+];
+
+let botones = [
+  {key:'comunidad',    label:'Comunidad',    icono:'people-outline'},
+  {key:'ficha_medica', label:'Ficha Médica', icono:'medkit-outline'},
+  {key:'mis_mascotas', label:'Mis Mascotas', icono:'paw-outline'},
+];
+let editMode = false;
+let dragSrc = null;
+
+// ============================================================
+// RENDER BOTONES
+// Dibuja los botones amarillos dinámicos en #btnList.
+// En modo edición muestra ícono de drag (izq) y eliminar (der).
+// Drag & drop para reordenar arrastrando entre botones.
+// ============================================================
+function renderBotones() {
+  const list = document.getElementById('btnList');
+  list.innerHTML = '';
+  botones.forEach((b, i) => {
+    const btn = document.createElement('div');
+    btn.className = 'nav-btn primary';
+    btn.dataset.index = i;
+
+    if (editMode) {
+      // Modo edición: drag handle + ícono + label + botón eliminar
+      btn.draggable = true;
+      btn.style.cursor = 'grab';
+      btn.innerHTML = `
+        <span style="font-size:22px;color:#888;margin-right:10px;user-select:none">⠿</span>
+        <span style="font-size:20px;margin-right:12px">
+          <ion-icon name="${b.icono}" style="color:#2C2C2C;font-size:20px"></ion-icon>
+        </span>
+        <span class="nav-btn-label" style="color:#2C2C2C">${b.label}</span>
+        <button onclick="event.stopPropagation();deleteBtn(${i})" style="background:none;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;margin-left:4px">
+          <span style="font-size:20px;color:#E63946">✕</span>
+        </button>`;
+
+      btn.addEventListener('dragstart', (e) => {
+        dragSrc = i;
+        setTimeout(() => btn.style.opacity = '0.4', 0);
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      btn.addEventListener('dragend', () => {
+        btn.style.opacity = '1';
+      });
+      btn.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        btn.style.border = '2px dashed #2DBD72';
+        e.dataTransfer.dropEffect = 'move';
+      });
+      btn.addEventListener('dragleave', () => {
+        btn.style.border = 'none';
+      });
+      btn.addEventListener('drop', (e) => {
+        e.preventDefault();
+        btn.style.border = 'none';
+        if (dragSrc !== null && dragSrc !== i) {
+          const tmp = botones[dragSrc];
+          botones[dragSrc] = botones[i];
+          botones[i] = tmp;
+          dragSrc = null;
+          renderBotones();
+        }
+      });
+
+    } else {
+      // Modo normal: ícono + label, click navega
+      btn.innerHTML = `
+        <ion-icon name="${b.icono}" style="font-size:20px;color:#2C2C2C;margin-right:12px"></ion-icon>
+        <span class="nav-btn-label" style="color:#2C2C2C">${b.label}</span>`;
+      btn.onclick = () => showToast('→ ' + b.label);
+    }
+
+    list.appendChild(btn);
+  });
+}
+
+function deleteBtn(i) { botones.splice(i,1); renderBotones(); }
+
+// toggleEditMode → activa/desactiva modo edición (FAB izquierdo)
+// saveConfig     → guarda el orden actual y sale del modo edición
+  editMode = !editMode;
+  document.getElementById('fabEdit').classList.toggle('active', editMode);
+  document.getElementById('saveBtn').classList.toggle('visible', editMode);
+  renderBotones();
+  showToast(editMode ? 'Modo edición activado' : 'Modo edición desactivado');
+
+
+function saveConfig() {
+  editMode = false;
+  document.getElementById('fabEdit').classList.remove('active');
+  document.getElementById('saveBtn').classList.remove('visible');
+  renderBotones();
+  showToast('✅ Configuración guardada');
+}
+
+// ============================================================
+// MODAL AGREGAR SECCIÓN (FAB derecho "+")
+// Muestra todas las secciones. Las activas aparecen en gris.
+// Límite: máximo 3 botones amarillos (S.O.S siempre fijo = 4 total)
+// ============================================================
+function openAddModal() {
+  const activeKeys = new Set(botones.map(b => b.key));
+  const list = document.getElementById('modalList');
+  list.innerHTML = '';
+  SECCIONES.forEach(s => {
+    const isActive = activeKeys.has(s.key);
+    const item = document.createElement('button');
+    item.className = 'modal-item' + (isActive ? ' disabled' : '');
+    item.innerHTML = `<ion-icon name="${s.icono}"></ion-icon><span class="modal-item-label">${s.label}</span>${isActive ? '<ion-icon name="checkmark-circle" style="font-size:20px;color:#AAAAAA"></ion-icon>' : ''}`;
+    if (!isActive) item.onclick = () => {
+        if (botones.length >= 3) { closeAddModal(); showToast('Máximo 3 botones (+ S.O.S fijo)'); return; }
+        botones.push({key:s.key,label:s.label,icono:s.icono}); renderBotones(); closeAddModal(); showToast('✅ ' + s.label + ' agregado');
+      };
+    list.appendChild(item);
+  });
+  document.getElementById('addModal').classList.add('open');
+}
+function closeAddModal() { document.getElementById('addModal').classList.remove('open'); }
+</script>
+
+<script>
+// ── NOTIFICACIONES ──
+function renderNotifs() {
+  const list = document.getElementById('notifList');
+  if (NOTIFS.length === 0) {
+    list.innerHTML = '<div class="notif-empty"><ion-icon name="notifications-off-outline"></ion-icon><p>No tenés notificaciones por ahora</p></div>';
+    return;
+  }
+  list.innerHTML = '';
+  NOTIFS.forEach(n => {
+    const item = document.createElement('div');
+    item.className = 'notif-item' + (n.leida ? '' : ' unread');
+    item.innerHTML = `
+      <div class="notif-avatar"><ion-icon name="${n.icono}-outline"></ion-icon></div>
+      <div class="notif-text">
+        <div class="notif-titulo">${n.titulo}</div>
+        <div class="notif-cuerpo">${n.cuerpo}</div>
+      </div>
+      <div class="notif-right">
+        <span class="notif-time">${n.tiempo}</span>
+        ${!n.leida ? '<div class="notif-dot"></div>' : ''}
+      </div>`;
+    item.onclick = () => {
+      n.leida = true;
+      item.classList.remove('unread');
+      item.querySelector('.notif-dot')?.remove();
+      updateBadge();
+      toggleNotif();
+      showToast('→ ' + n.ruta);
+    };
+    list.appendChild(item);
+  });
+}
+
+function markAllRead() {
+  NOTIFS.forEach(n => n.leida = true);
+  renderNotifs();
+  updateBadge();
+  showToast('✅ Todas marcadas como leídas');
+}
+
+function updateBadge() {
+  const unread = NOTIFS.filter(n => !n.leida).length;
+  const badge = document.getElementById('badge');
+  if (unread > 0) { badge.style.display='flex'; badge.querySelector('span').textContent = unread > 9 ? '9+' : unread; }
+  else { badge.style.display='none'; }
+}
+
+// ── DRAWER / NOTIF ──
+function toggleDrawer() {
+  const d = document.getElementById('drawer');
+  const o = document.getElementById('overlay');
+  const open = d.classList.contains('open');
+  d.classList.toggle('open', !open);
+  o.classList.toggle('open', !open);
+}
+
+function toggleNotif() {
+  const p = document.getElementById('notifPanel');
+  const opening = !p.classList.contains('open');
+  p.classList.toggle('open');
+  if (opening) renderNotifs();
+}
+
+function closeAll() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+}
+
+function navTo(screen) {
+  closeAll();
+  showToast('→ ' + screen);
+}
+
+// ── LOGOUT ──
+function confirmLogout() { closeAll(); document.getElementById('confirmOverlay').classList.add('open'); }
+function closeConfirm() { document.getElementById('confirmOverlay').classList.remove('open'); }
+function doLogout() { closeConfirm(); showToast('Sesión cerrada'); }
+
+// ── TOAST ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.opacity='1';
+  t.style.transform='translateX(-50%) translateY(0)';
+  clearTimeout(t._t);
+  t._t = setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(20px)'; }, 1800);
+}
+
+// ── INIT ──
+renderBotones();
+updateBadge();
+</script>
+</body>
+</html>
