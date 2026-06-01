@@ -1,33 +1,24 @@
 /**
- * NotificationsPanel.jsx — Panel de notificaciones del usuario
- *
- * Se abre al tocar la campana 🔔 del header.
- * Muestra la lista de notificaciones ordenadas de más reciente a más antigua.
- * Al abrir el panel, marca todas como leídas automáticamente en el backend.
- * Al tocar una notificación individual → navega a la sección correspondiente.
- *
- * Props:
- *   visible    → boolean que controla si el panel está abierto
- *   onClose    → función para cerrar el panel
- *   onNavigate → función que recibe la ruta y navega a esa pantalla
- *
- * Estados:
- *   notificaciones → array de notificaciones cargadas desde la API
- *   loading        → true mientras se cargan las notificaciones
+ * NotificationsPanel — Mini pestaña desplegable en Home (debajo del header).
  */
-
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Image, ActivityIndicator, Modal, SafeAreaView,
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  Pressable,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fetchNotificaciones, marcarNotificacionLeida, marcarTodasLeidas } from '../services/api';
 
-/**
- * timeAgo — Convierte una fecha ISO a texto relativo
- * Ejemplos: "ahora", "hace 5 min", "hace 2 h", "ayer", "hace 3 días"
- */
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const DROPDOWN_TOP = 56;
+
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
@@ -43,51 +34,49 @@ export default function NotificationsPanel({ visible, onClose, onNavigate }) {
   const [notificaciones, setNotificaciones] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Carga las notificaciones desde la API y las marca todas como leídas
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await fetchNotificaciones();
-      setNotificaciones(data.notificaciones);
-      await marcarTodasLeidas(); // Marca todas como leídas al abrir el panel
+      setNotificaciones(data.notificaciones ?? []);
+      await marcarTodasLeidas();
     } catch {
-      // Si falla la API, muestra lo que haya en el estado (puede estar vacío)
+      /* demo / sin backend */
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Carga las notificaciones cada vez que el panel se abre
   useEffect(() => {
     if (visible) load();
   }, [visible, load]);
 
-  /**
-   * handleTap — Al tocar una notificación:
-   * 1. La marca como leída en el backend (si no lo estaba)
-   * 2. Actualiza el estado local para quitar el punto verde
-   * 3. Cierra el panel y navega a la ruta indicada
-   */
+  const handleMarkAll = async () => {
+    await marcarTodasLeidas();
+    setNotificaciones((prev) => prev.map((n) => ({ ...n, leida: true })));
+  };
+
   const handleTap = async (item) => {
     if (!item.leida) {
       await marcarNotificacionLeida(item.id);
       setNotificaciones((prev) =>
-        prev.map((n) => (n.id === item.id ? { ...n, leida: true } : n))
+        prev.map((n) => (n.id === item.id ? { ...n, leida: true } : n)),
       );
     }
-    if (item.redirigea) {
+    const ruta = item.redirigea ?? item.redirige_a;
+    if (ruta) {
       onClose();
-      onNavigate(item.redirigea);
+      onNavigate(ruta);
     }
   };
 
-  // Renderiza cada ítem de la lista de notificaciones
+  if (!visible) return null;
+
   const renderItem = ({ item }) => (
     <TouchableOpacity
-      style={[styles.item, !item.leida && styles.itemUnread]} // Fondo verde suave si no leída
+      style={[styles.item, !item.leida && styles.itemUnread]}
       onPress={() => handleTap(item)}
     >
-      {/* Avatar: foto del usuario/mascota o ícono de pata como fallback */}
       <View style={styles.avatarWrap}>
         {item.fotoUrl ? (
           <Image source={{ uri: item.fotoUrl }} style={styles.avatar} />
@@ -97,14 +86,10 @@ export default function NotificationsPanel({ visible, onClose, onNavigate }) {
           </View>
         )}
       </View>
-
-      {/* Título y cuerpo de la notificación */}
       <View style={styles.textWrap}>
         <Text style={styles.titulo} numberOfLines={1}>{item.titulo}</Text>
         <Text style={styles.cuerpo} numberOfLines={2}>{item.cuerpo}</Text>
       </View>
-
-      {/* Tiempo relativo + punto verde si no leída */}
       <View style={styles.rightWrap}>
         <Text style={styles.tiempo}>{timeAgo(item.createdAt)}</Text>
         {!item.leida && <View style={styles.dot} />}
@@ -113,70 +98,121 @@ export default function NotificationsPanel({ visible, onClose, onNavigate }) {
   );
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView style={styles.container}>
-        {/* Header del panel */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onClose}>
-            <Ionicons name="arrow-back" size={24} color="#2C2C2C" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Notificaciones</Text>
-          {/* Botón para marcar todas como leídas manualmente */}
-          <TouchableOpacity onPress={async () => {
-            await marcarTodasLeidas();
-            setNotificaciones((prev) => prev.map((n) => ({ ...n, leida: true })));
-          }}>
-            <Text style={styles.markAll}>Marcar todas</Text>
+    <View style={styles.overlay} pointerEvents="box-none">
+      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Cerrar notificaciones" />
+
+      <View style={styles.dropdown}>
+        <View style={styles.dropdownHeader}>
+          <Text style={styles.dropdownTitle}>Notificaciones</Text>
+          <TouchableOpacity style={styles.markAllBtn} onPress={handleMarkAll}>
+            <Text style={styles.markAllBtnText}>Marcar todas</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Contenido: spinner / lista / estado vacío */}
-        {loading ? (
-          <ActivityIndicator size="large" color="#2DBD72" style={{ marginTop: 40 }} />
-        ) : notificaciones.length === 0 ? (
-          // Estado vacío: sin notificaciones
-          <View style={styles.empty}>
-            <Ionicons name="notifications-off-outline" size={64} color="#AAAAAA" />
-            <Text style={styles.emptyText}>No tenés notificaciones por ahora</Text>
-          </View>
-        ) : (
-          // Lista de notificaciones
-          <FlatList
-            data={notificaciones}
-            keyExtractor={(item) => String(item.id)}
-            renderItem={renderItem}
-            contentContainerStyle={{ paddingBottom: 20 }}
-          />
-        )}
-      </SafeAreaView>
-    </Modal>
+        <View style={styles.dropdownBody}>
+          {loading ? (
+            <ActivityIndicator size="small" color="#2DBD72" style={styles.loader} />
+          ) : notificaciones.length === 0 ? (
+            <Text style={styles.emptyText}>No tenés notificaciones</Text>
+          ) : (
+            <FlatList
+              data={notificaciones}
+              keyExtractor={(item) => String(item.id)}
+              renderItem={renderItem}
+              style={styles.list}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator={false}
+            />
+          )}
+        </View>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: '#E0E0E0',
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 100,
   },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: '#2C2C2C' },
-  markAll: { fontSize: 13, color: '#2DBD72', fontWeight: '600' },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.12)',
+  },
+  dropdown: {
+    position: 'absolute',
+    top: DROPDOWN_TOP,
+    left: 14,
+    width: SCREEN_WIDTH - 28,
+    maxWidth: 480,
+    alignSelf: 'center',
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+  dropdownHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#8ED4AA',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  dropdownTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#1A1A1A',
+  },
+  markAllBtn: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  markAllBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2C2C2C',
+  },
+  dropdownBody: {
+    backgroundColor: '#FFFFFF',
+    minHeight: 72,
+    maxHeight: 240,
+    justifyContent: 'center',
+  },
+  loader: { paddingVertical: 24 },
+  emptyText: {
+    fontSize: 14,
+    color: '#9A9A9A',
+    textAlign: 'center',
+    paddingVertical: 28,
+    paddingHorizontal: 16,
+  },
+  list: { maxHeight: 240 },
   item: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: '#F0F0F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
-  itemUnread: { backgroundColor: 'rgba(45, 189, 114, 0.08)' }, // Verde suave para no leídas
-  avatarWrap: { marginRight: 12 },
-  avatar: { width: 40, height: 40, borderRadius: 20 },
-  avatarFallback: { backgroundColor: '#C8F0D8', alignItems: 'center', justifyContent: 'center' },
-  textWrap: { flex: 1, marginRight: 8 },
-  titulo: { fontSize: 14, fontWeight: '700', color: '#2C2C2C' },
-  cuerpo: { fontSize: 13, color: '#6B6B6B', marginTop: 2 },
-  rightWrap: { alignItems: 'flex-end', gap: 6 },
-  tiempo: { fontSize: 11, color: '#AAAAAA' },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#2DBD72' }, // Punto verde = no leída
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  emptyText: { fontSize: 15, color: '#AAAAAA', textAlign: 'center' },
+  itemUnread: { backgroundColor: 'rgba(45, 189, 114, 0.08)' },
+  avatarWrap: { marginRight: 10 },
+  avatar: { width: 36, height: 36, borderRadius: 18 },
+  avatarFallback: {
+    backgroundColor: '#C8F0D8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textWrap: { flex: 1, marginRight: 6 },
+  titulo: { fontSize: 13, fontWeight: '700', color: '#2C2C2C' },
+  cuerpo: { fontSize: 12, color: '#6B6B6B', marginTop: 2 },
+  rightWrap: { alignItems: 'flex-end', gap: 4 },
+  tiempo: { fontSize: 10, color: '#AAAAAA' },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#2DBD72' },
 });

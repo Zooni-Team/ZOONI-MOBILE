@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity,
-  Animated, ScrollView, Dimensions, SafeAreaView, StatusBar,
+  View, Text, Image, ImageBackground, StyleSheet, TouchableOpacity,
+  Animated, ScrollView, Dimensions, SafeAreaView, StatusBar, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -14,8 +14,11 @@ import NotificationsPanel from '../components/NotificationsPanel';
 import AddButtonModal from '../components/AddButtonModal';
 import NavButton from '../components/NavButton';
 import DraggableList from '../components/DraggableList';
+import { HOME_BACKGROUND, resolvePetImageSource } from '../constants/homeAssets';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
+const HERO_HEIGHT = Math.min(SCREEN_HEIGHT * 0.40, 340);
+const PET_IMAGE_SIZE = 250;
 
 // Datos de demo para cuando no hay backend conectado
 const DEMO_DATA = {
@@ -52,8 +55,8 @@ export default function HomeScreen() {
   const [editMode, setEditMode] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
 
-  const petNameOpacity = useRef(new Animated.Value(0)).current;
-  const petImageScale = useRef(new Animated.Value(0.9)).current;
+  const petNameOpacity = useRef(new Animated.Value(1)).current;
+  const petFloatY = useRef(new Animated.Value(0)).current;
 
   const loadData = useCallback(async () => {
     try {
@@ -66,14 +69,30 @@ export default function HomeScreen() {
       setBotones(DEMO_CONFIG.botones);
     } finally {
       setLoading(false);
-      Animated.parallel([
-        Animated.timing(petNameOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.spring(petImageScale, { toValue: 1, useNativeDriver: true }),
-      ]).start();
+      Animated.timing(petNameOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
     }
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    const bob = Animated.loop(
+      Animated.sequence([
+        Animated.timing(petFloatY, {
+          toValue: 10,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(petFloatY, {
+          toValue: 0,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    bob.start();
+    return () => bob.stop();
+  }, [petFloatY]);
 
   const handleDeleteButton = (seccion) => {
     setBotones((prev) => prev.filter((b) => b.seccion !== seccion));
@@ -117,6 +136,12 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
+      <ImageBackground
+        source={HOME_BACKGROUND}
+        style={styles.screenBackground}
+        imageStyle={styles.screenBackgroundImage}
+        resizeMode="cover"
+      >
       {/* ── ZONA 1: HEADER ── */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -124,15 +149,15 @@ export default function HomeScreen() {
           accessibilityLabel="Abrir menú"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="menu-outline" size={28} color="#2C2C2C" />
+          <Ionicons name="menu" size={30} color="#0A0A0A" />
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => setNotifOpen(true)}
+          onPress={() => setNotifOpen((v) => !v)}
           accessibilityLabel="Notificaciones"
           style={styles.bellWrap}
         >
-          <Ionicons name="notifications-outline" size={26} color="#F5A623" />
+          <Ionicons name="notifications" size={30} color="#F5C842" />
           {badge > 0 && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{badge > 9 ? '9+' : badge}</Text>
@@ -140,6 +165,12 @@ export default function HomeScreen() {
           )}
         </TouchableOpacity>
       </View>
+
+      <NotificationsPanel
+        visible={notifOpen}
+        onClose={() => setNotifOpen(false)}
+        onNavigate={handleNotifNavigate}
+      />
 
       <ScrollView
         style={styles.scroll}
@@ -150,44 +181,35 @@ export default function HomeScreen() {
 
         {/* ── ZONA 2: HERO ── */}
         <View style={styles.heroZone}>
-          {/* Fondo degradado verde */}
-          <View style={styles.heroBg} />
-
-          {/* Nombre mascota — solo si hay mascota */}
           {mascota && (
             <Animated.View style={[styles.petNameWrap, { opacity: petNameOpacity }]}>
               {loading ? (
                 <SkeletonLoader width={140} height={36} borderRadius={10} />
               ) : (
-                <>
-                  <Text style={styles.petName} numberOfLines={1}>
-                    {mascota.nombre.length > 20 ? mascota.nombre.slice(0, 20) + '…' : mascota.nombre}
-                  </Text>
-                  <Text style={styles.petSubtitle}>
-                    {mascota.raza} · {mascota.edadAnios} año{mascota.edadAnios !== 1 ? 's' : ''}
-                  </Text>
-                </>
+                <Text style={styles.petName} numberOfLines={1}>
+                  {mascota.nombre.length > 20
+                    ? mascota.nombre.slice(0, 20) + '…'
+                    : mascota.nombre}
+                </Text>
               )}
             </Animated.View>
           )}
 
-          {/* Imagen mascota — siempre visible (paw como placeholder) */}
-          <Animated.View style={[styles.petImageWrap, { transform: [{ scale: petImageScale }] }]}>
+          <Animated.View
+            style={[
+              styles.petImageWrap,
+              { transform: [{ translateY: petFloatY }] },
+            ]}
+          >
             {loading ? (
-              <SkeletonLoader width={180} height={190} borderRadius={90} />
+              <SkeletonLoader width={PET_IMAGE_SIZE} height={PET_IMAGE_SIZE} borderRadius={20} />
             ) : (
-              <View style={styles.petPlaceholder}>
-                <Ionicons name="paw" size={90} color="#27AE60" />
-              </View>
+              <PetIllustration
+                source={resolvePetImageSource(mascota)}
+                label={mascota ? `Ilustración de ${mascota.nombre}` : 'Mascota'}
+              />
             )}
           </Animated.View>
-
-          {/* Pasto — capas de ondas verdes en la parte inferior del hero */}
-          <View style={styles.grassContainer} pointerEvents="none">
-            <View style={styles.grassLayer1} />
-            <View style={styles.grassLayer2} />
-            <View style={styles.grassLayer3} />
-          </View>
         </View>
 
         {/* ── ZONA 3: BOTONES ── */}
@@ -257,6 +279,7 @@ export default function HomeScreen() {
           <Ionicons name="add" size={26} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
+      </ImageBackground>
 
       {/* ── OVERLAYS ── */}
       <HamburgerDrawer
@@ -265,11 +288,6 @@ export default function HomeScreen() {
         usuario={usuario}
         mascotaActiva={mascota ?? null}
         activeRoute="Home"
-      />
-      <NotificationsPanel
-        visible={notifOpen}
-        onClose={() => setNotifOpen(false)}
-        onNavigate={handleNotifNavigate}
       />
       <AddButtonModal
         visible={addModalOpen}
@@ -281,52 +299,116 @@ export default function HomeScreen() {
   );
 }
 
+/** Sombra que sigue la silueta del PNG (no un cuadrado del contenedor). */
+function PetIllustration({ source, label }) {
+  if (Platform.OS === 'web') {
+    return (
+      <Image
+        source={source}
+        style={[styles.petImage, styles.petImageDropShadow]}
+        resizeMode="contain"
+        accessibilityLabel={label}
+      />
+    );
+  }
+
+  return (
+    <View style={styles.petImageContainer}>
+      <Image
+        source={source}
+        style={[styles.petImage, styles.petImageShadowLayer]}
+        resizeMode="contain"
+        accessible={false}
+        importantForAccessibility="no-hide-descendants"
+      />
+      <Image
+        source={source}
+        style={styles.petImage}
+        resizeMode="contain"
+        accessibilityLabel={label}
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#C8F0D8' },
+  safeArea: { flex: 1, backgroundColor: '#D4F5E2' },
+  screenBackground: { flex: 1, width: '100%' },
+  screenBackgroundImage: { width: '100%', height: '100%' },
   header: {
     height: 56, flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between', paddingHorizontal: 20,
     backgroundColor: 'transparent', zIndex: 10,
   },
-  bellWrap: { position: 'relative' },
+  bellWrap: {
+    position: 'relative',
+    padding: 4,
+  },
   badge: {
-    position: 'absolute', top: -4, right: -6,
+    position: 'absolute', top: 0, right: 0,
     backgroundColor: '#E63946', borderRadius: 8,
     minWidth: 16, height: 16, alignItems: 'center',
     justifyContent: 'center', paddingHorizontal: 3,
   },
   badgeText: { color: '#FFFFFF', fontSize: 9, fontWeight: '700' },
-  scroll: { flex: 1 },
-  scrollContent: { flexGrow: 1 },
+  scroll: { flex: 1, backgroundColor: 'transparent' },
+  scrollContent: { flexGrow: 1, backgroundColor: 'transparent' },
 
-  // Hero
-  heroZone: { height: SCREEN_HEIGHT * 0.42, overflow: 'hidden', alignItems: 'center' },
-  heroBg: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#a8dfc0',
+  // Hero — ~45% pantalla (Instruction-Home)
+  heroZone: {
+    overflow: 'visible',
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
+    paddingTop: 4,
+    height: HERO_HEIGHT,
   },
-  petNameWrap: { marginTop: 22, alignItems: 'center', zIndex: 2 },
-  petName: { fontSize: 30, fontWeight: '800', color: '#27AE60', textAlign: 'center', textShadowColor: 'rgba(255,255,255,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
-  petSubtitle: { fontSize: 13, fontWeight: '600', color: '#3a9e6a', marginTop: 2, textAlign: 'center' },
-  petImageWrap: { position: 'absolute', bottom: 0, alignItems: 'center', zIndex: 2 },
-  petPlaceholder: { width: 190, height: 190, alignItems: 'center', justifyContent: 'center' },
-  // Pasto: tres capas de elipses superpuestas simulando las ondas del SVG
-  grassContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 90, zIndex: 1, overflow: 'hidden' },
-  grassLayer1: {
-    position: 'absolute', bottom: 20, left: -40, right: -40, height: 70,
-    backgroundColor: '#5cb87a', borderRadius: 100, opacity: 0.6,
+  petNameWrap: { marginTop: 8, marginBottom: 12, alignItems: 'center', zIndex: 3, paddingHorizontal: 20 },
+  petName: {
+    fontSize: 40,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    letterSpacing: 0.2,
+    textShadowColor: 'rgba(0, 0, 0, 0.28)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 5,
   },
-  grassLayer2: {
-    position: 'absolute', bottom: 10, left: -20, right: -20, height: 60,
-    backgroundColor: '#4aaa6e', borderRadius: 80, opacity: 0.85,
+  petImageContainer: {
+    width: PET_IMAGE_SIZE,
+    height: PET_IMAGE_SIZE,
+    maxWidth: SCREEN_WIDTH * 0.68,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  grassLayer3: {
-    position: 'absolute', bottom: 0, left: 0, right: 0, height: 44,
-    backgroundColor: '#3d9960', borderTopLeftRadius: 60, borderTopRightRadius: 60,
+  petImageShadowLayer: {
+    position: 'absolute',
+    top: 12,
+    opacity: 0.28,
+    tintColor: '#2a5c48',
+  },
+  petImageDropShadow: {
+    filter: 'drop-shadow(4px 10px 14px rgba(36, 90, 66, 0.35))',
+  },
+  petImageWrap: {
+    position: 'absolute',
+    bottom: -48,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  petImage: {
+    width: PET_IMAGE_SIZE,
+    height: PET_IMAGE_SIZE,
+    maxWidth: SCREEN_WIDTH * 0.68,
+    maxHeight: PET_IMAGE_SIZE,
+    backgroundColor: 'transparent',
   },
 
-  // Buttons zone
-  buttonsZone: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 100, backgroundColor: '#C8F0D8' },
+  // Buttons zone — fondo transparente (se ve home_background.png)
+  buttonsZone: { paddingHorizontal: 24, paddingTop: 72, paddingBottom: 100, backgroundColor: 'transparent' },
 
   // Save button — verde, arriba de los botones
   saveBtn: {
