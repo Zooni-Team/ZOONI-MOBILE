@@ -29,10 +29,10 @@
 
 ## Tarea 3: Capa de API en el frontend
 
-- [ ] 3.1 Crear `src/api/comunidad/mapaApi.js` con funciones `fetchMapaData(bbox)`, `fetchServicios(bbox, tipo)`
-- [ ] 3.2 Crear `src/api/comunidad/cartelesApi.js` con funciones `crearCartel(formData)`, `eliminarCartel(id)`
-- [ ] 3.3 Crear `src/api/comunidad/amigosApi.js` con funciones `fetchAmigos()`, `enviarSolicitud(destinoId)`, `responderSolicitud(id, accion)`, `buscarUsuarios(q)`
-- [ ] 3.4 Crear `src/api/comunidad/ubicacionApi.js` con función `actualizarUbicacion(lat, lng)`
+- [x] 3.1 Crear `src/api/comunidad/mapaApi.js` con funciones `fetchMapaData(bbox)`, `fetchServicios(bbox, tipo)`
+- [x] 3.2 Crear `src/api/comunidad/cartelesApi.js` con funciones `crearCartel(formData)`, `eliminarCartel(id)`
+- [x] 3.3 Crear `src/api/comunidad/amigosApi.js` con funciones `fetchAmigos()`, `enviarSolicitud(destinoId)`, `responderSolicitud(id, accion)`, `buscarUsuarios(q)`
+- [x] 3.4 Crear `src/api/comunidad/ubicacionApi.js` con función `actualizarUbicacion(lat, lng)`
 
 **Dependencias:** 1.3
 
@@ -40,10 +40,10 @@
 
 ## Tarea 4: Hook de geolocalización y polling
 
-- [ ] 4.1 Crear `src/hooks/comunidad/useGeolocalizacion.js`: solicitar permiso, obtener ubicación actual, fallback a Buenos Aires
-- [ ] 4.2 Crear `src/hooks/comunidad/usePolling.js`: setInterval de 30s para `PUT /ubicacion` y `GET /mapa`, cleanup al desmontar
-- [ ] 4.3 Crear `src/hooks/comunidad/useDebounce.js`: debounce genérico con useRef para el movimiento del mapa (800ms) y búsqueda (400ms)
-- [ ] 4.4 Crear `src/hooks/comunidad/useConexion.js`: detectar estado de red con `@react-native-community/netinfo`, gestionar caché en AsyncStorage
+- [x] 4.1 Crear `src/hooks/comunidad/useGeolocalizacion.js`: solicitar permiso, obtener ubicación actual, fallback a Buenos Aires
+- [x] 4.2 Crear `src/hooks/comunidad/usePolling.js`: setInterval de 30s para `PUT /ubicacion` y `GET /mapa`, cleanup al desmontar
+- [x] 4.3 Crear `src/hooks/comunidad/useDebounce.js`: debounce genérico con useRef para el movimiento del mapa (800ms) y búsqueda (400ms)
+- [x] 4.4 Crear `src/hooks/comunidad/useConexion.js`: detectar estado de red con `@react-native-community/netinfo`, gestionar caché en AsyncStorage
 
 **Dependencias:** 3.1, 3.4
 
@@ -51,12 +51,12 @@
 
 ## Tarea 5: Componente MapaComponent
 
-- [ ] 5.1 Crear `src/components/Comunidad/MapaComponent.jsx` con `react-native-maps`, pantalla completa, zoom inicial 15
-- [ ] 5.2 Implementar marker del usuario: círculo azul `#2196F3` con animación de pulso radial (`Animated.loop`)
-- [ ] 5.3 Implementar markers de servicios con íconos y colores por tipo (veterinaria, paseador, petshop, peluquería)
-- [ ] 5.4 Implementar markers de carteles con íconos por tipo (perdida = rojo, otros = gris)
-- [ ] 5.5 Implementar markers de amigos con avatar circular y borde verde `#2DBD72`
-- [ ] 5.6 Implementar clustering con `react-native-map-clustering`
+- [x] 5.1 Crear `src/components/Comunidad/MapaComponent.jsx` con `react-native-maps`, pantalla completa, zoom inicial 15
+- [x] 5.2 Implementar marker del usuario: círculo azul `#2196F3` con animación de pulso radial (`Animated.loop`)
+- [x] 5.3 Implementar markers de servicios con íconos y colores por tipo (veterinaria, paseador, petshop, peluquería)
+- [x] 5.4 Implementar markers de carteles con íconos por tipo (perdida = rojo, otros = gris)
+- [x] 5.5 Implementar markers de amigos con avatar circular y borde verde `#2DBD72`
+- [x] 5.6 Implementar clustering con `react-native-map-clustering`
 - [ ] 5.7 Implementar handler `onDoublePress` para el modo cartel (marker temporal pulsante)
 - [ ] 5.8 Implementar handler `onRegionChangeComplete` con debounce 800ms para actualizar bounding box
 - [ ] 5.9 Agregar `accessibilityLabel` a todos los markers con formato `"[Tipo]: [Nombre], [distancia] km"`

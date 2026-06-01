@@ -142,3 +142,7 @@ export async function marcarNotificacionLeida(id) {
 export async function marcarTodasLeidas() {
   await api.patch('/notificaciones/leer-todas');
 }
+
+// Exportar la instancia axios para que otros módulos de API puedan reutilizarla
+// con el interceptor JWT ya configurado.
+export default api;
