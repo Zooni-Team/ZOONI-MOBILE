@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   Animated, ScrollView, Dimensions, SafeAreaView, StatusBar,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -14,6 +13,7 @@ import HamburgerDrawer from '../components/HamburgerDrawer';
 import NotificationsPanel from '../components/NotificationsPanel';
 import AddButtonModal from '../components/AddButtonModal';
 import NavButton from '../components/NavButton';
+import DraggableList from '../components/DraggableList';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -141,7 +141,12 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        scrollEnabled={!editMode}
+      >
 
         {/* ── ZONA 2: HERO ── */}
         <View style={styles.heroZone}>
@@ -195,38 +200,20 @@ export default function HomeScreen() {
             </TouchableOpacity>
           )}
 
-          {/* Botones dinámicos con flechas de reorden integradas */}
-          {visibleBotones.map((boton, index) => {
-            const seccion = getSeccion(boton.seccion);
-            if (!seccion) return null;
-            return (
-              <View key={boton.seccion} style={styles.btnRow}>
-                {/* Flechas ↑↓ a la izquierda en modo edición */}
-                {editMode && (
-                  <View style={styles.arrowCol}>
-                    <TouchableOpacity
-                      onPress={() => handleMoveButton(index, -1)}
-                      disabled={index === 0}
-                      style={styles.arrowBtn}
-                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                    >
-                      <Ionicons name="chevron-up" size={20} color={index === 0 ? '#CCC' : '#2C2C2C'} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleMoveButton(index, 1)}
-                      disabled={index === visibleBotones.length - 1}
-                      style={styles.arrowBtn}
-                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                    >
-                      <Ionicons name="chevron-down" size={20} color={index === visibleBotones.length - 1 ? '#CCC' : '#2C2C2C'} />
-                    </TouchableOpacity>
-                  </View>
-                )}
+          {/* Botones dinámicos con drag & drop */}
+          <DraggableList
+            items={visibleBotones}
+            disabled={!editMode}
+            onReorder={(newItems) => setBotones(newItems)}
+            renderItem={({ item: boton, isDragging }) => {
+              const seccion = getSeccion(boton.seccion);
+              if (!seccion) return null;
+              return (
                 <NavButton
                   label={seccion.label}
                   iconName={seccion.icono}
                   editMode={editMode}
-                  style={{ flex: 1 }}
+                  style={{ flex: 1, opacity: isDragging ? 0.85 : 1 }}
                   onDelete={() => handleDeleteButton(boton.seccion)}
                   onPress={() => {
                     if (editMode) return;
@@ -238,9 +225,9 @@ export default function HomeScreen() {
                   }}
                   accessibilityLabel={`Ir a ${seccion.label}`}
                 />
-              </View>
-            );
-          })}
+              );
+            }}
+          />
 
           {/* SOS — siempre visible, siempre último */}
           <NavButton
@@ -350,12 +337,6 @@ const styles = StyleSheet.create({
   },
   saveBtnText: { fontSize: 17, fontWeight: '700', color: '#FFFFFF' },
 
-  // Fila con botón + flechas
-  btnRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 0 },
-  arrowCol: { flexDirection: 'column', marginRight: 6, gap: 2 },
-  arrowBtn: { width: 30, height: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 8 },
-  btnRowDragging: { opacity: 0.5, transform: [{ scale: 0.97 }] },
-  btnRowOver: { borderTopWidth: 2, borderTopColor: '#2DBD72' },
   // FABs
   fabContainer: { position: 'absolute', bottom: 16, right: 16, flexDirection: 'row', gap: 10 },
   fab: {
