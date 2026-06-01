@@ -22,8 +22,9 @@ import { TODAS_LAS_SECCIONES } from '../services/secciones';
 const SECCIONES_DISPONIBLES = TODAS_LAS_SECCIONES.filter((s) => s.key !== 'inicio');
 
 export default function AddButtonModal({ visible, onClose, botonesActivos, onAdd }) {
-  // Set con los keys de los botones que ya están activos en la Home
   const activeKeys = new Set(botonesActivos.filter((b) => b.visible).map((b) => b.seccion));
+  // Máximo 4 botones amarillos (SOS es fijo)
+  const atLimit = botonesActivos.filter((b) => b.visible).length >= 4;
 
   return (
     // transparent: true → permite ver el fondo oscuro detrás del sheet
@@ -47,26 +48,25 @@ export default function AddButtonModal({ visible, onClose, botonesActivos, onAdd
             data={SECCIONES_DISPONIBLES}
             keyExtractor={(item) => item.key}
             renderItem={({ item }) => {
-              const isActive = activeKeys.has(item.key); // Ya está en la Home?
+              const isActive = activeKeys.has(item.key);
+              const isDisabled = isActive || atLimit;
               return (
                 <TouchableOpacity
-                  style={[styles.item, isActive && styles.itemDisabled]}
-                  // Si ya está activa, no hace nada al tocar
-                  onPress={() => { if (!isActive) { onAdd(item.key); onClose(); } }}
-                  disabled={isActive}
+                  style={[styles.item, isDisabled && styles.itemDisabled]}
+                  onPress={() => { if (!isDisabled) { onAdd(item.key); onClose(); } }}
+                  disabled={isDisabled}
                 >
-                  {/* Ícono verde si disponible, gris si ya está activa */}
                   <Ionicons
                     name={item.icono}
                     size={22}
-                    color={isActive ? '#AAAAAA' : '#2DBD72'}
+                    color={isDisabled ? '#AAAAAA' : '#2DBD72'}
                     style={styles.itemIcon}
                   />
-                  <Text style={[styles.itemLabel, isActive && styles.itemLabelDisabled]}>
+                  <Text style={[styles.itemLabel, isDisabled && styles.itemLabelDisabled]}>
                     {item.label}
                   </Text>
-                  {/* Tilde ✓ si ya está en la Home */}
                   {isActive && <Ionicons name="checkmark-circle" size={20} color="#AAAAAA" />}
+                  {!isActive && atLimit && <Text style={styles.limitText}>Límite</Text>}
                 </TouchableOpacity>
               );
             }}
@@ -90,4 +90,5 @@ const styles = StyleSheet.create({
   itemIcon: { marginRight: 14 },
   itemLabel: { flex: 1, fontSize: 15, color: '#2C2C2C', fontWeight: '500' },
   itemLabelDisabled: { color: '#AAAAAA' },
+  limitText: { fontSize: 11, color: '#AAAAAA', fontStyle: 'italic' },
 });

@@ -27,6 +27,7 @@ export default function NavButton({
   editMode = false,
   onDelete,
   accessibilityLabel,
+  style,
 }) {
   // Valor animado para el efecto de escala al presionar
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -42,7 +43,7 @@ export default function NavButton({
   const isPrimary = variant === 'primary';
 
   return (
-    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+    <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, style]}>
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={onPress}

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   Animated, ScrollView, Dimensions, SafeAreaView, StatusBar,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -79,6 +80,8 @@ export default function HomeScreen() {
   };
 
   const handleAddButton = (seccionKey) => {
+    // Máximo 4 botones amarillos (SOS es fijo, total = 5)
+    if (botones.filter((b) => b.visible).length >= 4) return;
     setBotones((prev) => [
       ...prev,
       { seccion: seccionKey, orden: prev.length + 1, visible: true },
@@ -92,8 +95,15 @@ export default function HomeScreen() {
     try { await saveHomeConfig({ botones: updated }); } catch { /* sin backend */ }
   };
 
-  const handleNotifNavigate = (ruta) => {
-    const screen = ruta.split('/')[0];
+  const handleMoveButton = (index, direction) => {
+    const newBotones = [...botones];
+    const swapIndex = index + direction;
+    if (swapIndex < 0 || swapIndex >= newBotones.length) return;
+    [newBotones[index], newBotones[swapIndex]] = [newBotones[swapIndex], newBotones[index]];
+    setBotones(newBotones);
+  };
+
+  const handleNotifNavigate = (ruta) => {    const screen = ruta.split('/')[0];
     const map = { perfil: 'Perfil', match: 'Match', fichamedica: 'FichaMedica', comunidad: 'Comunidad' };
     if (map[screen]) navigation.navigate(map[screen]);
   };
@@ -135,21 +145,28 @@ export default function HomeScreen() {
 
         {/* ── ZONA 2: HERO ── */}
         <View style={styles.heroZone}>
-          {/* Fondo verde — reemplazar con imagen cuando el equipo la provea */}
+          {/* Fondo degradado verde */}
           <View style={styles.heroBg} />
 
-          {/* Nombre mascota */}
-          <Animated.View style={[styles.petNameWrap, { opacity: petNameOpacity }]}>
-            {loading ? (
-              <SkeletonLoader width={140} height={36} borderRadius={10} />
-            ) : mascota ? (
-              <Text style={styles.petName} numberOfLines={1}>
-                {mascota.nombre.length > 20 ? mascota.nombre.slice(0, 20) + '…' : mascota.nombre}
-              </Text>
-            ) : null}
-          </Animated.View>
+          {/* Nombre mascota — solo si hay mascota */}
+          {mascota && (
+            <Animated.View style={[styles.petNameWrap, { opacity: petNameOpacity }]}>
+              {loading ? (
+                <SkeletonLoader width={140} height={36} borderRadius={10} />
+              ) : (
+                <>
+                  <Text style={styles.petName} numberOfLines={1}>
+                    {mascota.nombre.length > 20 ? mascota.nombre.slice(0, 20) + '…' : mascota.nombre}
+                  </Text>
+                  <Text style={styles.petSubtitle}>
+                    {mascota.raza} · {mascota.edadAnios} año{mascota.edadAnios !== 1 ? 's' : ''}
+                  </Text>
+                </>
+              )}
+            </Animated.View>
+          )}
 
-          {/* Imagen mascota */}
+          {/* Imagen mascota — siempre visible (paw como placeholder) */}
           <Animated.View style={[styles.petImageWrap, { transform: [{ scale: petImageScale }] }]}>
             {loading ? (
               <SkeletonLoader width={180} height={190} borderRadius={90} />
@@ -159,53 +176,71 @@ export default function HomeScreen() {
               </View>
             )}
           </Animated.View>
+
+          {/* Pasto — capas de ondas verdes en la parte inferior del hero */}
+          <View style={styles.grassContainer} pointerEvents="none">
+            <View style={styles.grassLayer1} />
+            <View style={styles.grassLayer2} />
+            <View style={styles.grassLayer3} />
+          </View>
         </View>
 
         {/* ── ZONA 3: BOTONES ── */}
         <View style={styles.buttonsZone}>
 
-          {/* Estado vacío — sin mascota */}
-          {!loading && !mascota && (
-            <View style={styles.emptyState}>
-              <Ionicons name="paw-outline" size={56} color="#AAAAAA" />
-              <Text style={styles.emptyTitle}>¡Agregá tu primera mascota!</Text>
-              <Text style={styles.emptySubtitle}>Registrá a tu compañero para empezar a usar Zooni.</Text>
-              <TouchableOpacity style={styles.emptyBtn} onPress={() => navigation.navigate('MisMascotas')}>
-                <Text style={styles.emptyBtnText}>Agregar mascota</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Botones dinámicos */}
-          {visibleBotones.map((boton) => {
-            const seccion = getSeccion(boton.seccion);
-            if (!seccion) return null;
-            return (
-              <NavButton
-                key={boton.seccion}
-                label={seccion.label}
-                iconName={seccion.icono}
-                editMode={editMode}
-                onDelete={() => handleDeleteButton(boton.seccion)}
-                onPress={() => {
-                  if (editMode) return;
-                  if (boton.seccion === 'ficha_medica' && mascota) {
-                    navigation.navigate('FichaMedica', { mascotaId: mascota.id });
-                  } else {
-                    navigation.navigate(seccion.ruta);
-                  }
-                }}
-                accessibilityLabel={`Ir a ${seccion.label}`}
-              />
-            );
-          })}
-
-          {/* Botón guardar en modo edición */}
+          {/* Botón guardar — arriba, verde, solo en modo edición */}
           {editMode && (
             <TouchableOpacity style={styles.saveBtn} onPress={handleSaveConfig}>
               <Text style={styles.saveBtnText}>Guardar</Text>
             </TouchableOpacity>
           )}
+
+          {/* Botones dinámicos con flechas de reorden integradas */}
+          {visibleBotones.map((boton, index) => {
+            const seccion = getSeccion(boton.seccion);
+            if (!seccion) return null;
+            return (
+              <View key={boton.seccion} style={styles.btnRow}>
+                {/* Flechas ↑↓ a la izquierda en modo edición */}
+                {editMode && (
+                  <View style={styles.arrowCol}>
+                    <TouchableOpacity
+                      onPress={() => handleMoveButton(index, -1)}
+                      disabled={index === 0}
+                      style={styles.arrowBtn}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Ionicons name="chevron-up" size={20} color={index === 0 ? '#CCC' : '#2C2C2C'} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleMoveButton(index, 1)}
+                      disabled={index === visibleBotones.length - 1}
+                      style={styles.arrowBtn}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Ionicons name="chevron-down" size={20} color={index === visibleBotones.length - 1 ? '#CCC' : '#2C2C2C'} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+                <NavButton
+                  label={seccion.label}
+                  iconName={seccion.icono}
+                  editMode={editMode}
+                  style={{ flex: 1 }}
+                  onDelete={() => handleDeleteButton(boton.seccion)}
+                  onPress={() => {
+                    if (editMode) return;
+                    if (boton.seccion === 'ficha_medica' && mascota) {
+                      navigation.navigate('FichaMedica', { mascotaId: mascota.id });
+                    } else {
+                      navigation.navigate(seccion.ruta);
+                    }
+                  }}
+                  accessibilityLabel={`Ir a ${seccion.label}`}
+                />
+              </View>
+            );
+          })}
 
           {/* SOS — siempre visible, siempre último */}
           <NavButton
@@ -281,33 +316,46 @@ const styles = StyleSheet.create({
   heroZone: { height: SCREEN_HEIGHT * 0.42, overflow: 'hidden', alignItems: 'center' },
   heroBg: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#B8EDD0',
-    // Degradado simulado con dos capas
+    backgroundColor: '#a8dfc0',
   },
-  petNameWrap: { marginTop: 20, alignItems: 'center', zIndex: 2 },
-  petName: { fontSize: 30, fontWeight: '800', color: '#27AE60', textAlign: 'center' },
-  petImageWrap: { position: 'absolute', bottom: 0, alignItems: 'center' },
+  petNameWrap: { marginTop: 22, alignItems: 'center', zIndex: 2 },
+  petName: { fontSize: 30, fontWeight: '800', color: '#27AE60', textAlign: 'center', textShadowColor: 'rgba(255,255,255,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  petSubtitle: { fontSize: 13, fontWeight: '600', color: '#3a9e6a', marginTop: 2, textAlign: 'center' },
+  petImageWrap: { position: 'absolute', bottom: 0, alignItems: 'center', zIndex: 2 },
   petPlaceholder: { width: 190, height: 190, alignItems: 'center', justifyContent: 'center' },
+  // Pasto: tres capas de elipses superpuestas simulando las ondas del SVG
+  grassContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 90, zIndex: 1, overflow: 'hidden' },
+  grassLayer1: {
+    position: 'absolute', bottom: 20, left: -40, right: -40, height: 70,
+    backgroundColor: '#5cb87a', borderRadius: 100, opacity: 0.6,
+  },
+  grassLayer2: {
+    position: 'absolute', bottom: 10, left: -20, right: -20, height: 60,
+    backgroundColor: '#4aaa6e', borderRadius: 80, opacity: 0.85,
+  },
+  grassLayer3: {
+    position: 'absolute', bottom: 0, left: 0, right: 0, height: 44,
+    backgroundColor: '#3d9960', borderTopLeftRadius: 60, borderTopRightRadius: 60,
+  },
 
   // Buttons zone
   buttonsZone: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 100, backgroundColor: '#C8F0D8' },
 
-  // Empty state
-  emptyState: { alignItems: 'center', paddingVertical: 32, gap: 10 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#2C2C2C', textAlign: 'center' },
-  emptySubtitle: { fontSize: 14, color: '#6B6B6B', textAlign: 'center', paddingHorizontal: 16 },
-  emptyBtn: { marginTop: 8, backgroundColor: '#F5C842', borderRadius: 30, paddingHorizontal: 28, paddingVertical: 14 },
-  emptyBtnText: { fontSize: 16, fontWeight: '700', color: '#2C2C2C' },
-
-  // Save button
+  // Save button — verde, arriba de los botones
   saveBtn: {
-    backgroundColor: '#F5C842', borderRadius: 30, height: 54,
+    backgroundColor: '#2DBD72', borderRadius: 30, height: 54,
     alignItems: 'center', justifyContent: 'center', marginBottom: 12,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15, shadowRadius: 10, elevation: 4,
   },
-  saveBtnText: { fontSize: 17, fontWeight: '700', color: '#2C2C2C' },
+  saveBtnText: { fontSize: 17, fontWeight: '700', color: '#FFFFFF' },
 
+  // Fila con botón + flechas
+  btnRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 0 },
+  arrowCol: { flexDirection: 'column', marginRight: 6, gap: 2 },
+  arrowBtn: { width: 30, height: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 8 },
+  btnRowDragging: { opacity: 0.5, transform: [{ scale: 0.97 }] },
+  btnRowOver: { borderTopWidth: 2, borderTopColor: '#2DBD72' },
   // FABs
   fabContainer: { position: 'absolute', bottom: 16, right: 16, flexDirection: 'row', gap: 10 },
   fab: {
