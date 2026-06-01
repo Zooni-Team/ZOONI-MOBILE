@@ -21,7 +21,7 @@
 import React, { useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Animated, Dimensions, ScrollView, Alert, Image,
+  Animated, Dimensions, ScrollView, Alert, Image, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -119,12 +119,15 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
     return ((nombre?.[0] ?? '') + (apellido?.[0] ?? '')).toUpperCase() || '?';
   };
 
-  // No renderiza nada si el drawer está cerrado (optimización de performance)
-  if (!visible) return null;
-
   return (
-    // absoluteFill: cubre toda la pantalla para capturar el toque en el overlay
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+    <View style={styles.modalRoot} pointerEvents="box-none">
 
       {/* Overlay oscuro — tocar cierra el drawer */}
       <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]}>
@@ -198,10 +201,12 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
         </ScrollView>
       </Animated.View>
     </View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  modalRoot: { flex: 1 },
   // Fondo oscuro semitransparente detrás del drawer
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
   drawer: {

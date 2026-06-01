@@ -17,19 +17,22 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import { API_TIMEOUT_MS } from '../config/apiConfig';
 
 // URL base del backend — cambiar en producción
 const BASE_URL = 'http://10.0.2.2:5000/api/v1';
 
-// Instancia de axios con la URL base configurada
-const api = axios.create({ baseURL: BASE_URL });
+const api = axios.create({
+  baseURL: BASE_URL,
+  timeout: API_TIMEOUT_MS,
+});
 
-// Interceptor: antes de cada request, adjunta el token JWT en el header
+let tokenCache = null;
+let tokenCacheRead = false;
+
 api.interceptors.request.use(async (config) => {
   const token = await getStoredToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
@@ -40,14 +43,20 @@ api.interceptors.request.use(async (config) => {
 
 /** Lee el token guardado. Retorna null si no existe. */
 export async function getStoredToken() {
+  if (tokenCacheRead) return tokenCache;
   if (Platform.OS === 'web') {
-    return localStorage.getItem('jwt_token');
+    tokenCache = localStorage.getItem('jwt_token');
+  } else {
+    tokenCache = await SecureStore.getItemAsync('jwt_token');
   }
-  return SecureStore.getItemAsync('jwt_token');
+  tokenCacheRead = true;
+  return tokenCache;
 }
 
 /** Guarda el token después de un login exitoso. */
 export async function saveToken(token) {
+  tokenCache = token;
+  tokenCacheRead = true;
   if (Platform.OS === 'web') {
     localStorage.setItem('jwt_token', token);
     return;
@@ -57,6 +66,8 @@ export async function saveToken(token) {
 
 /** Elimina el token al cerrar sesión. */
 export async function clearToken() {
+  tokenCache = null;
+  tokenCacheRead = true;
   if (Platform.OS === 'web') {
     localStorage.removeItem('jwt_token');
     return;

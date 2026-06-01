@@ -43,37 +43,32 @@ const DEMO_CONFIG = {
 export default function HomeScreen() {
   const navigation = useNavigation();
 
-  const [homeData, setHomeData] = useState(null);
-  const [botones, setBotones] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [homeData, setHomeData] = useState(DEMO_DATA);
+  const [botones, setBotones] = useState(DEMO_CONFIG.botones);
+  const [loading, setLoading] = useState(false);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
 
-  const petNameOpacity = useRef(new Animated.Value(0)).current;
-  const petImageScale = useRef(new Animated.Value(0.9)).current;
+  const petNameOpacity = useRef(new Animated.Value(1)).current;
+  const petImageScale = useRef(new Animated.Value(1)).current;
 
-  const loadData = useCallback(async () => {
-    try {
-      const [data, config] = await Promise.all([fetchHome(), fetchHomeConfig()]);
-      setHomeData(data);
-      setBotones(config.botones);
-    } catch {
-      // Sin backend: usar datos de demo
-      setHomeData(DEMO_DATA);
-      setBotones(DEMO_CONFIG.botones);
-    } finally {
-      setLoading(false);
-      Animated.parallel([
-        Animated.timing(petNameOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.spring(petImageScale, { toValue: 1, useNativeDriver: true }),
-      ]).start();
-    }
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [data, config] = await Promise.all([fetchHome(), fetchHomeConfig()]);
+        if (cancelled) return;
+        if (data) setHomeData(data);
+        if (config?.botones) setBotones(config.botones);
+      } catch {
+        /* ya mostramos demo */
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
-
-  useEffect(() => { loadData(); }, [loadData]);
 
   const handleDeleteButton = (seccion) => {
     setBotones((prev) => prev.filter((b) => b.seccion !== seccion));
@@ -174,10 +169,10 @@ export default function HomeScreen() {
           {/* Imagen mascota — siempre visible (paw como placeholder) */}
           <Animated.View style={[styles.petImageWrap, { transform: [{ scale: petImageScale }] }]}>
             {loading ? (
-              <SkeletonLoader width={180} height={190} borderRadius={90} />
+              <SkeletonLoader width={150} height={150} borderRadius={75} />
             ) : (
               <View style={styles.petPlaceholder}>
-                <Ionicons name="paw" size={90} color="#27AE60" />
+                <Ionicons name="paw" size={82} color="#27AE60" />
               </View>
             )}
           </Animated.View>
@@ -189,6 +184,8 @@ export default function HomeScreen() {
             <View style={styles.grassLayer3} />
           </View>
         </View>
+
+        <View style={styles.heroButtonsGap} />
 
         {/* ── ZONA 3: BOTONES ── */}
         <View style={styles.buttonsZone}>
@@ -299,19 +296,30 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { flexGrow: 1 },
 
-  // Hero
-  heroZone: { height: SCREEN_HEIGHT * 0.42, overflow: 'hidden', alignItems: 'center' },
+  // Hero — ~40% pantalla + separación clara antes de los botones
+  heroZone: {
+    overflow: 'hidden',
+    alignItems: 'center',
+    paddingTop: 14,
+    paddingBottom: 12,
+    minHeight: 248,
+    height: SCREEN_HEIGHT * 0.40,
+  },
+  heroButtonsGap: {
+    height: 24,
+    backgroundColor: '#C8F0D8',
+  },
   heroBg: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#a8dfc0',
   },
-  petNameWrap: { marginTop: 22, alignItems: 'center', zIndex: 2 },
-  petName: { fontSize: 30, fontWeight: '800', color: '#27AE60', textAlign: 'center', textShadowColor: 'rgba(255,255,255,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  petNameWrap: { marginTop: 10, alignItems: 'center', zIndex: 2 },
+  petName: { fontSize: 28, fontWeight: '800', color: '#27AE60', textAlign: 'center', textShadowColor: 'rgba(255,255,255,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
   petSubtitle: { fontSize: 13, fontWeight: '600', color: '#3a9e6a', marginTop: 2, textAlign: 'center' },
-  petImageWrap: { position: 'absolute', bottom: 0, alignItems: 'center', zIndex: 2 },
-  petPlaceholder: { width: 190, height: 190, alignItems: 'center', justifyContent: 'center' },
+  petImageWrap: { marginTop: 12, marginBottom: 14, alignItems: 'center', zIndex: 2 },
+  petPlaceholder: { width: 150, height: 150, alignItems: 'center', justifyContent: 'center' },
   // Pasto: tres capas de elipses superpuestas simulando las ondas del SVG
-  grassContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 90, zIndex: 1, overflow: 'hidden' },
+  grassContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 72, zIndex: 1, overflow: 'hidden' },
   grassLayer1: {
     position: 'absolute', bottom: 20, left: -40, right: -40, height: 70,
     backgroundColor: '#5cb87a', borderRadius: 100, opacity: 0.6,
@@ -326,7 +334,7 @@ const styles = StyleSheet.create({
   },
 
   // Buttons zone
-  buttonsZone: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 100, backgroundColor: '#C8F0D8' },
+  buttonsZone: { paddingHorizontal: 24, paddingTop: 8, paddingBottom: 100, backgroundColor: '#C8F0D8' },
 
   // Save button — verde, arriba de los botones
   saveBtn: {
