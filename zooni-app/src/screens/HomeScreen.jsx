@@ -60,39 +60,54 @@ export default function HomeScreen() {
 
   const loadData = useCallback(async () => {
     try {
-      const [data, config] = await Promise.all([fetchHome(), fetchHomeConfig()]);
+      // Timeout de 3 segundos: si el backend no responde, usar datos demo
+      const dataPromise = Promise.race([
+        Promise.all([fetchHome(), fetchHomeConfig()]),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('timeout')), 3000)
+        )
+      ]);
+      
+      const [data, config] = await dataPromise;
       setHomeData(data);
       setBotones(config.botones);
-    } catch {
-      // Sin backend: usar datos de demo
+    } catch (error) {
+      // Sin backend o timeout: usar datos de demo
+      console.log('Usando datos de demo:', error.message);
       setHomeData(DEMO_DATA);
       setBotones(DEMO_CONFIG.botones);
     } finally {
       setLoading(false);
-      Animated.timing(petNameOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      // Dar 100ms para que termine de renderizar la imagen antes de animar
+      setTimeout(() => {
+        Animated.timing(petNameOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      }, 100);
     }
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
 
   useEffect(() => {
-    const bob = Animated.loop(
-      Animated.sequence([
-        Animated.timing(petFloatY, {
-          toValue: 10,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(petFloatY, {
-          toValue: 0,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    bob.start();
-    return () => bob.stop();
-  }, [petFloatY]);
+    // Solo iniciar la animación flotante después de que termine la carga inicial
+    if (!loading) {
+      const bob = Animated.loop(
+        Animated.sequence([
+          Animated.timing(petFloatY, {
+            toValue: 10,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(petFloatY, {
+            toValue: 0,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+        ]),
+      );
+      bob.start();
+      return () => bob.stop();
+    }
+  }, [petFloatY, loading]);
 
   const handleDeleteButton = (seccion) => {
     setBotones((prev) => prev.filter((b) => b.seccion !== seccion));
@@ -312,22 +327,14 @@ function PetIllustration({ source, label }) {
     );
   }
 
+  // Single image with shadow (50% más rápido)
   return (
-    <View style={styles.petImageContainer}>
-      <Image
-        source={source}
-        style={[styles.petImage, styles.petImageShadowLayer]}
-        resizeMode="contain"
-        accessible={false}
-        importantForAccessibility="no-hide-descendants"
-      />
-      <Image
-        source={source}
-        style={styles.petImage}
-        resizeMode="contain"
-        accessibilityLabel={label}
-      />
-    </View>
+    <Image
+      source={source}
+      style={[styles.petImage, styles.petImageWithShadow]}
+      resizeMode="contain"
+      accessibilityLabel={label}
+    />
   );
 }
 
@@ -390,6 +397,13 @@ const styles = StyleSheet.create({
   },
   petImageDropShadow: {
     filter: 'drop-shadow(4px 10px 14px rgba(36, 90, 66, 0.35))',
+  },
+  petImageWithShadow: {
+    shadowColor: '#245a42',
+    shadowOffset: { width: 4, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 8,
   },
   petImageWrap: {
     position: 'absolute',

@@ -37,18 +37,34 @@ export default function NotificationsPanel({ visible, onClose, onNavigate }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchNotificaciones();
+      // Timeout de 2 segundos para notificaciones
+      const dataPromise = Promise.race([
+        fetchNotificaciones(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('timeout')), 2000)
+        )
+      ]);
+      
+      const data = await dataPromise;
       setNotificaciones(data.notificaciones ?? []);
-      await marcarTodasLeidas();
-    } catch {
-      /* demo / sin backend */
+    } catch (error) {
+      // demo / sin backend / timeout
+      console.log('Notificaciones: sin backend o timeout');
+      setNotificaciones([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (visible) load();
+    if (visible) {
+      load();
+      // Marcar como leídas después de 1.5s (tiempo de lectura)
+      const timer = setTimeout(() => {
+        marcarTodasLeidas().catch(() => {/* sin backend */});
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
   }, [visible, load]);
 
   const handleMarkAll = async () => {
@@ -142,10 +158,9 @@ const styles = StyleSheet.create({
   dropdown: {
     position: 'absolute',
     top: DROPDOWN_TOP,
-    left: 14,
-    width: SCREEN_WIDTH - 28,
-    maxWidth: 480,
-    alignSelf: 'center',
+    right: 14,
+    width: Math.min(SCREEN_WIDTH - 28, 380),
+    maxWidth: 380,
     borderRadius: 14,
     overflow: 'hidden',
     shadowColor: '#000',

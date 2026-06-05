@@ -19,19 +19,68 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 // URL base del backend — cambiar en producción
-const BASE_URL = 'http://10.0.2.2:5000/api/v1';
+// IMPORTANTE: Para emulador Android usar 10.0.2.2 en vez de localhost
+// Para iOS simulator usar localhost
+// Para dispositivo físico usar la IP de tu PC (ej: 192.168.1.x)
+const BASE_URL = Platform.select({
+  android: 'http://10.0.2.2:5165/api/v1',
+  ios: 'http://localhost:5165/api/v1',
+  default: 'http://localhost:5165/api/v1', // web
+});
+
+// ─────────────────────────────────────────────
+// CACHÉ DEL TOKEN EN MEMORIA (fix del bloqueo)
+// ─────────────────────────────────────────────
+let tokenCache = null;
+let tokenPromise = null;
 
 // Instancia de axios con la URL base configurada
-const api = axios.create({ baseURL: BASE_URL });
+const api = axios.create({ 
+  baseURL: BASE_URL,
+  timeout: 10000, // 10s timeout para evitar esperas infinitas
+});
 
 // Interceptor: antes de cada request, adjunta el token JWT en el header
 api.interceptors.request.use(async (config) => {
-  const token = await getStoredToken();
+  // Usar el token cacheado en memoria (instantáneo)
+  if (tokenCache) {
+    config.headers.Authorization = `Bearer ${tokenCache}`;
+    return config;
+  }
+
+  // Si hay una lectura en progreso, esperar a que termine
+  if (tokenPromise) {
+    const token = await tokenPromise;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  }
+
+  // Primera lectura: leer del disco y cachear
+  tokenPromise = getStoredToken();
+  const token = await tokenPromise;
+  tokenPromise = null;
+  
   if (token) {
+    tokenCache = token;
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
   return config;
 });
+
+// Interceptor de errores: limpiar caché si el token expiró
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expirado o inválido: limpiar caché
+      tokenCache = null;
+    }
+    return Promise.reject(error);
+  }
+);
 
 // ─────────────────────────────────────────────
 // MANEJO DEL TOKEN JWT
@@ -48,6 +97,7 @@ export async function getStoredToken() {
 
 /** Guarda el token después de un login exitoso. */
 export async function saveToken(token) {
+  tokenCache = token; // Actualizar caché inmediatamente
   if (Platform.OS === 'web') {
     localStorage.setItem('jwt_token', token);
     return;
@@ -57,6 +107,7 @@ export async function saveToken(token) {
 
 /** Elimina el token al cerrar sesión. */
 export async function clearToken() {
+  tokenCache = null; // Limpiar caché
   if (Platform.OS === 'web') {
     localStorage.removeItem('jwt_token');
     return;
