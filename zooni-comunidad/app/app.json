@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Zooni Comunidad",
+    "slug": "zooni-comunidad",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "android": {
+      "package": "com.zooni.comunidad",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "READ_MEDIA_IMAGES",
+        "READ_EXTERNAL_STORAGE"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "TU_GOOGLE_MAPS_API_KEY"
+        }
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.zooni.comunidad",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Zooni necesita tu ubicación para mostrarte servicios y amigos cercanos.",
+        "NSPhotoLibraryUsageDescription": "Zooni necesita acceso a tu galería para subir fotos de carteles."
+      }
+    },
+    "plugins": [
+      "expo-location",
+      "expo-image-picker"
+    ]
+  }
+}
