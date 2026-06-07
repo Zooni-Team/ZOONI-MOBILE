@@ -7,12 +7,17 @@ import authRoutes from './routes/auth.js';
 import homeRoutes from './routes/home.js';
 import mascotasRoutes from './routes/mascotas.js';
 import notificacionesRoutes from './routes/notificaciones.js';
+import comunidadRoutes from './routes/comunidad.js';
+import cartelesRoutes from './routes/carteles.js';
+import amigosRoutes from './routes/amigos.js';
+import ubicacionRoutes from './routes/ubicacion.js';
+import usuariosRoutes from './routes/usuarios.js';
 
 // Cargar variables de entorno
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5165;
+const PORT = process.env.PORT || 3001;
 
 // ─── MIDDLEWARE ───────────────────────────────────────────────────────────────
 
@@ -39,6 +44,11 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/home', homeRoutes);
 app.use('/api/v1/mascotas', mascotasRoutes);
 app.use('/api/v1/notificaciones', notificacionesRoutes);
+app.use('/api/v1/comunidad', comunidadRoutes);
+app.use('/api/v1/carteles', cartelesRoutes);
+app.use('/api/v1/amigos', amigosRoutes);
+app.use('/api/v1/ubicacion', ubicacionRoutes);
+app.use('/api/v1/usuarios', usuariosRoutes);
 
 // Ruta raíz
 app.get('/', (req, res) => {
