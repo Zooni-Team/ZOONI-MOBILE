@@ -2,7 +2,7 @@
  
 ## Contexto del Proyecto
  
-Somos estudiantes de 5to año de Informática en el **Colegio ORT Argentina** y estamos desarrollando **Zooni**, una aplicación mobile que **centraliza los distintos servicios para mascotas**: veterinarias, paseadores, pet shops, peluquerías caninas, y más.
+Somos estudiantes de Informática y estamos desarrollando **Zooni**, una aplicación mobile que **centraliza los distintos servicios para mascotas**: veterinarias, paseadores, pet shops, peluquerías caninas, y más.
  
 La app tiene como objetivo ser el punto de encuentro entre dueños de mascotas y proveedores de servicios, permitiendo además la interacción entre usuarios con mascotas (comunidad, match entre mascotas, mapa de amigos, etc.).
  
