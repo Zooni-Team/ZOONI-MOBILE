@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import homeRoutes from './routes/home.js';
 import mascotasRoutes from './routes/mascotas.js';
+import eventosRoutes from './routes/eventos.js';
 import notificacionesRoutes from './routes/notificaciones.js';
 import comunidadRoutes from './routes/comunidad.js';
 import cartelesRoutes from './routes/carteles.js';
@@ -43,6 +44,7 @@ app.use((req, res, next) => {
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/home', homeRoutes);
 app.use('/api/v1/mascotas', mascotasRoutes);
+app.use('/api/v1/mascotas/:petId/eventos', eventosRoutes);
 app.use('/api/v1/notificaciones', notificacionesRoutes);
 app.use('/api/v1/comunidad', comunidadRoutes);
 app.use('/api/v1/carteles', cartelesRoutes);
@@ -93,6 +95,10 @@ app.listen(PORT, () => {
   console.log(`  GET    /api/v1/home/config`);
   console.log(`  PUT    /api/v1/home/config`);
   console.log(`  PATCH  /api/v1/mascotas/:id/activar`);
+  console.log(`  GET    /api/v1/mascotas/:petId/eventos`);
+  console.log(`  POST   /api/v1/mascotas/:petId/eventos`);
+  console.log(`  PUT    /api/v1/mascotas/:petId/eventos/:eventoId`);
+  console.log(`  DELETE /api/v1/mascotas/:petId/eventos/:eventoId`);
   console.log(`  GET    /api/v1/notificaciones`);
   console.log(`  PATCH  /api/v1/notificaciones/:id/leer`);
   console.log(`  PATCH  /api/v1/notificaciones/leer-todas`);
