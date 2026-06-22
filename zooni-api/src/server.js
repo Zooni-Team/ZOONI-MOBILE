@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import homeRoutes from './routes/home.js';
 import mascotasRoutes from './routes/mascotas.js';
+import avataresRoutes from './routes/avatares.js';
 import notificacionesRoutes from './routes/notificaciones.js';
 import comunidadRoutes from './routes/comunidad.js';
 import cartelesRoutes from './routes/carteles.js';
@@ -43,6 +44,7 @@ app.use((req, res, next) => {
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/home', homeRoutes);
 app.use('/api/v1/mascotas', mascotasRoutes);
+app.use('/api/v1/mascotas', avataresRoutes);
 app.use('/api/v1/notificaciones', notificacionesRoutes);
 app.use('/api/v1/comunidad', comunidadRoutes);
 app.use('/api/v1/carteles', cartelesRoutes);

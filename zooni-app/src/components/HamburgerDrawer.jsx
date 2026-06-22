@@ -83,6 +83,8 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
     onClose();
     if (item.ruta === 'FichaMedica' && mascotaActiva) {
       navigation.navigate('FichaMedica', { mascotaId: mascotaActiva.id });
+    } else if (item.ruta === 'Closet' && mascotaActiva) {
+      navigation.navigate('Closet', { petId: mascotaActiva.id });
     } else if (item.ruta) {
       navigation.navigate(item.ruta);
     }
