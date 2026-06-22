@@ -220,3 +220,36 @@ export async function marcarNotificacionLeida(id) {
 export async function marcarTodasLeidas() {
   await api.patch('/notificaciones/leer-todas');
 }
+
+// ─────────────────────────────────────────────
+// EVENTOS PÚBLICOS
+// ─────────────────────────────────────────────
+
+/**
+ * GET /eventos
+ * Trae los eventos activos y vigentes filtrados por ciudad.
+ * Si no se pasa ciudad, devuelve todos los eventos sin filtro geográfico.
+ *
+ * @param {string|null} ciudad - Nombre de la ciudad (ej: "Buenos Aires")
+ * @param {number} page        - Página (default 1)
+ * @param {number} limit       - Resultados por página (default 10)
+ */
+export async function fetchEventos(ciudad = null, page = 1, limit = 10) {
+  const params = { page, limit };
+  if (ciudad) params.ciudad = ciudad;
+  const res = await api.get('/eventos', { params });
+  return res.data;
+}
+
+/**
+ * POST /mascotas/:petId/eventos
+ * Agrega un evento al calendario de cuidados de una mascota.
+ * Usado por EventosScreen para agregar eventos externos (tipo: "Evento").
+ *
+ * @param {number} petId - ID de la mascota activa
+ * @param {object} body  - { titulo, descripcion, fecha_hora, tipo }
+ */
+export async function agregarEventoAlCalendario(petId, body) {
+  const res = await api.post(`/mascotas/${petId}/eventos`, body);
+  return res.data;
+}
