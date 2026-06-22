@@ -9,12 +9,20 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 
 import { getStoredToken } from './src/services/api';
-import HomeScreen        from './src/screens/HomeScreen';
-import MatchScreen       from './src/screens/MatchScreen';
-import MatchFiltersScreen from './src/screens/MatchFiltersScreen';
-import PlaceholderScreen from './src/screens/PlaceholderScreen';
-import ComunidadScreen   from './src/screens/Comunidad/ComunidadScreen';
-import EventosScreen     from './src/screens/EventosScreen';
+
+// ── Pantallas implementadas ───────────────────────────────────────────────────
+import HomeScreen          from './src/screens/HomeScreen';
+import MatchScreen         from './src/screens/MatchScreen';
+import MatchFiltersScreen  from './src/screens/MatchFiltersScreen';
+import ComunidadScreen     from './src/screens/Comunidad/ComunidadScreen';
+import FichaMedicaScreen   from './src/screens/FichaMedicaScreen';
+import ConsejosScreen      from './src/screens/ConsejosScreen';
+import VacunasScreen       from './src/screens/VacunasScreen';
+import TratamientosScreen  from './src/screens/TratamientosScreen';
+import VirtualVetScreen    from './src/screens/VirtualVetScreen';
+
+// ── Pantallas placeholder (en construcción) ───────────────────────────────────
+import PlaceholderScreen   from './src/screens/PlaceholderScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -46,21 +54,32 @@ export default function App() {
           initialRouteName={initialRoute}
           screenOptions={{ headerShown: false }}
         >
-          <Stack.Screen name="Home"          component={HomeScreen} />
-          <Stack.Screen name="Login"         component={PlaceholderScreen} />
-          <Stack.Screen name="Comunidad"     component={ComunidadScreen} />
-          <Stack.Screen name="FichaMedica"   component={PlaceholderScreen} />
-          <Stack.Screen name="MisMascotas"   component={PlaceholderScreen} />
-          <Stack.Screen name="Match"         component={MatchScreen} />
-          <Stack.Screen name="MatchFilters"  component={MatchFiltersScreen} />
-          <Stack.Screen name="Planificador"  component={PlaceholderScreen} />
-          <Stack.Screen name="Calendario"    component={PlaceholderScreen} />
-          <Stack.Screen name="Eventos"       component={EventosScreen} />
-          <Stack.Screen name="ChatBot"       component={PlaceholderScreen} />
-          <Stack.Screen name="Closet"        component={PlaceholderScreen} />
-          <Stack.Screen name="Perfil"        component={PlaceholderScreen} />
-          <Stack.Screen name="Configuracion" component={PlaceholderScreen} />
-          <Stack.Screen name="Notificaciones" component={PlaceholderScreen} />
+          {/* ── Autenticación ── */}
+          <Stack.Screen name="Login"           component={PlaceholderScreen} />
+
+          {/* ── Pantallas principales ── */}
+          <Stack.Screen name="Home"            component={HomeScreen} />
+          <Stack.Screen name="Comunidad"       component={ComunidadScreen} />
+          <Stack.Screen name="Match"           component={MatchScreen} />
+          <Stack.Screen name="MatchFilters"    component={MatchFiltersScreen} />
+
+          {/* ── Ficha Médica y subpantallas ── */}
+          <Stack.Screen name="FichaMedica"     component={FichaMedicaScreen} />
+          <Stack.Screen name="VirtualVet"      component={VirtualVetScreen} />
+          <Stack.Screen name="Vacunas"         component={VacunasScreen} />
+          <Stack.Screen name="Tratamientos"    component={TratamientosScreen} />
+          <Stack.Screen name="Consejos"        component={ConsejosScreen} />
+
+          {/* ── Otras secciones (en construcción) ── */}
+          <Stack.Screen name="MisMascotas"     component={PlaceholderScreen} />
+          <Stack.Screen name="Planificador"    component={PlaceholderScreen} />
+          <Stack.Screen name="Calendario"      component={PlaceholderScreen} />
+          <Stack.Screen name="Eventos"         component={PlaceholderScreen} />
+          <Stack.Screen name="ChatBot"         component={PlaceholderScreen} />
+          <Stack.Screen name="Closet"          component={PlaceholderScreen} />
+          <Stack.Screen name="Perfil"          component={PlaceholderScreen} />
+          <Stack.Screen name="Configuracion"   component={PlaceholderScreen} />
+          <Stack.Screen name="Notificaciones"  component={PlaceholderScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </GestureHandlerRootView>
