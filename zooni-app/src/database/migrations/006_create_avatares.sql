@@ -1,10 +1,10 @@
 -- Migration 006: Closet de Avatares
 
--- 1. Agregar columna imagen_asset a la tabla mascotas (si no existe)
-ALTER TABLE mascotas
+-- 1. Agregar columna imagen_asset a la tabla Mascota
+ALTER TABLE "Mascota"
   ADD COLUMN IF NOT EXISTS imagen_asset VARCHAR(100) DEFAULT 'perro_default';
 
--- 2. Crear tabla de catálogo de avatares
+-- 2. Crear tabla catálogo de avatares
 CREATE TABLE IF NOT EXISTS avatares_catalogo (
   id         SERIAL PRIMARY KEY,
   especie    VARCHAR(50)  NOT NULL,

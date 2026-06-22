@@ -18,9 +18,9 @@ export async function getAvatares(req, res) {
     const petId  = parseInt(req.params.petId);
 
     const mascotaResult = await pool.query(
-      `SELECT id, nombre, especie, imagen_asset
-       FROM mascotas
-       WHERE id = $1 AND usuario_id = $2`,
+      `SELECT "Id_Mascota" AS id, "Nombre" AS nombre, "Especie" AS especie, imagen_asset
+       FROM "Mascota"
+       WHERE "Id_Mascota" = $1 AND "Id_User" = $2`,
       [petId, userId]
     );
 
@@ -55,8 +55,8 @@ export async function getAvatares(req, res) {
 
 export async function putAvatar(req, res) {
   try {
-    const userId      = getUserId(req);
-    const petId       = parseInt(req.params.petId);
+    const userId       = getUserId(req);
+    const petId        = parseInt(req.params.petId);
     const { imagen_asset } = req.body;
 
     if (!imagen_asset) {
@@ -64,7 +64,8 @@ export async function putAvatar(req, res) {
     }
 
     const mascotaResult = await pool.query(
-      `SELECT id, especie FROM mascotas WHERE id = $1 AND usuario_id = $2`,
+      `SELECT "Id_Mascota", "Especie" AS especie FROM "Mascota"
+       WHERE "Id_Mascota" = $1 AND "Id_User" = $2`,
       [petId, userId]
     );
 
@@ -85,10 +86,10 @@ export async function putAvatar(req, res) {
     }
 
     const updateResult = await pool.query(
-      `UPDATE mascotas
+      `UPDATE "Mascota"
        SET imagen_asset = $1
-       WHERE id = $2 AND usuario_id = $3
-       RETURNING id, nombre, imagen_asset`,
+       WHERE "Id_Mascota" = $2 AND "Id_User" = $3
+       RETURNING "Id_Mascota" AS id, "Nombre" AS nombre, imagen_asset`,
       [imagen_asset, petId, userId]
     );
 
