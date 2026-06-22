@@ -10,6 +10,9 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ImageBackground,
+  StatusBar,
+  SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -17,9 +20,10 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { resolveAvatarImage } from '../constants/avatarImages';
 import { fetchAvatares, aplicarAvatar } from '../services/api';
 import HamburgerDrawer from '../components/HamburgerDrawer';
+import { HOME_BACKGROUND } from '../constants/homeAssets';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const THUMBNAIL_SIZE = (SCREEN_WIDTH - 40 - 24) / 3;
+const THUMBNAIL_SIZE = (SCREEN_WIDTH - 48 - 24) / 3;
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
 
@@ -33,18 +37,18 @@ function SkeletonBox({ style }) {
       ])
     ).start();
   }, []);
-  return <Animated.View style={[{ backgroundColor: '#D0EDD8', opacity: anim }, style]} />;
+  return <Animated.View style={[{ backgroundColor: '#B8E8CA', opacity: anim }, style]} />;
 }
 
 function SkeletonCloset() {
   return (
-    <View style={{ paddingHorizontal: 20, marginTop: 8 }}>
-      <SkeletonBox style={{ height: 230, borderRadius: 20, marginBottom: 28 }} />
+    <View style={{ paddingHorizontal: 24, marginTop: 12 }}>
+      <SkeletonBox style={{ height: 220, borderRadius: 24, marginBottom: 28 }} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
         {[...Array(6)].map((_, i) => (
           <SkeletonBox
             key={i}
-            style={{ width: THUMBNAIL_SIZE, height: THUMBNAIL_SIZE, borderRadius: 14 }}
+            style={{ width: THUMBNAIL_SIZE, height: THUMBNAIL_SIZE, borderRadius: 16 }}
           />
         ))}
       </View>
@@ -56,7 +60,7 @@ function SkeletonCloset() {
 
 function Toast({ visible }) {
   const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(-12)).current;
+  const translateY = useRef(new Animated.Value(-16)).current;
 
   useEffect(() => {
     if (visible) {
@@ -67,7 +71,7 @@ function Toast({ visible }) {
     } else {
       Animated.parallel([
         Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-        Animated.timing(translateY, { toValue: -12, duration: 200, useNativeDriver: true }),
+        Animated.timing(translateY, { toValue: -16, duration: 200, useNativeDriver: true }),
       ]).start();
     }
   }, [visible]);
@@ -77,8 +81,8 @@ function Toast({ visible }) {
       pointerEvents="none"
       style={[styles.toast, { opacity, transform: [{ translateY }] }]}
     >
-      <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-      <Text style={styles.toastText}>¡Avatar aplicado!</Text>
+      <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+      <Text style={styles.toastText}>¡Avatar aplicado! 🎉</Text>
     </Animated.View>
   );
 }
@@ -86,27 +90,23 @@ function Toast({ visible }) {
 // ─── Thumbnail ───────────────────────────────────────────────────────────────
 
 function AvatarThumbnail({ avatar, isSelected, isActual, onPress, entryDelay }) {
-  const scale = useRef(new Animated.Value(0.85)).current;
+  const scale = useRef(new Animated.Value(0.8)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const pressScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(opacity, { toValue: 1, duration: 200, delay: entryDelay, useNativeDriver: true }),
-      Animated.timing(scale, { toValue: 1, duration: 200, delay: entryDelay, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: 220, delay: entryDelay, useNativeDriver: true }),
+      Animated.spring(scale, { toValue: 1, delay: entryDelay, useNativeDriver: true, tension: 180, friction: 10 }),
     ]).start();
   }, []);
 
-  const handlePressIn = () => {
-    Animated.timing(pressScale, { toValue: 0.94, duration: 100, useNativeDriver: true }).start();
-  };
-  const handlePressOut = () => {
+  const handlePressIn = () =>
+    Animated.timing(pressScale, { toValue: 0.92, duration: 90, useNativeDriver: true }).start();
+  const handlePressOut = () =>
     Animated.timing(pressScale, { toValue: 1, duration: 130, useNativeDriver: true }).start();
-  };
 
-  const borderStyle = isSelected
-    ? { borderWidth: 2.5, borderColor: '#2DBD72', shadowColor: '#2DBD72', shadowOpacity: 0.18, shadowRadius: 6 }
-    : { borderWidth: 1, borderColor: '#EFEFEF' };
+  const isHighlighted = isSelected;
 
   return (
     <Animated.View style={{ opacity, transform: [{ scale }] }}>
@@ -119,7 +119,7 @@ function AvatarThumbnail({ avatar, isSelected, isActual, onPress, entryDelay }) 
         <Animated.View
           style={[
             styles.thumbnail,
-            borderStyle,
+            isHighlighted && styles.thumbnailSelected,
             { transform: [{ scale: pressScale }] },
           ]}
         >
@@ -128,16 +128,25 @@ function AvatarThumbnail({ avatar, isSelected, isActual, onPress, entryDelay }) 
             style={styles.thumbnailImage}
             resizeMode="contain"
           />
+          {/* Badge de avatar actual */}
           {isActual && (
             <View style={styles.badgeActual}>
-              <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+              <Ionicons name="checkmark" size={11} color="#FFFFFF" />
             </View>
+          )}
+          {/* Nombre del avatar */}
+          {avatar.nombre && (
+            <Text style={styles.thumbnailLabel} numberOfLines={1}>
+              {avatar.nombre}
+            </Text>
           )}
         </Animated.View>
       </TouchableOpacity>
     </Animated.View>
   );
 }
+
+
 
 // ─── Pantalla principal ───────────────────────────────────────────────────────
 
@@ -154,7 +163,9 @@ export default function ClosetScreen() {
   const [showToast, setShowToast] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+
   const previewScale = useRef(new Animated.Value(1)).current;
+  const previewRotate = useRef(new Animated.Value(0)).current;
   const botonColor = useRef(new Animated.Value(0)).current;
 
   const esAvatarActual = avatarSeleccionado === mascota?.imagen_asset;
@@ -188,8 +199,14 @@ export default function ClosetScreen() {
 
   const seleccionarAvatar = useCallback((assetName) => {
     setAvatarSeleccionado(assetName);
-    previewScale.setValue(0.85);
-    Animated.timing(previewScale, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+
+    // Animación de "rebote" en el preview
+    previewScale.setValue(0.82);
+    previewRotate.setValue(-2);
+    Animated.parallel([
+      Animated.spring(previewScale, { toValue: 1, useNativeDriver: true, tension: 200, friction: 8 }),
+      Animated.spring(previewRotate, { toValue: 0, useNativeDriver: true, tension: 200, friction: 8 }),
+    ]).start();
 
     const esActual = assetName === mascota?.imagen_asset;
     Animated.timing(botonColor, {
@@ -206,10 +223,8 @@ export default function ClosetScreen() {
     try {
       setAplicando(true);
       await aplicarAvatar(petId, avatarSeleccionado);
-
       setMascota(prev => ({ ...prev, imagen_asset: avatarSeleccionado }));
       Animated.timing(botonColor, { toValue: 0, duration: 200, useNativeDriver: false }).start();
-
       setShowToast(true);
       setTimeout(() => setShowToast(false), 2700);
     } catch (err) {
@@ -238,104 +253,201 @@ export default function ClosetScreen() {
     />
   );
 
-  // ── Estilo dinámico del botón ─────────────────────────────────────────────
+  // ── Estilo dinámico del botón (amarillo → gris) ───────────────────────────
 
   const botonBg = botonColor.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#C0C0C0', '#2DBD72'],
+    outputRange: ['#CCCCCC', '#F5C842'],
+  });
+
+  const rotateDeg = previewRotate.interpolate({
+    inputRange: [-10, 10],
+    outputRange: ['-10deg', '10deg'],
   });
 
   // ── UI ───────────────────────────────────────────────────────────────────
 
   return (
-    <View style={styles.root}>
-      <Toast visible={showToast} />
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => setDrawerOpen(true)} style={styles.hamburger}>
-          <Ionicons name="menu" size={26} color="#2C2C2C" />
-        </TouchableOpacity>
-      </View>
+      <ImageBackground
+        source={HOME_BACKGROUND}
+        style={styles.screenBackground}
+        imageStyle={styles.screenBackgroundImage}
+        resizeMode="cover"
+      >
+        <Toast visible={showToast} />
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* ── HEADER ── */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => setDrawerOpen(true)}
+            accessibilityLabel="Abrir menú"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="menu-outline" size={24} color="#2C2C2C" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.headerDivider} />
 
-        {/* Título */}
-        <Text style={styles.titulo}>👕 Closet de Avatares</Text>
-        <Text style={styles.subtitulo}>
-          Elegí el avatar para {mascota?.nombre ?? '...'}
-        </Text>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* ── HERO SECTION ── */}
+          <View style={styles.heroSection}>
+            <Text style={styles.heroSubtitulo}>
+              {mascota?.nombre ? (
+                <>
+                  {'Personalizá a '}
+                  <Text style={styles.heroNombreMascota}>{mascota.nombre}</Text>
+                  {' con un nuevo look 🐾'}
+                </>
+              ) : (
+                'Elegí el look de tu mascota 🐾'
+              )}
+            </Text>
+          </View>
 
-        {loading ? (
-          <SkeletonCloset />
-        ) : (
-          <>
-            {/* Card preview */}
-            <View style={styles.previewCard}>
-              <View style={styles.previewCircle} />
-              <Animated.Image
-                source={resolveAvatarImage(avatarSeleccionado, mascota?.especie)}
-                style={[styles.previewImage, { transform: [{ scale: previewScale }] }]}
-                resizeMode="contain"
-              />
-              <Text style={styles.previewLabel}>
-                {esAvatarActual ? 'Avatar actual' : 'Vista previa'}
-              </Text>
-            </View>
+          {loading ? (
+            <SkeletonCloset />
+          ) : (
+            <>
+              {/* ── PREVIEW CARD ── */}
+              <View style={styles.previewCardOuter}>
+                {/* Etiqueta de estado */}
+                <View style={[
+                  styles.previewBadge,
+                  esAvatarActual ? styles.previewBadgeActual : styles.previewBadgePreview,
+                ]}>
+                  <Ionicons
+                    name={esAvatarActual ? 'checkmark-circle' : 'eye-outline'}
+                    size={13}
+                    color={esAvatarActual ? '#27AE60' : '#6B6B6B'}
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text style={[
+                    styles.previewBadgeText,
+                    esAvatarActual ? styles.previewBadgeTextActual : styles.previewBadgeTextPreview,
+                  ]}>
+                    {esAvatarActual ? 'Avatar actual' : 'Vista previa'}
+                  </Text>
+                </View>
 
-            {/* Grid */}
-            <Text style={styles.gridLabel}>Elegí un avatar:</Text>
+                <View style={styles.previewCard}>
+                  {/* Contenedor centrado para círculo + avatar */}
+                  <View style={styles.previewAvatarWrap}>
+                    {/* Círculo decorativo centrado absolutamente */}
+                    <View style={styles.previewCircleOuter} />
+                    <View style={styles.previewCircleInner} />
 
-            {avatares.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyEmoji}>🎨</Text>
-                <Text style={styles.emptyText}>
-                  Próximamente habrá avatares para tu {mascota?.especie ?? 'mascota'} 🐾
-                </Text>
+                    {/* Avatar grande animado */}
+                    <Animated.Image
+                      source={resolveAvatarImage(avatarSeleccionado, mascota?.especie)}
+                      style={[
+                        styles.previewImage,
+                        {
+                          transform: [
+                            { scale: previewScale },
+                            { rotate: rotateDeg },
+                          ],
+                        },
+                      ]}
+                      resizeMode="contain"
+                    />
+                  </View>
+
+                  {/* Nombre del avatar seleccionado */}
+                  {avatarSeleccionado && avatares.length > 0 && (
+                    <Text style={styles.previewAvatarName}>
+                      {avatares.find(a => a.asset_name === avatarSeleccionado)?.nombre ?? ''}
+                    </Text>
+                  )}
+                </View>
               </View>
-            ) : (
-              <FlatList
-                data={avatares}
-                keyExtractor={(item) => item.asset_name}
-                renderItem={renderThumbnail}
-                numColumns={3}
-                columnWrapperStyle={styles.gridRow}
-                scrollEnabled={false}
-                contentContainerStyle={styles.gridContainer}
-              />
-            )}
 
-            {/* Botón aplicar */}
-            <Animated.View
-              style={[
-                styles.botonWrapper,
-                {
-                  backgroundColor: botonBg,
-                  opacity: esAvatarActual ? 0.7 : 1,
-                  shadowColor: esAvatarActual ? 'transparent' : '#000',
-                  shadowOffset: { width: 0, height: 3 },
-                  shadowOpacity: esAvatarActual ? 0 : 0.12,
-                  shadowRadius: 6,
-                  elevation: esAvatarActual ? 0 : 4,
-                },
-              ]}
-            >
-              <TouchableOpacity
-                onPress={handleAplicar}
-                disabled={esAvatarActual || aplicando}
-                activeOpacity={0.85}
-                style={styles.boton}
-              >
-                {aplicando ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
+              {/* ── SECCIÓN GRID ── */}
+              <View style={styles.gridSection}>
+                <View style={styles.gridHeaderRow}>
+                  <Text style={styles.gridLabel}>Elegí un look</Text>
+                  <View style={styles.gridSpecieChip}>
+                    <Ionicons name="paw" size={12} color="#27AE60" style={{ marginRight: 4 }} />
+                    <Text style={styles.gridSpecieText}>
+                      {mascota?.especie ?? ''}
+                    </Text>
+                  </View>
+                </View>
+
+                {avatares.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <Text style={styles.emptyEmoji}>🎨</Text>
+                    <Text style={styles.emptyTitle}>¡Próximamente!</Text>
+                    <Text style={styles.emptyText}>
+                      Estamos diseñando avatares únicos para tu {mascota?.especie ?? 'mascota'}.
+                      ¡Volvé pronto! 🐾
+                    </Text>
+                  </View>
                 ) : (
-                  <Text style={styles.botonTexto}>Aplicar Avatar</Text>
+                  <FlatList
+                    data={avatares}
+                    keyExtractor={(item) => item.asset_name}
+                    renderItem={renderThumbnail}
+                    numColumns={3}
+                    columnWrapperStyle={styles.gridRow}
+                    scrollEnabled={false}
+                    contentContainerStyle={styles.gridContainer}
+                  />
                 )}
-              </TouchableOpacity>
-            </Animated.View>
-          </>
-        )}
-      </ScrollView>
+              </View>
+
+              {/* ── BOTÓN APLICAR ── */}
+              <View style={styles.botonSection}>
+                <Animated.View
+                  style={[
+                    styles.botonWrapper,
+                    {
+                      backgroundColor: botonBg,
+                      opacity: esAvatarActual ? 0.55 : 1,
+                      shadowColor: esAvatarActual ? 'transparent' : '#F5C842',
+                      shadowOffset: { width: 0, height: 6 },
+                      shadowOpacity: esAvatarActual ? 0 : 0.4,
+                      shadowRadius: 12,
+                      elevation: esAvatarActual ? 0 : 6,
+                    },
+                  ]}
+                >
+                  <TouchableOpacity
+                    onPress={handleAplicar}
+                    disabled={esAvatarActual || aplicando}
+                    activeOpacity={0.82}
+                    style={styles.boton}
+                  >
+                    {aplicando ? (
+                      <ActivityIndicator color="#2C2C2C" size="small" />
+                    ) : (
+                      <View style={styles.botonContent}>
+                        {!esAvatarActual && (
+                          <Ionicons name="shirt-outline" size={18} color="#2C2C2C" style={{ marginRight: 8 }} />
+                        )}
+                        <Text style={styles.botonTexto}>
+                          {esAvatarActual ? 'Ya aplicado ✓' : 'Aplicar Avatar'}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </Animated.View>
+
+                {!esAvatarActual && (
+                  <Text style={styles.botonHint}>
+                    El cambio se verá en toda la app
+                  </Text>
+                )}
+              </View>
+            </>
+          )}
+        </ScrollView>
+      </ImageBackground>
 
       <HamburgerDrawer
         visible={drawerOpen}
@@ -343,96 +455,222 @@ export default function ClosetScreen() {
         mascotaActiva={mascota}
         activeRoute="Closet"
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#C8F0D8' },
+  safeArea: { flex: 1, backgroundColor: '#D4F5E2' },
+  screenBackground: { flex: 1, width: '100%' },
+  screenBackgroundImage: { width: '100%', height: '100%' },
 
+  // ── Header ──
   header: {
     height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    justifyContent: 'center',
     backgroundColor: 'transparent',
+    zIndex: 10,
   },
-  hamburger: { padding: 12, alignSelf: 'flex-start' },
+  headerDivider: {
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    marginHorizontal: 20,
+  },
 
-  scroll: { paddingBottom: 40 },
+  // ── Scroll ──
+  scroll: { paddingBottom: 48 },
 
-  titulo: {
-    fontSize: 20,
-    fontWeight: '700',
+  // ── Hero ──
+  heroSection: {
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 20,
+    alignItems: 'center',
+  },
+  heroSubtitulo: {
+    fontSize: 15,
     color: '#2C2C2C',
     textAlign: 'center',
-    marginBottom: 6,
+    lineHeight: 22,
+    fontWeight: '500',
   },
-  subtitulo: {
-    fontSize: 14,
-    color: '#6B6B6B',
-    textAlign: 'center',
-    marginBottom: 24,
+  heroNombreMascota: {
+    fontWeight: '800',
+    color: '#27AE60',
   },
 
-  // Preview card
+  // ── Preview card ──
+  previewCardOuter: {
+    marginHorizontal: 24,
+    marginBottom: 28,
+  },
+  previewBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    marginBottom: 10,
+  },
+  previewBadgeActual: {
+    backgroundColor: 'rgba(45, 189, 114, 0.15)',
+  },
+  previewBadgePreview: {
+    backgroundColor: 'rgba(107, 107, 107, 0.12)',
+  },
+  previewBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  previewBadgeTextActual: {
+    color: '#27AE60',
+  },
+  previewBadgeTextPreview: {
+    color: '#6B6B6B',
+  },
   previewCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingVertical: 28,
+    borderRadius: 28,
+    paddingVertical: 36,
     paddingHorizontal: 24,
     alignItems: 'center',
-    marginHorizontal: 20,
-    marginBottom: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowColor: '#2DBD72',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 8,
+    overflow: 'hidden',
   },
-  previewCircle: {
+  // Wrapper que contiene el círculo y el avatar, ambos centrados
+  previewAvatarWrap: {
+    width: 180,
+    height: 180,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewCircleOuter: {
     position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: '#A8E6C0',
-    opacity: 0.35,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: '#E8F8F0',
+    opacity: 0.95,
   },
-  previewImage: { width: 140, height: 140 },
-  previewLabel: {
-    fontSize: 14,
-    color: '#6B6B6B',
-    textAlign: 'center',
-    marginTop: 12,
+  previewCircleInner: {
+    position: 'absolute',
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    backgroundColor: '#C8F0D8',
+    opacity: 0.7,
   },
-
-  // Grid
-  gridLabel: {
+  previewImage: {
+    width: 150,
+    height: 150,
+    zIndex: 1,
+  },
+  previewAvatarName: {
     fontSize: 15,
     fontWeight: '700',
     color: '#2C2C2C',
-    marginHorizontal: 20,
-    marginBottom: 14,
+    marginTop: 14,
+    textAlign: 'center',
+    zIndex: 1,
   },
-  gridContainer: { paddingHorizontal: 20 },
-  gridRow: { gap: 12, marginBottom: 12 },
 
-  // Thumbnail
+  // ── Grid ──
+  gridSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    marginHorizontal: 16,
+    marginBottom: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  gridHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  gridLabel: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#2C2C2C',
+    letterSpacing: 0.2,
+  },
+  gridSpecieChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(45, 189, 114, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  gridSpecieText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#27AE60',
+    textTransform: 'capitalize',
+  },
+  gridContainer: {
+    paddingHorizontal: 14,
+  },
+  gridRow: {
+    gap: 12,
+    marginBottom: 12,
+    justifyContent: 'flex-start',
+  },
+
+  // ── Thumbnail ──
   thumbnail: {
     width: THUMBNAIL_SIZE,
-    height: THUMBNAIL_SIZE,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    height: THUMBNAIL_SIZE + 22, // espacio extra para el label
+    backgroundColor: '#F9FFF9',
+    borderRadius: 16,
     padding: 8,
+    paddingBottom: 6,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E8E8E8',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.07,
+    shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
     overflow: 'hidden',
   },
-  thumbnailImage: { width: '85%', height: '85%' },
+  thumbnailSelected: {
+    borderWidth: 2.5,
+    borderColor: '#2DBD72',
+    backgroundColor: '#F0FDF5',
+    shadowColor: '#2DBD72',
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  thumbnailImage: {
+    width: '80%',
+    height: THUMBNAIL_SIZE * 0.62,
+  },
+  thumbnailLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#6B6B6B',
+    textAlign: 'center',
+    marginTop: 4,
+    width: '100%',
+  },
   badgeActual: {
     position: 'absolute',
     top: 5,
@@ -443,31 +681,48 @@ const styles = StyleSheet.create({
     backgroundColor: '#2DBD72',
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 2,
+    shadowColor: '#2DBD72',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    elevation: 3,
   },
 
-  // Empty state
+  // ── Empty state ──
   emptyState: {
     alignItems: 'center',
     paddingHorizontal: 32,
-    marginTop: 16,
-    marginBottom: 20,
+    paddingVertical: 32,
   },
-  emptyEmoji: { fontSize: 48 },
+  emptyEmoji: {
+    fontSize: 52,
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#2C2C2C',
+    marginBottom: 8,
+  },
   emptyText: {
     fontSize: 14,
     color: '#6B6B6B',
     textAlign: 'center',
-    marginTop: 8,
+    lineHeight: 20,
   },
 
-  // Botón
+  // ── Botón ──
+  botonSection: {
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 16,
+    paddingHorizontal: 24,
+  },
   botonWrapper: {
-    width: '70%',
-    alignSelf: 'center',
-    height: 52,
+    width: '78%',
+    height: 56,
     borderRadius: 30,
-    marginTop: 28,
-    marginBottom: 40,
     overflow: 'hidden',
   },
   boton: {
@@ -475,28 +730,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  botonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   botonTexto: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#2C2C2C',
+    letterSpacing: 0.2,
+  },
+  botonHint: {
+    fontSize: 12,
+    color: '#6B6B6B',
+    marginTop: 10,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 
-  // Toast
+  // ── Toast ──
   toast: {
     position: 'absolute',
-    top: 56,
+    top: 70,
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#2DBD72',
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    zIndex: 100,
+    borderRadius: 14,
+    paddingHorizontal: 22,
+    paddingVertical: 13,
+    zIndex: 200,
+    shadowColor: '#2DBD72',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 10,
   },
   toastText: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#FFFFFF',
   },
 });
