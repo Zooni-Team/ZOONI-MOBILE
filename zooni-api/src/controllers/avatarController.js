@@ -1,48 +1,51 @@
-import { getPool, sql } from '../config/database.js';
+import pg from 'pg';
+import dotenv from 'dotenv';
 import { getUserId } from '../middleware/auth.js';
+
+dotenv.config();
+
+const pool = new pg.Pool({
+  host:     process.env.DB_HOST     || 'localhost',
+  port:     parseInt(process.env.DB_PORT || '5432'),
+  database: process.env.DB_DATABASE || 'zooni',
+  user:     process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+});
 
 export async function getAvatares(req, res) {
   try {
     const userId = getUserId(req);
-    const petId = parseInt(req.params.petId);
-    const pool = await getPool();
+    const petId  = parseInt(req.params.petId);
 
-    const mascotaResult = await pool.request()
-      .input('PetId', sql.Int, petId)
-      .input('UserId', sql.Int, userId)
-      .query(`
-        SELECT Id_Mascota AS id, Nombre AS nombre, Especie AS especie, ImagenAsset AS imagen_asset
-        FROM Mascota
-        WHERE Id_Mascota = @PetId AND Id_User = @UserId
-      `);
+    const mascotaResult = await pool.query(
+      `SELECT id, nombre, especie, imagen_asset
+       FROM mascotas
+       WHERE id = $1 AND usuario_id = $2`,
+      [petId, userId]
+    );
 
-    if (mascotaResult.recordset.length === 0) {
+    if (mascotaResult.rows.length === 0) {
       return res.status(404).json({ error: 'Mascota no encontrada' });
     }
 
-    const mascota = mascotaResult.recordset[0];
+    const mascota = mascotaResult.rows[0];
 
-    if (mascota.id === undefined || mascota.id === null) {
-      return res.status(403).json({ error: 'No tenés permiso para ver esta mascota' });
-    }
-
-    const avataresResult = await pool.request()
-      .input('Especie', sql.NVarChar, mascota.especie)
-      .query(`
-        SELECT id, asset_name, nombre, orden
-        FROM avatares_catalogo
-        WHERE especie = @Especie AND activo = 1
-        ORDER BY orden ASC
-      `);
+    const avataresResult = await pool.query(
+      `SELECT id, asset_name, nombre, orden
+       FROM avatares_catalogo
+       WHERE especie = $1 AND activo = TRUE
+       ORDER BY orden ASC`,
+      [mascota.especie]
+    );
 
     res.json({
       mascota: {
-        id: mascota.id,
-        nombre: mascota.nombre,
-        especie: mascota.especie,
+        id:           mascota.id,
+        nombre:       mascota.nombre,
+        especie:      mascota.especie,
         imagen_asset: mascota.imagen_asset ?? 'perro_default',
       },
-      avatares: avataresResult.recordset,
+      avatares: avataresResult.rows,
     });
   } catch (err) {
     console.error('Error en getAvatares:', err);
@@ -52,63 +55,50 @@ export async function getAvatares(req, res) {
 
 export async function putAvatar(req, res) {
   try {
-    const userId = getUserId(req);
-    const petId = parseInt(req.params.petId);
+    const userId      = getUserId(req);
+    const petId       = parseInt(req.params.petId);
     const { imagen_asset } = req.body;
 
     if (!imagen_asset) {
       return res.status(400).json({ error: 'El campo imagen_asset es requerido' });
     }
 
-    const pool = await getPool();
+    const mascotaResult = await pool.query(
+      `SELECT id, especie FROM mascotas WHERE id = $1 AND usuario_id = $2`,
+      [petId, userId]
+    );
 
-    // Verificar que la mascota pertenece al usuario
-    const mascotaResult = await pool.request()
-      .input('PetId', sql.Int, petId)
-      .input('UserId', sql.Int, userId)
-      .query(`
-        SELECT Id_Mascota, Especie FROM Mascota
-        WHERE Id_Mascota = @PetId AND Id_User = @UserId
-      `);
-
-    if (mascotaResult.recordset.length === 0) {
+    if (mascotaResult.rows.length === 0) {
       return res.status(404).json({ error: 'Mascota no encontrada' });
     }
 
-    const { Especie: especie } = mascotaResult.recordset[0];
+    const { especie } = mascotaResult.rows[0];
 
-    // Verificar que el avatar existe en el catálogo para la especie correcta
-    const catalogResult = await pool.request()
-      .input('AssetName', sql.NVarChar, imagen_asset)
-      .input('Especie', sql.NVarChar, especie)
-      .query(`
-        SELECT id FROM avatares_catalogo
-        WHERE asset_name = @AssetName AND especie = @Especie AND activo = 1
-      `);
+    const catalogResult = await pool.query(
+      `SELECT id FROM avatares_catalogo
+       WHERE asset_name = $1 AND especie = $2 AND activo = TRUE`,
+      [imagen_asset, especie]
+    );
 
-    if (catalogResult.recordset.length === 0) {
+    if (catalogResult.rows.length === 0) {
       return res.status(400).json({ error: 'Avatar no válido para esta especie' });
     }
 
-    // Actualizar el avatar
-    const updateResult = await pool.request()
-      .input('ImagenAsset', sql.NVarChar, imagen_asset)
-      .input('PetId', sql.Int, petId)
-      .input('UserId', sql.Int, userId)
-      .query(`
-        UPDATE Mascota
-        SET ImagenAsset = @ImagenAsset
-        OUTPUT INSERTED.Id_Mascota AS id, INSERTED.Nombre AS nombre, INSERTED.ImagenAsset AS imagen_asset
-        WHERE Id_Mascota = @PetId AND Id_User = @UserId
-      `);
+    const updateResult = await pool.query(
+      `UPDATE mascotas
+       SET imagen_asset = $1
+       WHERE id = $2 AND usuario_id = $3
+       RETURNING id, nombre, imagen_asset`,
+      [imagen_asset, petId, userId]
+    );
 
-    const updated = updateResult.recordset[0];
+    const updated = updateResult.rows[0];
 
     res.json({
       mensaje: 'Avatar actualizado correctamente',
       mascota: {
-        id: updated.id,
-        nombre: updated.nombre,
+        id:           updated.id,
+        nombre:       updated.nombre,
         imagen_asset: updated.imagen_asset,
       },
     });
