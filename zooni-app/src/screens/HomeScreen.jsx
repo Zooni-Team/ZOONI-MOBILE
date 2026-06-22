@@ -32,7 +32,7 @@ const DEMO_DATA = {
     edadAnios: 4,
     edadMeses: 2,
   },
-  notificacionesNoLeidas: 3,
+  notificacionesNoLeidas: 0,
 };
 
 const DEMO_CONFIG = {
