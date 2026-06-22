@@ -166,6 +166,28 @@ export async function activarMascota(mascotaId) {
 }
 
 // ─────────────────────────────────────────────
+// CLOSET DE AVATARES
+// ─────────────────────────────────────────────
+
+/**
+ * GET /mascotas/:petId/avatares
+ * Trae la mascota y el catálogo de avatares disponibles para su especie.
+ */
+export async function fetchAvatares(petId) {
+  const res = await api.get(`/mascotas/${petId}/avatares`);
+  return res.data;
+}
+
+/**
+ * PUT /mascotas/:petId/avatar
+ * Actualiza el avatar (imagen_asset) de la mascota.
+ */
+export async function aplicarAvatar(petId, imagenAsset) {
+  const res = await api.put(`/mascotas/${petId}/avatar`, { imagen_asset: imagenAsset });
+  return res.data;
+}
+
+// ─────────────────────────────────────────────
 // NOTIFICACIONES
 // ─────────────────────────────────────────────
 
