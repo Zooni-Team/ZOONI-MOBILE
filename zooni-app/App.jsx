@@ -14,6 +14,7 @@ import MatchScreen       from './src/screens/MatchScreen';
 import MatchFiltersScreen from './src/screens/MatchFiltersScreen';
 import PlaceholderScreen from './src/screens/PlaceholderScreen';
 import ComunidadScreen   from './src/screens/Comunidad/ComunidadScreen';
+import ConsejosScreen    from './src/screens/ConsejosScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -49,6 +50,7 @@ export default function App() {
           <Stack.Screen name="Login"         component={PlaceholderScreen} />
           <Stack.Screen name="Comunidad"     component={ComunidadScreen} />
           <Stack.Screen name="FichaMedica"   component={PlaceholderScreen} />
+          <Stack.Screen name="Consejos"      component={ConsejosScreen} />
           <Stack.Screen name="MisMascotas"   component={PlaceholderScreen} />
           <Stack.Screen name="Match"         component={MatchScreen} />
           <Stack.Screen name="MatchFilters"  component={MatchFiltersScreen} />
