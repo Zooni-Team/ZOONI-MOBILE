@@ -13,6 +13,8 @@ import cartelesRoutes from './routes/carteles.js';
 import amigosRoutes from './routes/amigos.js';
 import ubicacionRoutes from './routes/ubicacion.js';
 import usuariosRoutes from './routes/usuarios.js';
+import eventosRoutes from './routes/eventos.js';
+import calendarioEventosRoutes from './routes/calendarioEventos.js';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -51,6 +53,8 @@ app.use('/api/v1/carteles', cartelesRoutes);
 app.use('/api/v1/amigos', amigosRoutes);
 app.use('/api/v1/ubicacion', ubicacionRoutes);
 app.use('/api/v1/usuarios', usuariosRoutes);
+app.use('/api/v1/eventos', eventosRoutes);
+app.use('/api/v1/mascotas', calendarioEventosRoutes);
 
 // Ruta raíz
 app.get('/', (req, res) => {
@@ -97,7 +101,8 @@ app.listen(PORT, () => {
   console.log(`  PATCH  /api/v1/mascotas/:id/activar`);
   console.log(`  GET    /api/v1/notificaciones`);
   console.log(`  PATCH  /api/v1/notificaciones/:id/leer`);
-  console.log(`  PATCH  /api/v1/notificaciones/leer-todas`);
+  console.log(`  GET    /api/v1/eventos`);
+  console.log(`  POST   /api/v1/mascotas/:petId/eventos`);
   console.log('');
   console.log('Presiona Ctrl+C para detener el servidor');
   console.log('');
