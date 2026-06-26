@@ -14,6 +14,7 @@ import MatchScreen       from './src/screens/MatchScreen';
 import MatchFiltersScreen from './src/screens/MatchFiltersScreen';
 import PlaceholderScreen from './src/screens/PlaceholderScreen';
 import ComunidadScreen   from './src/screens/Comunidad/ComunidadScreen';
+import CalendarioScreen  from './src/screens/CalendarioScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -53,7 +54,7 @@ export default function App() {
           <Stack.Screen name="Match"         component={MatchScreen} />
           <Stack.Screen name="MatchFilters"  component={MatchFiltersScreen} />
           <Stack.Screen name="Planificador"  component={PlaceholderScreen} />
-          <Stack.Screen name="Calendario"    component={PlaceholderScreen} />
+          <Stack.Screen name="Calendario"    component={CalendarioScreen} />
           <Stack.Screen name="Eventos"       component={PlaceholderScreen} />
           <Stack.Screen name="ChatBot"       component={PlaceholderScreen} />
           <Stack.Screen name="Closet"        component={PlaceholderScreen} />

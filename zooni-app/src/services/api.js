@@ -198,3 +198,6 @@ export async function marcarNotificacionLeida(id) {
 export async function marcarTodasLeidas() {
   await api.patch('/notificaciones/leer-todas');
 }
+
+// Exportar la instancia configurada de axios para uso directo en módulos de API
+export default api;
