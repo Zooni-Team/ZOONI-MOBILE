@@ -33,6 +33,7 @@ const BASE_URL = Platform.select({
 // CACHÉ DEL TOKEN EN MEMORIA (fix del bloqueo)
 // ─────────────────────────────────────────────
 let tokenCache = null;
+let tokenCacheRead = false; // ← flag para no releer SecureStore si ya cargamos
 let tokenPromise = null;
 
 // Instancia de axios con la URL base configurada
@@ -102,7 +103,8 @@ export async function getStoredToken() {
 
 /** Guarda el token después de un login exitoso. */
 export async function saveToken(token) {
-  tokenCache = token; // Actualizar caché inmediatamente
+  tokenCache = token;       // Actualizar caché inmediatamente
+  tokenCacheRead = true;    // Marcar como leído para no releer del disco
   if (Platform.OS === 'web') {
     localStorage.setItem('jwt_token', token);
     return;
@@ -112,7 +114,8 @@ export async function saveToken(token) {
 
 /** Elimina el token al cerrar sesión. */
 export async function clearToken() {
-  tokenCache = null; // Limpiar caché
+  tokenCache = null;        // Limpiar caché
+  tokenCacheRead = false;   // Forzar relectura en el próximo acceso
   if (Platform.OS === 'web') {
     localStorage.removeItem('jwt_token');
     return;

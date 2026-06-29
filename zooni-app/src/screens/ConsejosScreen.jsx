@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Image,
+  ImageBackground,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -24,7 +25,7 @@ import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
 
 import { getCategoriaInfo } from '../constants/categoriasConsejos';
-import { resolvePetImageSource } from '../constants/homeAssets';
+import { resolvePetImageSource, HOME_BACKGROUND } from '../constants/homeAssets';
 
 // ─── API ──────────────────────────────────────────────────────────────────────
 
@@ -314,75 +315,82 @@ export default function ConsejosScreen() {
     <SafeAreaView style={st.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* Header */}
-      <View style={st.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={st.headerBtn}
-          accessibilityLabel="Volver" hitSlop={{ top:10, bottom:10, left:10, right:10 }}>
-          <Ionicons name="arrow-back" size={24} color="#2C2C2C" />
-        </TouchableOpacity>
-        <Text style={st.headerTitle} numberOfLines={2}>{tituloHeader}</Text>
-        <View style={st.headerBtn} />
-      </View>
-
-      <ScrollView style={st.scroll} contentContainerStyle={st.scrollContent}
-        showsVerticalScrollIndicator={false}>
-
-        {/* Hero — mismo patrón que HomeScreen */}
-        <View style={st.hero}>
-          <Animated.View style={{ transform: [{ scale: heroScale }], opacity: heroOpacity }}>
-            <PetIllustration source={petImg}
-              label={mascota ? `Ilustración de ${mascota.nombre}` : 'Mascota'} />
-          </Animated.View>
+      <ImageBackground
+        source={HOME_BACKGROUND}
+        style={st.screenBackground}
+        imageStyle={st.screenBackgroundImage}
+        resizeMode="cover"
+      >
+        {/* Header */}
+        <View style={st.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={st.headerBtn}
+            accessibilityLabel="Volver" hitSlop={{ top:10, bottom:10, left:10, right:10 }}>
+            <Ionicons name="arrow-back" size={24} color="#2C2C2C" />
+          </TouchableOpacity>
+          <Text style={st.headerTitle} numberOfLines={2}>{tituloHeader}</Text>
+          <View style={st.headerBtn} />
         </View>
 
-        {/* Card blanco */}
-        <View style={st.whiteCard}>
+        <ScrollView style={st.scroll} contentContainerStyle={st.scrollContent}
+          showsVerticalScrollIndicator={false}>
 
-          {/* Banner demo */}
-          {esDemo && !loading && (
-            <View style={st.demoBanner}>
-              <Text style={st.demoBannerTxt}>
-                💡 Consejos generales — conectá el backend para ver los de tu mascota
-              </Text>
-            </View>
-          )}
+          {/* Hero */}
+          <View style={st.hero}>
+            <Animated.View style={{ transform: [{ scale: heroScale }], opacity: heroOpacity }}>
+              <PetIllustration source={petImg}
+                label={mascota ? `Ilustración de ${mascota.nombre}` : 'Mascota'} />
+            </Animated.View>
+          </View>
 
-          {/* Chips */}
-          {!loading && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}
-              contentContainerStyle={st.chipsRow}>
-              <Chip label="Todos" activo={categoriaActiva === 'todos'}
-                onPress={() => setCategoriaActiva('todos')} isAll />
-              {categoriasPresentes.map((key) => {
-                const info = getCategoriaInfo(key);
-                return (
-                  <Chip key={key} label={info.nombre}
-                    activo={categoriaActiva === key}
-                    onPress={() => setCategoriaActiva(categoriaActiva === key ? 'todos' : key)}
-                    acento={info.acento} fondo={info.fondo} />
-                );
-              })}
-            </ScrollView>
-          )}
+          {/* Card blanco */}
+          <View style={st.whiteCard}>
 
-          {/* Loading */}
-          {loading && (
-            <View style={st.list}>
-              <SkeletonCard /><SkeletonCard /><SkeletonCard />
-            </View>
-          )}
+            {/* Banner demo */}
+            {esDemo && !loading && (
+              <View style={st.demoBanner}>
+                <Text style={st.demoBannerTxt}>
+                  💡 Consejos generales — conectá el backend para ver los de tu mascota
+                </Text>
+              </View>
+            )}
 
-          {/* Consejos */}
-          {!loading && (
-            <View style={st.list}>
-              {consejosFiltrados.map((c, i) => (
-                <ConsejoCard key={c.id} consejo={c} index={i} />
-              ))}
-            </View>
-          )}
+            {/* Chips */}
+            {!loading && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}
+                contentContainerStyle={st.chipsRow}>
+                <Chip label="Todos" activo={categoriaActiva === 'todos'}
+                  onPress={() => setCategoriaActiva('todos')} isAll />
+                {categoriasPresentes.map((key) => {
+                  const info = getCategoriaInfo(key);
+                  return (
+                    <Chip key={key} label={info.nombre}
+                      activo={categoriaActiva === key}
+                      onPress={() => setCategoriaActiva(categoriaActiva === key ? 'todos' : key)}
+                      acento={info.acento} fondo={info.fondo} />
+                  );
+                })}
+              </ScrollView>
+            )}
 
-        </View>
-      </ScrollView>
+            {/* Loading */}
+            {loading && (
+              <View style={st.list}>
+                <SkeletonCard /><SkeletonCard /><SkeletonCard />
+              </View>
+            )}
+
+            {/* Consejos */}
+            {!loading && (
+              <View style={st.list}>
+                {consejosFiltrados.map((c, i) => (
+                  <ConsejoCard key={c.id} consejo={c} index={i} />
+                ))}
+              </View>
+            )}
+
+          </View>
+        </ScrollView>
+      </ImageBackground>
     </SafeAreaView>
   );
 }
@@ -390,11 +398,13 @@ export default function ConsejosScreen() {
 // ─── ESTILOS ─────────────────────────────────────────────────────────────────
 
 const st = StyleSheet.create({
-  safeArea:      { flex: 1, backgroundColor: '#C8F0D8' },
-  scroll:        { flex: 1, backgroundColor: '#C8F0D8' },
-  scrollContent: { flexGrow: 1, backgroundColor: '#C8F0D8' },
+  safeArea:             { flex: 1, backgroundColor: '#D4F5E2' },
+  screenBackground:     { flex: 1, width: '100%' },
+  screenBackgroundImage: { width: '100%', height: '100%' },
+  scroll:               { flex: 1, backgroundColor: 'transparent' },
+  scrollContent:        { flexGrow: 1, backgroundColor: 'transparent' },
 
-  header:      { height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 },
+  header:      { height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, backgroundColor: 'transparent' },
   headerBtn:   { width: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, maxWidth: 220, fontSize: 15, fontWeight: '700', color: '#2C2C2C', textAlign: 'center', lineHeight: 20 },
 
