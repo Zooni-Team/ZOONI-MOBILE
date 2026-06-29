@@ -44,7 +44,7 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function(){
-  var map = L.map('map',{zoomControl:false,doubleClickZoom:false}).setView([-34.6037,-58.3816],15);
+  var map = L.map('map',{zoomControl:false,doubleClickZoom:false}).setView([-34.6089,-58.4340],16);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
 
   function mk(e,bg){return L.divIcon({className:'',html:'<div class="mk" style="background:'+bg+'">'+e+'</div>',iconSize:[34,34],iconAnchor:[17,34]})}
@@ -122,10 +122,10 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
         setUserMarker(lat,lng);
         notify({type:'location',lat:lat,lng:lng});
       },
-      function(){ setUserMarker(-34.6037,-58.3816); }
+      function(){ setUserMarker(-34.6089,-58.4340); }
     );
   } else {
-    setUserMarker(-34.6037,-58.3816);
+    setUserMarker(-34.6089,-58.4340);
   }
 
   map.on('dblclick',function(e){
