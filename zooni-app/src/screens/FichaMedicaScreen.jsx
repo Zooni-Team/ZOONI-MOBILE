@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  ImageBackground,
   Linking,
   Modal,
   Platform,
@@ -29,6 +30,7 @@ import axios from 'axios';
 
 import { calcularEdad } from '../utils/calcularEdad';
 import { resolvePetImage } from '../constants/petImages';
+import { HOME_BACKGROUND } from '../constants/homeAssets';
 
 // ─── API ──────────────────────────────────────────────────────────────────────
 
@@ -158,6 +160,37 @@ const fp = StyleSheet.create({
 });
 
 // ─── COMPONENTES ─────────────────────────────────────────────────────────────
+
+/**
+ * PetIllustration — Imagen de la mascota con sombra adaptada por plataforma.
+ * Mismo patrón que HomeScreen y ConsejosScreen.
+ */
+function PetIllustration({ source, label }) {
+  if (Platform.OS === 'web') {
+    return (
+      <Image
+        source={source}
+        style={[s.heroImg, { filter: 'drop-shadow(4px 10px 14px rgba(36,90,66,0.35))' }]}
+        resizeMode="contain"
+        accessibilityLabel={label}
+      />
+    );
+  }
+  return (
+    <Image
+      source={source}
+      style={[s.heroImg, {
+        shadowColor: '#245a42',
+        shadowOffset: { width: 4, height: 10 },
+        shadowOpacity: 0.35,
+        shadowRadius: 14,
+        elevation: 8,
+      }]}
+      resizeMode="contain"
+      accessibilityLabel={label}
+    />
+  );
+}
 
 function FilaDato({ icono, label, valor, onEditar, editando, children }) {
   return (
@@ -314,10 +347,17 @@ export default function FichaMedicaScreen() {
   if (loading) {
     return (
       <SafeAreaView style={s.safeArea}>
-        <View style={s.loadingWrap}>
-          <ActivityIndicator size="large" color="#2DBD72" />
-          <Text style={s.loadingTxt}>Cargando ficha médica...</Text>
-        </View>
+        <ImageBackground
+          source={HOME_BACKGROUND}
+          style={s.screenBackground}
+          imageStyle={s.screenBackgroundImage}
+          resizeMode="cover"
+        >
+          <View style={s.loadingWrap}>
+            <ActivityIndicator size="large" color="#2DBD72" />
+            <Text style={s.loadingTxt}>Cargando ficha médica...</Text>
+          </View>
+        </ImageBackground>
       </SafeAreaView>
     );
   }
@@ -333,24 +373,30 @@ export default function FichaMedicaScreen() {
     <SafeAreaView style={s.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* Header */}
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.headerBtn} accessibilityLabel="Volver"
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="arrow-back" size={24} color="#2C2C2C" />
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>Ficha Médica</Text>
-        <View style={s.headerBtn} />
-      </View>
-
-      <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}
-        showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-
-        {/* Hero — mismo patrón que HomeScreen */}
-        <View style={s.heroSection}>
-          <Text style={s.heroNombre}>{m.nombre}</Text>
-          <PetIllustration source={petImg} label={`Ilustración de ${m.nombre}`} />
+      <ImageBackground
+        source={HOME_BACKGROUND}
+        style={s.screenBackground}
+        imageStyle={s.screenBackgroundImage}
+        resizeMode="cover"
+      >
+        {/* Header */}
+        <View style={s.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={s.headerBtn} accessibilityLabel="Volver"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="arrow-back" size={24} color="#2C2C2C" />
+          </TouchableOpacity>
+          <Text style={s.headerTitle}>Ficha Médica</Text>
+          <View style={s.headerBtn} />
         </View>
+
+        <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}
+          showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+
+          {/* Hero */}
+          <View style={s.heroSection}>
+            <Text style={s.heroNombre}>{m.nombre}</Text>
+            <PetIllustration source={petImg} label={`Ilustración de ${m.nombre}`} />
+          </View>
 
         {/* Card blanco */}
         <View style={s.whiteCard}>
@@ -417,6 +463,7 @@ export default function FichaMedicaScreen() {
 
         </View>
       </ScrollView>
+      </ImageBackground>
     </SafeAreaView>
   );
 }
@@ -424,17 +471,19 @@ export default function FichaMedicaScreen() {
 // ─── ESTILOS ─────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safeArea:    { flex: 1, backgroundColor: '#C8F0D8' },
-  scroll:      { flex: 1, backgroundColor: '#C8F0D8' },
+  safeArea:    { flex: 1, backgroundColor: '#D4F5E2' },
+  screenBackground: { flex: 1, width: '100%' },
+  screenBackgroundImage: { width: '100%', height: '100%' },
+  scroll:      { flex: 1, backgroundColor: 'transparent' },
   scrollContent: { flexGrow: 1 },
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingTxt:  { fontSize: 15, color: '#6B6B6B' },
 
-  header: { height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 },
+  header: { height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, backgroundColor: 'transparent' },
   headerBtn:   { width: 36, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 17, fontWeight: '700', color: '#2C2C2C' },
 
-  heroSection:  { alignItems: 'center', paddingTop: 8, paddingBottom: 4, backgroundColor: '#C8F0D8', position: 'relative', overflow: 'hidden', minHeight: 210 },
+  heroSection:  { alignItems: 'center', paddingTop: 12, paddingBottom: 0, backgroundColor: 'transparent' },
   heroNombre:   { fontSize: 24, fontWeight: '800', color: '#2C2C2C', marginBottom: 12, zIndex: 2 },
   bubble:       { backgroundColor: '#2DBD72' },
   heroPetShadow: {
