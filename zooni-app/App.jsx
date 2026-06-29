@@ -9,11 +9,12 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 
 import { getStoredToken } from './src/services/api';
-import HomeScreen        from './src/screens/HomeScreen';
-import MatchScreen       from './src/screens/MatchScreen';
+import HomeScreen         from './src/screens/HomeScreen';
+import MatchScreen        from './src/screens/MatchScreen';
 import MatchFiltersScreen from './src/screens/MatchFiltersScreen';
-import PlaceholderScreen from './src/screens/PlaceholderScreen';
-import ComunidadScreen   from './src/screens/Comunidad/ComunidadScreen';
+import PlaceholderScreen  from './src/screens/PlaceholderScreen';
+import ComunidadScreen    from './src/screens/Comunidad/ComunidadScreen';
+import PerfilScreen       from './src/screens/PerfilScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -57,7 +58,7 @@ export default function App() {
           <Stack.Screen name="Eventos"       component={PlaceholderScreen} />
           <Stack.Screen name="ChatBot"       component={PlaceholderScreen} />
           <Stack.Screen name="Closet"        component={PlaceholderScreen} />
-          <Stack.Screen name="Perfil"        component={PlaceholderScreen} />
+          <Stack.Screen name="Perfil"        component={PerfilScreen} />
           <Stack.Screen name="Configuracion" component={PlaceholderScreen} />
           <Stack.Screen name="Notificaciones" component={PlaceholderScreen} />
         </Stack.Navigator>

@@ -1,0 +1,739 @@
+/**
+ * PerfilScreen.jsx — Perfil del usuario en Zooni
+ *
+ * Zona verde superior con avatar + nombre.
+ * Card blanco inferior con botones, stats, bio, tabs grid/lista.
+ * Modales: editar perfil, nueva publicación.
+ * Sin backend → usa datos demo y opera sobre estado local.
+ */
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Dimensions,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import * as SecureStore from 'expo-secure-store';
+import axios from 'axios';
+
+const { width: SW } = Dimensions.get('window');
+const CELL = Math.floor(SW / 3);
+
+// ─── API ──────────────────────────────────────────────────────────────────────
+
+const BASE_URL = Platform.select({
+  android: 'http://10.0.2.2:5165/api/v1',
+  ios:     'http://localhost:5165/api/v1',
+  default: 'http://localhost:5165/api/v1',
+});
+
+async function getToken() {
+  try {
+    return Platform.OS === 'web'
+      ? (localStorage?.getItem('jwt_token') ?? null)
+      : await SecureStore.getItemAsync('jwt_token');
+  } catch { return null; }
+}
+
+async function api(method, endpoint, data = null, isForm = false) {
+  const token = await getToken();
+  return axios({
+    method, url: `${BASE_URL}${endpoint}`, data, timeout: 15000,
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(!isForm ? { 'Content-Type': 'application/json' } : {}),
+    },
+  });
+}
+
+// ─── DEMO DATA ────────────────────────────────────────────────────────────────
+
+const DEMO_PERFIL = {
+  id: 1, nombre: 'Sofía', apellido: 'García',
+  nombre_usuario: 'sofia_garcia',
+  bio: 'Amante de los animales 🐾',
+  ubicacion: 'Argentina',
+  foto_perfil_url: null,
+  total_publicaciones: 3, total_seguidores: 124, total_siguiendo: 87,
+};
+
+const DEMO_PUBS = [
+  { id: 1, imagen_url: null, descripcion: 'Mi perro en el parque 🐾', creado_en: '2026-06-01T10:00:00Z' },
+  { id: 2, imagen_url: null, descripcion: 'Día de juegos 🎾',          creado_en: '2026-05-20T15:30:00Z' },
+  { id: 3, imagen_url: null, descripcion: null,                         creado_en: '2026-05-10T09:00:00Z' },
+];
+
+function formatFecha(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+}
+
+// ─── SKELETON ─────────────────────────────────────────────────────────────────
+
+function Skel({ w, h, r = 8, style }) {
+  const shimmer = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const a = Animated.loop(Animated.sequence([
+      Animated.timing(shimmer, { toValue: 1, duration: 900, useNativeDriver: true }),
+      Animated.timing(shimmer, { toValue: 0, duration: 900, useNativeDriver: true }),
+    ]));
+    a.start(); return () => a.stop();
+  }, [shimmer]);
+  const opacity = shimmer.interpolate({ inputRange: [0,1], outputRange: [0.4,1] });
+  return <Animated.View style={[{ width:w, height:h, borderRadius:r, backgroundColor:'#E0E0E0', opacity }, style]} />;
+}
+
+// ─── TOAST (banner verde inline, justo antes de los tabs) ─────────────────────
+
+function Toast({ visible, mensaje }) {
+  const ty  = useRef(new Animated.Value(-8)).current;
+  const op  = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(ty, { toValue: visible ? 0 : -8, duration: 200, useNativeDriver: true }),
+      Animated.timing(op, { toValue: visible ? 1 : 0,  duration: 200, useNativeDriver: true }),
+    ]).start();
+  }, [visible, ty, op]);
+  if (!visible && op._value === 0) return null;
+  return (
+    <Animated.View style={[s.toast, { opacity: op, transform: [{ translateY: ty }] }]}>
+      <Ionicons name="checkmark-circle" size={18} color="#FFF" />
+      <Text style={s.toastTxt}>{mensaje}</Text>
+    </Animated.View>
+  );
+}
+
+// ─── MODAL ANIMADO ────────────────────────────────────────────────────────────
+
+function AModal({ visible, onClose, children }) {
+  const sc = useRef(new Animated.Value(0.92)).current;
+  const op = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (visible) { sc.setValue(0.92); op.setValue(0); }
+    Animated.parallel([
+      Animated.timing(sc, { toValue: visible ? 1 : 0.92, duration: visible ? 220 : 160, useNativeDriver: true }),
+      Animated.timing(op, { toValue: visible ? 1 : 0,    duration: visible ? 220 : 160, useNativeDriver: true }),
+    ]).start();
+  }, [visible, sc, op]);
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={onClose}>
+          <TouchableOpacity activeOpacity={1} onPress={Keyboard.dismiss}>
+            <Animated.View style={[s.modalCard, { transform: [{ scale: sc }], opacity: op }]}>
+              {children}
+            </Animated.View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+// ─── INPUT con borde que cambia en focus ──────────────────────────────────────
+
+function FocusInput({ style, multiline, ...props }) {
+  const [foc, setFoc] = useState(false);
+  return (
+    <TextInput
+      {...props}
+      multiline={multiline}
+      style={[s.input, multiline && s.inputMulti, foc && s.inputFocus, style]}
+      onFocus={() => setFoc(true)}
+      onBlur={() => setFoc(false)}
+    />
+  );
+}
+
+// ─── SCREEN ───────────────────────────────────────────────────────────────────
+
+export default function PerfilScreen() {
+  const navigation = useNavigation();
+
+  // Estado principal
+  const [perfil,     setPerfil]     = useState(null);
+  const [pubs,       setPubs]       = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [tab,        setTab]        = useState('grid'); // 'grid' | 'lista'
+
+  // Modales
+  const [modalEditar,   setModalEditar]   = useState(false);
+  const [modalPublicar, setModalPublicar] = useState(false);
+
+  // Form editar
+  const [fNombre,   setFNombre]   = useState('');
+  const [fApellido, setFApellido] = useState('');
+  const [fUsuario,  setFUsuario]  = useState('');
+  const [fBio,      setFBio]      = useState('');
+  const [fUbicacion,setFUbicacion]= useState('');
+  const [fErrUser,  setFErrUser]  = useState('');
+  const [guardando, setGuardando] = useState(false);
+
+  // Form publicar
+  const [fImagen,   setFImagen]   = useState(null);
+  const [fDesc,     setFDesc]     = useState('');
+  const [imgErr,    setImgErr]    = useState(false);
+  const [publicando,setPublicando]= useState(false);
+
+  // Toast
+  const [showToast,  setShowToast]  = useState(false);
+  const [toastMsg,   setToastMsg]   = useState('');
+  const toastRef = useRef(null);
+
+  // Animaciones botones
+  const scEditar   = useRef(new Animated.Value(1)).current;
+  const scPublicar = useRef(new Animated.Value(1)).current;
+  const [cfgPress, setCfgPress] = useState(false);
+
+  const scrollRef = useRef(null);
+
+  // ── Carga ────────────────────────────────────────────────────────────────
+  const cargar = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [rp, rpubs] = await Promise.all([
+        api('get', '/perfil'),
+        api('get', '/perfil/publicaciones'),
+      ]);
+      setPerfil(rp.data?.perfil ?? rp.data);
+      setPubs(rpubs.data?.publicaciones ?? []);
+    } catch {
+      // Demo fallback
+      await new Promise(r => setTimeout(r, 600));
+      setPerfil(DEMO_PERFIL);
+      setPubs(DEMO_PUBS);
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { cargar(); }, [cargar]);
+
+  // ── Toast ────────────────────────────────────────────────────────────────
+  function mostrarToast(msg) {
+    if (toastRef.current) clearTimeout(toastRef.current);
+    setToastMsg(msg); setShowToast(true);
+    toastRef.current = setTimeout(() => setShowToast(false), 2500);
+  }
+
+  // ── Botón press animations ────────────────────────────────────────────────
+  const pi = (sc) => Animated.timing(sc, { toValue: 0.97, duration: 100, useNativeDriver: true }).start();
+  const po = (sc) => Animated.timing(sc, { toValue: 1,    duration: 150, useNativeDriver: true }).start();
+
+  // ── Abrir modales ────────────────────────────────────────────────────────
+  function abrirEditar() {
+    setFNombre(perfil?.nombre ?? ''); setFApellido(perfil?.apellido ?? '');
+    setFUsuario(perfil?.nombre_usuario ?? ''); setFBio(perfil?.bio ?? '');
+    setFUbicacion(perfil?.ubicacion ?? ''); setFErrUser('');
+    setModalEditar(true);
+  }
+  function abrirPublicar() {
+    setFImagen(null); setFDesc(''); setImgErr(false);
+    setModalPublicar(true);
+  }
+  function cerrarPublicar() {
+    if (fImagen) {
+      Alert.alert('¿Cancelar publicación?', 'La imagen seleccionada se perderá.', [
+        { text: 'Seguir editando', style: 'cancel' },
+        { text: 'Sí, cancelar', style: 'destructive', onPress: () => setModalPublicar(false) },
+      ]);
+    } else { setModalPublicar(false); }
+  }
+
+  // ── Guardar perfil ───────────────────────────────────────────────────────
+  async function guardarPerfil() {
+    const nu = fUsuario.trim();
+    if (!nu) { setFErrUser('El nombre de usuario es requerido'); return; }
+    if (/\s/.test(nu)) { setFErrUser('No puede contener espacios'); return; }
+    if (!/^[a-z0-9_.]+$/.test(nu)) { setFErrUser('Solo letras minúsculas, números, _ y .'); return; }
+    setFErrUser(''); setGuardando(true);
+    try {
+      const res = await api('put', '/perfil', {
+        nombre: fNombre.trim() || null, apellido: fApellido.trim() || null,
+        nombre_usuario: nu, bio: fBio.trim() || null, ubicacion: fUbicacion.trim() || null,
+      });
+      setPerfil(p => ({ ...p, ...(res.data?.perfil ?? {
+        nombre: fNombre, apellido: fApellido, nombre_usuario: nu,
+        bio: fBio, ubicacion: fUbicacion,
+      }) }));
+      setModalEditar(false);
+      mostrarToast('Perfil actualizado correctamente');
+    } catch (err) {
+      const msg = err?.response?.data?.error ?? '';
+      if (msg.includes('ya está en uso')) { setFErrUser('Ese nombre ya está en uso'); }
+      else if (!err?.response) { Alert.alert('Sin conexión', 'Intentá de nuevo más tarde.'); }
+      else {
+        // Demo: actualizar local
+        setPerfil(p => ({ ...p, nombre: fNombre, apellido: fApellido,
+          nombre_usuario: nu, bio: fBio, ubicacion: fUbicacion }));
+        setModalEditar(false);
+        mostrarToast('Perfil actualizado correctamente');
+      }
+    } finally { setGuardando(false); }
+  }
+
+  // ── Cambiar foto ─────────────────────────────────────────────────────────
+  function cambiarFoto() {
+    Alert.alert('Cambiar foto de perfil', '', [
+      { text: 'Galería', onPress: () => abrirPicker('galeria') },
+      { text: 'Cámara',  onPress: () => abrirPicker('camara') },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  }
+  async function abrirPicker(modo) {
+    try {
+      const IP = await import('expo-image-picker').catch(() => null);
+      if (!IP) { subirFoto({ uri: 'https://picsum.photos/200', mimeType: 'image/jpeg' }); return; }
+      const perm = modo === 'galeria'
+        ? await IP.requestMediaLibraryPermissionsAsync()
+        : await IP.requestCameraPermissionsAsync();
+      if (!perm.granted) { Alert.alert('Permiso denegado'); return; }
+      const res = modo === 'galeria'
+        ? await IP.launchImageLibraryAsync({ quality: 0.8 })
+        : await IP.launchCameraAsync({ quality: 0.8 });
+      if (!res.canceled && res.assets?.[0]) subirFoto(res.assets[0]);
+    } catch { subirFoto({ uri: 'https://picsum.photos/200', mimeType: 'image/jpeg' }); }
+  }
+  async function subirFoto(asset) {
+    try {
+      const fd = new FormData();
+      fd.append('foto', { uri: asset.uri, type: asset.mimeType ?? 'image/jpeg', name: 'foto.jpg' });
+      const res = await api('put', '/perfil/foto', fd, true);
+      setPerfil(p => ({ ...p, foto_perfil_url: res.data?.foto_perfil_url ?? asset.uri }));
+    } catch { setPerfil(p => ({ ...p, foto_perfil_url: asset.uri })); }
+    mostrarToast('Foto actualizada correctamente');
+  }
+
+  // ── Publicar ─────────────────────────────────────────────────────────────
+  async function selImagen(modo) {
+    try {
+      const IP = await import('expo-image-picker').catch(() => null);
+      if (!IP) { setFImagen({ uri: 'https://picsum.photos/400', mimeType: 'image/jpeg' }); setImgErr(false); return; }
+      const perm = modo === 'galeria'
+        ? await IP.requestMediaLibraryPermissionsAsync()
+        : await IP.requestCameraPermissionsAsync();
+      if (!perm.granted) return;
+      const res = modo === 'galeria'
+        ? await IP.launchImageLibraryAsync({ quality: 0.8 })
+        : await IP.launchCameraAsync({ quality: 0.8 });
+      if (!res.canceled && res.assets?.[0]) { setFImagen(res.assets[0]); setImgErr(false); }
+    } catch { setFImagen({ uri: 'https://picsum.photos/400', mimeType: 'image/jpeg' }); setImgErr(false); }
+  }
+  function abrirPickerPublicar() {
+    Alert.alert('Agregar foto', '', [
+      { text: 'Galería', onPress: () => selImagen('galeria') },
+      { text: 'Cámara',  onPress: () => selImagen('camara') },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  }
+  async function publicar() {
+    if (!fImagen) { setImgErr(true); return; }
+    setImgErr(false); setPublicando(true);
+    try {
+      const fd = new FormData();
+      fd.append('imagen', { uri: fImagen.uri, type: fImagen.mimeType ?? 'image/jpeg', name: 'pub.jpg' });
+      if (fDesc.trim()) fd.append('descripcion', fDesc.trim());
+      const res = await api('post', '/publicaciones', fd, true);
+      const nueva = res.data?.publicacion ?? { id: Date.now(), imagen_url: fImagen.uri, descripcion: fDesc.trim() || null, creado_en: new Date().toISOString() };
+      setPubs(p => [nueva, ...p]);
+      setPerfil(p => ({ ...p, total_publicaciones: (p?.total_publicaciones ?? 0) + 1 }));
+      setModalPublicar(false);
+      mostrarToast('Publicación creada correctamente');
+    } catch {
+      const nueva = { id: Date.now(), imagen_url: fImagen.uri, descripcion: fDesc.trim() || null, creado_en: new Date().toISOString() };
+      setPubs(p => [nueva, ...p]);
+      setPerfil(p => ({ ...p, total_publicaciones: (p?.total_publicaciones ?? 0) + 1 }));
+      setModalPublicar(false);
+      mostrarToast('Publicación creada correctamente');
+    } finally { setPublicando(false); }
+  }
+
+  // ── Nombre a mostrar bajo el avatar ──────────────────────────────────────
+  const p = perfil ?? DEMO_PERFIL;
+  const displayName = p.nombre_usuario || [p.nombre, p.apellido].filter(Boolean).join(' ') || 'Usuario';
+  const displayNombreCompleto = [p.nombre, p.apellido].filter(Boolean).join(' ') || p.nombre_usuario || 'Usuario';
+
+  // ── RENDER ───────────────────────────────────────────────────────────────
+  return (
+    <SafeAreaView style={s.safe}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+
+      <ScrollView ref={scrollRef} style={s.scroll} contentContainerStyle={s.scrollContent}
+        showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+
+        {/* ══ ZONA VERDE ══════════════════════════════════════════════════ */}
+        <View style={s.zonaVerde}>
+
+          {/* Header */}
+          <View style={s.header}>
+            <TouchableOpacity style={s.hBtn} hitSlop={{ top:12, bottom:12, left:12, right:12 }}
+              onPress={() => { try { navigation.openDrawer(); } catch { navigation.goBack(); } }}>
+              <Ionicons name="menu" size={26} color="#2C2C2C" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Avatar */}
+          <View style={s.avatarWrap}>
+            {loading
+              ? <Skel w={84} h={84} r={42} />
+              : p.foto_perfil_url
+                ? <Image source={{ uri: p.foto_perfil_url }} style={s.avatarImg} />
+                : <View style={s.avatarFallback}><Ionicons name="person" size={48} color="#FFF" /></View>
+            }
+            <TouchableOpacity style={s.plusBtn} onPress={cambiarFoto} accessibilityLabel="Cambiar foto">
+              <Ionicons name="add" size={16} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Nombre */}
+          {loading
+            ? <Skel w={120} h={16} r={8} style={{ alignSelf:'center', marginTop:12, marginBottom:20 }} />
+            : <Text style={s.nombreUsuario} numberOfLines={1} ellipsizeMode="tail">{displayName}</Text>
+          }
+        </View>
+
+        {/* ══ CARD BLANCO ═════════════════════════════════════════════════ */}
+        <View style={s.card}>
+
+          {/* ── Botones ── */}
+          <Animated.View style={{ transform:[{scale:scEditar}] }}>
+            <Pressable style={s.btnEditar}
+              onPressIn={()=>pi(scEditar)} onPressOut={()=>po(scEditar)} onPress={abrirEditar}>
+              <Text style={s.btnEditarTxt}>Editar perfil</Text>
+            </Pressable>
+          </Animated.View>
+
+          <Pressable style={[s.btnConfig, cfgPress && {backgroundColor:'#F5F5F5'}]}
+            onPressIn={()=>setCfgPress(true)} onPressOut={()=>setCfgPress(false)}
+            onPress={()=>navigation.navigate('Configuracion')}>
+            <Text style={s.btnConfigTxt}>Config</Text>
+          </Pressable>
+
+          <Animated.View style={{ transform:[{scale:scPublicar}] }}>
+            <Pressable style={s.btnPublicar}
+              onPressIn={()=>pi(scPublicar)} onPressOut={()=>po(scPublicar)} onPress={abrirPublicar}>
+              <Text style={s.btnPublicarTxt}>Nueva publicación</Text>
+            </Pressable>
+          </Animated.View>
+
+          {/* ── Stats ── */}
+          <View style={s.statsRow}>
+            <TouchableOpacity style={s.statCol}
+              onPress={() => scrollRef.current?.scrollTo({ y: 600, animated: true })}>
+              {loading ? <Skel w={50} h={40} /> : <>
+                <Text style={s.statNum}>{p.total_publicaciones}</Text>
+                <Text style={s.statLbl}>publicaciones</Text>
+              </>}
+            </TouchableOpacity>
+            <View style={s.statSep}/>
+            <TouchableOpacity style={s.statCol}>
+              {loading ? <Skel w={50} h={40} /> : <>
+                <Text style={s.statNum}>{p.total_seguidores}</Text>
+                <Text style={s.statLbl}>seguidores</Text>
+              </>}
+            </TouchableOpacity>
+            <View style={s.statSep}/>
+            <TouchableOpacity style={s.statCol}>
+              {loading ? <Skel w={50} h={40} /> : <>
+                <Text style={s.statNum}>{p.total_siguiendo}</Text>
+                <Text style={s.statLbl}>siguiendo</Text>
+              </>}
+            </TouchableOpacity>
+          </View>
+
+          {/* ── Bio ── */}
+          {loading ? (
+            <View style={s.bioWrap}>
+              <Skel w={140} h={14} r={6} style={{marginBottom:6}}/>
+              <Skel w={200} h={12} r={6} style={{marginBottom:6}}/>
+            </View>
+          ) : (
+            <View style={s.bioWrap}>
+              <Text style={s.bioNombre}>{displayNombreCompleto}</Text>
+              {!!p.bio       && <Text style={s.bioTxt}>{p.bio}</Text>}
+              {!!p.ubicacion && <Text style={s.bioTxt}>{p.ubicacion}</Text>}
+            </View>
+          )}
+
+          {/* ── Toast (banner inline antes de tabs) ── */}
+          <Toast visible={showToast} mensaje={toastMsg} />
+
+          {/* ── Separador ── */}
+          <View style={s.tabSep}/>
+
+          {/* ── Tabs ── */}
+          <View style={s.tabsRow}>
+            {['grid','lista'].map((t) => (
+              <TouchableOpacity key={t} style={s.tabBtn} onPress={()=>setTab(t)}>
+                <Text style={[s.tabTxt, tab===t && s.tabTxtOn]}>
+                  {t === 'grid' ? 'Grid' : 'Lista'}
+                </Text>
+                {tab === t && <View style={s.tabLine}/>}
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* ── Contenido ── */}
+          {loading ? (
+            <View style={s.grid}>
+              {[0,1,2,3,4,5].map(i=><Skel key={i} w={CELL-1} h={CELL-1} r={0}/>)}
+            </View>
+          ) : pubs.length === 0 ? (
+            <View style={s.empty}>
+              <Ionicons name="camera-outline" size={48} color="#AAAAAA"/>
+              <Text style={s.emptyTxt}>Aún no publicaste nada 📸</Text>
+            </View>
+          ) : tab === 'grid' ? (
+            <View style={s.grid}>
+              {pubs.map(pub => (
+                <TouchableOpacity key={pub.id} style={s.gridCell}
+                  onPress={()=>Alert.alert('Publicación', pub.descripcion ?? 'Sin descripción')}>
+                  {pub.imagen_url
+                    ? <Image source={{uri:pub.imagen_url}} style={s.gridImg}/>
+                    : <View style={[s.gridImg,s.gridPH]}><Ionicons name="image-outline" size={28} color="#AAAAAA"/></View>
+                  }
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <View style={s.lista}>
+              {pubs.map(pub => (
+                <View key={pub.id} style={s.listaCard}>
+                  {pub.imagen_url
+                    ? <Image source={{uri:pub.imagen_url}} style={s.listaImg}/>
+                    : <View style={[s.listaImg,s.listaImgPH]}><Ionicons name="image-outline" size={36} color="#AAAAAA"/></View>
+                  }
+                  {!!pub.descripcion && <Text style={s.listaDesc}>{pub.descripcion}</Text>}
+                  <Text style={s.listaFecha}>{formatFecha(pub.creado_en)}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+        </View>
+      </ScrollView>
+
+      {/* ══ MODAL EDITAR PERFIL ══════════════════════════════════════════ */}
+      <AModal visible={modalEditar} onClose={()=>setModalEditar(false)}>
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <Text style={s.modalTitulo}>Editar perfil</Text>
+
+          <FocusInput placeholder="Nombre" placeholderTextColor="#AAAAAA"
+            value={fNombre} onChangeText={setFNombre} style={{marginBottom:12}} />
+          <FocusInput placeholder="Apellido" placeholderTextColor="#AAAAAA"
+            value={fApellido} onChangeText={setFApellido} style={{marginBottom:12}} />
+          <FocusInput
+            placeholder="@nombre_de_usuario" placeholderTextColor="#AAAAAA"
+            value={fUsuario}
+            onChangeText={v => { setFUsuario(v.toLowerCase().replace(/[^a-z0-9_.]/g,'')); setFErrUser(''); }}
+            autoCapitalize="none" autoCorrect={false}
+            style={[{marginBottom: fErrUser ? 4 : 12}, !!fErrUser && s.inputErr]} />
+          {!!fErrUser && <Text style={s.errTxt}>{fErrUser}</Text>}
+
+          <FocusInput placeholder="Contá algo sobre vos y tu mascota..." placeholderTextColor="#AAAAAA"
+            value={fBio} onChangeText={setFBio}
+            multiline numberOfLines={3} maxLength={150} textAlignVertical="top"
+            style={{marginBottom:12}} />
+          <FocusInput placeholder="País o ciudad (ej: Argentina)" placeholderTextColor="#AAAAAA"
+            value={fUbicacion} onChangeText={setFUbicacion} style={{marginBottom:20}} />
+
+          <TouchableOpacity style={s.btnGuardar} onPress={guardarPerfil} disabled={guardando}>
+            {guardando ? <ActivityIndicator size="small" color="#FFF"/> : <Text style={s.btnGuardarTxt}>Guardar</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity style={s.btnCancelar} onPress={()=>setModalEditar(false)}>
+            <Text style={s.btnCancelarTxt}>Cancelar</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </AModal>
+
+      {/* ══ MODAL NUEVA PUBLICACIÓN ═════════════════════════════════════ */}
+      <AModal visible={modalPublicar} onClose={cerrarPublicar}>
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <Text style={s.modalTitulo}>Nueva publicación</Text>
+
+          {/* Selector imagen */}
+          <TouchableOpacity
+            style={[s.imgSel, imgErr && s.imgSelErr]}
+            onPress={abrirPickerPublicar}>
+            {fImagen ? (
+              <>
+                <Image source={{uri:fImagen.uri}} style={s.imgPreview}/>
+                <TouchableOpacity style={s.imgEditBtn} onPress={abrirPickerPublicar}>
+                  <Ionicons name="create-outline" size={20} color="#FFF"/>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <View style={s.imgEmpty}>
+                <Ionicons name="camera-outline" size={40} color="#AAAAAA"/>
+                <Text style={s.imgEmptyTxt}>Tocá para agregar una foto</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          {imgErr && <Text style={s.errTxt}>Seleccioná una imagen</Text>}
+
+          <FocusInput placeholder="Agregá una descripción o hashtags..." placeholderTextColor="#AAAAAA"
+            value={fDesc} onChangeText={setFDesc}
+            multiline numberOfLines={4} maxLength={300} textAlignVertical="top"
+            style={{marginBottom:20}} />
+
+          <TouchableOpacity style={s.btnPublicarModal} onPress={publicar} disabled={publicando}>
+            {publicando ? <ActivityIndicator size="small" color="#2C2C2C"/> : <Text style={s.btnPublicarModalTxt}>Publicar</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity style={s.btnCancelar} onPress={cerrarPublicar}>
+            <Text style={s.btnCancelarTxt}>Cancelar</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </AModal>
+
+    </SafeAreaView>
+  );
+}
+
+// ─── ESTILOS ─────────────────────────────────────────────────────────────────
+
+const s = StyleSheet.create({
+  safe:        { flex:1, backgroundColor:'#C8F0D8' },
+  scroll:      { flex:1, backgroundColor:'#C8F0D8' },
+  scrollContent:{ flexGrow:1 },
+
+  // Zona verde
+  zonaVerde:   { backgroundColor:'#C8F0D8' },
+  header:      { height:56, flexDirection:'row', alignItems:'center', paddingHorizontal:20 },
+  hBtn:        { width:44, alignItems:'center', justifyContent:'center' },
+
+  // Avatar
+  avatarWrap:  { alignItems:'center', marginTop:8 },
+  avatarImg:   { width:84, height:84, borderRadius:42, resizeMode:'cover',
+                 shadowColor:'#000', shadowOffset:{width:0,height:2}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
+  avatarFallback:{ width:84, height:84, borderRadius:42, backgroundColor:'#DDDDDD',
+                   alignItems:'center', justifyContent:'center',
+                   shadowColor:'#000', shadowOffset:{width:0,height:2}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
+  plusBtn:     { position:'absolute', bottom:0, right:0, width:26, height:26, borderRadius:13,
+                 backgroundColor:'#2DBD72', borderWidth:2, borderColor:'#FFF',
+                 alignItems:'center', justifyContent:'center' },
+  nombreUsuario:{ fontSize:20, fontWeight:'700', color:'#2C2C2C', textAlign:'center',
+                  marginTop:12, marginBottom:20, paddingHorizontal:20 },
+
+  // Card blanco
+  card:        { backgroundColor:'#FFF', borderTopLeftRadius:28, borderTopRightRadius:28,
+                 paddingHorizontal:20, paddingTop:24, paddingBottom:40 },
+
+  // Botones acción
+  btnEditar:   { backgroundColor:'#2DBD72', borderRadius:30, height:48,
+                 alignItems:'center', justifyContent:'center', marginBottom:10,
+                 shadowColor:'#000', shadowOffset:{width:0,height:2}, shadowOpacity:0.10, shadowRadius:4, elevation:3 },
+  btnEditarTxt:{ fontSize:15, fontWeight:'700', color:'#FFF' },
+  btnConfig:   { backgroundColor:'#FFF', borderRadius:30, height:48,
+                 alignItems:'center', justifyContent:'center',
+                 borderWidth:1.5, borderColor:'#DDDDDD', marginBottom:10 },
+  btnConfigTxt:{ fontSize:15, fontWeight:'700', color:'#2C2C2C' },
+  btnPublicar: { backgroundColor:'#F5C842', borderRadius:30, height:48,
+                 alignItems:'center', justifyContent:'center',
+                 shadowColor:'#000', shadowOffset:{width:0,height:2}, shadowOpacity:0.10, shadowRadius:4, elevation:3 },
+  btnPublicarTxt:{ fontSize:15, fontWeight:'700', color:'#2C2C2C' },
+
+  // Stats
+  statsRow:    { flexDirection:'row', marginTop:24, marginBottom:16, alignItems:'center' },
+  statCol:     { flex:1, alignItems:'center' },
+  statSep:     { width:1, height:30, backgroundColor:'#EFEFEF' },
+  statNum:     { fontSize:18, fontWeight:'700', color:'#2C2C2C' },
+  statLbl:     { fontSize:12, color:'#6B6B6B', marginTop:2, textAlign:'center' },
+
+  // Bio
+  bioWrap:     { marginBottom:20 },
+  bioNombre:   { fontSize:15, fontWeight:'700', color:'#2C2C2C' },
+  bioTxt:      { fontSize:14, color:'#6B6B6B', marginTop:2 },
+
+  // Toast inline
+  toast:       { flexDirection:'row', alignItems:'center', gap:8,
+                 backgroundColor:'#2DBD72', borderRadius:12,
+                 paddingVertical:12, paddingHorizontal:16, marginBottom:16 },
+  toastTxt:    { fontSize:14, fontWeight:'700', color:'#FFF', flex:1 },
+
+  // Separador tabs
+  tabSep:      { height:1, backgroundColor:'#EFEFEF' },
+
+  // Tabs
+  tabsRow:     { flexDirection:'row', marginBottom:12 },
+  tabBtn:      { flex:1, alignItems:'center', paddingVertical:12 },
+  tabTxt:      { fontSize:15, color:'#AAAAAA' },
+  tabTxtOn:    { color:'#2C2C2C', fontWeight:'700' },
+  tabLine:     { width:'30%', height:2, backgroundColor:'#2DBD72', marginTop:4 },
+
+  // Grid
+  grid:        { flexDirection:'row', flexWrap:'wrap', gap:1, backgroundColor:'#C8F0D8' },
+  gridCell:    { width:CELL-1, height:CELL-1 },
+  gridImg:     { width:'100%', height:'100%', resizeMode:'cover' },
+  gridPH:      { backgroundColor:'#F0F0F0', alignItems:'center', justifyContent:'center' },
+
+  // Lista
+  lista:       { gap:12 },
+  listaCard:   { backgroundColor:'#FFF', borderRadius:12, overflow:'hidden',
+                 shadowColor:'#000', shadowOffset:{width:0,height:2}, shadowOpacity:0.07, shadowRadius:6, elevation:3 },
+  listaImg:    { width:'100%', height:200, resizeMode:'cover' },
+  listaImgPH:  { backgroundColor:'#F0F0F0', alignItems:'center', justifyContent:'center' },
+  listaDesc:   { fontSize:14, color:'#2C2C2C', padding:12, paddingBottom:4 },
+  listaFecha:  { fontSize:12, color:'#AAAAAA', paddingHorizontal:12, paddingBottom:12 },
+
+  // Empty
+  empty:       { alignItems:'center', marginTop:40, gap:12 },
+  emptyTxt:    { fontSize:15, color:'#6B6B6B', textAlign:'center' },
+
+  // Modal
+  overlay:     { flex:1, backgroundColor:'rgba(0,0,0,0.50)', justifyContent:'center', alignItems:'center' },
+  modalCard:   { backgroundColor:'#FFF', borderRadius:20, width:SW*0.90,
+                 paddingHorizontal:22, paddingTop:24, paddingBottom:20,
+                 maxHeight:'90%',
+                 shadowColor:'#000', shadowOffset:{width:0,height:8}, shadowOpacity:0.18, shadowRadius:20, elevation:10 },
+  modalTitulo: { fontSize:18, fontWeight:'700', color:'#2DBD72', textAlign:'center', marginBottom:20 },
+
+  // Inputs
+  input:       { borderWidth:1.5, borderColor:'#DDDDDD', borderRadius:10,
+                 paddingHorizontal:14, paddingVertical:12,
+                 fontSize:14, color:'#2C2C2C', backgroundColor:'#FFF', marginBottom:12 },
+  inputMulti:  { height:80, textAlignVertical:'top' },
+  inputFocus:  { borderColor:'#2DBD72' },
+  inputErr:    { borderColor:'#E63946' },
+  errTxt:      { fontSize:11, color:'#E63946', marginBottom:8, marginLeft:4 },
+
+  // Selector imagen publicación
+  imgSel:      { width:'100%', height:180, borderRadius:12,
+                 backgroundColor:'#F5F5F5', borderWidth:1.5, borderColor:'#DDDDDD',
+                 borderStyle:'dashed', overflow:'hidden', marginBottom:14 },
+  imgSelErr:   { borderColor:'#E63946' },
+  imgPreview:  { width:'100%', height:'100%', resizeMode:'cover' },
+  imgEmpty:    { flex:1, alignItems:'center', justifyContent:'center', gap:8 },
+  imgEmptyTxt: { fontSize:13, color:'#AAAAAA' },
+  imgEditBtn:  { position:'absolute', top:8, right:8, width:34, height:34, borderRadius:17,
+                 backgroundColor:'rgba(0,0,0,0.4)', alignItems:'center', justifyContent:'center' },
+
+  // Botones modales
+  btnGuardar:      { width:'100%', height:48, borderRadius:30, backgroundColor:'#2DBD72',
+                     alignItems:'center', justifyContent:'center',
+                     shadowColor:'#000', shadowOffset:{width:0,height:3}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
+  btnGuardarTxt:   { fontSize:15, fontWeight:'700', color:'#FFF' },
+  btnPublicarModal:{ width:'100%', height:48, borderRadius:30, backgroundColor:'#F5C842',
+                     alignItems:'center', justifyContent:'center',
+                     shadowColor:'#000', shadowOffset:{width:0,height:3}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
+  btnPublicarModalTxt:{ fontSize:15, fontWeight:'700', color:'#2C2C2C' },
+  btnCancelar:     { width:'100%', height:44, borderRadius:30, backgroundColor:'#E8E8E8',
+                     alignItems:'center', justifyContent:'center', marginTop:10 },
+  btnCancelarTxt:  { fontSize:15, fontWeight:'700', color:'#2C2C2C' },
+});
