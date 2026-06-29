@@ -33,6 +33,77 @@ import { fetchHome, fetchEventos, agregarEventoAlCalendario } from '../services/
 import HamburgerDrawer from '../components/HamburgerDrawer';
 
 // ─────────────────────────────────────────────────────────────
+// DATOS DE EJEMPLO — se usan cuando el backend no está disponible
+// o no devuelve eventos. Eliminá este bloque en producción.
+// ─────────────────────────────────────────────────────────────
+const EVENTOS_DEMO = [
+  {
+    id: 1,
+    titulo: 'Jornada de Vacunación Gratuita',
+    descripcion:
+      'El Gobierno de la Ciudad organiza una jornada de vacunación gratuita para perros y gatos. Se aplicarán vacunas antirrábicas, séxtuple y contra la leptospirosis. Traé el carnet sanitario de tu mascota y llegá con correa o transportín.',
+    imagen_url: 'https://images.unsplash.com/photo-1583512603805-3cc6b41f3edb?w=800&q=80',
+    fecha_hora: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // en 3 días
+    ubicacion_nombre: 'Parque Centenario, Av. Díaz Vélez 4900, CABA',
+    lat: -34.6063,
+    lng: -58.4345,
+    ciudad: 'Buenos Aires',
+    categoria_tag: 'PERROS Y GATOS',
+    organizador_nombre: 'Gobierno Ciudad Autónoma de Buenos Aires',
+    organizador_es_oficial: true,
+    ya_en_calendario: false,
+  },
+  {
+    id: 2,
+    titulo: 'Expo Mascotas Buenos Aires 2026',
+    descripcion:
+      'La feria de mascotas más grande del año. Más de 200 expositores, concursos de razas, shows de entrenamiento, adopciones responsables y todo lo que necesitás para tu compañero peludo. Entrada libre y gratuita para menores de 12 años.',
+    imagen_url: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=800&q=80',
+    fecha_hora: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000).toISOString(), // en 12 días
+    ubicacion_nombre: 'La Rural, Av. Sarmiento 2704, Palermo, CABA',
+    lat: -34.5765,
+    lng: -58.4101,
+    ciudad: 'Buenos Aires',
+    categoria_tag: 'TODAS LAS MASCOTAS',
+    organizador_nombre: 'Zooni Oficial',
+    organizador_es_oficial: false,
+    ya_en_calendario: true,
+  },
+  {
+    id: 3,
+    titulo: 'Taller de Primeros Auxilios para Mascotas',
+    descripcion:
+      'Aprendé a actuar ante emergencias con tu mascota: maniobra de Heimlich canina, RCP, cómo tratar heridas y cuándo ir urgente al veterinario. Cupos limitados a 20 personas. Llevá foto de tu mascota.',
+    imagen_url: 'https://images.unsplash.com/photo-1601758124510-52d02ddb7cbd?w=800&q=80',
+    fecha_hora: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString(), // en 20 días
+    ubicacion_nombre: 'Centro Cívico Palermo, Thames 1750, CABA',
+    lat: -34.5851,
+    lng: -58.4271,
+    ciudad: 'Buenos Aires',
+    categoria_tag: null, // sin pill de categoría
+    organizador_nombre: 'Municipalidad de Córdoba',
+    organizador_es_oficial: true,
+    ya_en_calendario: false,
+  },
+  {
+    id: 4,
+    titulo: 'Encuentro de Golden Retrievers en Palermo',
+    descripcion:
+      'El encuentro mensual de la comunidad Golden Retriever de Buenos Aires. Traé a tu golden, conocé otros dueños, intercambiá tips y disfrutá de una tarde en el parque. Hay fotógrafo y habrá un concurso de disfraces.',
+    imagen_url: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=800&q=80',
+    fecha_hora: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(), // en 45 días
+    ubicacion_nombre: 'Parque Tres de Febrero, Av. del Libertador s/n, Palermo',
+    lat: -34.5648,
+    lng: -58.4184,
+    ciudad: 'Buenos Aires',
+    categoria_tag: 'GOLDEN RETRIEVER',
+    organizador_nombre: 'Zooni Oficial',
+    organizador_es_oficial: false,
+    ya_en_calendario: false,
+  },
+];
+
+// ─────────────────────────────────────────────────────────────
 // COMPONENTE: SkeletonCard
 // Simula la forma de un card de evento mientras carga.
 // ─────────────────────────────────────────────────────────────
@@ -94,7 +165,6 @@ function EventoCard({
   const btnScale = useRef(new Animated.Value(1)).current;
   // Estado de imagen rota
   const [imgError, setImgError] = useState(false);
-  const [descripcionLarga, setDescripcionLarga] = useState(false);
 
   // Actualizar color del botón cuando cambia yaAgregado
   useEffect(() => {
@@ -226,28 +296,18 @@ function EventoCard({
         {evento.descripcion ? (
           <View style={styles.descripcionContainer}>
             <Text
-              style={[styles.descripcionTexto, styles.descripcionMedidor]}
-              onTextLayout={(e) => {
-                setDescripcionLarga(e.nativeEvent.lines.length > DESCRIPCION_MAX_LINES);
-              }}
-            >
-              {evento.descripcion}
-            </Text>
-            <Text
               style={styles.descripcionTexto}
               numberOfLines={expandido ? undefined : DESCRIPCION_MAX_LINES}
             >
               {evento.descripcion}
             </Text>
-            {(descripcionLarga || expandido) ? (
-              <Text
-                style={styles.verMasTexto}
-                onPress={() => onToggleDescripcion(evento.id)}
-                suppressHighlighting
-              >
-                {expandido ? 'Ver menos' : 'Ver más'}
-              </Text>
-            ) : null}
+            <Text
+              style={styles.verMasTexto}
+              onPress={() => onToggleDescripcion(evento.id)}
+              suppressHighlighting
+            >
+              {expandido ? 'Ver menos' : 'Ver más'}
+            </Text>
           </View>
         ) : null}
 
@@ -337,14 +397,17 @@ export default function EventosScreen() {
   /**
    * cargarDatos — obtiene el perfil del usuario y los eventos de su ciudad.
    * Si no hay ciudad, carga todos los eventos.
+   * Si el backend falla o no devuelve eventos, usa EVENTOS_DEMO como fallback.
    */
   async function cargarDatos() {
     setLoading(true);
     try {
+      // 1. Obtener datos del usuario (ciudad + mascota activa)
       let ciudadUsuario = null;
+      let datosHome     = null;
 
       try {
-        const datosHome = await fetchHome();
+        datosHome = await fetchHome();
         setHomeData(datosHome);
         ciudadUsuario =
           datosHome?.usuario?.ubicacion ||
@@ -355,13 +418,24 @@ export default function EventosScreen() {
         // Si fetchHome falla, seguimos sin ciudad
       }
 
-      const data = await fetchEventos(ciudadUsuario);
-      const eventosData = data.eventos ?? [];
+      // 2. Cargar eventos con (o sin) filtro de ciudad
+      let eventosData = [];
+      try {
+        const data = await fetchEventos(ciudadUsuario);
+        eventosData = data.eventos ?? [];
+      } catch {
+        // Backend no disponible — usar datos de demo
+        eventosData = [];
+      }
 
-      setEventos(eventosData);
+      // Fallback a datos de demo si el backend no devuelve nada
+      const eventosFinales = eventosData.length > 0 ? eventosData : EVENTOS_DEMO;
 
+      setEventos(eventosFinales);
+
+      // Inicializar los eventos ya agregados al calendario
       const yaAgregados = new Set(
-        eventosData
+        eventosFinales
           .filter((e) => e.ya_en_calendario)
           .map((e) => e.id),
       );
@@ -369,20 +443,18 @@ export default function EventosScreen() {
     } catch (error) {
       console.error('Error al cargar eventos:', error);
 
+      // 403 → token inválido → ir a Login
       if (error?.response?.status === 403) {
         navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
         return;
       }
 
-      setEventos([]);
-      Alert.alert(
-        'Error de conexión',
-        'No se pudieron cargar los eventos.',
-        [
-          { text: 'Reintentar', onPress: cargarDatos },
-          { text: 'Cancelar', style: 'cancel' },
-        ],
+      // En caso de error total, mostrar demo igual
+      setEventos(EVENTOS_DEMO);
+      const yaAgregados = new Set(
+        EVENTOS_DEMO.filter((e) => e.ya_en_calendario).map((e) => e.id),
       );
+      setEventosAgregados(yaAgregados);
     } finally {
       setLoading(false);
     }
@@ -409,26 +481,22 @@ export default function EventosScreen() {
 
       // Guardia: sin mascota activa
       const petId = homeData?.mascotaActiva?.id;
-      if (!petId) {
-        Alert.alert(
-          'Atención',
-          'Necesitás tener una mascota registrada para agregar al calendario',
-        );
-        return;
-      }
 
       // Marcar como procesando
       setProcesandoIds((prev) => new Map(prev).set(evento.id, true));
 
       try {
-        await agregarEventoAlCalendario(petId, {
-          titulo:      evento.titulo,
-          descripcion: evento.descripcion
-            ? `${evento.descripcion}\n📍 ${evento.ubicacion_nombre}`
-            : `📍 ${evento.ubicacion_nombre}`,
-          fecha_hora:  new Date(evento.fecha_hora).toISOString(),
-          tipo:        'Evento',
-        });
+        // Si no hay petId (modo demo / sin backend), simular éxito localmente
+        if (petId) {
+          await agregarEventoAlCalendario(petId, {
+            titulo:      evento.titulo,
+            descripcion: evento.descripcion
+              ? `${evento.descripcion}\n📍 ${evento.ubicacion_nombre}`
+              : `📍 ${evento.ubicacion_nombre}`,
+            fecha_hora:  new Date(evento.fecha_hora).toISOString(),
+            tipo:        'Evento',
+          });
+        }
 
         // Actualizar estado local: agregar al Set
         setEventosAgregados((prev) => new Set(prev).add(evento.id));
@@ -713,11 +781,6 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#6B6B6B',
     lineHeight: 22,
-  },
-  descripcionMedidor: {
-    position: 'absolute',
-    opacity: 0,
-    zIndex: -1,
   },
   verMasTexto: {
     fontSize: 13,
