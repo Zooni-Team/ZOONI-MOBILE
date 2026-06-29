@@ -15,6 +15,9 @@ import MatchFiltersScreen from './src/screens/MatchFiltersScreen';
 import PlaceholderScreen from './src/screens/PlaceholderScreen';
 import ComunidadScreen   from './src/screens/Comunidad/ComunidadScreen';
 import ClosetScreen      from './src/screens/ClosetScreen';
+import FichaMedicaScreen from './src/screens/FichaMedicaScreen';
+import ConsejosScreen from './src/screens/ConsejosScreen';
+import TratamientosScreen from './src/screens/TratamientosScreen';
 import EventosScreen     from './src/screens/EventosScreen';
 
 const Stack = createNativeStackNavigator();
@@ -50,7 +53,7 @@ export default function App() {
           <Stack.Screen name="Home"          component={HomeScreen} />
           <Stack.Screen name="Login"         component={PlaceholderScreen} />
           <Stack.Screen name="Comunidad"     component={ComunidadScreen} />
-          <Stack.Screen name="FichaMedica"   component={PlaceholderScreen} />
+          <Stack.Screen name="FichaMedica" component={FichaMedicaScreen} />          
           <Stack.Screen name="MisMascotas"   component={PlaceholderScreen} />
           <Stack.Screen name="Match"         component={MatchScreen} />
           <Stack.Screen name="MatchFilters"  component={MatchFiltersScreen} />
@@ -60,6 +63,8 @@ export default function App() {
           <Stack.Screen name="ChatBot"       component={PlaceholderScreen} />
           <Stack.Screen name="Closet"        component={ClosetScreen} />
           <Stack.Screen name="Perfil"        component={PlaceholderScreen} />
+          <Stack.Screen name="Consejos" component={ConsejosScreen} />
+          <Stack.Screen name="Tratamientos" component={TratamientosScreen} />
           <Stack.Screen name="Configuracion" component={PlaceholderScreen} />
           <Stack.Screen name="Notificaciones" component={PlaceholderScreen} />
         </Stack.Navigator>
