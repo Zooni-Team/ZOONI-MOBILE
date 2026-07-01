@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { fetchSolicitudes, responderSolicitud } from '../../api/comunidad';
 
 export default function TabSolicitudes({ onRespuesta }) {
@@ -21,7 +22,7 @@ export default function TabSolicitudes({ onRespuesta }) {
   if (loading) return <ActivityIndicator color="#2DBD72" style={{ marginTop: 20 }} />;
   if (!lista.length) return (
     <View style={styles.vacio}>
-      <Text style={{ fontSize: 34, marginBottom: 8 }}>🔔</Text>
+      <Ionicons name="notifications-outline" size={34} color="#CCCCCC" style={{ marginBottom: 8 }} />
       <Text style={styles.vacioText}>No tenés solicitudes pendientes</Text>
     </View>
   );
@@ -32,14 +33,14 @@ export default function TabSolicitudes({ onRespuesta }) {
       keyExtractor={s => String(s.id)}
       renderItem={({ item: s }) => (
         <View style={styles.item}>
-          <View style={styles.avatar}><Text style={{ fontSize: 18 }}>👤</Text></View>
+          <View style={styles.avatar}><Ionicons name="person" size={18} color="#AAAAAA" /></View>
           <Text style={styles.nombre}>{s.nombre}</Text>
           <View style={styles.btns}>
             <TouchableOpacity style={styles.btnAc} onPress={() => responder(s.id, 'aceptar')}>
-              <Text style={styles.btnAcText}>✓</Text>
+              <Ionicons name="checkmark" size={18} color="#FFF" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.btnRe} onPress={() => responder(s.id, 'rechazar')}>
-              <Text style={styles.btnReText}>✕</Text>
+              <Ionicons name="close" size={18} color="#E63946" />
             </TouchableOpacity>
           </View>
         </View>

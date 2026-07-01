@@ -3,7 +3,6 @@ import {
   View, Text, TouchableOpacity, StyleSheet, Modal,
   Animated, Platform, ScrollView,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import TabAmigos        from '../../components/Comunidad/TabAmigos';
@@ -13,6 +12,8 @@ import BuscadorUsuarios from '../../components/Comunidad/BuscadorUsuarios';
 import FormularioCartel from '../../components/Comunidad/FormularioCartel';
 import PopupServicio    from '../../components/Comunidad/PopupServicio';
 import PopupCartel      from '../../components/Comunidad/PopupCartel';
+import HamburgerDrawer  from '../../components/HamburgerDrawer';
+import { useUsuarioActivo } from '../../hooks/useUsuarioActivo';
 
 import { fetchMapaData, actualizarUbicacion } from '../../api/comunidad';
 
@@ -143,8 +144,6 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
 
 // ─── Pantalla principal ──────────────────────────────────────────────────────
 export default function ComunidadScreen() {
-  const navigation = useNavigation();
-
   const [mapaData,   setMapaData]   = useState({ servicios: [], carteles: [], amigos: [] });
   const [bbox,       setBbox]       = useState(null);
   const [tab,        setTab]        = useState('Amigos');
@@ -158,6 +157,8 @@ export default function ComunidadScreen() {
   const [toast,      setToast]      = useState(null);
   const [toastKey,   setToastKey]   = useState(0);
   const [userPos,    setUserPos]    = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const { usuario, mascotaActiva } = useUsuarioActivo();
 
   const iframeRef   = useRef(null);
   const boundsTimer = useRef(null);
@@ -278,9 +279,13 @@ export default function ComunidadScreen() {
           </View>
         )}
 
-        {/* Botón volver */}
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={22} color="#2C2C2C" />
+        {/* Botón menú hamburguesa */}
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => setDrawerOpen(true)}
+          accessibilityLabel="Abrir menú"
+        >
+          <Ionicons name="menu" size={24} color="#0A0A0A" />
         </TouchableOpacity>
 
         {/* Banner modo cartel */}
@@ -397,6 +402,15 @@ export default function ComunidadScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ── MENÚ HAMBURGUESA ──────────────────────────────────────────────── */}
+      <HamburgerDrawer
+        visible={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        usuario={usuario}
+        mascotaActiva={mascotaActiva}
+        activeRoute="Comunidad"
+      />
     </View>
   );
 }

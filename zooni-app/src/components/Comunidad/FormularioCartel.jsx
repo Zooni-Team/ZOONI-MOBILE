@@ -3,13 +3,14 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ScrollView, ActivityIndicator, Alert, Modal,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { crearCartel } from '../../api/comunidad';
 
 const TIPOS = [
-  { v: 'perdida',       l: '🔴 Mascota Perdida'    },
-  { v: 'encontrada',    l: '🟢 Mascota Encontrada' },
-  { v: 'adopcion',      l: '💛 En Adopción'        },
-  { v: 'aviso_general', l: '📌 Aviso General'      },
+  { v: 'perdida',       l: 'Mascota Perdida',    icono: 'alert-circle-outline', color: '#E63946' },
+  { v: 'encontrada',    l: 'Mascota Encontrada', icono: 'checkmark-circle-outline', color: '#2DBD72' },
+  { v: 'adopcion',      l: 'En Adopción',        icono: 'heart-outline', color: '#F5C842' },
+  { v: 'aviso_general', l: 'Aviso General',      icono: 'megaphone-outline', color: '#6B6B6B' },
 ];
 
 export default function FormularioCartel({ coordenadas, onExito, onCancelar }) {
@@ -49,7 +50,10 @@ export default function FormularioCartel({ coordenadas, onExito, onCancelar }) {
     <Modal visible animationType="slide" transparent>
       <View style={styles.overlay}>
         <View style={styles.sheet}>
-          <Text style={styles.titulo}>🚨 Crear Cartel de Mascota</Text>
+          <View style={styles.tituloRow}>
+            <Ionicons name="warning-outline" size={18} color="#E63946" />
+            <Text style={styles.titulo}>Crear Cartel de Mascota</Text>
+          </View>
           <ScrollView showsVerticalScrollIndicator={false}>
             <Text style={styles.lbl}>Tipo</Text>
             <View style={styles.tiposRow}>
@@ -57,6 +61,7 @@ export default function FormularioCartel({ coordenadas, onExito, onCancelar }) {
                 <TouchableOpacity key={t.v}
                   style={[styles.tipoBtn, tipo === t.v && styles.tipoBtnOn]}
                   onPress={() => setTipo(t.v)}>
+                  <Ionicons name={t.icono} size={14} color={tipo === t.v ? '#2DBD72' : t.color} />
                   <Text style={[styles.tipoBtnText, tipo === t.v && styles.tipoBtnTextOn]}>{t.l}</Text>
                 </TouchableOpacity>
               ))}
@@ -97,14 +102,15 @@ export default function FormularioCartel({ coordenadas, onExito, onCancelar }) {
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
   sheet:   { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '85%' },
-  titulo:  { fontSize: 18, fontWeight: '700', color: '#2C2C2C', marginBottom: 16 },
+  tituloRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
+  titulo:  { fontSize: 18, fontWeight: '700', color: '#2C2C2C' },
   lbl:     { fontSize: 14, fontWeight: '600', color: '#2C2C2C', marginTop: 12, marginBottom: 6 },
   input:   { borderWidth: 1.5, borderColor: '#DDD', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#2C2C2C' },
   inputErr:{ borderColor: '#E63946' },
   textarea:{ height: 90, textAlignVertical: 'top' },
   errText: { color: '#E63946', fontSize: 12, marginTop: 4 },
   tiposRow:{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-  tipoBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5, borderColor: '#DDD' },
+  tipoBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5, borderColor: '#DDD' },
   tipoBtnOn:    { borderColor: '#2DBD72', backgroundColor: '#E8FFF2' },
   tipoBtnText:  { fontSize: 12, color: '#6B6B6B' },
   tipoBtnTextOn:{ color: '#2DBD72', fontWeight: '600' },

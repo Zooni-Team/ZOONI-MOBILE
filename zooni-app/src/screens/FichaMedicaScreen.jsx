@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  ImageBackground,
   Linking,
   Modal,
   Platform,
@@ -30,7 +29,9 @@ import axios from 'axios';
 
 import { calcularEdad } from '../utils/calcularEdad';
 import { resolvePetImage } from '../constants/petImages';
-import { HOME_BACKGROUND } from '../constants/homeAssets';
+import SkeletonLoader from '../components/SkeletonLoader';
+import HamburgerDrawer from '../components/HamburgerDrawer';
+import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 
 // ─── API ──────────────────────────────────────────────────────────────────────
 
@@ -161,31 +162,12 @@ const fp = StyleSheet.create({
 
 // ─── COMPONENTES ─────────────────────────────────────────────────────────────
 
-/**
- * PetIllustration — Imagen de la mascota con sombra adaptada por plataforma.
- * Mismo patrón que HomeScreen y ConsejosScreen.
- */
+/** PetIllustration — Imagen de la mascota, sin sombra (evita el artefacto rectangular). */
 function PetIllustration({ source, label }) {
-  if (Platform.OS === 'web') {
-    return (
-      <Image
-        source={source}
-        style={[s.heroImg, { filter: 'drop-shadow(4px 10px 14px rgba(36,90,66,0.35))' }]}
-        resizeMode="contain"
-        accessibilityLabel={label}
-      />
-    );
-  }
   return (
     <Image
       source={source}
-      style={[s.heroImg, {
-        shadowColor: '#245a42',
-        shadowOffset: { width: 4, height: 10 },
-        shadowOpacity: 0.35,
-        shadowRadius: 14,
-        elevation: 8,
-      }]}
+      style={s.heroImg}
       resizeMode="contain"
       accessibilityLabel={label}
     />
@@ -197,7 +179,7 @@ function FilaDato({ icono, label, valor, onEditar, editando, children }) {
     <View style={s.dataCard}>
       <View style={s.dataRow}>
         <View style={s.dataLeft}>
-          <Text style={s.dataIcon}>{icono}</Text>
+          <Ionicons name={icono} size={18} color="#2DBD72" />
           <Text style={s.dataLabel}>{label}</Text>
         </View>
         <View style={s.dataRight}>
@@ -206,7 +188,7 @@ function FilaDato({ icono, label, valor, onEditar, editando, children }) {
               <Text style={s.dataValor}>{valor}</Text>
               {onEditar && (
                 <TouchableOpacity onPress={onEditar} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Text style={s.editIcon}>✏️</Text>
+                  <Ionicons name="create-outline" size={16} color="#6B6B6B" />
                 </TouchableOpacity>
               )}
             </>
@@ -243,21 +225,32 @@ export default function FichaMedicaScreen() {
   const [fechaBorrador,  setFechaBorrador]  = useState(new Date());
   const [guardandoFecha, setGuardandoFecha] = useState(false);
   const [generandoPdf,   setGenerandoPdf]   = useState(false);
+  const [drawerOpen,     setDrawerOpen]     = useState(false);
+  const { usuario, mascotaActiva: mascotaActivaDemo } = useUsuarioActivo();
 
   const pesoInputRef = useRef(null);
 
   // ── Carga ─────────────────────────────────────────────────────────────────
+  // Timeout de 3 segundos: si el backend no responde, mostrar la vista demo
+  // en vez de dejar al usuario esperando (mismo patrón que HomeScreen).
   const cargarMascota = useCallback(async () => {
     if (!petId) { setLoading(false); return; }
     setLoading(true);
     try {
-      const res = await apiCall('get', `/mascotas/${petId}`);
+      const res = await Promise.race([
+        apiCall('get', `/mascotas/${petId}`),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
+      ]);
       setMascota(res.data?.data ?? res.data);
     } catch (err) {
-      const st = err?.response?.status;
-      if (st === 403) Alert.alert('Sin permiso', 'No podés ver esta mascota.', [{ text: 'Volver', onPress: () => navigation.goBack() }]);
-      else if (st === 404) Alert.alert('No encontrada', 'La mascota no existe.', [{ text: 'Volver', onPress: () => navigation.goBack() }]);
-      else Alert.alert('Error de conexión', 'No se pudo cargar la ficha médica.');
+      if (err.message === 'timeout') {
+        // Sin respuesta a tiempo: se cae a la vista demo, sin alertar al usuario
+      } else {
+        const st = err?.response?.status;
+        if (st === 403) Alert.alert('Sin permiso', 'No podés ver esta mascota.', [{ text: 'Volver', onPress: () => navigation.goBack() }]);
+        else if (st === 404) Alert.alert('No encontrada', 'La mascota no existe.', [{ text: 'Volver', onPress: () => navigation.goBack() }]);
+        else Alert.alert('Error de conexión', 'No se pudo cargar la ficha médica.');
+      }
     } finally {
       setLoading(false);
     }
@@ -343,27 +336,9 @@ export default function FichaMedicaScreen() {
 
   const capitalizar = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
 
-  // ── Loading ───────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <SafeAreaView style={s.safeArea}>
-        <ImageBackground
-          source={HOME_BACKGROUND}
-          style={s.screenBackground}
-          imageStyle={s.screenBackgroundImage}
-          resizeMode="cover"
-        >
-          <View style={s.loadingWrap}>
-            <ActivityIndicator size="large" color="#2DBD72" />
-            <Text style={s.loadingTxt}>Cargando ficha médica...</Text>
-          </View>
-        </ImageBackground>
-      </SafeAreaView>
-    );
-  }
-
-  // Sin petId o error sin mascota: pantalla demo visual
-  const demoMascota = !petId || !mascota;
+  // Sin petId o error sin mascota (una vez terminada la carga): pantalla demo visual
+  const demoMascota = !loading && (!petId || !mascota);
+  const interactuable = !loading && !demoMascota;
   const m = mascota ?? { nombre: 'Tu mascota', especie: 'perro', raza: null, peso: null, fecha_nacimiento: null, imagen_asset: 'perro_default' };
   const edad = calcularEdad(m.fecha_nacimiento);
   const petImg = resolvePetImage(m.imagen_asset ?? m.imagenAsset);
@@ -373,20 +348,13 @@ export default function FichaMedicaScreen() {
     <SafeAreaView style={s.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      <ImageBackground
-        source={HOME_BACKGROUND}
-        style={s.screenBackground}
-        imageStyle={s.screenBackgroundImage}
-        resizeMode="cover"
-      >
+      <View style={s.screenBackground}>
         {/* Header */}
         <View style={s.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={s.headerBtn} accessibilityLabel="Volver"
+          <TouchableOpacity onPress={() => setDrawerOpen(true)} style={s.headerBtn} accessibilityLabel="Abrir menú"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="arrow-back" size={24} color="#2C2C2C" />
+            <Ionicons name="menu" size={30} color="#0A0A0A" />
           </TouchableOpacity>
-          <Text style={s.headerTitle}>Ficha Médica</Text>
-          <View style={s.headerBtn} />
         </View>
 
         <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}
@@ -394,8 +362,16 @@ export default function FichaMedicaScreen() {
 
           {/* Hero */}
           <View style={s.heroSection}>
-            <Text style={s.heroNombre}>{m.nombre}</Text>
-            <PetIllustration source={petImg} label={`Ilustración de ${m.nombre}`} />
+            {loading ? (
+              <SkeletonLoader width={140} height={30} borderRadius={8} style={{ marginBottom: 12 }} />
+            ) : (
+              <Text style={s.heroNombre}>{m.nombre}</Text>
+            )}
+            {loading ? (
+              <SkeletonLoader width={160} height={160} borderRadius={20} />
+            ) : (
+              <PetIllustration source={petImg} label={`Ilustración de ${m.nombre}`} />
+            )}
           </View>
 
         {/* Card blanco */}
@@ -403,17 +379,18 @@ export default function FichaMedicaScreen() {
 
           {demoMascota && (
             <View style={s.demoBanner}>
-              <Text style={s.demoBannerTxt}>⚠️ Vista previa — conectá el backend para ver datos reales</Text>
+              <Ionicons name="alert-circle-outline" size={14} color="#F5A623" />
+              <Text style={s.demoBannerTxt}>Vista previa — conectá el backend para ver datos reales</Text>
             </View>
           )}
 
           <Text style={s.secTitulo}>Datos</Text>
 
-          <FilaDato icono="🐾" label="Especie:" valor={capitalizar(m.especie)} />
-          <FilaDato icono="🏷️" label="Raza:"    valor={m.raza || 'Sin especificar'} />
+          <FilaDato icono="paw-outline"     label="Especie:" valor={capitalizar(m.especie)} />
+          <FilaDato icono="pricetag-outline" label="Raza:"    valor={m.raza || 'Sin especificar'} />
 
-          <FilaDato icono="⚖️" label="Peso:" valor={formatPeso(m.peso)}
-            onEditar={!demoMascota ? abrirEditPeso : undefined} editando={editandoPeso}>
+          <FilaDato icono="barbell-outline" label="Peso:" valor={formatPeso(m.peso)}
+            onEditar={interactuable ? abrirEditPeso : undefined} editando={editandoPeso}>
             <View style={s.editRow}>
               <TextInput ref={pesoInputRef} style={s.editInput} value={pesoBorrador}
                 onChangeText={setPesoBorrador} keyboardType="decimal-pad"
@@ -433,9 +410,9 @@ export default function FichaMedicaScreen() {
             </View>
           </FilaDato>
 
-          <FilaDato icono="🎂" label="Edad:"
+          <FilaDato icono="gift-outline" label="Edad:"
             valor={guardandoFecha ? 'Actualizando...' : edad}
-            onEditar={!demoMascota ? abrirEditFecha : undefined}
+            onEditar={interactuable ? abrirEditFecha : undefined}
             editando={false} />
 
           <FechaPicker visible={editandoFecha} valor={fechaBorrador}
@@ -452,7 +429,7 @@ export default function FichaMedicaScreen() {
           <BotonNav icono="bulb-outline"          iconoColor="#F5C842" texto="Consejos y curiosidades"
             onPress={() => navigation.navigate('Consejos', { petId: petId ?? 0 })} />
 
-          <TouchableOpacity style={s.pdfBtn} onPress={generarPDF} disabled={generandoPdf || demoMascota}
+          <TouchableOpacity style={s.pdfBtn} onPress={generarPDF} disabled={generandoPdf || !interactuable}
             accessibilityLabel="Descargar ficha médica en PDF">
             {generandoPdf
               ? <ActivityIndicator size="small" color="#FFF" />
@@ -463,7 +440,15 @@ export default function FichaMedicaScreen() {
 
         </View>
       </ScrollView>
-      </ImageBackground>
+      </View>
+
+      <HamburgerDrawer
+        visible={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        usuario={usuario}
+        mascotaActiva={mascota ?? mascotaActivaDemo}
+        activeRoute="FichaMedica"
+      />
     </SafeAreaView>
   );
 }
@@ -471,17 +456,13 @@ export default function FichaMedicaScreen() {
 // ─── ESTILOS ─────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safeArea:    { flex: 1, backgroundColor: '#D4F5E2' },
-  screenBackground: { flex: 1, width: '100%' },
-  screenBackgroundImage: { width: '100%', height: '100%' },
+  safeArea:    { flex: 1, backgroundColor: '#C8F0D8' },
+  screenBackground: { flex: 1, width: '100%', backgroundColor: '#C8F0D8' },
   scroll:      { flex: 1, backgroundColor: 'transparent' },
   scrollContent: { flexGrow: 1 },
-  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  loadingTxt:  { fontSize: 15, color: '#6B6B6B' },
 
-  header: { height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, backgroundColor: 'transparent' },
+  header: { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, backgroundColor: 'transparent' },
   headerBtn:   { width: 36, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: '#2C2C2C' },
 
   heroSection:  { alignItems: 'center', paddingTop: 12, paddingBottom: 0, backgroundColor: 'transparent' },
   heroNombre:   { fontSize: 24, fontWeight: '800', color: '#2C2C2C', marginBottom: 12, zIndex: 2 },
@@ -498,7 +479,7 @@ const s = StyleSheet.create({
 
   whiteCard: { backgroundColor: '#FFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 40, marginTop: 16 },
 
-  demoBanner:    { backgroundColor: '#FFF8E1', borderRadius: 10, padding: 10, marginBottom: 16 },
+  demoBanner:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFF8E1', borderRadius: 10, padding: 10, marginBottom: 16 },
   demoBannerTxt: { fontSize: 12, color: '#F5A623', textAlign: 'center' },
 
   secTitulo: { fontSize: 13, fontWeight: '700', color: '#6B6B6B', letterSpacing: 0.8, marginBottom: 10, textTransform: 'uppercase' },

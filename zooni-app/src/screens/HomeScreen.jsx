@@ -329,11 +329,23 @@ function PetIllustration({ source, label }) {
     );
   }
 
-  // Single image with shadow (50% más rápido)
+  if (Platform.OS === 'ios') {
+    return (
+      <Image
+        source={source}
+        style={[styles.petImage, styles.petImageWithShadow]}
+        resizeMode="contain"
+        accessibilityLabel={label}
+      />
+    );
+  }
+
+  // Android: `elevation` dibuja la sombra como un rectángulo detrás del PNG
+  // transparente (no sigue el alfa), así que se omite para no mostrar un cuadrado.
   return (
     <Image
       source={source}
-      style={[styles.petImage, styles.petImageWithShadow]}
+      style={styles.petImage}
       resizeMode="contain"
       accessibilityLabel={label}
     />

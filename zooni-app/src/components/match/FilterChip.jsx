@@ -1,5 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function FilterChip({ label, icon, selected, onPress, accessibilityLabel }) {
   return (
@@ -8,7 +9,7 @@ export default function FilterChip({ label, icon, selected, onPress, accessibili
       onPress={onPress}
       accessibilityLabel={accessibilityLabel ?? `${label}, ${selected ? 'seleccionado' : 'no seleccionado'}`}
     >
-      {icon ? <Text style={styles.icon}>{icon} </Text> : null}
+      {icon ? <Ionicons name={icon} size={14} color={selected ? '#FFFFFF' : '#2C2C2C'} style={styles.icon} /> : null}
       <Text style={[styles.label, selected && styles.labelSelected]}>{label}</Text>
     </TouchableOpacity>
   );
@@ -22,7 +23,7 @@ const styles = StyleSheet.create({
     marginRight: 8, marginBottom: 8,
   },
   chipSelected: { backgroundColor: '#2DBD72', borderColor: '#2DBD72' },
-  icon: { fontSize: 14 },
+  icon: { marginRight: 6 },
   label: { fontSize: 14, fontWeight: '600', color: '#2C2C2C' },
   labelSelected: { color: '#FFFFFF' },
 });

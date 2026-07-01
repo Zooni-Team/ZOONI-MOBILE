@@ -137,12 +137,12 @@ export const DEMO_PERFILES = [
 export const DEMO_PRE_LIKES = ['u002'];
 
 export const PET_TYPE_OPTIONS = [
-  { key: 'perro', label: 'Perro', icon: '🐶' },
-  { key: 'gato', label: 'Gato', icon: '🐱' },
-  { key: 'conejo', label: 'Conejo', icon: '🐰' },
-  { key: 'ave', label: 'Ave', icon: '🐦' },
-  { key: 'pez', label: 'Pez', icon: '🐠' },
-  { key: 'reptil', label: 'Reptil', icon: '🦎' },
+  { key: 'perro', label: 'Perro', icon: 'paw-outline' },
+  { key: 'gato', label: 'Gato', icon: 'paw-outline' },
+  { key: 'conejo', label: 'Conejo', icon: 'paw-outline' },
+  { key: 'ave', label: 'Ave', icon: 'paw-outline' },
+  { key: 'pez', label: 'Pez', icon: 'fish-outline' },
+  { key: 'reptil', label: 'Reptil', icon: 'paw-outline' },
   { key: 'cualquiera', label: 'Cualquiera', icon: null },
 ];
 
@@ -158,7 +158,6 @@ export const GENDER_OPTIONS = [
   { key: 'no_binario', label: 'No binario' },
 ];
 
-export function especieEmoji(especie) {
-  const map = { perro: '🐕', gato: '🐈', conejo: '🐰', ave: '🐦', pez: '🐠', reptil: '🦎' };
-  return map[especie] ?? '🐾';
+export function especieIcono(especie) {
+  return especie === 'pez' ? 'fish-outline' : 'paw-outline';
 }

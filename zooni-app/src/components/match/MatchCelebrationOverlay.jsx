@@ -47,7 +47,7 @@ export default function MatchCelebrationOverlay({
     <Modal visible transparent animationType="fade" statusBarTranslucent>
       <View style={styles.backdrop}>
         <Animated.Text style={[styles.title, { transform: [{ scale: titleScale }] }]}>
-          ¡Es un Match! 🎉
+          ¡Es un Match!
         </Animated.Text>
         <Text style={styles.subtitle}>
           A vos y a {matchUser.nombre} les gustaron sus mascotas

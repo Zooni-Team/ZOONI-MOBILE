@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { eliminarCartel } from '../../api/comunidad';
 
 const LABELS = {
@@ -47,9 +48,14 @@ export default function PopupCartel({ cartel, userId, onClose, onEliminado }) {
           <View style={[styles.badge, { backgroundColor: color }]} />
           <Text style={styles.tipoText}>{LABELS[cartel.tipo] || cartel.tipo}</Text>
         </View>
-        <TouchableOpacity onPress={onClose}><Text style={styles.cerrar}>✕</Text></TouchableOpacity>
+        <TouchableOpacity onPress={onClose}><Ionicons name="close" size={18} color="#6B6B6B" /></TouchableOpacity>
       </View>
-      {cartel.mascota_nombre && <Text style={styles.mascota}>🐾 {cartel.mascota_nombre}</Text>}
+      {cartel.mascota_nombre && (
+        <View style={styles.infoRow}>
+          <Ionicons name="paw-outline" size={13} color="#2C2C2C" />
+          <Text style={styles.mascota}>{cartel.mascota_nombre}</Text>
+        </View>
+      )}
       {cartel.mascota_especie && (
         <Text style={styles.info}>{cartel.mascota_especie}{cartel.mascota_raza ? ` — ${cartel.mascota_raza}` : ''}</Text>
       )}
@@ -63,11 +69,17 @@ export default function PopupCartel({ cartel, userId, onClose, onEliminado }) {
           )}
         </>
       )}
-      {cartel.telefono_contacto && <Text style={styles.info}>📞 {cartel.telefono_contacto}</Text>}
+      {cartel.telefono_contacto && (
+        <View style={styles.infoRow}>
+          <Ionicons name="call-outline" size={13} color="#6B6B6B" />
+          <Text style={styles.info}>{cartel.telefono_contacto}</Text>
+        </View>
+      )}
       <Text style={styles.meta}>Publicado por: {cartel.publicado_por} · {fecha}</Text>
       {parseInt(cartel.usuario_id) === userId && (
         <TouchableOpacity style={styles.btnElim} onPress={handleEliminar}>
-          <Text style={styles.btnElimText}>🗑️ Eliminar Cartel</Text>
+          <Ionicons name="trash-outline" size={16} color="#FFF" />
+          <Text style={styles.btnElimText}>Eliminar Cartel</Text>
         </TouchableOpacity>
       )}
     </Animated.View>
@@ -85,11 +97,11 @@ const styles = StyleSheet.create({
   tipoRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
   badge:    { width: 10, height: 10, borderRadius: 5 },
   tipoText: { fontWeight: '700', fontSize: 14, color: '#2C2C2C' },
-  cerrar:   { fontSize: 18, color: '#6B6B6B' },
-  mascota:  { fontSize: 15, fontWeight: '700', color: '#2C2C2C', marginBottom: 2 },
-  info:     { fontSize: 13, color: '#6B6B6B', marginBottom: 4 },
+  infoRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  mascota:  { fontSize: 15, fontWeight: '700', color: '#2C2C2C' },
+  info:     { fontSize: 13, color: '#6B6B6B' },
   verMas:   { fontSize: 12, color: '#2DBD72', fontWeight: '600', marginBottom: 4 },
   meta:     { fontSize: 11, color: '#AAAAAA', marginTop: 6 },
-  btnElim:  { backgroundColor: '#E63946', borderRadius: 20, paddingVertical: 10, alignItems: 'center', marginTop: 12 },
+  btnElim:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#E63946', borderRadius: 20, paddingVertical: 10, marginTop: 12 },
   btnElimText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });

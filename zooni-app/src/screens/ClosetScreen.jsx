@@ -21,6 +21,7 @@ import { resolveAvatarImage } from '../constants/avatarImages';
 import { fetchAvatares, aplicarAvatar } from '../services/api';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
+import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const THUMBNAIL_SIZE = (SCREEN_WIDTH - 48 - 24) / 3;
@@ -162,6 +163,7 @@ export default function ClosetScreen() {
   const [aplicando, setAplicando] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { usuario, mascotaActiva: mascotaActivaDemo } = useUsuarioActivo();
 
 
   const previewScale = useRef(new Animated.Value(1)).current;
@@ -452,7 +454,8 @@ export default function ClosetScreen() {
       <HamburgerDrawer
         visible={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        mascotaActiva={mascota}
+        usuario={usuario}
+        mascotaActiva={mascota ?? mascotaActivaDemo}
         activeRoute="Closet"
       />
     </SafeAreaView>

@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { buscarUsuarios, enviarSolicitud } from '../../api/comunidad';
 
 export default function BuscadorUsuarios({ onSolicitudEnviada }) {
@@ -37,9 +38,10 @@ export default function BuscadorUsuarios({ onSolicitudEnviada }) {
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.inputWrap}>
+        <Ionicons name="search" size={16} color="#6B6B6B" style={{ marginRight: 8 }} />
         <TextInput
           style={styles.input}
-          placeholder="🔍 Buscar usuarios..."
+          placeholder="Buscar usuarios..."
           value={query}
           onChangeText={handleChange}
           accessibilityLabel="Buscar usuarios"
@@ -58,7 +60,7 @@ export default function BuscadorUsuarios({ onSolicitudEnviada }) {
           const ya = enviados.has(u.usuario_id) || u.es_amigo;
           return (
             <View style={styles.item}>
-              <View style={styles.avatar}><Text style={{ fontSize: 18 }}>👤</Text></View>
+              <View style={styles.avatar}><Ionicons name="person" size={18} color="#AAAAAA" /></View>
               <View style={styles.info}>
                 <Text style={styles.nombre}>{u.nombre}</Text>
                 <Text style={styles.sub}>{u.mascota_nombre}{u.barrio ? `  ·  ${u.barrio}` : ''}</Text>
@@ -68,9 +70,13 @@ export default function BuscadorUsuarios({ onSolicitudEnviada }) {
                 onPress={() => !ya && agregar(u)}
                 disabled={ya}
               >
-                <Text style={[styles.btnAddText, ya && styles.btnYaText]}>
-                  {ya ? '✓ Amigos' : '+ Agregar'}
-                </Text>
+                {ya
+                  ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Ionicons name="checkmark" size={13} color="#6B6B6B" />
+                      <Text style={[styles.btnAddText, styles.btnYaText]}>Amigos</Text>
+                    </View>
+                  : <Text style={styles.btnAddText}>+ Agregar</Text>
+                }
               </TouchableOpacity>
             </View>
           );

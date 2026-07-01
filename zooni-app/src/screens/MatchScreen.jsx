@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar,
-  useWindowDimensions, Alert,
+  ImageBackground, useWindowDimensions, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -17,6 +17,8 @@ import {
   fetchMatchPerfiles, postMatchLike, postMatchSkip, getDemoPerfilesSnapshot,
 } from '../services/matchApi';
 import { DEMO_CURRENT_USER } from '../data/matchDemo';
+import { DEMO_MASCOTA_ACTIVA } from '../constants/demoUsuario';
+import { HOME_BACKGROUND } from '../constants/homeAssets';
 import { getMatchCardLayout } from '../utils/matchLayout';
 import { consumeMatchReloadFromFilters } from '../utils/matchNavigation';
 
@@ -135,71 +137,78 @@ export default function MatchScreen() {
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => setDrawerOpen(true)}
-          accessibilityLabel="Abrir menú"
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="menu-outline" size={24} color="#2C2C2C" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter} />
-        <TouchableOpacity
-          style={styles.filtersBtn}
-          onPress={() => navigation.navigate('MatchFilters')}
-          accessibilityLabel="Abrir filtros"
-        >
-          <Ionicons name="funnel-outline" size={16} color="#2C2C2C" />
-          <Text style={styles.filtersText}>Filtros</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.headerDivider} />
+      <ImageBackground
+        source={HOME_BACKGROUND}
+        style={styles.screenBackground}
+        imageStyle={styles.screenBackgroundImage}
+        resizeMode="cover"
+      >
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => setDrawerOpen(true)}
+            accessibilityLabel="Abrir menú"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="menu-outline" size={24} color="#2C2C2C" />
+          </TouchableOpacity>
+          <View style={styles.headerCenter} />
+          <TouchableOpacity
+            style={styles.filtersBtn}
+            onPress={() => navigation.navigate('MatchFilters')}
+            accessibilityLabel="Abrir filtros"
+          >
+            <Ionicons name="funnel-outline" size={16} color="#2C2C2C" />
+            <Text style={styles.filtersText}>Filtros</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.headerDivider} />
 
-      <View style={styles.body}>
-        {loading ? (
-          <SkeletonLoader
-            width={cardWidth}
-            height={cardHeight}
-            borderRadius={24}
-            style={{ alignSelf: 'center' }}
-          />
-        ) : isEmpty ? (
-          <View style={styles.empty}>
-            <Ionicons name="paw" size={64} color="#27AE60" />
-            <Text style={styles.emptyTitle}>
-              No hay más perfiles por ahora. Volvé más tarde 🐾
-            </Text>
-            <TouchableOpacity
-              style={styles.emptyBtn}
-              onPress={() => navigation.navigate('MatchFilters')}
-            >
-              <Text style={styles.emptyBtnText}>Ajustar filtros</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <MatchSwipeStack
-            ref={stackRef}
-            perfiles={perfiles}
-            currentIndex={index}
-            cardHeight={cardHeight}
-            cardWidth={cardWidth}
-            onSwipeLeft={handleSwipeLeft}
-            onSwipeRight={handleSwipeRight}
-            onCardPress={setDetailPerfil}
-          />
-        )}
-      </View>
+        <View style={styles.body}>
+          {loading ? (
+            <SkeletonLoader
+              width={cardWidth}
+              height={cardHeight}
+              borderRadius={24}
+              style={{ alignSelf: 'center' }}
+            />
+          ) : isEmpty ? (
+            <View style={styles.empty}>
+              <Ionicons name="paw" size={64} color="#27AE60" />
+              <Text style={styles.emptyTitle}>
+                No hay más perfiles por ahora. Volvé más tarde 🐾
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyBtn}
+                onPress={() => navigation.navigate('MatchFilters')}
+              >
+                <Text style={styles.emptyBtnText}>Ajustar filtros</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <MatchSwipeStack
+              ref={stackRef}
+              perfiles={perfiles}
+              currentIndex={index}
+              cardHeight={cardHeight}
+              cardWidth={cardWidth}
+              onSwipeLeft={handleSwipeLeft}
+              onSwipeRight={handleSwipeRight}
+              onCardPress={setDetailPerfil}
+            />
+          )}
+        </View>
 
-      <View style={styles.actionsWrap}>
-        {!loading && !isEmpty && (
-          <MatchActionButtons
-            canUndo={history.length > 0 && !processingRef.current}
-            onUndo={handleUndo}
-            onSkip={() => triggerAction('skip')}
-            onLike={() => triggerAction('like')}
-          />
-        )}
-      </View>
+        <View style={styles.actionsWrap}>
+          {!loading && !isEmpty && (
+            <MatchActionButtons
+              canUndo={history.length > 0 && !processingRef.current}
+              onUndo={handleUndo}
+              onSkip={() => triggerAction('skip')}
+              onLike={() => triggerAction('like')}
+            />
+          )}
+        </View>
+      </ImageBackground>
 
       <MatchProfileDetailModal
         visible={!!detailPerfil}
@@ -222,7 +231,7 @@ export default function MatchScreen() {
         visible={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         usuario={usuario}
-        mascotaActiva={null}
+        mascotaActiva={DEMO_MASCOTA_ACTIVA}
         activeRoute="Match"
       />
     </SafeAreaView>
@@ -230,7 +239,9 @@ export default function MatchScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#C8F0D8' },
+  safe: { flex: 1, backgroundColor: '#D4F5E2' },
+  screenBackground: { flex: 1, width: '100%' },
+  screenBackgroundImage: { width: '100%', height: '100%' },
   header: {
     height: 56, flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 20, backgroundColor: 'transparent', zIndex: 10,

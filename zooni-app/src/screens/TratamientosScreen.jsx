@@ -13,7 +13,6 @@ import {
   Animated,
   Dimensions,
   Image,
-  ImageBackground,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -35,7 +34,6 @@ import axios from 'axios';
 
 import { calcularEdad } from '../utils/calcularEdad';
 import { resolvePetImage } from '../constants/petImages';
-import { HOME_BACKGROUND } from '../constants/homeAssets';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -118,18 +116,7 @@ function capitalizar(str) {
 // ─── COMPONENTE: IMAGEN MASCOTA ───────────────────────────────────────────────
 
 function PetIllustration({ source, label }) {
-  if (Platform.OS === 'web') {
-    return (
-      <Image source={source} style={[s.petImg, { filter: 'drop-shadow(4px 10px 14px rgba(36,90,66,0.35))' }]}
-        resizeMode="contain" accessibilityLabel={label} />
-    );
-  }
-  return (
-    <Image source={source} style={[s.petImg, {
-      shadowColor: '#245a42', shadowOffset: { width: 4, height: 10 },
-      shadowOpacity: 0.35, shadowRadius: 14, elevation: 8,
-    }]} resizeMode="contain" accessibilityLabel={label} />
-  );
+  return <Image source={source} style={s.petImg} resizeMode="contain" accessibilityLabel={label} />;
 }
 
 // ─── COMPONENTE: SKELETON ─────────────────────────────────────────────────────
@@ -568,7 +555,7 @@ export default function TratamientosScreen() {
       {/* Toast */}
       <Toast visible={toastVisible} mensaje={toastMensaje} color={toastColor} />
 
-      <ImageBackground source={HOME_BACKGROUND} style={s.screenBg} imageStyle={s.screenBgImg} resizeMode="cover">
+      <View style={s.screenBg}>
 
         {/* Header */}
         <View style={s.header}>
@@ -605,7 +592,8 @@ export default function TratamientosScreen() {
             {/* Banner demo */}
             {esDemo && (
               <View style={s.demoBanner}>
-                <Text style={s.demoBannerTxt}>⚠️ Vista previa — conectá el backend para ver datos reales</Text>
+                <Ionicons name="alert-circle-outline" size={14} color="#F5A623" />
+                <Text style={s.demoBannerTxt}>Vista previa — conectá el backend para ver datos reales</Text>
               </View>
             )}
 
@@ -626,7 +614,7 @@ export default function TratamientosScreen() {
                 <SkeletonCard /><SkeletonCard /><SkeletonCard />
               </View>
             ) : tratamientosAplicados.length === 0 ? (
-              <Text style={s.emptyTxt}>No hay tratamientos registrados 💊</Text>
+              <Text style={s.emptyTxt}>No hay tratamientos registrados</Text>
             ) : (
               tratamientosAplicados.map((t) => (
                 <CardAplicado key={t.id} tratamiento={t} onEliminar={eliminarTratamiento} />
@@ -634,7 +622,10 @@ export default function TratamientosScreen() {
             )}
 
             {/* ── Sección sugeridos ── */}
-            <Text style={s.secSugeridosTitulo}>📋 Tratamientos sugeridos</Text>
+            <View style={s.secSugeridosRow}>
+              <Ionicons name="clipboard-outline" size={16} color="#2C2C2C" />
+              <Text style={s.secSugeridosTitulo}>Tratamientos sugeridos</Text>
+            </View>
 
             {loading ? (
               <View><SkeletonCard /><SkeletonCard /></View>
@@ -648,7 +639,7 @@ export default function TratamientosScreen() {
 
           </View>
         </ScrollView>
-      </ImageBackground>
+      </View>
 
       {/* ── MODAL AÑADIR ── */}
       <Modal visible={modalVisible} transparent animationType="none" onRequestClose={cerrarModal}>
@@ -761,9 +752,8 @@ export default function TratamientosScreen() {
 // ─── ESTILOS ─────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safeArea:      { flex: 1, backgroundColor: '#D4F5E2' },
-  screenBg:      { flex: 1, width: '100%' },
-  screenBgImg:   { width: '100%', height: '100%' },
+  safeArea:      { flex: 1, backgroundColor: '#C8F0D8' },
+  screenBg:      { flex: 1, width: '100%', backgroundColor: '#C8F0D8' },
   scroll:        { flex: 1, backgroundColor: 'transparent' },
   scrollContent: { flexGrow: 1 },
 
@@ -788,7 +778,7 @@ const s = StyleSheet.create({
   },
 
   // Demo banner
-  demoBanner:    { backgroundColor: '#FFF8E1', borderRadius: 10, padding: 10, marginBottom: 16 },
+  demoBanner:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFF8E1', borderRadius: 10, padding: 10, marginBottom: 16 },
   demoBannerTxt: { fontSize: 12, color: '#F5A623', textAlign: 'center' },
 
   // Sección row
@@ -831,7 +821,8 @@ const s = StyleSheet.create({
   },
 
   // Sección sugeridos
-  secSugeridosTitulo: { fontSize: 16, fontWeight: '700', color: '#2C2C2C', marginTop: 24, marginBottom: 12 },
+  secSugeridosRow:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 24, marginBottom: 12 },
+  secSugeridosTitulo: { fontSize: 16, fontWeight: '700', color: '#2C2C2C' },
 
   // Card sugerido (blanco)
   cardSugerido: {

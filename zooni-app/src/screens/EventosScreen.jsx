@@ -31,6 +31,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { fetchHome, fetchEventos, agregarEventoAlCalendario } from '../services/api';
 import HamburgerDrawer from '../components/HamburgerDrawer';
+import { DEMO_USUARIO, DEMO_MASCOTA_ACTIVA } from '../constants/demoUsuario';
 
 // ─────────────────────────────────────────────────────────────
 // DATOS DE EJEMPLO — se usan cuando el backend no está disponible
@@ -599,8 +600,8 @@ export default function EventosScreen() {
       <HamburgerDrawer
         visible={drawerVisible}
         onClose={() => setDrawerVisible(false)}
-        usuario={homeData?.usuario}
-        mascotaActiva={homeData?.mascotaActiva}
+        usuario={homeData?.usuario ?? DEMO_USUARIO}
+        mascotaActiva={homeData?.mascotaActiva ?? DEMO_MASCOTA_ACTIVA}
         activeRoute="Eventos"
       />
     </View>

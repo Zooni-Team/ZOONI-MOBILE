@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { fetchAmigos } from '../../api/comunidad';
 
 export default function TabAmigos({ onVerEnMapa }) {
@@ -14,7 +15,7 @@ export default function TabAmigos({ onVerEnMapa }) {
 
   if (!amigos.length) return (
     <View style={styles.vacio}>
-      <Text style={styles.vacioIco}>👥</Text>
+      <Ionicons name="people-outline" size={36} color="#CCCCCC" style={{ marginBottom: 8 }} />
       <Text style={styles.vacioText}>No tenés amigos agregados aún</Text>
     </View>
   );
@@ -26,7 +27,7 @@ export default function TabAmigos({ onVerEnMapa }) {
       renderItem={({ item: a }) => (
         <View style={styles.item}>
           <View style={[styles.avatar, { borderColor: a.online ? '#2DBD72' : '#CCCCCC' }]}>
-            <Text style={{ fontSize: 18 }}>👤</Text>
+            <Ionicons name="person" size={18} color="#AAAAAA" />
           </View>
           <View style={styles.info}>
             <Text style={styles.nombre}>{a.nombre}</Text>
@@ -44,7 +45,6 @@ export default function TabAmigos({ onVerEnMapa }) {
 
 const styles = StyleSheet.create({
   vacio:      { alignItems: 'center', paddingTop: 32 },
-  vacioIco:   { fontSize: 36, marginBottom: 8 },
   vacioText:  { color: '#6B6B6B', fontSize: 14 },
   item:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
   avatar:     { width: 40, height: 40, borderRadius: 20, borderWidth: 2, backgroundColor: '#F0F0F0', alignItems: 'center', justifyContent: 'center', marginRight: 10 },

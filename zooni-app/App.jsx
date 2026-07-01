@@ -18,6 +18,7 @@ import ClosetScreen      from './src/screens/ClosetScreen';
 import FichaMedicaScreen from './src/screens/FichaMedicaScreen';
 import ConsejosScreen from './src/screens/ConsejosScreen';
 import TratamientosScreen from './src/screens/TratamientosScreen';
+import VacunasScreen from './src/screens/VacunasScreen';
 import EventosScreen     from './src/screens/EventosScreen';
 
 const Stack = createNativeStackNavigator();
@@ -65,6 +66,7 @@ export default function App() {
           <Stack.Screen name="Perfil"        component={PlaceholderScreen} />
           <Stack.Screen name="Consejos" component={ConsejosScreen} />
           <Stack.Screen name="Tratamientos" component={TratamientosScreen} />
+          <Stack.Screen name="Vacunas" component={VacunasScreen} />
           <Stack.Screen name="Configuracion" component={PlaceholderScreen} />
           <Stack.Screen name="Notificaciones" component={PlaceholderScreen} />
         </Stack.Navigator>

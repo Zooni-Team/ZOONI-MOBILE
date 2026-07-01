@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Linking } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function PopupServicio({ servicio, onClose }) {
   const translateY = useRef(new Animated.Value(40)).current;
@@ -23,13 +24,28 @@ export default function PopupServicio({ servicio, onClose }) {
       <View style={styles.header}>
         <Text style={styles.nombre}>{servicio.nombre}</Text>
         <TouchableOpacity onPress={onClose} accessibilityLabel="Cerrar">
-          <Text style={styles.cerrar}>✕</Text>
+          <Ionicons name="close" size={18} color="#6B6B6B" />
         </TouchableOpacity>
       </View>
       <Text style={styles.tipo}>{servicio.tipo?.charAt(0).toUpperCase() + servicio.tipo?.slice(1)}</Text>
-      {servicio.direccion   && <Text style={styles.info}>📍 {servicio.direccion}</Text>}
-      {servicio.telefono    && <Text style={styles.info}>📞 {servicio.telefono}</Text>}
-      {servicio.descripcion && <Text style={styles.info}>🔬 {servicio.descripcion}</Text>}
+      {servicio.direccion && (
+        <View style={styles.infoRow}>
+          <Ionicons name="location-outline" size={13} color="#6B6B6B" />
+          <Text style={styles.info}>{servicio.direccion}</Text>
+        </View>
+      )}
+      {servicio.telefono && (
+        <View style={styles.infoRow}>
+          <Ionicons name="call-outline" size={13} color="#6B6B6B" />
+          <Text style={styles.info}>{servicio.telefono}</Text>
+        </View>
+      )}
+      {servicio.descripcion && (
+        <View style={styles.infoRow}>
+          <Ionicons name="document-text-outline" size={13} color="#6B6B6B" />
+          <Text style={styles.info}>{servicio.descripcion}</Text>
+        </View>
+      )}
       <TouchableOpacity style={styles.btnMaps} onPress={abrirMaps}>
         <Text style={styles.btnMapsText}>Ver en Google Maps</Text>
       </TouchableOpacity>
@@ -46,9 +62,9 @@ const styles = StyleSheet.create({
   },
   header:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   nombre:  { fontSize: 15, fontWeight: '700', color: '#2C2C2C', flex: 1 },
-  cerrar:  { fontSize: 18, color: '#6B6B6B', paddingLeft: 8 },
   tipo:    { fontSize: 12, fontWeight: '600', color: '#2DBD72', marginBottom: 8 },
-  info:    { fontSize: 13, color: '#6B6B6B', marginBottom: 4 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  info:    { fontSize: 13, color: '#6B6B6B' },
   btnMaps: { backgroundColor: '#2DBD72', borderRadius: 20, paddingVertical: 10, alignItems: 'center', marginTop: 10 },
   btnMapsText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });

@@ -9,7 +9,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Image,
-  ImageBackground,
   Platform,
   SafeAreaView,
   ScrollView,
@@ -25,7 +24,7 @@ import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
 
 import { getCategoriaInfo } from '../constants/categoriasConsejos';
-import { resolvePetImageSource, HOME_BACKGROUND } from '../constants/homeAssets';
+import { resolvePetImageSource } from '../constants/homeAssets';
 
 // ─── API ──────────────────────────────────────────────────────────────────────
 
@@ -106,22 +105,10 @@ const DEMO_CONSEJOS = [
   },
 ];
 
-// ─── COMPONENTE IMAGEN MASCOTA (mismo patrón que HomeScreen) ─────────────────
+// ─── COMPONENTE IMAGEN MASCOTA ────────────────────────────────────────────────
 
 function PetIllustration({ source, label }) {
-  if (Platform.OS === 'web') {
-    return (
-      <Image source={source} resizeMode="contain" accessibilityLabel={label}
-        style={[st.petImage, { filter: 'drop-shadow(4px 10px 14px rgba(36,90,66,0.35))' }]} />
-    );
-  }
-  return (
-    <Image source={source} resizeMode="contain" accessibilityLabel={label}
-      style={[st.petImage, {
-        shadowColor: '#245a42', shadowOffset: { width: 4, height: 10 },
-        shadowOpacity: 0.35, shadowRadius: 14, elevation: 8,
-      }]} />
-  );
+  return <Image source={source} resizeMode="contain" accessibilityLabel={label} style={st.petImage} />;
 }
 
 // ─── SKELETON ─────────────────────────────────────────────────────────────────
@@ -186,8 +173,8 @@ function ConsejoCard({ consejo, index }) {
         <View style={[st.cardBorder, { backgroundColor: info.acento }]} />
         {/* Encabezado */}
         <View style={[st.cardHead, { backgroundColor: info.fondo }]}>
-          <View style={[st.emojiCircle, { backgroundColor: hexToRgba(info.acento, 0.15) }]}>
-            <Text style={st.emojiTxt}>{info.emoji}</Text>
+          <View style={[st.iconoCircle, { backgroundColor: hexToRgba(info.acento, 0.15) }]}>
+            <Ionicons name={info.icono} size={18} color={info.acento} />
           </View>
           <Text style={[st.cardCateg, { color: info.acento }]}>{info.nombre}</Text>
         </View>
@@ -297,13 +284,13 @@ export default function ConsejosScreen() {
   );
 
   const tituloHeader = useMemo(() => {
-    if (!mascota) return 'Curiosidades 🐾';
+    if (!mascota) return 'Curiosidades';
     if (mascota.raza && mascota.raza.toLowerCase() !== 'mestizo')
-      return `Curiosidades de ${mascota.raza} 🐾`;
+      return `Curiosidades de ${mascota.raza}`;
     const esp = mascota.especie
       ? mascota.especie.charAt(0).toUpperCase() + mascota.especie.slice(1).toLowerCase()
       : 'Mascota';
-    return `Curiosidades de ${esp} 🐾`;
+    return `Curiosidades de ${esp}`;
   }, [mascota]);
 
   const petImg = useMemo(
@@ -315,12 +302,7 @@ export default function ConsejosScreen() {
     <SafeAreaView style={st.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      <ImageBackground
-        source={HOME_BACKGROUND}
-        style={st.screenBackground}
-        imageStyle={st.screenBackgroundImage}
-        resizeMode="cover"
-      >
+      <View style={st.screenBackground}>
         {/* Header */}
         <View style={st.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={st.headerBtn}
@@ -348,8 +330,9 @@ export default function ConsejosScreen() {
             {/* Banner demo */}
             {esDemo && !loading && (
               <View style={st.demoBanner}>
+                <Ionicons name="bulb-outline" size={14} color="#F5A623" />
                 <Text style={st.demoBannerTxt}>
-                  💡 Consejos generales — conectá el backend para ver los de tu mascota
+                  Consejos generales — conectá el backend para ver los de tu mascota
                 </Text>
               </View>
             )}
@@ -390,7 +373,7 @@ export default function ConsejosScreen() {
 
           </View>
         </ScrollView>
-      </ImageBackground>
+      </View>
     </SafeAreaView>
   );
 }
@@ -398,9 +381,8 @@ export default function ConsejosScreen() {
 // ─── ESTILOS ─────────────────────────────────────────────────────────────────
 
 const st = StyleSheet.create({
-  safeArea:             { flex: 1, backgroundColor: '#D4F5E2' },
-  screenBackground:     { flex: 1, width: '100%' },
-  screenBackgroundImage: { width: '100%', height: '100%' },
+  safeArea:             { flex: 1, backgroundColor: '#C8F0D8' },
+  screenBackground:     { flex: 1, width: '100%', backgroundColor: '#C8F0D8' },
   scroll:               { flex: 1, backgroundColor: 'transparent' },
   scrollContent:        { flexGrow: 1, backgroundColor: 'transparent' },
 
@@ -413,7 +395,7 @@ const st = StyleSheet.create({
 
   whiteCard: { backgroundColor: '#FFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40, minHeight: 400 },
 
-  demoBanner:    { backgroundColor: '#FFF8E1', borderRadius: 10, padding: 10, marginBottom: 12 },
+  demoBanner:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFF8E1', borderRadius: 10, padding: 10, marginBottom: 12 },
   demoBannerTxt: { fontSize: 12, color: '#F5A623', textAlign: 'center' },
 
   chipsRow: { paddingBottom: 16, gap: 8, flexDirection: 'row', alignItems: 'center' },
@@ -429,8 +411,7 @@ const st = StyleSheet.create({
   },
   cardBorder:  { position: 'absolute', left: 0, top: 0, width: 4, height: '100%', zIndex: 1 },
   cardHead:    { flexDirection: 'row', alignItems: 'center', paddingLeft: 20, paddingRight: 16, paddingVertical: 12, gap: 10 },
-  emojiCircle: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
-  emojiTxt:    { fontSize: 20 },
+  iconoCircle: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   cardCateg:   { fontSize: 14, fontWeight: '700', letterSpacing: 0.3 },
   cardSep:     { height: 1, backgroundColor: '#F0F0F0' },
   cardBody:    { paddingLeft: 24, paddingRight: 20, paddingTop: 14, paddingBottom: 16 },

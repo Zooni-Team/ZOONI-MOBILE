@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { fetchServicios } from '../../api/comunidad';
 
 const FILTROS = [
@@ -7,7 +8,7 @@ const FILTROS = [
   { v: 'paseador', l: 'Paseador' }, { v: 'petshop', l: 'Pet Shop' },
   { v: 'peluqueria', l: 'Peluquería' },
 ];
-const EMOJIS  = { veterinaria: '🏥', paseador: '🦮', petshop: '🛍️', peluqueria: '✂️' };
+const ICONOS  = { veterinaria: 'medkit-outline', paseador: 'walk-outline', petshop: 'bag-outline', peluqueria: 'cut-outline' };
 const COLORES = { veterinaria: '#E63946', paseador: '#F5A623', petshop: '#F5C842', peluqueria: '#9B59B6' };
 
 export default function TabServicios({ bbox, onSeleccionar }) {
@@ -39,7 +40,7 @@ export default function TabServicios({ bbox, onSeleccionar }) {
         renderItem={({ item: s }) => (
           <TouchableOpacity style={styles.item} onPress={() => onSeleccionar(s)}>
             <View style={[styles.iconCircle, { backgroundColor: COLORES[s.tipo] || '#888' }]}>
-              <Text style={{ fontSize: 16 }}>{EMOJIS[s.tipo] || '📍'}</Text>
+              <Ionicons name={ICONOS[s.tipo] || 'location-outline'} size={16} color="#FFF" />
             </View>
             <View style={styles.info}>
               <Text style={styles.nombre}>{s.nombre}</Text>
