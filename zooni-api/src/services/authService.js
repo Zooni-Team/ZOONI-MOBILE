@@ -1,27 +1,24 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { getPool, sql } from '../config/database.js';
+import pool from '../config/pgPool.js';
 
 export async function loginAsync(email, password) {
   const query = `
-    SELECT Id_User, Nombre, Contrasena
-    FROM [User]
-    WHERE Mail = @Email AND Estado = 1
+    SELECT id_user, nombre, contrasena
+    FROM "user"
+    WHERE mail = $1 AND estado = true
   `;
 
-  const pool = await getPool();
-  const result = await pool.request()
-    .input('Email', sql.NVarChar, email)
-    .query(query);
+  const result = await pool.query(query, [email]);
 
-  if (result.recordset.length === 0) {
+  if (result.rows.length === 0) {
     return null;
   }
 
-  const user = result.recordset[0];
-  const userId = user.Id_User;
-  const nombre = user.Nombre;
-  const storedHash = user.Contrasena;
+  const user = result.rows[0];
+  const userId = user.id_user;
+  const nombre = user.nombre;
+  const storedHash = user.contrasena;
 
   // TODO: Reemplazar con bcrypt cuando las contraseñas estén hasheadas
   // const isValid = await bcrypt.compare(password, storedHash);
