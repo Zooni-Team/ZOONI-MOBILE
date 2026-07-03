@@ -757,16 +757,13 @@ const s = StyleSheet.create({
   scroll:        { flex: 1, backgroundColor: 'transparent' },
   scrollContent: { flexGrow: 1 },
 
-  // Header — flota transparente sobre el contenido, sin barra de fondo
-  header:    {
-    position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
-    height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, backgroundColor: 'transparent',
-  },
+  // Header
+  header:    { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, backgroundColor: 'transparent' },
   headerBtn: { width: 44, alignItems: 'center', justifyContent: 'center' },
 
   // Hero
   hero:         { alignItems: 'center', paddingTop: 12, paddingBottom: 0, backgroundColor: 'transparent' },
-  petCircle:    { position: 'absolute', width: 130, height: 130, borderRadius: 65, backgroundColor: '#A8E6C0', opacity: 0.45, top: 0, alignSelf: 'center' },
+  petCircle:    { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: '#A8E6C0', opacity: 0.45, top: -15, alignSelf: 'center' },
   petImg:       { width: 110, height: 110, zIndex: 1 },
   heroTitulo:   { fontSize: 24, fontWeight: '800', color: '#2C2C2C', textAlign: 'center', marginTop: 10, paddingHorizontal: 20 },
   heroInfo:     { alignItems: 'center', marginTop: 6, marginBottom: 22, gap: 2 },

@@ -32,7 +32,6 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { calcularEdad } from '../utils/calcularEdad';
 import { resolvePetImage } from '../constants/petImages';
-import HamburgerDrawer from '../components/HamburgerDrawer';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -407,16 +406,16 @@ const DEMO_SUGERIDAS = [
 // ─── SCREEN PRINCIPAL ─────────────────────────────────────────────────────────
 
 export default function VacunasScreen() {
+  const navigation = useNavigation();
   const route = useRoute();
   const petId = route.params?.petId;
 
-  const { usuario, mascotaActiva: mascotaActivaDemo } = useUsuarioActivo();
+  const { mascotaActiva: mascotaActivaDemo } = useUsuarioActivo();
 
   const [mascota,          setMascota]          = useState(null);
   const [vacunasAplicadas, setVacunasAplicadas] = useState([]);
   const [vacunasSugeridas, setVacunasSugeridas] = useState([]);
   const [loading,          setLoading]          = useState(true);
-  const [drawerOpen,       setDrawerOpen]       = useState(false);
 
   const [modalVisible,          setModalVisible]          = useState(false);
   const [modalModo,              setModalModo]             = useState('añadir'); // 'añadir' | 'marcar' | 'editar'
@@ -634,9 +633,9 @@ export default function VacunasScreen() {
 
         {/* Header mínimo */}
         <View style={s.header}>
-          <TouchableOpacity onPress={() => setDrawerOpen(true)} style={s.headerBtn}
-            accessibilityLabel="Abrir menú" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Ionicons name="menu" size={26} color="#2C2C2C" />
+          <TouchableOpacity onPress={() => navigation.goBack()} style={s.headerBtn}
+            accessibilityLabel="Volver" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Ionicons name="arrow-back" size={26} color="#2C2C2C" />
           </TouchableOpacity>
         </View>
 
@@ -798,14 +797,6 @@ export default function VacunasScreen() {
         onSeleccionar={(t) => { setFormTipo(t); setShowTipoPicker(false); }}
         onCerrar={() => setShowTipoPicker(false)}
       />
-
-      <HamburgerDrawer
-        visible={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        usuario={usuario}
-        mascotaActiva={mascota ?? mascotaActivaDemo}
-        activeRoute="FichaMedica"
-      />
     </SafeAreaView>
   );
 }
@@ -819,7 +810,7 @@ const s = StyleSheet.create({
   scrollContent: { flexGrow: 1, paddingHorizontal: 20, paddingBottom: 40 },
 
   // Header
-  header:    { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 0, backgroundColor: 'transparent' },
+  header:    { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, backgroundColor: 'transparent' },
   headerBtn: { width: 32, alignItems: 'center', justifyContent: 'center' },
 
   // Hero card blanco flotante
@@ -828,7 +819,7 @@ const s = StyleSheet.create({
     paddingTop: 20, paddingBottom: 20, marginBottom: 20,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4,
   },
-  petCircle:    { position: 'absolute', width: 130, height: 130, borderRadius: 65, backgroundColor: '#A8E6C0', opacity: 0.45, top: 4, alignSelf: 'center' },
+  petCircle:    { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: '#A8E6C0', opacity: 0.45, top: -15, alignSelf: 'center' },
   petImg:       { width: 110, height: 110, zIndex: 1 },
   heroTitulo:   { fontSize: 24, fontWeight: '800', color: '#2C2C2C', textAlign: 'center', marginTop: 10, paddingHorizontal: 20 },
   heroInfo:     { alignItems: 'center', marginTop: 6, gap: 2 },

@@ -283,15 +283,6 @@ export default function ConsejosScreen() {
     [consejos, categoriaActiva]
   );
 
-  const tituloHeader = useMemo(() => {
-    if (!mascota) return 'Curiosidades';
-    if (mascota.raza && mascota.raza.toLowerCase() !== 'mestizo')
-      return `Curiosidades de ${mascota.raza}`;
-    const esp = mascota.especie
-      ? mascota.especie.charAt(0).toUpperCase() + mascota.especie.slice(1).toLowerCase()
-      : 'Mascota';
-    return `Curiosidades de ${esp}`;
-  }, [mascota]);
 
   const petImg = useMemo(
     () => resolvePetImageSource({ fotoUrl: mascota?.fotoUrl ?? null }),
@@ -309,8 +300,6 @@ export default function ConsejosScreen() {
             accessibilityLabel="Volver" hitSlop={{ top:10, bottom:10, left:10, right:10 }}>
             <Ionicons name="arrow-back" size={24} color="#2C2C2C" />
           </TouchableOpacity>
-          <Text style={st.headerTitle} numberOfLines={2}>{tituloHeader}</Text>
-          <View style={st.headerBtn} />
         </View>
 
         <ScrollView style={st.scroll} contentContainerStyle={st.scrollContent}
@@ -388,7 +377,6 @@ const st = StyleSheet.create({
 
   header:      { height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, backgroundColor: 'transparent' },
   headerBtn:   { width: 40, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { flex: 1, maxWidth: 220, fontSize: 15, fontWeight: '700', color: '#2C2C2C', textAlign: 'center', lineHeight: 20 },
 
   hero:    { alignItems: 'center', justifyContent: 'center', marginTop: 8, marginBottom: 0, paddingVertical: 16 },
   petImage: { width: 200, height: 200, backgroundColor: 'transparent' },

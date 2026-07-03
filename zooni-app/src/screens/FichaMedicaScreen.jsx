@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  Linking,
   Modal,
   Platform,
   SafeAreaView,
@@ -25,6 +24,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as SecureStore from 'expo-secure-store';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import axios from 'axios';
 
 import { calcularEdad } from '../utils/calcularEdad';
@@ -160,6 +161,14 @@ const fp = StyleSheet.create({
   btnOkTxt:   { fontSize: 15, fontWeight: '700', color: '#FFF' },
 });
 
+// ─── DATOS DEMO (sin backend conectado — mismos datos que Vacunas/Tratamientos) ──
+
+const DEMO_MASCOTA = {
+  id: 1, nombre: 'Titán', especie: 'perro',
+  raza: 'Labrador Retriever', peso: 20.40,
+  fecha_nacimiento: '2022-02-15', imagen_asset: 'perro_default',
+};
+
 // ─── COMPONENTES ─────────────────────────────────────────────────────────────
 
 /** PetIllustration — Imagen de la mascota, sin sombra (evita el artefacto rectangular). */
@@ -294,40 +303,6 @@ export default function FichaMedicaScreen() {
     finally { setGuardandoFecha(false); }
   };
 
-  // ── PDF ───────────────────────────────────────────────────────────────────
-  const generarPDF = async () => {
-    setGenerandoPdf(true);
-    try {
-      const token  = await getToken();
-      const pdfUrl = `${BASE_URL}/mascotas/${petId}/pdf`;
-
-      if (Platform.OS === 'web') {
-        // Web: fetch + blob + link de descarga
-        const res  = await fetch(pdfUrl, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const blob = await res.blob();
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
-        a.href = url; a.download = `ficha-${mascota?.nombre ?? 'mascota'}.pdf`; a.click();
-        URL.revokeObjectURL(url);
-      } else {
-        // Mobile: abrir URL del backend en el navegador del sistema.
-        // El backend debe soportar token por query param para este caso.
-        const urlConToken = token ? `${pdfUrl}?token=${token}` : pdfUrl;
-        const soporta = await Linking.canOpenURL(urlConToken);
-        if (soporta) {
-          await Linking.openURL(urlConToken);
-        } else {
-          Alert.alert('PDF', 'Instalá expo-file-system y expo-sharing para descargar el PDF directamente.');
-        }
-      }
-    } catch {
-      Alert.alert('Error', 'No se pudo generar el PDF. Verificá tu conexión.');
-    } finally {
-      setGenerandoPdf(false);
-    }
-  };
-
   // ── Helpers ───────────────────────────────────────────────────────────────
   const formatPeso = (p) => {
     if (p == null) return 'Sin registrar';
@@ -336,10 +311,105 @@ export default function FichaMedicaScreen() {
 
   const capitalizar = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
 
+  const formatFechaLarga = (iso) => {
+    if (!iso) return null;
+    const [y, mo, d] = iso.split('-').map(Number);
+    return new Date(y, mo - 1, d).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
+  // ── PDF ───────────────────────────────────────────────────────────────────
+  // Se genera localmente (expo-print) con los datos ya cargados en pantalla,
+  // sin depender de un endpoint de backend que hoy no existe.
+  const construirHtmlFicha = () => {
+    const fechaGeneracion = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const propietario = `${usuario?.nombre ?? ''} ${usuario?.apellido ?? ''}`.trim() || '—';
+    const fechaNac = formatFechaLarga(m.fecha_nacimiento) ?? '—';
+
+    return `
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <style>
+            * { box-sizing: border-box; }
+            body { font-family: Helvetica, Arial, sans-serif; margin: 0; color: #2C2C2C; }
+            .header { background-color: #2DBD72; padding: 32px 40px; color: #FFFFFF; }
+            .header h1 { margin: 0; font-size: 26px; letter-spacing: 0.4px; }
+            .header p { margin: 6px 0 0; font-size: 13px; opacity: 0.92; }
+            .container { padding: 32px 40px; }
+            .section-title {
+              font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+              color: #6B6B6B; border-bottom: 2px solid #EFEFEF; padding-bottom: 6px; margin: 28px 0 12px;
+            }
+            .section-title:first-of-type { margin-top: 0; }
+            table { width: 100%; border-collapse: collapse; }
+            td { padding: 10px 0; font-size: 14px; border-bottom: 1px solid #F0F0F0; }
+            td.label { color: #6B6B6B; width: 45%; }
+            td.value { font-weight: 700; text-align: right; color: #2C2C2C; }
+            .footer {
+              margin-top: 48px; padding-top: 16px; border-top: 1px solid #EFEFEF;
+              font-size: 11px; color: #AAAAAA; text-align: center;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Ficha Médica Digital</h1>
+            <p>${m.nombre}${m.especie ? ` · ${capitalizar(m.especie)}` : ''}</p>
+          </div>
+          <div class="container">
+            <div class="section-title">Datos de la mascota</div>
+            <table>
+              <tr><td class="label">Nombre</td><td class="value">${m.nombre}</td></tr>
+              <tr><td class="label">Especie</td><td class="value">${capitalizar(m.especie) || '—'}</td></tr>
+              <tr><td class="label">Raza</td><td class="value">${m.raza || 'Sin especificar'}</td></tr>
+              <tr><td class="label">Peso</td><td class="value">${formatPeso(m.peso)}</td></tr>
+              <tr><td class="label">Fecha de nacimiento</td><td class="value">${fechaNac}</td></tr>
+              <tr><td class="label">Edad</td><td class="value">${edad}</td></tr>
+            </table>
+
+            <div class="section-title">Propietario</div>
+            <table>
+              <tr><td class="label">Nombre</td><td class="value">${propietario}</td></tr>
+            </table>
+
+            <div class="footer">
+              Documento generado el ${fechaGeneracion} · Zooni — Cuidado inteligente para tu mascota
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  };
+
+  const generarPDF = async () => {
+    setGenerandoPdf(true);
+    try {
+      const html = construirHtmlFicha();
+      if (Platform.OS === 'web') {
+        await Print.printAsync({ html });
+      } else {
+        const { uri } = await Print.printToFileAsync({ html });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: `Ficha médica de ${m.nombre}`,
+            UTI: 'com.adobe.pdf',
+          });
+        } else {
+          Alert.alert('PDF generado', `El archivo se guardó en:\n${uri}`);
+        }
+      }
+    } catch {
+      Alert.alert('Error', 'No se pudo generar el PDF.');
+    } finally {
+      setGenerandoPdf(false);
+    }
+  };
+
   // Sin petId o error sin mascota (una vez terminada la carga): pantalla demo visual
   const demoMascota = !loading && (!petId || !mascota);
   const interactuable = !loading && !demoMascota;
-  const m = mascota ?? { nombre: 'Tu mascota', especie: 'perro', raza: null, peso: null, fecha_nacimiento: null, imagen_asset: 'perro_default' };
+  const m = mascota ?? DEMO_MASCOTA;
   const edad = calcularEdad(m.fecha_nacimiento);
   const petImg = resolvePetImage(m.imagen_asset ?? m.imagenAsset);
 
@@ -429,7 +499,7 @@ export default function FichaMedicaScreen() {
           <BotonNav icono="bulb-outline"          iconoColor="#F5C842" texto="Consejos y curiosidades"
             onPress={() => navigation.navigate('Consejos', { petId: petId ?? 0 })} />
 
-          <TouchableOpacity style={s.pdfBtn} onPress={generarPDF} disabled={generandoPdf || !interactuable}
+          <TouchableOpacity style={s.pdfBtn} onPress={generarPDF} disabled={generandoPdf || loading}
             accessibilityLabel="Descargar ficha médica en PDF">
             {generandoPdf
               ? <ActivityIndicator size="small" color="#FFF" />
