@@ -9,6 +9,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 
 import { getStoredToken } from './src/services/api';
+import { resetChats } from './src/services/chatStore';
 import HomeScreen        from './src/screens/HomeScreen';
 import MatchScreen       from './src/screens/MatchScreen';
 import MatchFiltersScreen from './src/screens/MatchFiltersScreen';
@@ -21,6 +22,7 @@ import TratamientosScreen from './src/screens/TratamientosScreen';
 import VacunasScreen from './src/screens/VacunasScreen';
 import EventosScreen     from './src/screens/EventosScreen';
 import CalendarioScreen  from './src/screens/CalendarioScreen';
+import ChatScreen        from './src/screens/ChatScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -28,6 +30,12 @@ export default function App() {
   const [initialRoute, setInitialRoute] = useState(
     Platform.OS === 'web' ? 'Home' : null
   );
+
+  // Los chats de Match son una demo local (sin backend de chat conectado
+  // todavía): se reinician en cada arranque de la app / recarga de la página.
+  useEffect(() => {
+    resetChats();
+  }, []);
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
@@ -61,6 +69,7 @@ export default function App() {
           <Stack.Screen name="MatchFilters"  component={MatchFiltersScreen} />
           <Stack.Screen name="Planificador"  component={PlaceholderScreen} />
           <Stack.Screen name="Calendario"    component={CalendarioScreen} />
+          <Stack.Screen name="Chat"          component={ChatScreen} />
           <Stack.Screen name="Eventos"       component={EventosScreen} />
           <Stack.Screen name="ChatBot"       component={PlaceholderScreen} />
           <Stack.Screen name="Closet"        component={ClosetScreen} />

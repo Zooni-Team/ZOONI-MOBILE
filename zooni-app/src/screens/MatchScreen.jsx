@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar,
-  ImageBackground, useWindowDimensions, Alert,
+  ImageBackground, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -221,8 +221,13 @@ export default function MatchScreen() {
         matchUser={matchOverlay}
         currentUserPhoto={usuario?.fotoPerfil ?? usuario?.foto_perfil_url}
         onSendMessage={() => {
+          const chat = matchOverlay;
           setMatchOverlay(null);
-          Alert.alert('Chat', 'El chat estará disponible próximamente.');
+          navigation.navigate('Chat', {
+            chatId: chat.chatId,
+            nombre: chat.nombre,
+            fotoPerfilUrl: chat.foto_perfil_url,
+          });
         }}
         onKeepExploring={() => setMatchOverlay(null)}
       />

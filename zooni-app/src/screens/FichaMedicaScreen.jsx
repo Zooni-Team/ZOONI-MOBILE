@@ -368,7 +368,7 @@ export default function FichaMedicaScreen() {
               <Text style={s.heroNombre}>{m.nombre}</Text>
             )}
             {loading ? (
-              <SkeletonLoader width={160} height={160} borderRadius={20} />
+              <SkeletonLoader width={110} height={110} borderRadius={20} />
             ) : (
               <PetIllustration source={petImg} label={`Ilustración de ${m.nombre}`} />
             )}
@@ -426,8 +426,6 @@ export default function FichaMedicaScreen() {
             onPress={() => navigation.navigate('Vacunas', { petId: petId ?? 0 })} />
           <BotonNav icono="medkit-outline"        iconoColor="#E63946" texto="Tratamientos"
             onPress={() => navigation.navigate('Tratamientos', { petId: petId ?? 0 })} />
-          <BotonNav icono="calendar-outline"      iconoColor="#5BC8D0" texto="Calendario de Cuidados"
-            onPress={() => navigation.navigate('Calendario', { petId: petId ?? 0 })} />
           <BotonNav icono="bulb-outline"          iconoColor="#F5C842" texto="Consejos y curiosidades"
             onPress={() => navigation.navigate('Consejos', { petId: petId ?? 0 })} />
 
@@ -477,7 +475,7 @@ const s = StyleSheet.create({
     elevation: 10,
     zIndex: 2,
   },
-  heroImg:      { width: 160, height: 160 },
+  heroImg:      { width: 110, height: 110 },
 
   whiteCard: { backgroundColor: '#FFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 40, marginTop: 16 },
 

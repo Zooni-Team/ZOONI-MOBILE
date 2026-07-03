@@ -757,8 +757,11 @@ const s = StyleSheet.create({
   scroll:        { flex: 1, backgroundColor: 'transparent' },
   scrollContent: { flexGrow: 1 },
 
-  // Header
-  header:    { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, backgroundColor: 'transparent' },
+  // Header — flota transparente sobre el contenido, sin barra de fondo
+  header:    {
+    position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
+    height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, backgroundColor: 'transparent',
+  },
   headerBtn: { width: 44, alignItems: 'center', justifyContent: 'center' },
 
   // Hero
