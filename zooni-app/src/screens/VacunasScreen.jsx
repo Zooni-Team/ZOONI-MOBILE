@@ -618,7 +618,9 @@ export default function VacunasScreen() {
     ? parseFloat(m.peso).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' kg'
     : '—';
 
-  const tituloModal = modalModo === 'editar' ? 'Editar vacuna' : 'Nuevo evento';
+  const tituloModal = modalModo === 'editar' ? 'Editar vacuna'
+    : modalModo === 'marcar' ? 'Marcar vacuna'
+    : 'Nueva vacuna';
   const tituloEditable = modalModo === 'añadir' || modalModo === 'editar';
 
   // ── RENDER ───────────────────────────────────────────────────────────────
@@ -702,7 +704,7 @@ export default function VacunasScreen() {
       <Modal visible={modalVisible} transparent animationType="none" onRequestClose={cerrarModal}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={cerrarModal}>
-            <TouchableOpacity activeOpacity={1} onPress={Keyboard.dismiss}>
+            <TouchableOpacity activeOpacity={1}>
               <Animated.View style={[s.modalCard, { transform: [{ scale: modalScale }], opacity: modalOpacity }]}>
                 <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
@@ -711,7 +713,7 @@ export default function VacunasScreen() {
                   {/* Título / nombre */}
                   <TextInput
                     style={[s.input, !tituloEditable && s.inputDisabled, formErrors.titulo && s.inputError]}
-                    placeholder="Título del evento"
+                    placeholder="Nombre de la vacuna"
                     placeholderTextColor="#AAAAAA"
                     value={formTitulo}
                     editable={tituloEditable}

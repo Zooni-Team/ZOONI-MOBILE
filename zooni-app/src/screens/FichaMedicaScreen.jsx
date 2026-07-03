@@ -426,6 +426,8 @@ export default function FichaMedicaScreen() {
             onPress={() => navigation.navigate('Vacunas', { petId: petId ?? 0 })} />
           <BotonNav icono="medkit-outline"        iconoColor="#E63946" texto="Tratamientos"
             onPress={() => navigation.navigate('Tratamientos', { petId: petId ?? 0 })} />
+          <BotonNav icono="calendar-outline"      iconoColor="#5BC8D0" texto="Calendario de Cuidados"
+            onPress={() => navigation.navigate('Calendario', { petId: petId ?? 0 })} />
           <BotonNav icono="bulb-outline"          iconoColor="#F5C842" texto="Consejos y curiosidades"
             onPress={() => navigation.navigate('Consejos', { petId: petId ?? 0 })} />
 

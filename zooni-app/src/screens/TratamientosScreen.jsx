@@ -645,7 +645,7 @@ export default function TratamientosScreen() {
       <Modal visible={modalVisible} transparent animationType="none" onRequestClose={cerrarModal}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={cerrarModal}>
-            <TouchableOpacity activeOpacity={1} onPress={Keyboard.dismiss}>
+            <TouchableOpacity activeOpacity={1}>
               <Animated.View style={[s.modalCard, { transform: [{ scale: modalScale }], opacity: modalOpacity }]}>
                 <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 

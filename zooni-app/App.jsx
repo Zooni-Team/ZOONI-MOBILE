@@ -20,6 +20,7 @@ import ConsejosScreen from './src/screens/ConsejosScreen';
 import TratamientosScreen from './src/screens/TratamientosScreen';
 import VacunasScreen from './src/screens/VacunasScreen';
 import EventosScreen     from './src/screens/EventosScreen';
+import CalendarioScreen  from './src/screens/CalendarioScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -59,7 +60,7 @@ export default function App() {
           <Stack.Screen name="Match"         component={MatchScreen} />
           <Stack.Screen name="MatchFilters"  component={MatchFiltersScreen} />
           <Stack.Screen name="Planificador"  component={PlaceholderScreen} />
-          <Stack.Screen name="Calendario"    component={PlaceholderScreen} />
+          <Stack.Screen name="Calendario"    component={CalendarioScreen} />
           <Stack.Screen name="Eventos"       component={EventosScreen} />
           <Stack.Screen name="ChatBot"       component={PlaceholderScreen} />
           <Stack.Screen name="Closet"        component={ClosetScreen} />

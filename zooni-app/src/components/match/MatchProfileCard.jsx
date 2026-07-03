@@ -6,16 +6,14 @@ import React from 'react';
 import {
   View, Text, StyleSheet, Image, Pressable,
 } from 'react-native';
-import { especieEmoji } from '../../data/matchDemo';
+import { Ionicons } from '@expo/vector-icons';
+import { especieIcono } from '../../data/matchDemo';
 import { resolvePetPhotoSource } from '../../constants/matchAssets';
 
 export default function MatchProfileCard({ perfil, cardHeight, cardWidth, onPress }) {
   const { nombre, edad, barrio, ciudad, foto_perfil_url, mascota, intereses } = perfil;
 
-  const tags = [
-    `${especieEmoji(mascota.especie)} ${mascota.raza}`,
-    ...intereses,
-  ];
+  const tags = [mascota.raza, ...intereses];
   const visibleTags = tags.slice(0, 3);
   const extraCount = tags.length - visibleTags.length;
   const petPhotoSource = resolvePetPhotoSource(mascota);
@@ -37,7 +35,7 @@ export default function MatchProfileCard({ perfil, cardHeight, cardWidth, onPres
             <Image source={{ uri: mascota.avatar_url }} style={styles.petAvatar} />
           ) : (
             <View style={styles.petAvatarFallback}>
-              <Text style={styles.petAvatarEmoji}>{especieEmoji(mascota.especie)}</Text>
+              <Ionicons name={especieIcono(mascota.especie)} size={16} color="#2C2C2C" />
             </View>
           )}
         </View>
@@ -52,8 +50,11 @@ export default function MatchProfileCard({ perfil, cardHeight, cardWidth, onPres
             📍 {barrio}, {ciudad}
           </Text>
           <View style={styles.tagsRow}>
-            {visibleTags.map((tag) => (
+            {visibleTags.map((tag, index) => (
               <View key={tag} style={styles.tag}>
+                {index === 0 && (
+                  <Ionicons name={especieIcono(mascota.especie)} size={12} color="#FFFFFF" style={styles.tagIcon} />
+                )}
                 <Text style={styles.tagText} numberOfLines={1}>{tag}</Text>
               </View>
             ))}
@@ -134,7 +135,6 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: '#FFFFFF',
     backgroundColor: '#F5C842', alignItems: 'center', justifyContent: 'center',
   },
-  petAvatarEmoji: { fontSize: 14 },
   infoOverlay: {
     position: 'absolute',
     left: 0,
@@ -151,9 +151,12 @@ const styles = StyleSheet.create({
   locationText: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   tag: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.45)',
     borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3,
     maxWidth: '48%',
   },
+  tagIcon: { marginRight: 4 },
   tagText: { fontSize: 11, fontWeight: '700', color: '#FFFFFF' },
 });

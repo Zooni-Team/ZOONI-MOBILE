@@ -15,7 +15,7 @@ import {
   Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { especieEmoji, PET_TYPE_OPTIONS } from '../../data/matchDemo';
+import { especieIcono, PET_TYPE_OPTIONS } from '../../data/matchDemo';
 import { resolvePetPhotoSource } from '../../constants/matchAssets';
 
 function especieLabel(especie) {
@@ -80,7 +80,7 @@ export default function MatchProfileDetailModal({ visible, perfil, onClose }) {
                     <Image source={{ uri: mascota.avatar_url }} style={styles.petAvatar} />
                   ) : (
                     <View style={styles.petAvatarFallback}>
-                      <Text style={styles.petAvatarEmoji}>{especieEmoji(mascota.especie)}</Text>
+                      <Ionicons name={especieIcono(mascota.especie)} size={18} color="#2C2C2C" />
                     </View>
                   )}
                 </View>
@@ -95,7 +95,9 @@ export default function MatchProfileDetailModal({ visible, perfil, onClose }) {
             <View style={styles.bodySection}>
               <Text style={styles.sectionTitle}>Mascota</Text>
               <View style={styles.petNameCard}>
-                <Text style={styles.petEmoji}>{especieEmoji(mascota.especie)}</Text>
+                <View style={styles.petEmojiWrap}>
+                  <Ionicons name={especieIcono(mascota.especie)} size={26} color="#27AE60" />
+                </View>
                 <View style={styles.petNameBlock}>
                   <Text style={styles.petName}>{mascota.nombre}</Text>
                   <Text style={styles.petBreed}>{mascota.raza}</Text>
@@ -190,7 +192,6 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: '#FFFFFF',
     backgroundColor: '#F5C842', alignItems: 'center', justifyContent: 'center',
   },
-  petAvatarEmoji: { fontSize: 18 },
   photoCaption: {
     position: 'absolute',
     left: 0,
@@ -227,7 +228,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(45,189,114,0.2)',
   },
-  petEmoji: { fontSize: 36, marginRight: 14 },
+  petEmojiWrap: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#E4F9EC',
+    alignItems: 'center', justifyContent: 'center',
+    marginRight: 14,
+  },
   petNameBlock: { flex: 1 },
   petName: { fontSize: 22, fontWeight: '800', color: '#27AE60' },
   petBreed: { fontSize: 15, color: '#2C2C2C', marginTop: 2, fontWeight: '600' },
