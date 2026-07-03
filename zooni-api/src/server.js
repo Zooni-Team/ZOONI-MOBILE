@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Rutas
 import authRoutes from './routes/auth.js';
@@ -12,6 +14,12 @@ import cartelesRoutes from './routes/carteles.js';
 import amigosRoutes from './routes/amigos.js';
 import ubicacionRoutes from './routes/ubicacion.js';
 import usuariosRoutes from './routes/usuarios.js';
+import perfilRoutes from './routes/perfil.js';
+import publicacionesRoutes from './routes/publicaciones.js';
+
+// __dirname en ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
 
 // Cargar variables de entorno
 dotenv.config();
@@ -32,6 +40,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Archivos estáticos — imágenes subidas por usuarios
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+
 // Logger simple
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
@@ -49,6 +60,8 @@ app.use('/api/v1/carteles', cartelesRoutes);
 app.use('/api/v1/amigos', amigosRoutes);
 app.use('/api/v1/ubicacion', ubicacionRoutes);
 app.use('/api/v1/usuarios', usuariosRoutes);
+app.use('/api/v1/perfil', perfilRoutes);
+app.use('/api/v1/publicaciones', publicacionesRoutes);
 
 // Ruta raíz
 app.get('/', (req, res) => {
@@ -96,6 +109,13 @@ app.listen(PORT, () => {
   console.log(`  GET    /api/v1/notificaciones`);
   console.log(`  PATCH  /api/v1/notificaciones/:id/leer`);
   console.log(`  PATCH  /api/v1/notificaciones/leer-todas`);
+  console.log(`  GET    /api/v1/perfil`);
+  console.log(`  PUT    /api/v1/perfil`);
+  console.log(`  PUT    /api/v1/perfil/foto`);
+  console.log(`  GET    /api/v1/perfil/publicaciones`);
+  console.log(`  POST   /api/v1/publicaciones`);
+  console.log(`  GET    /uploads/perfiles/:filename`);
+  console.log(`  GET    /uploads/publicaciones/:filename`);
   console.log('');
   console.log('Presiona Ctrl+C para detener el servidor');
   console.log('');
