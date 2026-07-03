@@ -14,6 +14,7 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 const STORAGE_KEY = 'zooni_calendario_eventos_demo';
+const SEED_KEY = 'zooni_calendario_seed_inicial_hecho';
 
 async function leerRaw() {
   try {
@@ -57,4 +58,34 @@ export async function agregarEventoCalendario(evento, defaults = []) {
   const nuevos = [...actuales, evento];
   await escribirRaw(nuevos);
   return nuevos;
+}
+
+/**
+ * Sembrado inicial (una sola vez por instalación): los eventos públicos que
+ * el backend/demo marca con `ya_en_calendario: true` se copian al calendario
+ * la primera vez. Después de esa vez, si el usuario los elimina del
+ * calendario NO vuelven a aparecer solos — el usuario decide si los
+ * re-agrega desde EventosScreen.
+ */
+export async function yaSeSembroInicial() {
+  try {
+    const raw = Platform.OS === 'web'
+      ? (typeof localStorage !== 'undefined' ? localStorage.getItem(SEED_KEY) : null)
+      : await SecureStore.getItemAsync(SEED_KEY);
+    return raw === '1';
+  } catch {
+    return false;
+  }
+}
+
+export async function marcarSembradoInicial() {
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof localStorage !== 'undefined') localStorage.setItem(SEED_KEY, '1');
+    } else {
+      await SecureStore.setItemAsync(SEED_KEY, '1');
+    }
+  } catch {
+    // noop
+  }
 }

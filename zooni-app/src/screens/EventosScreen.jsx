@@ -32,7 +32,12 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { fetchHome, fetchEventos, agregarEventoAlCalendario } from '../services/api';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import { DEMO_USUARIO, DEMO_MASCOTA_ACTIVA } from '../constants/demoUsuario';
-import { agregarEventoCalendario, getEventosCalendario } from '../services/calendarioStore';
+import {
+  agregarEventoCalendario,
+  getEventosCalendario,
+  marcarSembradoInicial,
+  yaSeSembroInicial,
+} from '../services/calendarioStore';
 
 // ─────────────────────────────────────────────────────────────
 // DATOS DE EJEMPLO — se usan cuando el backend no está disponible
@@ -409,26 +414,31 @@ export default function EventosScreen() {
       guardados.filter((e) => e.origen === 'eventos').map((e) => e.origenId),
     );
 
-    // Primera vez: si el backend/demo ya trae `ya_en_calendario: true` para
-    // algún evento que todavía no está en el store local, lo sembramos.
-    const pendientes = eventosActuales.filter(
-      (e) => e.ya_en_calendario && !idsEnCalendario.has(e.id),
-    );
-    for (const evento of pendientes) {
-      await agregarEventoCalendario({
-        id: `evento-publico-${evento.id}`,
-        origen: 'eventos',
-        origenId: evento.id,
-        titulo: evento.titulo,
-        descripcion: evento.descripcion
-          ? `${evento.descripcion}\n📍 ${evento.ubicacion_nombre}`
-          : `📍 ${evento.ubicacion_nombre}`,
-        fecha_hora: new Date(evento.fecha_hora).toISOString(),
-        tipo: 'Evento',
-        emoji: '🎉',
-        color: '#9B59B6',
-      });
-      idsEnCalendario.add(evento.id);
+    // Sembrado único (primera vez que se usa la app): los eventos que el
+    // backend/demo marca con `ya_en_calendario: true` se copian al calendario.
+    // Después de esta vez el store local manda: si el usuario los elimina,
+    // NO se vuelven a agregar solos.
+    if (!(await yaSeSembroInicial())) {
+      const pendientes = eventosActuales.filter(
+        (e) => e.ya_en_calendario && !idsEnCalendario.has(e.id),
+      );
+      for (const evento of pendientes) {
+        await agregarEventoCalendario({
+          id: `evento-publico-${evento.id}`,
+          origen: 'eventos',
+          origenId: evento.id,
+          titulo: evento.titulo,
+          descripcion: evento.descripcion
+            ? `${evento.descripcion}\n📍 ${evento.ubicacion_nombre}`
+            : `📍 ${evento.ubicacion_nombre}`,
+          fecha_hora: new Date(evento.fecha_hora).toISOString(),
+          tipo: 'Evento',
+          emoji: '🎉',
+          color: '#9B59B6',
+        });
+        idsEnCalendario.add(evento.id);
+      }
+      await marcarSembradoInicial();
     }
 
     setEventosAgregados(idsEnCalendario);

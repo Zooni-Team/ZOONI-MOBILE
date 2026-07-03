@@ -116,7 +116,7 @@ function Toast({ visible, mensaje, color }) {
 
 // ─── COMPONENTE: CARD EVENTO ───────────────────────────────────────────────────
 
-function EventoCard({ evento, index, onEditar, onEliminar }) {
+function EventoCard({ evento, index, onEditar, onEliminar, onVerDetalle }) {
   const esEditable = evento.origen !== 'eventos';
   const translateY = useRef(new Animated.Value(14)).current;
   const opacity    = useRef(new Animated.Value(0)).current;
@@ -131,48 +131,139 @@ function EventoCard({ evento, index, onEditar, onEliminar }) {
   const color   = getColorByProximidad(evento.fecha_hora);
   const texto   = getTextoDias(evento.fecha_hora);
 
+  // Evita que el tap en los íconos de editar/eliminar además dispare la
+  // apertura del detalle (el evento de click burbujea hacia el Pressable padre).
+  const detener = (fn) => (e) => { e?.stopPropagation?.(); fn(); };
+
   return (
     <Animated.View style={[s.card, { transform: [{ translateY }], opacity }]}>
       <View style={[s.cardBorde, { backgroundColor: color }]} />
 
-      <View style={s.cardFila1}>
-        <View style={s.cardTituloRow}>
-          {!!evento.emoji && (
-            <View style={[s.cardBadge, evento.color && { backgroundColor: `${evento.color}22` }]}>
-              <Text style={s.cardBadgeTxt}>{evento.emoji}</Text>
-            </View>
-          )}
-          <Text style={s.cardTitulo} numberOfLines={2}>{evento.titulo}</Text>
-        </View>
-        <View style={s.cardAcciones}>
-          {esEditable && (
-            <TouchableOpacity onPress={() => onEditar(evento)} accessibilityLabel="Editar evento"
+      <Pressable onPress={() => onVerDetalle(evento)} accessibilityLabel={`Ver detalle de ${evento.titulo}`}>
+        <View style={s.cardFila1}>
+          <View style={s.cardTituloRow}>
+            {!!evento.emoji && (
+              <View style={[s.cardBadge, evento.color && { backgroundColor: `${evento.color}22` }]}>
+                <Text style={s.cardBadgeTxt}>{evento.emoji}</Text>
+              </View>
+            )}
+            <Text style={s.cardTitulo} numberOfLines={2}>{evento.titulo}</Text>
+          </View>
+          <View style={s.cardAcciones}>
+            {esEditable && (
+              <TouchableOpacity onPress={detener(() => onEditar(evento))} accessibilityLabel="Editar evento"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="create-outline" size={22} color="#F5A623" />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={detener(() => onEliminar(evento.id))} accessibilityLabel="Eliminar evento"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="create-outline" size={22} color="#F5A623" />
+              <Ionicons name="trash-outline" size={20} color="#8A8A8A" />
             </TouchableOpacity>
-          )}
-          <TouchableOpacity onPress={() => onEliminar(evento.id)} accessibilityLabel="Eliminar evento"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="trash-outline" size={20} color="#8A8A8A" />
-          </TouchableOpacity>
+          </View>
         </View>
-      </View>
 
-      <View style={s.cardFila2}>
-        <Text style={[s.cardTipo, { color }]}>{evento.tipo}</Text>
-        <View style={[s.badgeDias, { backgroundColor: `${color}22` }]}>
-          <Text style={[s.badgeDiasTxt, { color }]}>{texto}</Text>
+        <View style={s.cardFila2}>
+          <Text style={[s.cardTipo, { color }]}>{evento.tipo}</Text>
+          <View style={[s.badgeDias, { backgroundColor: `${color}22` }]}>
+            <Text style={[s.badgeDiasTxt, { color }]}>{texto}</Text>
+          </View>
         </View>
-      </View>
 
-      <Text style={s.cardFecha}>{formatFechaHora(evento.fecha_hora)}</Text>
+        <Text style={s.cardFecha}>{formatFechaHora(evento.fecha_hora)}</Text>
 
-      {!!evento.descripcion && (
-        <Text style={s.cardDescripcion} numberOfLines={2} ellipsizeMode="tail">{evento.descripcion}</Text>
-      )}
+        {!!evento.descripcion && (
+          <Text style={s.cardDescripcion} numberOfLines={2} ellipsizeMode="tail">{evento.descripcion}</Text>
+        )}
+      </Pressable>
     </Animated.View>
   );
 }
+
+// ─── COMPONENTE: MODAL DETALLE DE EVENTO ─────────────────────────────────────
+
+function EventoDetalleModal({ visible, evento, onCerrar }) {
+  if (!evento) return null;
+
+  const color = getColorByProximidad(evento.fecha_hora);
+  const texto = getTextoDias(evento.fecha_hora);
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCerrar}>
+      <TouchableOpacity style={dt.overlay} activeOpacity={1} onPress={onCerrar}>
+        <TouchableOpacity activeOpacity={1} style={dt.card}>
+          <View style={[dt.borde, { backgroundColor: color }]} />
+
+          <View style={dt.headerRow}>
+            <View style={dt.tituloRow}>
+              {!!evento.emoji && (
+                <View style={[dt.badge, evento.color && { backgroundColor: `${evento.color}22` }]}>
+                  <Text style={dt.badgeTxt}>{evento.emoji}</Text>
+                </View>
+              )}
+              <Text style={dt.titulo}>{evento.titulo}</Text>
+            </View>
+            <TouchableOpacity onPress={onCerrar} accessibilityLabel="Cerrar detalle"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close" size={22} color="#6B6B6B" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} style={dt.scroll}>
+            <View style={dt.filaTipo}>
+              <Text style={[dt.tipo, { color }]}>{evento.tipo}</Text>
+              <View style={[dt.badgeDias, { backgroundColor: `${color}22` }]}>
+                <Text style={[dt.badgeDiasTxt, { color }]}>{texto}</Text>
+              </View>
+            </View>
+
+            <View style={dt.filaFecha}>
+              <Ionicons name="calendar-outline" size={16} color="#6B6B6B" />
+              <Text style={dt.fecha}>{formatFechaHora(evento.fecha_hora)}</Text>
+            </View>
+
+            {!!evento.descripcion && (
+              <Text style={dt.descripcion}>{evento.descripcion}</Text>
+            )}
+          </ScrollView>
+
+          <TouchableOpacity style={dt.btnCerrar} onPress={onCerrar}>
+            <Text style={dt.btnCerrarTxt}>Cerrar</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+const dt = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.50)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  card: {
+    backgroundColor: '#FFF', borderRadius: 20, width: '100%', maxWidth: 380, maxHeight: '80%',
+    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 18,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 10,
+    overflow: 'hidden',
+  },
+  borde: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, paddingLeft: 6 },
+  tituloRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, marginRight: 10 },
+  badge: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F0F0F0', alignItems: 'center', justifyContent: 'center' },
+  badgeTxt: { fontSize: 19 },
+  titulo: { flex: 1, fontSize: 19, fontWeight: '800', color: '#2C2C2C' },
+  scroll: { paddingLeft: 6 },
+  filaTipo: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  tipo: { fontSize: 14, fontWeight: '700' },
+  badgeDias: { borderRadius: 10, paddingVertical: 3, paddingHorizontal: 10 },
+  badgeDiasTxt: { fontSize: 12, fontWeight: '700' },
+  filaFecha: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 14 },
+  fecha: { fontSize: 14, color: '#6B6B6B' },
+  descripcion: { fontSize: 14, color: '#2C2C2C', lineHeight: 21 },
+  btnCerrar: {
+    marginTop: 16, width: '100%', height: 44, borderRadius: 30,
+    backgroundColor: '#E8E8E8', alignItems: 'center', justifyContent: 'center',
+  },
+  btnCerrarTxt: { fontSize: 15, fontWeight: '700', color: '#2C2C2C' },
+});
 
 // ─── COMPONENTE: SELECTOR DE FECHA (día/mes/año) ─────────────────────────────
 
@@ -393,6 +484,9 @@ export default function CalendarioScreen() {
   const [modalModo,        setModalModo]        = useState('añadir'); // 'añadir' | 'editar'
   const [eventoEnEdicion,  setEventoEnEdicion]  = useState(null);
 
+  const [detalleVisible, setDetalleVisible] = useState(false);
+  const [eventoDetalle,  setEventoDetalle]  = useState(null);
+
   const [formTitulo,      setFormTitulo]      = useState('');
   const [formDescripcion, setFormDescripcion] = useState('');
   const [formFechaHora,   setFormFechaHora]   = useState(null);
@@ -473,6 +567,16 @@ export default function CalendarioScreen() {
     setEventoEnEdicion(evento);
     setModalModo('editar');
     abrirModal();
+  }
+
+  // ── Detalle (ver evento completo) ───────────────────────────────────────
+  function abrirDetalle(evento) {
+    setEventoDetalle(evento);
+    setDetalleVisible(true);
+  }
+
+  function cerrarDetalle() {
+    setDetalleVisible(false);
   }
 
   function abrirModal() {
@@ -600,7 +704,7 @@ export default function CalendarioScreen() {
           ) : (
             eventos.map((evento, i) => (
               <EventoCard key={evento.id} evento={evento} index={i}
-                onEditar={abrirModalEditar} onEliminar={eliminarEvento} />
+                onEditar={abrirModalEditar} onEliminar={eliminarEvento} onVerDetalle={abrirDetalle} />
             ))
           )}
 
@@ -732,6 +836,12 @@ export default function CalendarioScreen() {
         valor={formTipo}
         onSeleccionar={(t) => { setFormTipo(t); setShowTipoPicker(false); }}
         onCerrar={() => setShowTipoPicker(false)}
+      />
+
+      <EventoDetalleModal
+        visible={detalleVisible}
+        evento={eventoDetalle}
+        onCerrar={cerrarDetalle}
       />
 
       <HamburgerDrawer
