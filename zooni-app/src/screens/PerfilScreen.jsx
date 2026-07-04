@@ -14,6 +14,7 @@ import {
   Animated,
   Dimensions,
   Image,
+  ImageBackground,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -32,8 +33,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
+import HamburgerDrawer from '../components/HamburgerDrawer';
+import { HOME_BACKGROUND } from '../constants/homeAssets';
 
-const { width: SW } = Dimensions.get('window');
+const { width: SW, height: SH } = Dimensions.get('window');
 const CELL = Math.floor(SW / 3);
 
 // ─── API ──────────────────────────────────────────────────────────────────────
@@ -72,6 +75,10 @@ const DEMO_PERFIL = {
   ubicacion: 'Argentina',
   foto_perfil_url: null,
   total_publicaciones: 3, total_seguidores: 124, total_siguiendo: 87,
+};
+
+const DEMO_MASCOTA = {
+  id: 1, nombre: 'Titán', raza: 'Labrador Retriever',
 };
 
 const DEMO_PUBS = [
@@ -135,15 +142,26 @@ function AModal({ visible, onClose, children }) {
   }, [visible, sc, op]);
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={onClose}>
-          <TouchableOpacity activeOpacity={1} onPress={Keyboard.dismiss}>
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        style={s.modalKAV}
+      >
+        {/* Overlay: solo cierra al tocar FUERA del card */}
+        <Pressable style={s.overlay} onPress={onClose}>
+          <Pressable style={s.modalCardWrap} onPress={() => {}}>
             <Animated.View style={[s.modalCard, { transform: [{ scale: sc }], opacity: op }]}>
-              {children}
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                bounces={false}
+                style={{ flexShrink: 1 }}
+              >
+                {children}
+              </ScrollView>
             </Animated.View>
-          </TouchableOpacity>
-        </TouchableOpacity>
+          </Pressable>
+        </Pressable>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -174,6 +192,7 @@ export default function PerfilScreen() {
   const [pubs,       setPubs]       = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [tab,        setTab]        = useState('grid'); // 'grid' | 'lista'
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Modales
   const [modalEditar,   setModalEditar]   = useState(false);
@@ -277,10 +296,10 @@ export default function PerfilScreen() {
       mostrarToast('Perfil actualizado correctamente');
     } catch (err) {
       const msg = err?.response?.data?.error ?? '';
-      if (msg.includes('ya está en uso')) { setFErrUser('Ese nombre ya está en uso'); }
-      else if (!err?.response) { Alert.alert('Sin conexión', 'Intentá de nuevo más tarde.'); }
-      else {
-        // Demo: actualizar local
+      if (msg.includes('ya está en uso')) {
+        setFErrUser('Ese nombre ya está en uso');
+      } else {
+        // Sin backend o error de red → guardar local (demo)
         setPerfil(p => ({ ...p, nombre: fNombre, apellido: fApellido,
           nombre_usuario: nu, bio: fBio, ubicacion: fUbicacion }));
         setModalEditar(false);
@@ -291,11 +310,24 @@ export default function PerfilScreen() {
 
   // ── Cambiar foto ─────────────────────────────────────────────────────────
   function cambiarFoto() {
-    Alert.alert('Cambiar foto de perfil', '', [
-      { text: 'Galería', onPress: () => abrirPicker('galeria') },
-      { text: 'Cámara',  onPress: () => abrirPicker('camara') },
-      { text: 'Cancelar', style: 'cancel' },
-    ]);
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const uri = URL.createObjectURL(file);
+        subirFoto({ uri, mimeType: file.type });
+      };
+      input.click();
+    } else {
+      Alert.alert('Cambiar foto de perfil', '', [
+        { text: 'Galería', onPress: () => abrirPicker('galeria') },
+        { text: 'Cámara',  onPress: () => abrirPicker('camara') },
+        { text: 'Cancelar', style: 'cancel' },
+      ]);
+    }
   }
   async function abrirPicker(modo) {
     try {
@@ -337,11 +369,26 @@ export default function PerfilScreen() {
     } catch { setFImagen({ uri: 'https://picsum.photos/400', mimeType: 'image/jpeg' }); setImgErr(false); }
   }
   function abrirPickerPublicar() {
-    Alert.alert('Agregar foto', '', [
-      { text: 'Galería', onPress: () => selImagen('galeria') },
-      { text: 'Cámara',  onPress: () => selImagen('camara') },
-      { text: 'Cancelar', style: 'cancel' },
-    ]);
+    if (Platform.OS === 'web') {
+      // En web: usar input file nativo
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const uri = URL.createObjectURL(file);
+        setFImagen({ uri, mimeType: file.type, name: file.name, _file: file });
+        setImgErr(false);
+      };
+      input.click();
+    } else {
+      Alert.alert('Agregar foto', '', [
+        { text: 'Galería', onPress: () => selImagen('galeria') },
+        { text: 'Cámara',  onPress: () => selImagen('camara') },
+        { text: 'Cancelar', style: 'cancel' },
+      ]);
+    }
   }
   async function publicar() {
     if (!fImagen) { setImgErr(true); return; }
@@ -375,6 +422,12 @@ export default function PerfilScreen() {
     <SafeAreaView style={s.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
+      <ImageBackground
+        source={HOME_BACKGROUND}
+        style={s.background}
+        imageStyle={s.backgroundImage}
+        resizeMode="cover"
+      >
       <ScrollView ref={scrollRef} style={s.scroll} contentContainerStyle={s.scrollContent}
         showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
@@ -384,8 +437,9 @@ export default function PerfilScreen() {
           {/* Header */}
           <View style={s.header}>
             <TouchableOpacity style={s.hBtn} hitSlop={{ top:12, bottom:12, left:12, right:12 }}
-              onPress={() => { try { navigation.openDrawer(); } catch { navigation.goBack(); } }}>
-              <Ionicons name="menu" size={26} color="#2C2C2C" />
+              onPress={() => setDrawerOpen(true)}
+              accessibilityLabel="Abrir menú">
+              <Ionicons name="menu" size={30} color="#0A0A0A" />
             </TouchableOpacity>
           </View>
 
@@ -394,12 +448,13 @@ export default function PerfilScreen() {
             {loading
               ? <Skel w={84} h={84} r={42} />
               : p.foto_perfil_url
-                ? <Image source={{ uri: p.foto_perfil_url }} style={s.avatarImg} />
-                : <View style={s.avatarFallback}><Ionicons name="person" size={48} color="#FFF" /></View>
+                ? <TouchableOpacity onPress={cambiarFoto} accessibilityLabel="Cambiar foto">
+                    <Image source={{ uri: p.foto_perfil_url }} style={s.avatarImg} />
+                  </TouchableOpacity>
+                : <TouchableOpacity onPress={cambiarFoto} accessibilityLabel="Cambiar foto">
+                    <View style={s.avatarFallback}><Ionicons name="person" size={48} color="#FFF" /></View>
+                  </TouchableOpacity>
             }
-            <TouchableOpacity style={s.plusBtn} onPress={cambiarFoto} accessibilityLabel="Cambiar foto">
-              <Ionicons name="add" size={16} color="#FFF" />
-            </TouchableOpacity>
           </View>
 
           {/* Nombre */}
@@ -493,7 +548,7 @@ export default function PerfilScreen() {
           {/* ── Contenido ── */}
           {loading ? (
             <View style={s.grid}>
-              {[0,1,2,3,4,5].map(i=><Skel key={i} w={CELL-1} h={CELL-1} r={0}/>)}
+              {[0,1,2,3,4,5].map(i=><View key={i} style={[s.gridCell, {backgroundColor:'#E0E0E0'}]}/>)}
             </View>
           ) : pubs.length === 0 ? (
             <View style={s.empty}>
@@ -529,10 +584,10 @@ export default function PerfilScreen() {
 
         </View>
       </ScrollView>
+      </ImageBackground>
 
       {/* ══ MODAL EDITAR PERFIL ══════════════════════════════════════════ */}
       <AModal visible={modalEditar} onClose={()=>setModalEditar(false)}>
-        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <Text style={s.modalTitulo}>Editar perfil</Text>
 
           <FocusInput placeholder="Nombre" placeholderTextColor="#AAAAAA"
@@ -560,12 +615,10 @@ export default function PerfilScreen() {
           <TouchableOpacity style={s.btnCancelar} onPress={()=>setModalEditar(false)}>
             <Text style={s.btnCancelarTxt}>Cancelar</Text>
           </TouchableOpacity>
-        </ScrollView>
       </AModal>
 
       {/* ══ MODAL NUEVA PUBLICACIÓN ═════════════════════════════════════ */}
       <AModal visible={modalPublicar} onClose={cerrarPublicar}>
-        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <Text style={s.modalTitulo}>Nueva publicación</Text>
 
           {/* Selector imagen */}
@@ -599,23 +652,35 @@ export default function PerfilScreen() {
           <TouchableOpacity style={s.btnCancelar} onPress={cerrarPublicar}>
             <Text style={s.btnCancelarTxt}>Cancelar</Text>
           </TouchableOpacity>
-        </ScrollView>
       </AModal>
 
+      <HamburgerDrawer
+        visible={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        usuario={perfil ? {
+          nombre: perfil.nombre,
+          apellido: perfil.apellido,
+          fotoPerfil: perfil.foto_perfil_url ?? null,
+        } : null}
+        mascotaActiva={DEMO_MASCOTA}
+        activeRoute="Perfil"
+      />
     </SafeAreaView>
   );
-}
+} 
 
 // ─── ESTILOS ─────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safe:        { flex:1, backgroundColor:'#C8F0D8' },
-  scroll:      { flex:1, backgroundColor:'#C8F0D8' },
+  safe:        { flex:1, backgroundColor:'#D4F5E2' },
+  background:  { flex:1, width:'100%' },
+  backgroundImage: { width:'100%', height:'100%' },
+  scroll:      { flex:1, backgroundColor:'transparent' },
   scrollContent:{ flexGrow:1 },
 
   // Zona verde
-  zonaVerde:   { backgroundColor:'#C8F0D8' },
-  header:      { height:56, flexDirection:'row', alignItems:'center', paddingHorizontal:20 },
+  zonaVerde:   { backgroundColor:'transparent', paddingBottom: 24, minHeight: 200 },
+  header:      { height:56, flexDirection:'row', alignItems:'center', paddingHorizontal:20, backgroundColor:'transparent', zIndex:10 },
   hBtn:        { width:44, alignItems:'center', justifyContent:'center' },
 
   // Avatar
@@ -625,9 +690,6 @@ const s = StyleSheet.create({
   avatarFallback:{ width:84, height:84, borderRadius:42, backgroundColor:'#DDDDDD',
                    alignItems:'center', justifyContent:'center',
                    shadowColor:'#000', shadowOffset:{width:0,height:2}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
-  plusBtn:     { position:'absolute', bottom:0, right:0, width:26, height:26, borderRadius:13,
-                 backgroundColor:'#2DBD72', borderWidth:2, borderColor:'#FFF',
-                 alignItems:'center', justifyContent:'center' },
   nombreUsuario:{ fontSize:20, fontWeight:'700', color:'#2C2C2C', textAlign:'center',
                   marginTop:12, marginBottom:20, paddingHorizontal:20 },
 
@@ -678,8 +740,8 @@ const s = StyleSheet.create({
   tabLine:     { width:'30%', height:2, backgroundColor:'#2DBD72', marginTop:4 },
 
   // Grid
-  grid:        { flexDirection:'row', flexWrap:'wrap', gap:1, backgroundColor:'#C8F0D8' },
-  gridCell:    { width:CELL-1, height:CELL-1 },
+  grid:        { flexDirection:'row', flexWrap:'wrap', gap:2, backgroundColor:'transparent' },
+  gridCell:    { width:'33%', aspectRatio:1, overflow:'hidden' },
   gridImg:     { width:'100%', height:'100%', resizeMode:'cover' },
   gridPH:      { backgroundColor:'#F0F0F0', alignItems:'center', justifyContent:'center' },
 
@@ -697,10 +759,11 @@ const s = StyleSheet.create({
   emptyTxt:    { fontSize:15, color:'#6B6B6B', textAlign:'center' },
 
   // Modal
-  overlay:     { flex:1, backgroundColor:'rgba(0,0,0,0.50)', justifyContent:'center', alignItems:'center' },
-  modalCard:   { backgroundColor:'#FFF', borderRadius:20, width:SW*0.90,
+  modalKAV:    { flex:1 },
+  overlay:     { flex:1, backgroundColor:'rgba(0,0,0,0.50)', justifyContent:'center', alignItems:'center', paddingHorizontal:20 },
+  modalCardWrap: { width:'100%', maxHeight: SH * 0.75 },
+  modalCard:   { backgroundColor:'#FFF', borderRadius:20, width:'100%',
                  paddingHorizontal:22, paddingTop:24, paddingBottom:20,
-                 maxHeight:'90%',
                  shadowColor:'#000', shadowOffset:{width:0,height:8}, shadowOpacity:0.18, shadowRadius:20, elevation:10 },
   modalTitulo: { fontSize:18, fontWeight:'700', color:'#2DBD72', textAlign:'center', marginBottom:20 },
 
@@ -714,7 +777,7 @@ const s = StyleSheet.create({
   errTxt:      { fontSize:11, color:'#E63946', marginBottom:8, marginLeft:4 },
 
   // Selector imagen publicación
-  imgSel:      { width:'100%', height:180, borderRadius:12,
+  imgSel:      { width:'100%', height:130, borderRadius:12,
                  backgroundColor:'#F5F5F5', borderWidth:1.5, borderColor:'#DDDDDD',
                  borderStyle:'dashed', overflow:'hidden', marginBottom:14 },
   imgSelErr:   { borderColor:'#E63946' },
