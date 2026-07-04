@@ -23,6 +23,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { resolvePetImage } from '../constants/petImages';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSWORD_MIN = 7;
 
 const ASSET_POR_ESPECIE = {
   perro: 'perro_default',
@@ -44,28 +45,37 @@ export default function RegisterStep3Screen() {
   const [password, setPassword] = useState('');
   const [confirmar, setConfirmar] = useState('');
   const [verPassword, setVerPassword] = useState(false);
+  const [verConfirmar, setVerConfirmar] = useState(false);
   const [errores, setErrores] = useState({});
   const [focus, setFocus] = useState(null);
 
   const petImg = resolvePetImage(ASSET_POR_ESPECIE[datosPrevios.especie] ?? 'perro_default');
 
+  // Validaciones en vivo: se muestran mientras el campo tiene contenido inválido,
+  // y desaparecen apenas se corrige (no hace falta esperar a tocar "Continuar").
+  const mailValido = EMAIL_REGEX.test(mail.trim());
+  const mostrarErrorMail = mail.length > 0 && !mailValido;
+
+  const passwordValida = password.length >= PASSWORD_MIN;
+  const mostrarErrorPassword = password.length > 0 && !passwordValida;
+
+  const confirmarValido = confirmar === password;
+  const mostrarErrorConfirmar = confirmar.length > 0 && !confirmarValido;
+
   const puedeAvanzar = useMemo(() => (
     nombre.trim().length > 0
     && apellido.trim().length > 0
-    && EMAIL_REGEX.test(mail.trim())
-    && password.length >= 6
-    && confirmar === password
-  ), [nombre, apellido, mail, password, confirmar]);
+    && mailValido
+    && passwordValida
+    && confirmarValido
+  ), [nombre, apellido, mailValido, passwordValida, confirmarValido]);
 
   const handleContinuar = () => {
     const errs = {};
     if (!nombre.trim()) errs.nombre = 'Ingresá tu nombre';
     if (!apellido.trim()) errs.apellido = 'Ingresá tu apellido';
-    if (!EMAIL_REGEX.test(mail.trim())) errs.mail = 'Ingresá un email válido';
-    if (password.length < 6) errs.password = 'La contraseña debe tener al menos 6 caracteres';
-    if (confirmar !== password) errs.confirmar = 'Las contraseñas no coinciden';
     setErrores(errs);
-    if (Object.keys(errs).length > 0) return;
+    if (Object.keys(errs).length > 0 || !puedeAvanzar) return;
 
     navigation.navigate('RegisterStep4', {
       ...datosPrevios,
@@ -120,15 +130,16 @@ export default function RegisterStep3Screen() {
               onFocus={() => setFocus('apellido')} onBlur={() => setFocus(null)} returnKeyType="next" />
             {errores.apellido && <Text style={s.errorTxt}>{errores.apellido}</Text>}
 
-            <TextInput style={inputStyle('mail')} placeholder="Mail" placeholderTextColor="#AAAAAA"
-              value={mail} onChangeText={(v) => { setMail(v); setErrores((p) => ({ ...p, mail: null })); }}
+            <TextInput style={[s.input, focus === 'mail' && s.inputFocus, mostrarErrorMail && s.inputError]}
+              placeholder="Mail" placeholderTextColor="#AAAAAA"
+              value={mail} onChangeText={setMail}
               keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
               onFocus={() => setFocus('mail')} onBlur={() => setFocus(null)} returnKeyType="next" />
-            {errores.mail && <Text style={s.errorTxt}>{errores.mail}</Text>}
+            {mostrarErrorMail && <Text style={s.errorTxt}>Ingresá un email válido</Text>}
 
-            <View style={[s.inputRow, focus === 'password' && s.inputFocus, errores.password && s.inputError]}>
+            <View style={[s.inputRow, focus === 'password' && s.inputFocus, mostrarErrorPassword && s.inputError]}>
               <TextInput style={s.inputPass} placeholder="Contraseña" placeholderTextColor="#AAAAAA"
-                value={password} onChangeText={(v) => { setPassword(v); setErrores((p) => ({ ...p, password: null })); }}
+                value={password} onChangeText={setPassword}
                 secureTextEntry={!verPassword} autoCapitalize="none"
                 onFocus={() => setFocus('password')} onBlur={() => setFocus(null)} returnKeyType="next" />
               <TouchableOpacity onPress={() => setVerPassword((v) => !v)}
@@ -137,13 +148,22 @@ export default function RegisterStep3Screen() {
                 <Ionicons name={verPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#6B6B6B" />
               </TouchableOpacity>
             </View>
-            {errores.password && <Text style={s.errorTxt}>{errores.password}</Text>}
+            {mostrarErrorPassword && (
+              <Text style={s.errorTxt}>{`La contraseña debe tener al menos ${PASSWORD_MIN} caracteres`}</Text>
+            )}
 
-            <TextInput style={inputStyle('confirmar')} placeholder="Confirmar contraseña" placeholderTextColor="#AAAAAA"
-              value={confirmar} onChangeText={(v) => { setConfirmar(v); setErrores((p) => ({ ...p, confirmar: null })); }}
-              secureTextEntry autoCapitalize="none"
-              onFocus={() => setFocus('confirmar')} onBlur={() => setFocus(null)} returnKeyType="done" />
-            {errores.confirmar && <Text style={s.errorTxt}>{errores.confirmar}</Text>}
+            <View style={[s.inputRow, focus === 'confirmar' && s.inputFocus, mostrarErrorConfirmar && s.inputError]}>
+              <TextInput style={s.inputPass} placeholder="Confirmar contraseña" placeholderTextColor="#AAAAAA"
+                value={confirmar} onChangeText={setConfirmar}
+                secureTextEntry={!verConfirmar} autoCapitalize="none"
+                onFocus={() => setFocus('confirmar')} onBlur={() => setFocus(null)} returnKeyType="done" />
+              <TouchableOpacity onPress={() => setVerConfirmar((v) => !v)}
+                accessibilityLabel={verConfirmar ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name={verConfirmar ? 'eye-off-outline' : 'eye-outline'} size={20} color="#6B6B6B" />
+              </TouchableOpacity>
+            </View>
+            {mostrarErrorConfirmar && <Text style={s.errorTxt}>Las contraseñas no coinciden</Text>}
           </View>
         </ScrollView>
 

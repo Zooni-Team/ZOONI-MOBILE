@@ -128,7 +128,7 @@ export async function registro(datos) {
   const { mascota, usuario } = datos;
   const mail = usuario.email.trim().toLowerCase();
 
-  if ((usuario.password ?? '').length < 6) throw new Error('password_corta');
+  if ((usuario.password ?? '').length < 7) throw new Error('password_corta');
 
   // a) email único
   const { data: existente } = await supabase

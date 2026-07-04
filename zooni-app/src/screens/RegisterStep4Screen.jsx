@@ -135,7 +135,7 @@ export default function RegisterStep4Screen() {
       if (err?.message === 'email_existente') {
         Alert.alert('Email en uso', 'Ya existe una cuenta con ese email.');
       } else if (err?.message === 'password_corta') {
-        Alert.alert('Contraseña inválida', 'La contraseña debe tener al menos 6 caracteres.');
+        Alert.alert('Contraseña inválida', 'La contraseña debe tener al menos 7 caracteres.');
       } else {
         Alert.alert('Error', 'No se pudo crear la cuenta. Revisá tu internet e intentá de nuevo.');
       }
@@ -197,10 +197,12 @@ export default function RegisterStep4Screen() {
               onFocus={() => setFocus('ciudad')} onBlur={() => setFocus(null)} returnKeyType="next"
             />
 
+            {/* Se completa solo al elegir el país (arriba) y no se puede tocar a mano */}
             <TextInput
               style={[s.input, codigoAuto && s.inputCodigoAuto, focus === 'codigo' && s.inputFocus]}
               placeholder="Código" placeholderTextColor="#AAAAAA"
               value={codigo}
+              editable={!pais}
               onChangeText={(v) => { setCodigo(v); setCodigoAuto(false); }}
               keyboardType="phone-pad"
               onFocus={() => setFocus('codigo')} onBlur={() => setFocus(null)} returnKeyType="next"

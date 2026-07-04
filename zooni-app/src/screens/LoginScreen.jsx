@@ -28,7 +28,6 @@ import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { login } from '../services/authApi';
-import { LOGIN_ILLUSTRATION } from '../constants/registroAssets';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -105,9 +104,6 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <Text style={s.titulo}>Zooni</Text>
-
-          <Image source={LOGIN_ILLUSTRATION} style={s.ilustracion} resizeMode="contain"
-            accessibilityLabel="Ilustración de mascotas" />
 
           {bannerVisible && (
             <Animated.View style={[s.banner, { opacity: bannerOpacity, transform: [{ translateY: bannerY }] }]}>
@@ -201,9 +197,8 @@ const s = StyleSheet.create({
 
   titulo: {
     fontSize: 36, fontWeight: '800', color: '#5C3D1E',
-    textAlign: 'center', marginBottom: 4,
+    textAlign: 'center', marginBottom: 32,
   },
-  ilustracion: { width: '80%', height: 180, alignSelf: 'center', marginBottom: 24 },
 
   banner: {
     backgroundColor: '#F0FFF8', borderWidth: 1.5, borderColor: '#2DBD72', borderRadius: 12,
