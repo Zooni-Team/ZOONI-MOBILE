@@ -23,49 +23,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import * as SecureStore from 'expo-secure-store';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import axios from 'axios';
 
 import { calcularEdad } from '../utils/calcularEdad';
 import { resolvePetImage } from '../constants/petImages';
 import SkeletonLoader from '../components/SkeletonLoader';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
-
-// ─── API ──────────────────────────────────────────────────────────────────────
-
-const BASE_URL = Platform.select({
-  android: 'http://10.0.2.2:5165/api/v1',
-  ios:     'http://localhost:5165/api/v1',
-  default: 'http://localhost:5165/api/v1',
-});
-
-async function getToken() {
-  try {
-    if (Platform.OS === 'web') {
-      return typeof localStorage !== 'undefined' ? localStorage.getItem('jwt_token') : null;
-    }
-    return await SecureStore.getItemAsync('jwt_token');
-  } catch {
-    return null;
-  }
-}
-
-async function apiCall(method, path, data = null) {
-  const token = await getToken();
-  return axios({
-    method,
-    url: `${BASE_URL}${path}`,
-    data,
-    timeout: 10000,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-}
+import { fetchMascota, actualizarPeso, actualizarFechaNacimiento } from '../services/fichaMedicaApi';
 
 // ─── FECHA PICKER (modal propio, sin dependencias externas) ──────────────────
 
@@ -246,20 +212,14 @@ export default function FichaMedicaScreen() {
     if (!petId) { setLoading(false); return; }
     setLoading(true);
     try {
-      const res = await Promise.race([
-        apiCall('get', `/mascotas/${petId}`),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
-      ]);
-      setMascota(res.data?.data ?? res.data);
-    } catch (err) {
-      if (err.message === 'timeout') {
-        // Sin respuesta a tiempo: se cae a la vista demo, sin alertar al usuario
+      const data = await fetchMascota(petId);
+      if (!data) {
+        Alert.alert('No encontrada', 'La mascota no existe.', [{ text: 'Volver', onPress: () => navigation.goBack() }]);
       } else {
-        const st = err?.response?.status;
-        if (st === 403) Alert.alert('Sin permiso', 'No podés ver esta mascota.', [{ text: 'Volver', onPress: () => navigation.goBack() }]);
-        else if (st === 404) Alert.alert('No encontrada', 'La mascota no existe.', [{ text: 'Volver', onPress: () => navigation.goBack() }]);
-        else Alert.alert('Error de conexión', 'No se pudo cargar la ficha médica.');
+        setMascota(data);
       }
+    } catch {
+      Alert.alert('Error de conexión', 'No se pudo cargar la ficha médica.');
     } finally {
       setLoading(false);
     }
@@ -279,8 +239,8 @@ export default function FichaMedicaScreen() {
     if (isNaN(n) || n <= 0 || n >= 500) { Alert.alert('Valor inválido', 'Ingresá un peso entre 0 y 500 kg.'); return; }
     setGuardandoPeso(true);
     try {
-      const res = await apiCall('patch', `/mascotas/${petId}/peso`, { peso: n });
-      setMascota((p) => ({ ...p, peso: res.data?.data?.peso ?? n }));
+      const actualizada = await actualizarPeso(petId, n);
+      setMascota((p) => ({ ...p, peso: actualizada.peso }));
       setEditandoPeso(false);
     } catch { Alert.alert('Error', 'No se pudo actualizar el peso.'); }
     finally { setGuardandoPeso(false); }
@@ -297,8 +257,8 @@ export default function FichaMedicaScreen() {
     setGuardandoFecha(true);
     const iso = fecha.toISOString().split('T')[0];
     try {
-      const res = await apiCall('patch', `/mascotas/${petId}/fecha-nacimiento`, { fechaNacimiento: iso });
-      setMascota((p) => ({ ...p, fecha_nacimiento: res.data?.data?.fecha_nacimiento ?? iso }));
+      const actualizada = await actualizarFechaNacimiento(petId, iso);
+      setMascota((p) => ({ ...p, fecha_nacimiento: actualizada.fecha_nacimiento }));
     } catch { Alert.alert('Error', 'No se pudo actualizar la fecha de nacimiento.'); }
     finally { setGuardandoFecha(false); }
   };

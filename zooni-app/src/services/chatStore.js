@@ -1,60 +1,56 @@
 /**
- * chatStore.js — Persistencia local temporal de mensajes de Match
+ * chatStore.js — Chat de Match sobre Supabase (tabla Mensaje)
  *
- * Mientras no hay backend de chat conectado, los mensajes de cada conversación
- * (una por chat_id, creado automáticamente al hacer match) se guardan acá.
- *
- * Cuando se conecte la API real (GET/POST /api/chats/:chatId/mensajes, sockets, etc.),
- * este módulo se reemplaza por llamadas a services/api.js sin tocar ChatScreen
- * (misma forma: getMensajes / agregarMensaje).
+ * `chatId` es directamente el id de la fila en la tabla Match. Reemplaza el
+ * storage local (una sola clave gigante en SecureStore/localStorage) que
+ * usaba antes.
  */
 
-import { Platform } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
+import { supabase } from '../lib/supabase';
+import { getCurrentUserId } from '../config/session';
 
-const STORAGE_KEY = 'zooni_chats_demo';
-
-async function leerTodos() {
-  try {
-    const raw = Platform.OS === 'web'
-      ? (typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null)
-      : await SecureStore.getItemAsync(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
+function mapRow(row) {
+  return {
+    id: row.id,
+    texto: row.texto,
+    autor: row.idUsuario === getCurrentUserId() ? 'yo' : 'otro',
+    fecha: row.fecha,
+  };
 }
 
-async function escribirTodos(chats) {
-  try {
-    const raw = JSON.stringify(chats);
-    if (Platform.OS === 'web') {
-      if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, raw);
-    } else {
-      await SecureStore.setItemAsync(STORAGE_KEY, raw);
-    }
-  } catch {
-    // Sin almacenamiento disponible: se pierde al cerrar la app, no es crítico en demo.
-  }
-}
-
-/** Devuelve los mensajes de un chat, ordenados del más viejo al más nuevo. */
+/** Devuelve los mensajes de un chat (id de Match), ordenados del más viejo al más nuevo. */
 export async function getMensajes(chatId) {
-  const chats = await leerTodos();
-  return chats[chatId] ?? [];
+  if (!chatId) return [];
+  const { data, error } = await supabase
+    .from('Mensaje')
+    .select('*')
+    .eq('idMatch', chatId)
+    .order('fecha', { ascending: true });
+  if (error || !data) return [];
+  return data.map(mapRow);
 }
 
-/** Agrega un mensaje a un chat y devuelve la lista actualizada. */
+async function resolverOtroUsuario(chatId) {
+  const { data } = await supabase.from('Match').select('*').eq('id', chatId).single();
+  if (!data) return getCurrentUserId();
+  return data.idUsuarioUno === getCurrentUserId() ? data.idUsuarioDos : data.idUsuarioUno;
+}
+
+/**
+ * Agrega un mensaje a un chat y devuelve la lista actualizada.
+ * `mensaje.autor` ('yo' | 'otro') se resuelve al usuario real del otro lado
+ * del Match para poblar idUsuario correctamente.
+ */
 export async function agregarMensaje(chatId, mensaje) {
-  const chats = await leerTodos();
-  const actuales = chats[chatId] ?? [];
-  const nuevos = [...actuales, mensaje];
-  chats[chatId] = nuevos;
-  await escribirTodos(chats);
-  return nuevos;
-}
+  const idUsuario = mensaje.autor === 'yo' ? getCurrentUserId() : await resolverOtroUsuario(chatId);
 
-/** Borra todas las conversaciones guardadas (se llama al iniciar la app). */
-export async function resetChats() {
-  await escribirTodos({});
+  const { error } = await supabase.from('Mensaje').insert({
+    idMatch: chatId,
+    idUsuario,
+    texto: mensaje.texto,
+    fecha: mensaje.fecha,
+  });
+  if (error) throw error;
+
+  return getMensajes(chatId);
 }

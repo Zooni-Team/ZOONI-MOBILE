@@ -29,44 +29,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import * as SecureStore from 'expo-secure-store';
-import axios from 'axios';
 
 import { calcularEdad } from '../utils/calcularEdad';
 import { resolvePetImage } from '../constants/petImages';
+import { fetchTratamientos, crearTratamiento, eliminarTratamiento } from '../services/fichaMedicaApi';
+import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-// ─── API ──────────────────────────────────────────────────────────────────────
-
-const BASE_URL = Platform.select({
-  android: 'http://10.0.2.2:5165/api/v1',
-  ios:     'http://localhost:5165/api/v1',
-  default: 'http://localhost:5165/api/v1',
-});
-
-async function getToken() {
-  try {
-    if (Platform.OS === 'web') {
-      return typeof localStorage !== 'undefined' ? localStorage.getItem('jwt_token') : null;
-    }
-    return await SecureStore.getItemAsync('jwt_token');
-  } catch { return null; }
-}
-
-async function apiCall(method, path, data = null) {
-  const token = await getToken();
-  return axios({
-    method,
-    url: `${BASE_URL}${path}`,
-    data,
-    timeout: 10000,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-}
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
@@ -355,6 +324,8 @@ export default function TratamientosScreen() {
   const navigation = useNavigation();
   const route      = useRoute();
   const petId      = route.params?.petId;
+  const { mascotaActiva: mascotaActivaDemo } = useUsuarioActivo();
+  const idMascota = petId ?? mascotaActivaDemo?.id;
 
   // ── Estado ───────────────────────────────────────────────────────────────
   const [mascota,               setMascota]               = useState(null);
@@ -434,17 +405,28 @@ export default function TratamientosScreen() {
     { id: 11, nombre: 'Esterilización / Castración Preventiva', frecuencia_descripcion: 'Cada 12 meses' },
   ];
 
-  // ── Carga inicial (usa datos hardcodeados mientras no hay backend) ────────
+  // ── Carga inicial ──────────────────────────────────────────────────────────
   const cargar = useCallback(async () => {
     setLoading(true);
-    // Simular un pequeño delay de red para ver los skeletons
-    await new Promise((r) => setTimeout(r, 600));
-    setMascota(DEMO_MASCOTA);
-    setTratamientosAplicados(DEMO_APLICADOS);
-    setTratamientosSugeridos(DEMO_SUGERIDOS);
+    try {
+      if (idMascota) {
+        const { mascota: m, aplicados, sugeridos } = await fetchTratamientos(idMascota);
+        setMascota(m);
+        setTratamientosAplicados(aplicados);
+        setTratamientosSugeridos(sugeridos);
+      } else {
+        setMascota(DEMO_MASCOTA);
+        setTratamientosAplicados(DEMO_APLICADOS);
+        setTratamientosSugeridos(DEMO_SUGERIDOS);
+      }
+    } catch {
+      setMascota(DEMO_MASCOTA);
+      setTratamientosAplicados(DEMO_APLICADOS);
+      setTratamientosSugeridos(DEMO_SUGERIDOS);
+    }
     setLoading(false);
     animarHero();
-  }, []);
+  }, [idMascota]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -496,21 +478,22 @@ export default function TratamientosScreen() {
     if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
 
     setGuardando(true);
-    // Simular delay de guardado
-    await new Promise((r) => setTimeout(r, 500));
-
-    const nuevo = {
-      id:              Date.now(),
-      nombre:          formNombre.trim(),
-      descripcion:     formDescripcion.trim() || null,
-      fecha_inicio:    toISO(formFechaInicio),
-      proximo_control: formProximoControl ? toISO(formProximoControl) : null,
-      veterinaria:     formVeterinaria.trim() || null,
-    };
-    setTratamientosAplicados((prev) => [nuevo, ...prev]);
-    setGuardando(false);
-    cerrarModal();
-    mostrarToast('Tratamiento registrado correctamente', '#2DBD72');
+    try {
+      const nuevo = await crearTratamiento(idMascota, {
+        nombre:          formNombre.trim(),
+        descripcion:     formDescripcion.trim() || null,
+        fecha_inicio:    toISO(formFechaInicio),
+        proximo_control: formProximoControl ? toISO(formProximoControl) : null,
+        veterinaria:     formVeterinaria.trim() || null,
+      });
+      setTratamientosAplicados((prev) => [nuevo, ...prev]);
+      cerrarModal();
+      mostrarToast('Tratamiento registrado correctamente', '#2DBD72');
+    } catch {
+      mostrarToast('No se pudo guardar el tratamiento', '#E63946');
+    } finally {
+      setGuardando(false);
+    }
   }
 
   // ── Eliminar tratamiento ─────────────────────────────────────────────────
@@ -525,10 +508,14 @@ export default function TratamientosScreen() {
     );
   }
 
-  // ── Eliminar tratamiento (demo: solo estado local) ───────────────────────
   async function confirmarEliminar(id) {
-    setTratamientosAplicados((prev) => prev.filter((t) => t.id !== id));
-    mostrarToast('Tratamiento eliminado', '#E63946');
+    try {
+      await eliminarTratamiento(id);
+      setTratamientosAplicados((prev) => prev.filter((t) => t.id !== id));
+      mostrarToast('Tratamiento eliminado', '#E63946');
+    } catch {
+      mostrarToast('No se pudo eliminar el tratamiento', '#E63946');
+    }
   }
 
   // ── Animación botón Añadir ───────────────────────────────────────────────
@@ -536,7 +523,7 @@ export default function TratamientosScreen() {
   const pressOutBtn = () => Animated.timing(btnScale, { toValue: 1,    duration: 150, useNativeDriver: true }).start();
 
   // ── Datos de la mascota (demo si no hay backend) ─────────────────────────
-  const esDemo = !petId || !mascota;
+  const esDemo = !idMascota || !mascota;
   const m = mascota ?? {
     nombre: 'Tu mascota', especie: 'perro', raza: null,
     peso: null, fecha_nacimiento: null, imagen_asset: 'perro_default',

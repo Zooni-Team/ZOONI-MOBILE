@@ -16,9 +16,9 @@ import HamburgerDrawer  from '../../components/HamburgerDrawer';
 import { useUsuarioActivo } from '../../hooks/useUsuarioActivo';
 
 import { fetchMapaData, actualizarUbicacion } from '../../api/comunidad';
+import { getCurrentUserId } from '../../config/session';
 
 const TABS    = ['Amigos', 'Servicios', 'Solicitudes', 'Buscar'];
-const USER_ID = 1;
 
 // ─── HTML del mapa ──────────────────────────────────────────────────────────
 // Definido fuera del componente → nunca se regenera → iframe nunca se recarga.
@@ -333,7 +333,7 @@ export default function ComunidadScreen() {
         {/* Popups */}
         {popServ && <PopupServicio servicio={popServ} onClose={() => setPopServ(null)} />}
         {popCart && (
-          <PopupCartel cartel={popCart} userId={USER_ID}
+          <PopupCartel cartel={popCart} userId={getCurrentUserId()}
             onClose={() => setPopCart(null)}
             onEliminado={(id) => {
               setMapaData(p => ({ ...p, carteles: p.carteles.filter(c => c.id !== id) }));

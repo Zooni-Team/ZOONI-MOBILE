@@ -33,6 +33,13 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { calcularEdad } from '../utils/calcularEdad';
 import { resolvePetImage } from '../constants/petImages';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
+import {
+  fetchVacunas,
+  crearVacunaAplicada,
+  marcarVacunaSugerida,
+  editarVacunaAplicada,
+  eliminarVacunaAplicada,
+} from '../services/fichaMedicaApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -443,19 +450,33 @@ export default function VacunasScreen() {
   const modalScale   = useRef(new Animated.Value(0.92)).current;
   const modalOpacity = useRef(new Animated.Value(0)).current;
 
-  // ── Carga inicial (demo: sin backend de vacunas conectado) ─────────────────
+  // ── Carga inicial ──────────────────────────────────────────────────────────
+  const idMascota = petId ?? mascotaActivaDemo?.id;
+
   const cargar = useCallback(async () => {
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 500));
-    setMascota(DEMO_MASCOTA);
-    setVacunasAplicadas(DEMO_APLICADAS);
-    setVacunasSugeridas(DEMO_SUGERIDAS);
+    try {
+      if (idMascota) {
+        const { mascota: m, aplicadas, sugeridas } = await fetchVacunas(idMascota);
+        setMascota(m);
+        setVacunasAplicadas(aplicadas);
+        setVacunasSugeridas(sugeridas);
+      } else {
+        setMascota(DEMO_MASCOTA);
+        setVacunasAplicadas(DEMO_APLICADAS);
+        setVacunasSugeridas(DEMO_SUGERIDAS);
+      }
+    } catch {
+      setMascota(DEMO_MASCOTA);
+      setVacunasAplicadas(DEMO_APLICADAS);
+      setVacunasSugeridas(DEMO_SUGERIDAS);
+    }
     setLoading(false);
     Animated.parallel([
       Animated.timing(heroScale,   { toValue: 1, duration: 350, useNativeDriver: true }),
       Animated.timing(heroOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
     ]).start();
-  }, []);
+  }, [idMascota]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -526,7 +547,6 @@ export default function VacunasScreen() {
     if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
 
     setGuardando(true);
-    await new Promise((r) => setTimeout(r, 500));
 
     const fechaISO = toISO(formFecha);
     const frecuenciaMeses = vacunaPreseleccionada?.frecuencia_descripcion?.includes('6 meses') ? 6 : 12;
@@ -536,57 +556,52 @@ export default function VacunasScreen() {
       return toISO(d);
     })();
 
-    if (modalModo === 'añadir') {
-      const nueva = {
-        id: Date.now(),
-        nombre: formTitulo.trim(),
-        descripcion: formDescripcion.trim() || null,
-        fecha_aplicacion: fechaISO,
-        proximo_refuerzo: null,
-        tipo: formTipo,
-        veterinaria: formVeterinaria.trim() || null,
-        vacuna_sugerida_id: null,
-      };
-      setVacunasAplicadas((prev) => [nueva, ...prev]);
+    try {
+      if (modalModo === 'añadir') {
+        const nueva = await crearVacunaAplicada(idMascota, {
+          nombre: formTitulo.trim(),
+          descripcion: formDescripcion.trim() || null,
+          fecha_aplicacion: fechaISO,
+          proximo_refuerzo: null,
+          tipo: formTipo,
+          veterinaria: formVeterinaria.trim() || null,
+        });
+        setVacunasAplicadas((prev) => [nueva, ...prev]);
+        cerrarModal();
+        mostrarToast('Vacuna registrada correctamente', '#2DBD72');
+      } else if (modalModo === 'marcar') {
+        const nueva = await marcarVacunaSugerida(idMascota, vacunaPreseleccionada.id, {
+          descripcion: formDescripcion.trim() || null,
+          fecha_aplicacion: fechaISO,
+          proximo_refuerzo: proximoRefuerzo,
+          tipo: formTipo,
+          veterinaria: formVeterinaria.trim() || null,
+        });
+        setVacunasAplicadas((prev) => [nueva, ...prev]);
+        setVacunasSugeridas((prev) => prev.map((sg) => (
+          sg.id === vacunaPreseleccionada.id
+            ? { ...sg, applied: true, proximo_refuerzo: proximoRefuerzo }
+            : sg
+        )));
+        cerrarModal();
+        mostrarToast('Vacuna registrada correctamente', '#2DBD72');
+      } else {
+        const editada = await editarVacunaAplicada(vacunaEnEdicion.id, {
+          nombre: formTitulo.trim(),
+          descripcion: formDescripcion.trim() || null,
+          fecha_aplicacion: fechaISO,
+          tipo: formTipo,
+          veterinaria: formVeterinaria.trim() || null,
+        });
+        setVacunasAplicadas((prev) => prev.map((v) => (v.id === vacunaEnEdicion.id ? editada : v)));
+        cerrarModal();
+        mostrarToast('Vacuna actualizada correctamente', '#2DBD72');
+      }
+    } catch {
+      mostrarToast('No se pudo guardar la vacuna', '#E63946');
+    } finally {
       setGuardando(false);
-      cerrarModal();
-      mostrarToast('Vacuna registrada correctamente', '#2DBD72');
-      return;
     }
-
-    if (modalModo === 'marcar') {
-      const nueva = {
-        id: Date.now(),
-        nombre: formTitulo.trim(),
-        descripcion: formDescripcion.trim() || null,
-        fecha_aplicacion: fechaISO,
-        proximo_refuerzo: proximoRefuerzo,
-        tipo: formTipo,
-        veterinaria: formVeterinaria.trim() || null,
-        vacuna_sugerida_id: vacunaPreseleccionada.id,
-      };
-      setVacunasAplicadas((prev) => [nueva, ...prev]);
-      setVacunasSugeridas((prev) => prev.map((sg) => (
-        sg.id === vacunaPreseleccionada.id
-          ? { ...sg, applied: true, proximo_refuerzo: proximoRefuerzo }
-          : sg
-      )));
-      setGuardando(false);
-      cerrarModal();
-      mostrarToast('Vacuna registrada correctamente', '#2DBD72');
-      return;
-    }
-
-    // modalModo === 'editar'
-    setVacunasAplicadas((prev) => prev.map((v) => (
-      v.id === vacunaEnEdicion.id
-        ? { ...v, nombre: formTitulo.trim(), descripcion: formDescripcion.trim() || null,
-            fecha_aplicacion: fechaISO, tipo: formTipo, veterinaria: formVeterinaria.trim() || null }
-        : v
-    )));
-    setGuardando(false);
-    cerrarModal();
-    mostrarToast('Vacuna actualizada correctamente', '#2DBD72');
   }
 
   // ── Eliminar ─────────────────────────────────────────────────────────────
@@ -601,9 +616,14 @@ export default function VacunasScreen() {
     );
   }
 
-  function confirmarEliminar(vacunaId) {
-    setVacunasAplicadas((prev) => prev.filter((v) => v.id !== vacunaId));
-    mostrarToast('Vacuna eliminada', '#E63946');
+  async function confirmarEliminar(vacunaId) {
+    try {
+      await eliminarVacunaAplicada(vacunaId);
+      setVacunasAplicadas((prev) => prev.filter((v) => v.id !== vacunaId));
+      mostrarToast('Vacuna eliminada', '#E63946');
+    } catch {
+      mostrarToast('No se pudo eliminar la vacuna', '#E63946');
+    }
   }
 
   // ── Datos de la mascota ────────────────────────────────────────────────────

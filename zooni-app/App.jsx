@@ -6,11 +6,15 @@ import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
-import { getStoredToken } from './src/services/api';
-import { resetChats } from './src/services/chatStore';
+import { loadStoredUserId } from './src/config/session';
 import HomeScreen        from './src/screens/HomeScreen';
+import LoginScreen       from './src/screens/LoginScreen';
+import RegisterStep1Screen from './src/screens/RegisterStep1Screen';
+import RegisterStep2Screen from './src/screens/RegisterStep2Screen';
+import RegisterStep3Screen from './src/screens/RegisterStep3Screen';
+import RegisterStep4Screen from './src/screens/RegisterStep4Screen';
 import MatchScreen       from './src/screens/MatchScreen';
 import MatchFiltersScreen from './src/screens/MatchFiltersScreen';
 import PlaceholderScreen from './src/screens/PlaceholderScreen';
@@ -27,21 +31,14 @@ import ChatScreen        from './src/screens/ChatScreen';
 const Stack = createNativeStackNavigator();
 
 export default function App() {
-  const [initialRoute, setInitialRoute] = useState(
-    Platform.OS === 'web' ? 'Home' : null
-  );
+  const [initialRoute, setInitialRoute] = useState(null);
 
-  // Los chats de Match son una demo local (sin backend de chat conectado
-  // todavía): se reinician en cada arranque de la app / recarga de la página.
+  // Si hay una sesión guardada (login previo), entrar directo a Home;
+  // si no, mostrar el Login.
   useEffect(() => {
-    resetChats();
-  }, []);
-
-  useEffect(() => {
-    if (Platform.OS === 'web') return;
     (async () => {
-      const token = await getStoredToken();
-      setInitialRoute(token ? 'Home' : 'Login');
+      const userId = await loadStoredUserId();
+      setInitialRoute(userId ? 'Home' : 'Login');
     })();
   }, []);
 
@@ -61,7 +58,11 @@ export default function App() {
           screenOptions={{ headerShown: false }}
         >
           <Stack.Screen name="Home"          component={HomeScreen} />
-          <Stack.Screen name="Login"         component={PlaceholderScreen} />
+          <Stack.Screen name="Login"         component={LoginScreen} />
+          <Stack.Screen name="RegisterStep1" component={RegisterStep1Screen} />
+          <Stack.Screen name="RegisterStep2" component={RegisterStep2Screen} />
+          <Stack.Screen name="RegisterStep3" component={RegisterStep3Screen} />
+          <Stack.Screen name="RegisterStep4" component={RegisterStep4Screen} />
           <Stack.Screen name="Comunidad"     component={ComunidadScreen} />
           <Stack.Screen name="FichaMedica" component={FichaMedicaScreen} />          
           <Stack.Screen name="MisMascotas"   component={PlaceholderScreen} />

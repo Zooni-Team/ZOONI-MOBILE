@@ -21,11 +21,12 @@
 import React, { useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Animated, Dimensions, ScrollView, Alert, Image, Modal,
+  Animated, Dimensions, ScrollView, Alert, Image, Modal, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { clearToken } from '../services/api';
+import { clearCurrentUserId } from '../config/session';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // El drawer ocupa el 80% del ancho, con un máximo de 320px
@@ -95,20 +96,25 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
    * Si confirma: elimina el token JWT y redirige al Login.
    */
   const handleLogout = () => {
+    const salir = async () => {
+      onClose();
+      await clearToken();          // Token legacy (si quedó alguno guardado)
+      await clearCurrentUserId();  // Sesión actual (config/session.js)
+      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+    };
+
+    // Alert.alert es un no-op en react-native-web → fallback a window.confirm
+    if (Platform.OS === 'web') {
+      if (window.confirm('¿Seguro que querés salir de tu cuenta?')) salir();
+      return;
+    }
+
     Alert.alert(
       '¿Cerrar sesión?',
       '¿Seguro que querés salir de tu cuenta?',
       [
         { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Sí, salir',
-          style: 'destructive',
-          onPress: async () => {
-            onClose();
-            await clearToken(); // Elimina el JWT del almacenamiento local
-            navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-          },
-        },
+        { text: 'Sí, salir', style: 'destructive', onPress: salir },
       ]
     );
   };

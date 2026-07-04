@@ -35,7 +35,12 @@ import { getColorByProximidad, getTextoDias } from '../utils/colorProximidad';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
-import { getEventosCalendario, setEventosCalendario } from '../services/calendarioStore';
+import {
+  getEventosCalendario,
+  crearEventoCalendario,
+  actualizarEventoCalendario,
+  eliminarEventoCalendario,
+} from '../services/calendarioStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -519,11 +524,11 @@ export default function CalendarioScreen() {
   // que se reemplaza por la API real cuando se conecte la base de datos.
   const cargar = useCallback(async () => {
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 300));
-    const guardados = await getEventosCalendario(DEMO_EVENTOS);
+    const idMascota = petId ?? mascotaActiva?.id;
+    const guardados = await getEventosCalendario(idMascota, DEMO_EVENTOS);
     setEventos(guardados.slice().sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora)));
     setLoading(false);
-  }, []);
+  }, [petId, mascotaActiva?.id]);
 
   // Recarga cada vez que la pantalla vuelve a estar en foco (por ejemplo, al
   // volver de Eventos después de agregar uno al calendario).
@@ -620,13 +625,11 @@ export default function CalendarioScreen() {
     if (!formFechaHora)     errors.fechaHora = 'Seleccioná fecha y hora';
     if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
 
+    const idMascota = petId ?? mascotaActiva?.id;
     setGuardando(true);
-    await new Promise((r) => setTimeout(r, 500));
 
-    if (modalModo === 'añadir') {
-      const nuevo = {
-        id: Date.now(),
-        origen: 'manual',
+    try {
+      const datos = {
         titulo: formTitulo.trim(),
         descripcion: formDescripcion.trim() || null,
         fecha_hora: formFechaHora.toISOString(),
@@ -634,27 +637,27 @@ export default function CalendarioScreen() {
         emoji: formEmoji,
         color: formColor,
       };
-      const actualizados = [...eventos, nuevo].sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora));
-      setEventos(actualizados);
-      setEventosCalendario(actualizados);
-      setGuardando(false);
-      cerrarModal();
-      mostrarToast('Evento registrado correctamente', '#2DBD72');
-      return;
-    }
 
-    // modalModo === 'editar'
-    const actualizados = eventos.map((e) => (
-      e.id === eventoEnEdicion.id
-        ? { ...e, titulo: formTitulo.trim(), descripcion: formDescripcion.trim() || null,
-            fecha_hora: formFechaHora.toISOString(), tipo: formTipo, emoji: formEmoji, color: formColor }
-        : e
-    )).sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora));
-    setEventos(actualizados);
-    setEventosCalendario(actualizados);
-    setGuardando(false);
-    cerrarModal();
-    mostrarToast('Evento actualizado correctamente', '#2DBD72');
+      if (modalModo === 'añadir') {
+        const nuevo = await crearEventoCalendario(idMascota, datos);
+        const actualizados = [...eventos, nuevo].sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora));
+        setEventos(actualizados);
+        cerrarModal();
+        mostrarToast('Evento registrado correctamente', '#2DBD72');
+      } else {
+        const editado = await actualizarEventoCalendario(eventoEnEdicion.id, datos);
+        const actualizados = eventos
+          .map((e) => (e.id === eventoEnEdicion.id ? editado : e))
+          .sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora));
+        setEventos(actualizados);
+        cerrarModal();
+        mostrarToast('Evento actualizado correctamente', '#2DBD72');
+      }
+    } catch {
+      mostrarToast('No se pudo guardar el evento', '#E63946');
+    } finally {
+      setGuardando(false);
+    }
   }
 
   // ── Eliminar ─────────────────────────────────────────────────────────────
@@ -666,11 +669,14 @@ export default function CalendarioScreen() {
     );
   }
 
-  function confirmarEliminar(eventoId) {
-    const actualizados = eventos.filter((e) => e.id !== eventoId);
-    setEventos(actualizados);
-    setEventosCalendario(actualizados);
-    mostrarToast('Evento eliminado', '#E63946');
+  async function confirmarEliminar(eventoId) {
+    try {
+      await eliminarEventoCalendario(eventoId);
+      setEventos((prev) => prev.filter((e) => e.id !== eventoId));
+      mostrarToast('Evento eliminado', '#E63946');
+    } catch {
+      mostrarToast('No se pudo eliminar el evento', '#E63946');
+    }
   }
 
   const tituloModal = modalModo === 'editar' ? 'Editar evento' : 'Nuevo evento';

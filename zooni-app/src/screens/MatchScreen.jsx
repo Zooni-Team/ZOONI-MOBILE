@@ -13,17 +13,11 @@ import MatchSwipeStack from '../components/match/MatchSwipeStack';
 import MatchActionButtons from '../components/match/MatchActionButtons';
 import MatchCelebrationOverlay from '../components/match/MatchCelebrationOverlay';
 import MatchProfileDetailModal from '../components/match/MatchProfileDetailModal';
-import {
-  fetchMatchPerfiles, postMatchLike, postMatchSkip, getDemoPerfilesSnapshot,
-} from '../services/matchApi';
-import { DEMO_CURRENT_USER } from '../data/matchDemo';
-import { DEMO_MASCOTA_ACTIVA } from '../constants/demoUsuario';
+import { fetchMatchPerfiles, postMatchLike, postMatchSkip } from '../services/matchApi';
+import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
 import { getMatchCardLayout } from '../utils/matchLayout';
 import { consumeMatchReloadFromFilters } from '../utils/matchNavigation';
-
-const DEFAULT_LAT = -34.5889;
-const DEFAULT_LNG = -58.4306;
 
 export default function MatchScreen() {
   const navigation = useNavigation();
@@ -32,20 +26,20 @@ export default function MatchScreen() {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const { cardHeight, cardWidth } = getMatchCardLayout(screenWidth, screenHeight);
 
-  const [perfiles, setPerfiles] = useState(getDemoPerfilesSnapshot);
+  const { usuario, mascotaActiva } = useUsuarioActivo();
+  const [perfiles, setPerfiles] = useState([]);
   const [index, setIndex] = useState(0);
   const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [usuario, setUsuario] = useState(DEMO_CURRENT_USER);
   const [matchOverlay, setMatchOverlay] = useState(null);
   const [detailPerfil, setDetailPerfil] = useState(null);
 
-  const loadPerfiles = useCallback(async (showSkeleton = false) => {
+  const loadPerfiles = useCallback(async (showSkeleton = true) => {
     if (showSkeleton) setLoading(true);
     try {
-      const data = await fetchMatchPerfiles(DEFAULT_LAT, DEFAULT_LNG);
-      setPerfiles(data.perfiles ?? getDemoPerfilesSnapshot());
+      const data = await fetchMatchPerfiles();
+      setPerfiles(data.perfiles ?? []);
       setIndex(0);
       setHistory([]);
     } finally {
@@ -54,7 +48,7 @@ export default function MatchScreen() {
   }, []);
 
   useEffect(() => {
-    loadPerfiles(false);
+    loadPerfiles(true);
   }, [loadPerfiles]);
 
   useFocusEffect(
@@ -77,13 +71,13 @@ export default function MatchScreen() {
     setHistory((h) => [...h, { index: currentIndex, perfil }]);
     setIndex((i) => i + 1);
 
-    const usuarioId = perfil.usuario_id;
+    const mascotaId = perfil.mascota.id;
     setTimeout(() => { processingRef.current = false; }, 180);
 
     void (async () => {
       try {
         if (action === 'like') {
-          const res = await postMatchLike(usuarioId);
+          const res = await postMatchLike(mascotaId);
           if (res?.match) {
             setMatchOverlay({
               ...res.usuario_match,
@@ -94,10 +88,10 @@ export default function MatchScreen() {
           try {
             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           } catch { /* web */ }
-          await postMatchSkip(usuarioId);
+          await postMatchSkip(mascotaId);
         }
       } catch {
-        /* demo/offline */
+        /* sin conexión */
       }
     })();
   }, [perfiles, index]);
@@ -236,7 +230,7 @@ export default function MatchScreen() {
         visible={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         usuario={usuario}
-        mascotaActiva={DEMO_MASCOTA_ACTIVA}
+        mascotaActiva={mascotaActiva}
         activeRoute="Match"
       />
     </SafeAreaView>

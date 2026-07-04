@@ -31,16 +31,16 @@ export default function FormularioCartel({ coordenadas, onExito, onCancelar }) {
     if (!validar(tel)) return;
     setLoading(true);
     try {
-      const fd = new FormData();
-      fd.append('tipo', tipo);
-      fd.append('descripcion', desc);
-      fd.append('telefono_contacto', tel.trim());
-      fd.append('lat', String(coordenadas.latitude));
-      fd.append('lng', String(coordenadas.longitude));
-      const data = await crearCartel(fd);
+      const data = await crearCartel({
+        tipo,
+        descripcion: desc,
+        telefono_contacto: tel.trim(),
+        lat: coordenadas.latitude,
+        lng: coordenadas.longitude,
+      });
       onExito(data.cartel);
-    } catch (err) {
-      Alert.alert('Error', err?.response?.data?.error || 'No se pudo crear el cartel');
+    } catch {
+      Alert.alert('Error', 'No se pudo crear el cartel');
     } finally {
       setLoading(false);
     }

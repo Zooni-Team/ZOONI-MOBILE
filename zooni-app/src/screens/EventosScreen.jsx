@@ -29,7 +29,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
-import { fetchHome, fetchEventos, agregarEventoAlCalendario } from '../services/api';
+import { fetchHome, fetchEventos } from '../services/api';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import { DEMO_USUARIO, DEMO_MASCOTA_ACTIVA } from '../constants/demoUsuario';
 import {
@@ -408,24 +408,24 @@ export default function EventosScreen() {
    * a aparecer disponible para agregar. Se llama al cargar y cada vez que
    * la pantalla recupera el foco (por ejemplo, al volver de Calendario).
    */
-  const sincronizarAgregados = useCallback(async (eventosActuales) => {
-    const guardados = await getEventosCalendario([]);
+  const sincronizarAgregados = useCallback(async (eventosActuales, petIdActual) => {
+    if (!petIdActual) { setEventosAgregados(new Set()); return; }
+
+    const guardados = await getEventosCalendario(petIdActual, []);
     const idsEnCalendario = new Set(
       guardados.filter((e) => e.origen === 'eventos').map((e) => e.origenId),
     );
 
     // Sembrado único (primera vez que se usa la app): los eventos que el
     // backend/demo marca con `ya_en_calendario: true` se copian al calendario.
-    // Después de esta vez el store local manda: si el usuario los elimina,
-    // NO se vuelven a agregar solos.
+    // Después de esta vez el store manda: si el usuario los elimina, NO se
+    // vuelven a agregar solos.
     if (!(await yaSeSembroInicial())) {
       const pendientes = eventosActuales.filter(
         (e) => e.ya_en_calendario && !idsEnCalendario.has(e.id),
       );
       for (const evento of pendientes) {
-        await agregarEventoCalendario({
-          id: `evento-publico-${evento.id}`,
-          origen: 'eventos',
+        await agregarEventoCalendario(petIdActual, {
           origenId: evento.id,
           titulo: evento.titulo,
           descripcion: evento.descripcion
@@ -446,8 +446,8 @@ export default function EventosScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (eventos.length > 0) sincronizarAgregados(eventos);
-    }, [eventos, sincronizarAgregados]),
+      if (eventos.length > 0) sincronizarAgregados(eventos, homeData?.mascotaActiva?.id);
+    }, [eventos, homeData, sincronizarAgregados]),
   );
 
   /**
@@ -488,7 +488,7 @@ export default function EventosScreen() {
       const eventosFinales = eventosData.length > 0 ? eventosData : EVENTOS_DEMO;
 
       setEventos(eventosFinales);
-      await sincronizarAgregados(eventosFinales);
+      await sincronizarAgregados(eventosFinales, datosHome?.mascotaActiva?.id);
     } catch (error) {
       console.error('Error al cargar eventos:', error);
 
@@ -500,7 +500,7 @@ export default function EventosScreen() {
 
       // En caso de error total, mostrar demo igual
       setEventos(EVENTOS_DEMO);
-      await sincronizarAgregados(EVENTOS_DEMO);
+      await sincronizarAgregados(EVENTOS_DEMO, undefined);
     } finally {
       setLoading(false);
     }
@@ -531,6 +531,12 @@ export default function EventosScreen() {
       // Marcar como procesando
       setProcesandoIds((prev) => new Map(prev).set(evento.id, true));
 
+      if (!petId) {
+        Alert.alert('Sin mascota activa', 'Elegí una mascota activa para agregar eventos a su calendario.');
+        setProcesandoIds((prev) => { const next = new Map(prev); next.delete(evento.id); return next; });
+        return;
+      }
+
       try {
         const payload = {
           titulo:      evento.titulo,
@@ -539,27 +545,12 @@ export default function EventosScreen() {
             : `📍 ${evento.ubicacion_nombre}`,
           fecha_hora:  new Date(evento.fecha_hora).toISOString(),
           tipo:        'Evento',
+          origenId:    evento.id,
+          emoji:       '🎉',
+          color:       '#9B59B6',
         };
 
-        if (petId) {
-          try {
-            await agregarEventoAlCalendario(petId, payload);
-          } catch {
-            // Backend de calendario todavía no conectado: seguimos con el guardado local.
-          }
-        }
-
-        // Mientras no hay backend de calendario conectado, el evento se guarda
-        // localmente (compartido con CalendarioScreen) para que aparezca ahí.
-        // Se reemplaza por la respuesta real de la API cuando se conecte la BD.
-        await agregarEventoCalendario({
-          id: `evento-publico-${evento.id}`,
-          origen: 'eventos',
-          origenId: evento.id,
-          ...payload,
-          emoji: '🎉',
-          color: '#9B59B6',
-        });
+        await agregarEventoCalendario(petId, payload);
 
         // Actualizar estado local: agregar al Set
         setEventosAgregados((prev) => new Set(prev).add(evento.id));

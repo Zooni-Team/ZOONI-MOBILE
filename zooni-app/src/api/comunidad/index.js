@@ -1,66 +1,256 @@
-// Datos hardcodeados — Díaz Vélez y Jerónimo Salguero, CABA
-const AMIGOS_MOCK = [
-  { usuario_id: 2, nombre: 'Martina García',   mascota_nombre: 'Luna',  distancia_km: 0.2, online: true,  lat: -34.6082, lng: -58.4320 },
-  { usuario_id: 3, nombre: 'Diego Fernández',  mascota_nombre: 'Rocky', distancia_km: 0.5, online: true,  lat: -34.6105, lng: -58.4355 },
-  { usuario_id: 4, nombre: 'Valentina López',  mascota_nombre: 'Milo',  distancia_km: 1.1, online: false, lat: -34.6065, lng: -58.4298 },
-];
+/**
+ * api/comunidad/index.js — Módulo Comunidad sobre Supabase
+ *
+ * Tablas: carteles, servicios, amistades, ubicaciones_usuarios (creadas en
+ * database/migrations/010_supabase_live_setup.sql — no existían en ningún
+ * schema anterior). Reemplaza los mocks in-memory que usaba esta capa.
+ */
 
-const SERVICIOS_MOCK = [
-  { id: 1, nombre: 'Veterinaria San Martín',        tipo: 'veterinaria', direccion: 'Av. Díaz Vélez 3820',     telefono: '011 4855-2290', descripcion: 'Atención general y urgencias las 24 hs.',      lat: -34.6075, lng: -58.4305 },
-  { id: 2, nombre: 'Paseadores Crespo',              tipo: 'paseador',    direccion: 'Jerónimo Salguero 2145',  telefono: '11 6234-5678',  descripcion: 'Paseos grupales e individuales en Caballito.', lat: -34.6100, lng: -58.4350 },
-  { id: 3, nombre: 'Pet Shop El Hueso',              tipo: 'petshop',     direccion: 'Av. Díaz Vélez 3650',     telefono: '011 4854-9900', descripcion: 'Alimentos, accesorios y ropa para mascotas.', lat: -34.6060, lng: -58.4340 },
-  { id: 4, nombre: 'Peluquería Canina Mimados',      tipo: 'peluqueria',  direccion: 'Jerónimo Salguero 2230',  telefono: '11 5567-4321',  descripcion: 'Baño, corte y estética canina.',               lat: -34.6110, lng: -58.4300 },
-  { id: 5, nombre: 'Clínica Veterinaria del Parque', tipo: 'veterinaria', direccion: 'Av. Rivadavia 4855',      telefono: '011 4901-1122', descripcion: 'Especialistas en dermatología y oncología.',   lat: -34.6050, lng: -58.4318 },
-];
+import { supabase } from '../../lib/supabase';
+import { getCurrentUserId } from '../../config/session';
 
-const CARTELES_MOCK = [
-  {
-    id: 1, tipo: 'perdida',
-    mascota_nombre: 'Toto', mascota_especie: 'Perro', mascota_raza: 'Poodle blanco',
-    descripcion: 'Se busca Poodle blanco llamado Toto. Desapareció el sábado cerca del Parque Rivadavia. Muy manso, tiene collar azul con chapita.',
-    telefono_contacto: '11 5566-7788', publicado_por: 'Carla M.',
-    created_at: '2026-06-27T18:30:00Z', usuario_id: 99,
-    lat: -34.6085, lng: -58.4315,
-  },
-  {
-    id: 2, tipo: 'aviso_general',
-    descripcion: 'Se encontró gata gris con collar rojo en Pringles al 200. Está en buen estado esperando a su dueño. Llamar para coordinar rescate.',
-    telefono_contacto: '11 4455-6677', publicado_por: 'Vecino de Pringles',
-    created_at: '2026-06-28T10:15:00Z', usuario_id: 88,
-    lat: -34.6095, lng: -58.4325,
-  },
-];
+function haversineKm(lat1, lng1, lat2, lng2) {
+  if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return null;
+  const R = 6371;
+  const toRad = (v) => (v * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
+}
 
-const SOLICITUDES_MOCK = [
-  { id: 101, nombre: 'Carlos Beni' },
-];
+function aplicarBbox(query, bbox, latCol = 'lat', lngCol = 'lng') {
+  if (!bbox) return query;
+  return query
+    .gte(latCol, bbox.lat_min).lte(latCol, bbox.lat_max)
+    .gte(lngCol, bbox.lng_min).lte(lngCol, bbox.lng_max);
+}
 
-export const fetchMapaData = () =>
-  Promise.resolve({ servicios: SERVICIOS_MOCK, carteles: CARTELES_MOCK, amigos: AMIGOS_MOCK });
+// ─────────────────────────────────────────────
+// SERVICIOS
+// ─────────────────────────────────────────────
 
-export const fetchServicios = (_bbox, tipo) => {
-  const lista = tipo && tipo !== 'todos'
-    ? SERVICIOS_MOCK.filter(s => s.tipo === tipo)
-    : SERVICIOS_MOCK;
-  return Promise.resolve({ servicios: lista });
-};
+export async function fetchServicios(bbox, tipo) {
+  let query = supabase.from('servicios').select('*');
+  query = aplicarBbox(query, bbox);
+  if (tipo && tipo !== 'todos') query = query.eq('tipo', tipo);
+  const { data, error } = await query;
+  if (error) throw error;
+  return { servicios: data ?? [] };
+}
 
-export const fetchAmigos        = ()       => Promise.resolve({ amigos: AMIGOS_MOCK });
-export const fetchSolicitudes   = ()       => Promise.resolve({ solicitudes: SOLICITUDES_MOCK });
-export const enviarSolicitud    = ()       => Promise.resolve({ ok: true });
-export const responderSolicitud = ()       => Promise.resolve({ ok: true });
-export const crearCartel        = ()       => Promise.resolve({ cartel: { id: Date.now() } });
-export const eliminarCartel     = ()       => Promise.resolve({ ok: true });
-export const actualizarUbicacion = ()     => Promise.resolve({ ok: true });
+// ─────────────────────────────────────────────
+// AMIGOS
+// ─────────────────────────────────────────────
 
-export const buscarUsuarios = (q) => {
-  const todos = [
-    { usuario_id: 10, nombre: 'Ana Rodríguez' },
-    { usuario_id: 11, nombre: 'Pablo Méndez' },
-    { usuario_id: 12, nombre: 'Laura Castillo' },
-  ];
-  const lista = q
-    ? todos.filter(u => u.nombre.toLowerCase().includes(q.toLowerCase()))
-    : todos;
-  return Promise.resolve({ usuarios: lista });
-};
+async function miUbicacion() {
+  const { data } = await supabase.from('ubicaciones_usuarios').select('*').eq('usuario_id', getCurrentUserId()).maybeSingle();
+  return data;
+}
+
+export async function fetchAmigos() {
+  const { data: amistades, error } = await supabase
+    .from('amistades')
+    .select('*')
+    .or(`usuario_a_id.eq.${getCurrentUserId()},usuario_b_id.eq.${getCurrentUserId()}`)
+    .eq('estado', 'aceptada');
+  if (error) throw error;
+
+  const idsAmigos = (amistades ?? []).map((a) => (a.usuario_a_id === getCurrentUserId() ? a.usuario_b_id : a.usuario_a_id));
+  if (idsAmigos.length === 0) return { amigos: [] };
+
+  const [{ data: usuarios }, { data: mascotas }, { data: ubicaciones }, miUbi] = await Promise.all([
+    supabase.from('User').select('*').in('Id_User', idsAmigos),
+    supabase.from('Mascota').select('*').in('Id_User', idsAmigos),
+    supabase.from('ubicaciones_usuarios').select('*').in('usuario_id', idsAmigos),
+    miUbicacion(),
+  ]);
+
+  const ubicacionPorUsuario = new Map((ubicaciones ?? []).map((u) => [u.usuario_id, u]));
+  const mascotaPorUsuario = new Map();
+  (mascotas ?? []).forEach((m) => { if (!mascotaPorUsuario.has(m.Id_User)) mascotaPorUsuario.set(m.Id_User, m); });
+
+  const CINCO_MIN = 5 * 60 * 1000;
+  const amigos = (usuarios ?? []).map((u) => {
+    const ubi = ubicacionPorUsuario.get(u.Id_User);
+    const online = ubi ? (Date.now() - new Date(ubi.updated_at).getTime()) < CINCO_MIN : false;
+    return {
+      usuario_id: u.Id_User,
+      nombre: `${u.Nombre ?? ''} ${u.Apellido ?? ''}`.trim(),
+      mascota_nombre: mascotaPorUsuario.get(u.Id_User)?.Nombre ?? null,
+      distancia_km: miUbi && ubi ? haversineKm(miUbi.lat, miUbi.lng, ubi.lat, ubi.lng) : null,
+      online,
+      lat: ubi?.lat != null ? Number(ubi.lat) : null,
+      lng: ubi?.lng != null ? Number(ubi.lng) : null,
+    };
+  });
+
+  return { amigos };
+}
+
+export async function fetchSolicitudes() {
+  const { data, error } = await supabase
+    .from('amistades')
+    .select('*')
+    .eq('usuario_b_id', getCurrentUserId())
+    .eq('estado', 'pendiente');
+  if (error) throw error;
+  if (!data?.length) return { solicitudes: [] };
+
+  const ids = data.map((s) => s.usuario_a_id);
+  const { data: usuarios } = await supabase.from('User').select('*').in('Id_User', ids);
+  const nombrePorId = new Map((usuarios ?? []).map((u) => [u.Id_User, `${u.Nombre ?? ''} ${u.Apellido ?? ''}`.trim()]));
+
+  return { solicitudes: data.map((s) => ({ id: s.id, nombre: nombrePorId.get(s.usuario_a_id) ?? 'Usuario' })) };
+}
+
+export async function enviarSolicitud(usuarioDestinoId) {
+  const { data: existente } = await supabase
+    .from('amistades')
+    .select('*')
+    .or(`and(usuario_a_id.eq.${getCurrentUserId()},usuario_b_id.eq.${usuarioDestinoId}),and(usuario_a_id.eq.${usuarioDestinoId},usuario_b_id.eq.${getCurrentUserId()})`)
+    .maybeSingle();
+  if (existente) return { ok: true };
+
+  const { error } = await supabase
+    .from('amistades')
+    .insert({ usuario_a_id: getCurrentUserId(), usuario_b_id: usuarioDestinoId, estado: 'pendiente' });
+  if (error) throw error;
+  return { ok: true };
+}
+
+export async function responderSolicitud(id, accion) {
+  const estado = accion === 'aceptar' ? 'aceptada' : 'rechazada';
+  const { error } = await supabase.from('amistades').update({ estado, updated_at: new Date().toISOString() }).eq('id', id);
+  if (error) throw error;
+  return { ok: true };
+}
+
+export async function buscarUsuarios(q) {
+  let query = supabase.from('User').select('*').neq('Id_User', getCurrentUserId()).limit(20);
+  if (q) query = query.ilike('Nombre', `%${q}%`);
+  const { data: usuarios, error } = await query;
+  if (error) throw error;
+  if (!usuarios?.length) return { resultados: [] };
+
+  const ids = usuarios.map((u) => u.Id_User);
+  const [{ data: mascotas }, { data: amistades }] = await Promise.all([
+    supabase.from('Mascota').select('*').in('Id_User', ids),
+    supabase.from('amistades').select('*')
+      .or(`usuario_a_id.eq.${getCurrentUserId()},usuario_b_id.eq.${getCurrentUserId()}`),
+  ]);
+
+  const mascotaPorUsuario = new Map();
+  (mascotas ?? []).forEach((m) => { if (!mascotaPorUsuario.has(m.Id_User)) mascotaPorUsuario.set(m.Id_User, m); });
+
+  const amigosIds = new Set(
+    (amistades ?? [])
+      .filter((a) => a.estado === 'aceptada')
+      .map((a) => (a.usuario_a_id === getCurrentUserId() ? a.usuario_b_id : a.usuario_a_id)),
+  );
+
+  const resultados = usuarios.map((u) => ({
+    usuario_id: u.Id_User,
+    nombre: `${u.Nombre ?? ''} ${u.Apellido ?? ''}`.trim(),
+    mascota_nombre: mascotaPorUsuario.get(u.Id_User)?.Nombre ?? null,
+    barrio: u.Ubicacion ?? null,
+    es_amigo: amigosIds.has(u.Id_User),
+  }));
+
+  return { resultados };
+}
+
+// ─────────────────────────────────────────────
+// CARTELES
+// ─────────────────────────────────────────────
+
+function mapCartel(row, nombrePublicador, mascota) {
+  return {
+    id: row.id,
+    tipo: row.tipo,
+    descripcion: row.descripcion,
+    telefono_contacto: row.telefono_contacto,
+    foto_url: row.foto_url,
+    lat: Number(row.lat),
+    lng: Number(row.lng),
+    created_at: row.created_at,
+    usuario_id: row.usuario_id,
+    publicado_por: nombrePublicador ?? 'Usuario Zooni',
+    mascota_nombre: mascota?.Nombre ?? null,
+    mascota_especie: mascota?.Especie ?? null,
+    mascota_raza: mascota?.Raza ?? null,
+  };
+}
+
+export async function crearCartel(datos) {
+  const { data: row, error } = await supabase
+    .from('carteles')
+    .insert({
+      usuario_id: getCurrentUserId(),
+      tipo: datos.tipo,
+      descripcion: datos.descripcion || null,
+      telefono_contacto: datos.telefono_contacto,
+      lat: datos.lat,
+      lng: datos.lng,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+
+  const { data: usuario } = await supabase.from('User').select('*').eq('Id_User', getCurrentUserId()).single();
+  const nombre = `${usuario?.Nombre ?? ''} ${usuario?.Apellido ?? ''}`.trim();
+
+  return { cartel: mapCartel(row, nombre, null) };
+}
+
+export async function eliminarCartel(id) {
+  const { error } = await supabase.from('carteles').update({ activo: false }).eq('id', id).eq('usuario_id', getCurrentUserId());
+  if (error) throw error;
+  return { ok: true };
+}
+
+// ─────────────────────────────────────────────
+// MAPA (carteles + servicios + amigos combinados)
+// ─────────────────────────────────────────────
+
+export async function fetchMapaData(bbox) {
+  let carteleQuery = supabase.from('carteles').select('*').eq('activo', true);
+  carteleQuery = aplicarBbox(carteleQuery, bbox);
+
+  const [{ data: cartelesRaw, error: errCarteles }, { servicios }, { amigos }] = await Promise.all([
+    carteleQuery,
+    fetchServicios(bbox),
+    fetchAmigos(),
+  ]);
+  if (errCarteles) throw errCarteles;
+
+  const usuarioIds = [...new Set((cartelesRaw ?? []).map((c) => c.usuario_id))];
+  const { data: usuarios } = usuarioIds.length
+    ? await supabase.from('User').select('*').in('Id_User', usuarioIds)
+    : { data: [] };
+  const nombrePorUsuario = new Map((usuarios ?? []).map((u) => [u.Id_User, `${u.Nombre ?? ''} ${u.Apellido ?? ''}`.trim()]));
+
+  const mascotaIds = [...new Set((cartelesRaw ?? []).map((c) => c.mascota_id).filter(Boolean))];
+  const { data: mascotas } = mascotaIds.length
+    ? await supabase.from('Mascota').select('*').in('Id_Mascota', mascotaIds)
+    : { data: [] };
+  const mascotaPorId = new Map((mascotas ?? []).map((m) => [m.Id_Mascota, m]));
+
+  const carteles = (cartelesRaw ?? []).map((c) =>
+    mapCartel(c, nombrePorUsuario.get(c.usuario_id), c.mascota_id ? mascotaPorId.get(c.mascota_id) : null));
+
+  return { servicios, carteles, amigos };
+}
+
+// ─────────────────────────────────────────────
+// UBICACIÓN
+// ─────────────────────────────────────────────
+
+export async function actualizarUbicacion(lat, lng) {
+  const { error } = await supabase
+    .from('ubicaciones_usuarios')
+    .upsert({ usuario_id: getCurrentUserId(), lat, lng, updated_at: new Date().toISOString() }, { onConflict: 'usuario_id' });
+  if (error) throw error;
+  return { ok: true };
+}

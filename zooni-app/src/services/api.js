@@ -1,126 +1,104 @@
 /**
- * api.js — Capa de comunicación con el backend de Zooni
+ * api.js — Capa de acceso a datos de Zooni sobre Supabase
  *
- * Centraliza todas las llamadas HTTP a la API REST.
- * Usa axios con un interceptor que adjunta el JWT automáticamente.
+ * Reemplaza al backend Express que nunca llegó a desplegarse (BASE_URL
+ * apuntaba a localhost:5165, que no existe). Ahora todas estas funciones
+ * consultan directo la base Postgres de Supabase con el cliente de
+ * src/lib/supabase.js.
  *
- * BASE_URL apunta al backend local (emulador Android usa 10.0.2.2 en vez de localhost)
- * Para producción, cambiar BASE_URL por la URL del servidor real.
+ * Todavía no hay login: getCurrentUserId() (src/config/session.js) hace de
+ * "usuario logueado" fijo. Cuando se implemente Supabase Auth, reemplazar
+ * ese import por la sesión real — las funciones de acá no deberían necesitar
+ * cambios más allá de eso.
  *
  * Funciones exportadas:
- *   Token:         getStoredToken, saveToken, clearToken
+ *   Token:         getStoredToken, saveToken, clearToken (compat con HamburgerDrawer)
  *   Home:          fetchHome, fetchHomeConfig, saveHomeConfig
  *   Mascotas:      activarMascota
+ *   Avatares:      fetchAvatares, aplicarAvatar
  *   Notificaciones: fetchNotificaciones, marcarNotificacionLeida, marcarTodasLeidas
+ *   Eventos:       fetchEventos, agregarEventoAlCalendario
+ *   Consejos:      fetchConsejos
  */
 
-import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
-import { API_TIMEOUT_MS } from '../config/apiConfig';
-
-// URL base del backend — cambiar en producción
-// IMPORTANTE: Para emulador Android usar 10.0.2.2 en vez de localhost
-// Para iOS simulator usar localhost
-// Para dispositivo físico usar la IP de tu PC (ej: 192.168.1.x)
-const BASE_URL = Platform.select({
-  android: 'http://10.0.2.2:5165/api/v1',
-  ios: 'http://localhost:5165/api/v1',
-  default: 'http://localhost:5165/api/v1', // web
-});
+import { supabase } from '../lib/supabase';
+import { getCurrentUserId } from '../config/session';
+import { calcularEdad } from '../utils/calcularEdad';
 
 // ─────────────────────────────────────────────
-// CACHÉ DEL TOKEN EN MEMORIA (fix del bloqueo)
-// ─────────────────────────────────────────────
-let tokenCache = null;
-let tokenCacheRead = false; // ← flag para no releer SecureStore si ya cargamos
-let tokenPromise = null;
-
-// Instancia de axios con la URL base configurada
-const api = axios.create({ 
-  baseURL: BASE_URL,
-  timeout: 10000, // 10s timeout para evitar esperas infinitas
-});
-
-// Interceptor: antes de cada request, adjunta el token JWT en el header
-api.interceptors.request.use(async (config) => {
-  // Usar el token cacheado en memoria (instantáneo)
-  if (tokenCache) {
-    config.headers.Authorization = `Bearer ${tokenCache}`;
-    return config;
-  }
-
-  // Si hay una lectura en progreso, esperar a que termine
-  if (tokenPromise) {
-    const token = await tokenPromise;
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  }
-
-  // Primera lectura: leer del disco y cachear
-  tokenPromise = getStoredToken();
-  const token = await tokenPromise;
-  tokenPromise = null;
-  
-  if (token) {
-    tokenCache = token;
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  
-  return config;
-});
-
-// Interceptor de errores: limpiar caché si el token expiró
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token expirado o inválido: limpiar caché
-      tokenCache = null;
-    }
-    return Promise.reject(error);
-  }
-);
-
-// ─────────────────────────────────────────────
-// MANEJO DEL TOKEN JWT
-// SecureStore (mobile) vs localStorage (web)
+// TOKEN JWT — se mantiene solo para no romper HamburgerDrawer/pantallas
+// que todavía llaman clearToken() al hacer "logout". No hay backend propio
+// emitiendo JWT: esto queda vacío hasta que se implemente Supabase Auth.
 // ─────────────────────────────────────────────
 
-/** Lee el token guardado. Retorna null si no existe. */
 export async function getStoredToken() {
-  if (tokenCacheRead) return tokenCache;
   if (Platform.OS === 'web') {
-    tokenCache = localStorage.getItem('jwt_token');
-  } else {
-    tokenCache = await SecureStore.getItemAsync('jwt_token');
+    return typeof localStorage !== 'undefined' ? localStorage.getItem('jwt_token') : null;
   }
-  tokenCacheRead = true;
-  return tokenCache;
+  return SecureStore.getItemAsync('jwt_token');
 }
 
-/** Guarda el token después de un login exitoso. */
 export async function saveToken(token) {
-  tokenCache = token;       // Actualizar caché inmediatamente
-  tokenCacheRead = true;    // Marcar como leído para no releer del disco
   if (Platform.OS === 'web') {
-    localStorage.setItem('jwt_token', token);
+    if (typeof localStorage !== 'undefined') localStorage.setItem('jwt_token', token);
     return;
   }
   await SecureStore.setItemAsync('jwt_token', token);
 }
 
-/** Elimina el token al cerrar sesión. */
 export async function clearToken() {
-  tokenCache = null;        // Limpiar caché
-  tokenCacheRead = false;   // Forzar relectura en el próximo acceso
   if (Platform.OS === 'web') {
-    localStorage.removeItem('jwt_token');
+    if (typeof localStorage !== 'undefined') localStorage.removeItem('jwt_token');
     return;
   }
   await SecureStore.deleteItemAsync('jwt_token');
+}
+
+// ─────────────────────────────────────────────
+// HELPERS INTERNOS
+// ─────────────────────────────────────────────
+
+function mapMascota(m) {
+  if (!m) return null;
+  const edad = calcularEdadPartes(m.FechaNacimiento);
+  return {
+    id: m.Id_Mascota,
+    nombre: m.Nombre,
+    especie: m.Especie,
+    raza: m.Raza,
+    fotoUrl: m.Foto ?? null,
+    imagen_asset: m.ImagenAsset ?? 'perro_default',
+    peso: m.Peso != null ? Number(m.Peso) : null,
+    fechaNacimiento: m.FechaNacimiento,
+    edadAnios: edad.anios,
+    edadMeses: edad.meses,
+  };
+}
+
+function calcularEdadPartes(fechaNacimiento) {
+  if (!fechaNacimiento) return { anios: null, meses: null };
+  const nacimiento = new Date(fechaNacimiento);
+  const hoy = new Date();
+  let anios = hoy.getFullYear() - nacimiento.getFullYear();
+  let meses = hoy.getMonth() - nacimiento.getMonth();
+  if (meses < 0) { anios -= 1; meses += 12; }
+  if (hoy.getDate() < nacimiento.getDate()) {
+    meses -= 1;
+    if (meses < 0) { anios -= 1; meses += 12; }
+  }
+  return { anios, meses };
+}
+
+function mapUsuario(u) {
+  if (!u) return null;
+  return {
+    id: u.Id_User,
+    nombre: u.Nombre,
+    apellido: u.Apellido,
+    fotoPerfil: u.FotoPerfil ?? null,
+  };
 }
 
 // ─────────────────────────────────────────────
@@ -128,131 +106,259 @@ export async function clearToken() {
 // ─────────────────────────────────────────────
 
 /**
- * GET /home
  * Trae en una sola llamada: usuario, mascota activa y badge de notificaciones.
- * Si falla (sin backend), HomeScreen usa DEMO_DATA como fallback.
  */
 export async function fetchHome() {
-  const res = await api.get('/home');
-  return res.data;
+  const [{ data: usuario, error: errUsuario }, { data: mascotas, error: errMascotas }, { count: notificacionesNoLeidas }] = await Promise.all([
+    supabase.from('User').select('*').eq('Id_User', getCurrentUserId()).single(),
+    supabase.from('Mascota').select('*').eq('Id_User', getCurrentUserId()).order('EsActiva', { ascending: false }),
+    supabase.from('Notificacion').select('*', { count: 'exact', head: true }).eq('Id_User', getCurrentUserId()).eq('Leido', false),
+  ]);
+
+  if (errUsuario) throw errUsuario;
+  if (errMascotas) throw errMascotas;
+
+  const mascotaActiva = mascotas?.find((m) => m.EsActiva) ?? mascotas?.[0] ?? null;
+
+  return {
+    usuario: mapUsuario(usuario),
+    mascotaActiva: mapMascota(mascotaActiva),
+    notificacionesNoLeidas: notificacionesNoLeidas ?? 0,
+  };
 }
 
 /**
- * GET /home/config
- * Trae la configuración de botones personalizados del usuario.
- * Si el usuario nunca personalizó, el backend devuelve los 3 botones default.
+ * Configuración de botones personalizados del usuario. Todavía no hay una
+ * tabla para esto (es config de UI, no dato de negocio) — se guarda en
+ * SecureStore/localStorage por dispositivo hasta que se necesite sincronizar
+ * entre dispositivos.
  */
+const HOME_CONFIG_KEY = 'zooni_home_config';
+const DEFAULT_HOME_CONFIG = {
+  botones: [
+    { seccion: 'comunidad', orden: 1, visible: true },
+    { seccion: 'ficha_medica', orden: 2, visible: true },
+    { seccion: 'match', orden: 3, visible: true },
+  ],
+};
+
 export async function fetchHomeConfig() {
-  const res = await api.get('/home/config');
-  return res.data;
+  try {
+    const raw = Platform.OS === 'web'
+      ? (typeof localStorage !== 'undefined' ? localStorage.getItem(HOME_CONFIG_KEY) : null)
+      : await SecureStore.getItemAsync(HOME_CONFIG_KEY);
+    return raw ? JSON.parse(raw) : DEFAULT_HOME_CONFIG;
+  } catch {
+    return DEFAULT_HOME_CONFIG;
+  }
 }
 
-/**
- * PUT /home/config
- * Guarda el nuevo orden/visibilidad de botones tras editar desde los FABs.
- * @param {object} config - { botones: [{seccion, orden, visible}] }
- */
 export async function saveHomeConfig(config) {
-  await api.put('/home/config', config);
+  const raw = JSON.stringify(config);
+  if (Platform.OS === 'web') {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(HOME_CONFIG_KEY, raw);
+    return;
+  }
+  await SecureStore.setItemAsync(HOME_CONFIG_KEY, raw);
 }
 
 // ─────────────────────────────────────────────
 // MASCOTAS
 // ─────────────────────────────────────────────
 
-/**
- * PATCH /mascotas/:id/activar
- * Cambia la mascota activa del usuario (la que se muestra en la Home).
- */
+/** Marca `mascotaId` como la mascota activa del usuario (y desmarca las demás). */
 export async function activarMascota(mascotaId) {
-  await api.patch(`/mascotas/${mascotaId}/activar`);
+  await supabase.from('Mascota').update({ EsActiva: false }).eq('Id_User', getCurrentUserId());
+  const { error } = await supabase.from('Mascota').update({ EsActiva: true }).eq('Id_Mascota', mascotaId);
+  if (error) throw error;
 }
 
 // ─────────────────────────────────────────────
 // CLOSET DE AVATARES
 // ─────────────────────────────────────────────
 
-/**
- * GET /mascotas/:petId/avatares
- * Trae la mascota y el catálogo de avatares disponibles para su especie.
- */
+/** Trae la mascota y el catálogo de avatares disponibles para su especie. */
 export async function fetchAvatares(petId) {
-  const res = await api.get(`/mascotas/${petId}/avatares`);
-  return res.data;
+  const [{ data: mascota, error: errMascota }, { data: avatares, error: errAvatares }] = await Promise.all([
+    supabase.from('Mascota').select('*').eq('Id_Mascota', petId).single(),
+    supabase.from('avatares_catalogo').select('*').order('orden', { ascending: true }),
+  ]);
+  if (errMascota) throw errMascota;
+  if (errAvatares) throw errAvatares;
+
+  const especie = mascota?.Especie ?? 'perro';
+  return {
+    mascota: mapMascota(mascota),
+    avatares: (avatares ?? [])
+      .filter((a) => a.especie === especie && a.activo)
+      .map((a) => ({ assetName: a.asset_name, nombre: a.nombre })),
+  };
 }
 
-/**
- * PUT /mascotas/:petId/avatar
- * Actualiza el avatar (imagen_asset) de la mascota.
- */
+/** Actualiza el avatar (imagen ilustrada) de la mascota. */
 export async function aplicarAvatar(petId, imagenAsset) {
-  const res = await api.put(`/mascotas/${petId}/avatar`, { imagen_asset: imagenAsset });
-  return res.data;
+  const { data, error } = await supabase
+    .from('Mascota')
+    .update({ ImagenAsset: imagenAsset })
+    .eq('Id_Mascota', petId)
+    .select()
+    .single();
+  if (error) throw error;
+  return mapMascota(data);
 }
 
 // ─────────────────────────────────────────────
 // NOTIFICACIONES
 // ─────────────────────────────────────────────
 
-/**
- * GET /notificaciones
- * Trae la lista paginada de notificaciones del usuario.
- * @param {number} page - Página actual (default 1)
- * @param {number} limit - Cantidad por página (default 20)
- * @param {boolean} soloNoLeidas - Si true, filtra solo las no leídas
- */
+function mapNotificacion(n) {
+  return {
+    id: n.Id,
+    titulo: n.Titulo,
+    cuerpo: n.Mensaje,
+    tipo: n.Tipo,
+    leida: n.Leido,
+    createdAt: n.Fecha,
+    redirigea: null,
+  };
+}
+
+/** Trae la lista paginada de notificaciones del usuario. */
 export async function fetchNotificaciones(page = 1, limit = 20, soloNoLeidas = false) {
-  const res = await api.get('/notificaciones', {
-    params: { page, limit, leidas: soloNoLeidas ? 'false' : undefined },
-  });
-  return res.data;
+  let query = supabase
+    .from('Notificacion')
+    .select('*')
+    .eq('Id_User', getCurrentUserId())
+    .order('Fecha', { ascending: false })
+    .range((page - 1) * limit, page * limit - 1);
+
+  if (soloNoLeidas) query = query.eq('Leido', false);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return { notificaciones: (data ?? []).map(mapNotificacion) };
 }
 
-/**
- * PATCH /notificaciones/:id/leer
- * Marca una notificación individual como leída al tocarla.
- */
+/** Marca una notificación individual como leída. */
 export async function marcarNotificacionLeida(id) {
-  await api.patch(`/notificaciones/${id}/leer`);
+  const { error } = await supabase.from('Notificacion').update({ Leido: true }).eq('Id', id);
+  if (error) throw error;
 }
 
-/**
- * PATCH /notificaciones/leer-todas
- * Marca todas las notificaciones como leídas. Se llama al abrir el panel.
- */
+/** Marca todas las notificaciones del usuario como leídas. */
 export async function marcarTodasLeidas() {
-  await api.patch('/notificaciones/leer-todas');
+  const { error } = await supabase
+    .from('Notificacion')
+    .update({ Leido: true })
+    .eq('Id_User', getCurrentUserId())
+    .eq('Leido', false);
+  if (error) throw error;
 }
 
 // ─────────────────────────────────────────────
 // EVENTOS PÚBLICOS
 // ─────────────────────────────────────────────
 
-/**
- * GET /eventos
- * Trae los eventos activos y vigentes filtrados por ciudad.
- * Si no se pasa ciudad, devuelve todos los eventos sin filtro geográfico.
- *
- * @param {string|null} ciudad - Nombre de la ciudad (ej: "Buenos Aires")
- * @param {number} page        - Página (default 1)
- * @param {number} limit       - Resultados por página (default 10)
- */
-export async function fetchEventos(ciudad = null, page = 1, limit = 10) {
-  const params = { page, limit };
-  if (ciudad) params.ciudad = ciudad;
-  const res = await api.get('/eventos', { params });
-  return res.data;
+function mapEvento(e, organizadoresPorId, calendarioOrigenIds) {
+  const organizador = organizadoresPorId?.get(e.organizador_id);
+  return {
+    id: e.id,
+    titulo: e.titulo,
+    descripcion: e.descripcion,
+    imagen_url: e.imagen_url,
+    fecha_hora: e.fecha_hora,
+    ubicacion_nombre: e.ubicacion_nombre,
+    lat: e.lat != null ? Number(e.lat) : null,
+    lng: e.lng != null ? Number(e.lng) : null,
+    ciudad: e.ciudad,
+    categoria_tag: e.categoria_tag,
+    organizador_nombre: organizador?.nombre ?? null,
+    organizador_es_oficial: organizador?.es_oficial ?? false,
+    ya_en_calendario: calendarioOrigenIds?.has(e.id) ?? false,
+  };
 }
 
 /**
- * POST /mascotas/:petId/eventos
- * Agrega un evento al calendario de cuidados de una mascota.
- * Usado por EventosScreen para agregar eventos externos (tipo: "Evento").
- *
- * @param {number} petId - ID de la mascota activa
- * @param {object} body  - { titulo, descripcion, fecha_hora, tipo }
+ * Trae los eventos activos y vigentes filtrados por ciudad.
+ * @param {string|null} ciudad
+ * @param {number} page
+ * @param {number} limit
+ */
+export async function fetchEventos(ciudad = null, page = 1, limit = 10) {
+  let query = supabase
+    .from('eventos')
+    .select('*')
+    .eq('activo', true)
+    .order('fecha_hora', { ascending: true })
+    .range((page - 1) * limit, page * limit - 1);
+
+  if (ciudad) query = query.eq('ciudad', ciudad);
+
+  const { data: eventos, error } = await query;
+  if (error) throw error;
+
+  const organizadorIds = [...new Set((eventos ?? []).map((e) => e.organizador_id))];
+  const { data: organizadores } = organizadorIds.length
+    ? await supabase.from('organizadores_verificados').select('*').in('id', organizadorIds)
+    : { data: [] };
+  const organizadoresPorId = new Map((organizadores ?? []).map((o) => [o.id, o]));
+
+  const { data: yaAgregados } = await supabase
+    .from('eventos_calendario')
+    .select('origen_evento_id')
+    .not('origen_evento_id', 'is', null);
+  const calendarioOrigenIds = new Set((yaAgregados ?? []).map((e) => e.origen_evento_id));
+
+  return { eventos: (eventos ?? []).map((e) => mapEvento(e, organizadoresPorId, calendarioOrigenIds)) };
+}
+
+/**
+ * Agrega un evento al calendario de cuidados de una mascota (usado por
+ * EventosScreen para eventos externos, tipo "Evento").
+ * @param {number} petId
+ * @param {object} body - { titulo, descripcion, fecha_hora, tipo, origenEventoId }
  */
 export async function agregarEventoAlCalendario(petId, body) {
-  const res = await api.post(`/mascotas/${petId}/eventos`, body);
-  return res.data;
+  const { data, error } = await supabase
+    .from('eventos_calendario')
+    .insert({
+      mascota_id: petId,
+      titulo: body.titulo,
+      descripcion: body.descripcion ?? null,
+      fecha_hora: body.fecha_hora,
+      tipo: body.tipo ?? 'Evento',
+      origen: 'eventos',
+      origen_evento_id: body.origenEventoId ?? null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// ─────────────────────────────────────────────
+// CONSEJOS
+// ─────────────────────────────────────────────
+
+/** Trae la mascota y los consejos del catálogo filtrados por su especie. */
+export async function fetchConsejos(petId) {
+  const { data: mascota, error: errMascota } = await supabase
+    .from('Mascota')
+    .select('*')
+    .eq('Id_Mascota', petId)
+    .single();
+  if (errMascota) throw errMascota;
+
+  const especie = mascota?.Especie ?? 'perro';
+  const { data: consejos, error: errConsejos } = await supabase
+    .from('consejos_catalogo')
+    .select('*')
+    .eq('especie', especie)
+    .eq('activo', true);
+  if (errConsejos) throw errConsejos;
+
+  return {
+    mascota: mapMascota(mascota),
+    consejos: (consejos ?? []).map((c) => ({ id: c.id, categoria: c.categoria, contenido: c.contenido })),
+  };
 }

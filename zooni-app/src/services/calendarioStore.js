@@ -1,71 +1,119 @@
 /**
- * calendarioStore.js — Persistencia local temporal de eventos del Calendario de Cuidados
+ * calendarioStore.js — Calendario de Cuidados sobre Supabase (tabla eventos_calendario)
  *
- * Mientras no hay backend de calendario conectado, los eventos creados desde
- * CalendarioScreen (alta manual) o desde EventosScreen ("Agregar al calendario")
- * se guardan acá para que ambas pantallas vean los mismos datos.
- *
- * Cuando se conecte la API real (GET/POST/PUT/DELETE /api/mascotas/:petId/eventos),
- * este módulo se reemplaza por llamadas a services/api.js sin tocar las pantallas
- * (misma forma: getEventosCalendario / setEventosCalendario).
+ * Reemplaza el storage local (SecureStore/localStorage) que usaban
+ * CalendarioScreen y EventosScreen mientras no había backend conectado.
+ * Los eventos ahora persisten en Postgres, filtrados por mascota_id.
  */
 
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import { supabase } from '../lib/supabase';
 
-const STORAGE_KEY = 'zooni_calendario_eventos_demo';
 const SEED_KEY = 'zooni_calendario_seed_inicial_hecho';
 
-async function leerRaw() {
-  try {
-    const raw = Platform.OS === 'web'
-      ? (typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null)
-      : await SecureStore.getItemAsync(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
+function mapRow(row) {
+  return {
+    id: row.id,
+    origen: row.origen,
+    origenId: row.origen_evento_id ?? undefined,
+    titulo: row.titulo,
+    descripcion: row.descripcion,
+    fecha_hora: row.fecha_hora,
+    tipo: row.tipo,
+    emoji: row.emoji,
+    color: row.color,
+  };
 }
 
-async function escribirRaw(eventos) {
-  try {
-    const raw = JSON.stringify(eventos);
-    if (Platform.OS === 'web') {
-      if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, raw);
-    } else {
-      await SecureStore.setItemAsync(STORAGE_KEY, raw);
-    }
-  } catch {
-    // Sin almacenamiento disponible: se pierde al cerrar la app, no es crítico en demo.
-  }
+/** Devuelve los eventos del calendario de `petId`, o `defaults` si falla o no hay petId. */
+export async function getEventosCalendario(petId, defaults = []) {
+  if (!petId) return defaults;
+  const { data, error } = await supabase
+    .from('eventos_calendario')
+    .select('*')
+    .eq('mascota_id', petId)
+    .order('fecha_hora', { ascending: true });
+  if (error || !data) return defaults;
+  return data.map(mapRow);
 }
 
-/** Devuelve los eventos guardados, o `defaults` si todavía no se guardó nada. */
-export async function getEventosCalendario(defaults = []) {
-  const guardados = await leerRaw();
-  return guardados ?? defaults;
+/** Crea un evento manual (alta desde CalendarioScreen). */
+export async function crearEventoCalendario(petId, datos) {
+  const { data, error } = await supabase
+    .from('eventos_calendario')
+    .insert({
+      mascota_id: petId,
+      titulo: datos.titulo,
+      descripcion: datos.descripcion ?? null,
+      fecha_hora: datos.fecha_hora,
+      tipo: datos.tipo ?? 'Otro',
+      emoji: datos.emoji ?? null,
+      color: datos.color ?? null,
+      origen: 'manual',
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return mapRow(data);
 }
 
-/** Reemplaza la lista completa de eventos guardados. */
-export async function setEventosCalendario(eventos) {
-  await escribirRaw(eventos);
+/** Edita un evento manual existente. */
+export async function actualizarEventoCalendario(eventoId, datos) {
+  const { data, error } = await supabase
+    .from('eventos_calendario')
+    .update({
+      titulo: datos.titulo,
+      descripcion: datos.descripcion ?? null,
+      fecha_hora: datos.fecha_hora,
+      tipo: datos.tipo ?? 'Otro',
+      emoji: datos.emoji ?? null,
+      color: datos.color ?? null,
+      actualizado_en: new Date().toISOString(),
+    })
+    .eq('id', eventoId)
+    .select()
+    .single();
+  if (error) throw error;
+  return mapRow(data);
 }
 
-/** Agrega un evento a la lista guardada (creando la lista si hace falta). */
-export async function agregarEventoCalendario(evento, defaults = []) {
-  const actuales = await getEventosCalendario(defaults);
-  if (actuales.some((e) => e.id === evento.id)) return actuales;
-  const nuevos = [...actuales, evento];
-  await escribirRaw(nuevos);
-  return nuevos;
+/** Elimina un evento del calendario. */
+export async function eliminarEventoCalendario(eventoId) {
+  const { error } = await supabase.from('eventos_calendario').delete().eq('id', eventoId);
+  if (error) throw error;
 }
 
 /**
- * Sembrado inicial (una sola vez por instalación): los eventos públicos que
- * el backend/demo marca con `ya_en_calendario: true` se copian al calendario
- * la primera vez. Después de esa vez, si el usuario los elimina del
- * calendario NO vuelven a aparecer solos — el usuario decide si los
- * re-agrega desde EventosScreen.
+ * Agrega un evento público (de EventosScreen) al calendario de `petId`.
+ * `evento.origenId` es el id del evento público en la tabla `eventos`,
+ * usado para no duplicarlo si ya fue agregado antes.
+ */
+export async function agregarEventoCalendario(petId, evento) {
+  const { data, error } = await supabase
+    .from('eventos_calendario')
+    .insert({
+      mascota_id: petId,
+      titulo: evento.titulo,
+      descripcion: evento.descripcion ?? null,
+      fecha_hora: evento.fecha_hora,
+      tipo: evento.tipo ?? 'Evento',
+      emoji: evento.emoji ?? null,
+      color: evento.color ?? null,
+      origen: 'eventos',
+      origen_evento_id: evento.origenId ?? null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return mapRow(data);
+}
+
+/**
+ * Sembrado inicial (una sola vez por dispositivo): los eventos públicos que
+ * ya vienen marcados `ya_en_calendario: true` se copian al calendario la
+ * primera vez que se abre EventosScreen. Después de esa vez, si el usuario
+ * los elimina del calendario NO vuelven a aparecer solos.
  */
 export async function yaSeSembroInicial() {
   try {

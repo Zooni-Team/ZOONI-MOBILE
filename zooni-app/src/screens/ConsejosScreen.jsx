@@ -9,7 +9,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Image,
-  Platform,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -20,34 +19,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import * as SecureStore from 'expo-secure-store';
-import axios from 'axios';
 
 import { getCategoriaInfo } from '../constants/categoriasConsejos';
 import { resolvePetImageSource } from '../constants/homeAssets';
-
-// ─── API ──────────────────────────────────────────────────────────────────────
-
-const BASE_URL = Platform.select({
-  android: 'http://10.0.2.2:5165/api/v1',
-  ios:     'http://localhost:5165/api/v1',
-  default: 'http://localhost:5165/api/v1',
-});
-
-async function fetchConsejos(petId) {
-  let token = null;
-  try {
-    token = Platform.OS === 'web'
-      ? (typeof localStorage !== 'undefined' ? localStorage.getItem('jwt_token') : null)
-      : await SecureStore.getItemAsync('jwt_token');
-  } catch (_) {}
-
-  const res = await axios.get(`${BASE_URL}/mascotas/${petId}/consejos`, {
-    timeout: 6000,
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  return res.data;
-}
+import { fetchConsejos } from '../services/api';
 
 // ─── CONSEJOS DEMO ────────────────────────────────────────────────────────────
 // Se muestran cuando el backend no está disponible o no hay petId.
