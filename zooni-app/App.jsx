@@ -28,6 +28,7 @@ import EventosScreen     from './src/screens/EventosScreen';
 import CalendarioScreen  from './src/screens/CalendarioScreen';
 import ChatScreen        from './src/screens/ChatScreen';
 import MensajesScreen    from './src/screens/MensajesScreen';
+import PerfilScreen      from './src/screens/PerfilScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -76,7 +77,7 @@ export default function App() {
           <Stack.Screen name="Eventos"       component={EventosScreen} />
           <Stack.Screen name="ChatBot"       component={PlaceholderScreen} />
           <Stack.Screen name="Closet"        component={ClosetScreen} />
-          <Stack.Screen name="Perfil"        component={PlaceholderScreen} />
+          <Stack.Screen name="Perfil"        component={PerfilScreen} />
           <Stack.Screen name="Consejos" component={ConsejosScreen} />
           <Stack.Screen name="Tratamientos" component={TratamientosScreen} />
           <Stack.Screen name="Vacunas" component={VacunasScreen} />
