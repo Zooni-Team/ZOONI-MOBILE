@@ -694,7 +694,7 @@ export default function CalendarioScreen() {
         <View style={s.header}>
           <TouchableOpacity onPress={() => setDrawerOpen(true)} style={s.headerBtn}
             accessibilityLabel="Abrir menú" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Ionicons name="menu" size={26} color="#2C2C2C" />
+            <Ionicons name="menu" size={30} color="#0A0A0A" />
           </TouchableOpacity>
         </View>
 

@@ -288,7 +288,7 @@ export default function ClosetScreen() {
             accessibilityLabel="Abrir menú"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="menu-outline" size={24} color="#2C2C2C" />
+            <Ionicons name="menu" size={30} color="#0A0A0A" />
           </TouchableOpacity>
         </View>
         <View style={styles.headerDivider} />

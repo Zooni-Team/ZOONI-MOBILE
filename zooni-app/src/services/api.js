@@ -192,7 +192,15 @@ export async function fetchAvatares(petId) {
     mascota: mapMascota(mascota),
     avatares: (avatares ?? [])
       .filter((a) => a.especie === especie && a.activo)
-      .map((a) => ({ assetName: a.asset_name, nombre: a.nombre })),
+      // Si el look tiene razas cargadas, solo se ofrece a esa raza (ej: los 3
+      // looks de Mestizo); si no tiene, es genérico para toda la especie.
+      .filter((a) => aplicaParaMascota({ razas: a.razas }, { raza: mascota?.Raza ?? null }))
+      // OJO: acá antes se devolvía "assetName" (camelCase) pero ClosetScreen.jsx
+      // usa "asset_name" (snake_case) en 5 lugares — con el nombre desalineado,
+      // item.asset_name daba siempre undefined, así que tocar cualquier avatar
+      // seleccionaba a undefined y por eso TODOS los ítems se veían "elegidos"
+      // a la vez (undefined === undefined). Se corrige devolviendo asset_name.
+      .map((a) => ({ asset_name: a.asset_name, nombre: a.nombre })),
   };
 }
 

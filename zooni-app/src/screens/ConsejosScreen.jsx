@@ -21,7 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { getCategoriaInfo } from '../constants/categoriasConsejos';
-import { resolvePetImageSource } from '../constants/homeAssets';
+import { resolvePetImage } from '../constants/petImages';
 import { fetchConsejos } from '../services/api';
 
 // ─── CONSEJOS DEMO ────────────────────────────────────────────────────────────
@@ -260,7 +260,7 @@ export default function ConsejosScreen() {
 
 
   const petImg = useMemo(
-    () => resolvePetImageSource({ fotoUrl: mascota?.fotoUrl ?? null }),
+    () => (mascota?.fotoUrl ? { uri: mascota.fotoUrl } : resolvePetImage(mascota?.imagen_asset)),
     [mascota]
   );
 

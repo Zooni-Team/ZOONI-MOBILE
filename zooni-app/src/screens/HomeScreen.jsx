@@ -4,7 +4,7 @@ import {
   Animated, ScrollView, Dimensions, SafeAreaView, StatusBar, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import { fetchHome, fetchHomeConfig, saveHomeConfig } from '../services/api';
 import { getSeccion } from '../services/secciones';
@@ -14,7 +14,8 @@ import NotificationsPanel from '../components/NotificationsPanel';
 import AddButtonModal from '../components/AddButtonModal';
 import NavButton from '../components/NavButton';
 import DraggableList from '../components/DraggableList';
-import { HOME_BACKGROUND, resolvePetImageSource } from '../constants/homeAssets';
+import { HOME_BACKGROUND } from '../constants/homeAssets';
+import { resolvePetImage } from '../constants/petImages';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 const HERO_HEIGHT = Math.min(SCREEN_HEIGHT * 0.40, 340);
@@ -46,9 +47,12 @@ const DEMO_CONFIG = {
 export default function HomeScreen() {
   const navigation = useNavigation();
 
-  const [homeData, setHomeData] = useState(DEMO_DATA);
-  const [botones, setBotones] = useState(DEMO_CONFIG.botones);
-  const [loading, setLoading] = useState(false);
+  // null (no los datos demo) para que el primer render nunca muestre a
+  // "Titán" ni el orden de botones de mentira — antes arrancaba mostrando
+  // eso literalmente hasta que la carga real terminaba.
+  const [homeData, setHomeData] = useState(null);
+  const [botones, setBotones] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -59,6 +63,7 @@ export default function HomeScreen() {
   const petFloatY = useRef(new Animated.Value(0)).current;
 
   const loadData = useCallback(async () => {
+    setLoading(true);
     try {
       // Timeout de 3 segundos: si el backend no responde, usar datos demo
       const dataPromise = Promise.race([
@@ -85,7 +90,12 @@ export default function HomeScreen() {
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  // useEffect solo (mount-once) no alcanza: si volvés de Closet después de
+  // aplicar un avatar nuevo, Home seguía mostrando los datos viejos porque
+  // React Navigation no remonta la pantalla al volver atrás — solo la vuelve
+  // a enfocar. useFocusEffect refresca los datos cada vez que Home
+  // recupera el foco (incluye el primer montaje).
+  useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
   useEffect(() => {
     // Solo iniciar la animación flotante después de que termine la carga inicial
@@ -197,7 +207,7 @@ export default function HomeScreen() {
 
         {/* ── ZONA 2: HERO ── */}
         <View style={styles.heroZone}>
-          {mascota && (
+          {(mascota || loading) && (
             <Animated.View style={[styles.petNameWrap, { opacity: petNameOpacity }]}>
               {loading ? (
                 <SkeletonLoader width={140} height={36} borderRadius={10} />
@@ -221,7 +231,10 @@ export default function HomeScreen() {
               <SkeletonLoader width={PET_IMAGE_SIZE} height={PET_IMAGE_SIZE} borderRadius={20} />
             ) : (
               <PetIllustration
-                source={resolvePetImageSource(mascota)}
+                // Foto real subida si tiene, si no el look/avatar aplicado en
+                // Closet — antes esto solo miraba la foto y por eso el avatar
+                // nunca se veía acá aunque sí en Ficha Médica.
+                source={mascota?.fotoUrl ? { uri: mascota.fotoUrl } : resolvePetImage(mascota?.imagen_asset)}
                 label={mascota ? `Ilustración de ${mascota.nombre}` : 'Mascota'}
               />
             )}
@@ -240,43 +253,56 @@ export default function HomeScreen() {
             </TouchableOpacity>
           )}
 
-          {/* Botones dinámicos con drag & drop */}
-          <DraggableList
-            items={visibleBotones}
-            disabled={!editMode}
-            onReorder={(newItems) => setBotones(newItems)}
-            renderItem={({ item: boton, isDragging }) => {
-              const seccion = getSeccion(boton.seccion);
-              if (!seccion) return null;
-              return (
-                <NavButton
-                  label={seccion.label}
-                  iconName={seccion.icono}
-                  editMode={editMode}
-                  style={{ flex: 1, opacity: isDragging ? 0.85 : 1 }}
-                  onDelete={() => handleDeleteButton(boton.seccion)}
-                  onPress={() => {
-                    if (editMode) return;
-                    if (boton.seccion === 'ficha_medica' && mascota) {
-                      navigation.navigate('FichaMedica', { mascotaId: mascota.id });
-                    } else {
-                      navigation.navigate(seccion.ruta);
-                    }
-                  }}
-                  accessibilityLabel={`Ir a ${seccion.label}`}
-                />
-              );
-            }}
-          />
+          {loading ? (
+            // Mismo orden demo, pero como skeleton — así no se ve el orden
+            // "de mentira" ya con etiquetas mientras carga la config real.
+            <View style={{ gap: 12 }}>
+              <SkeletonLoader width="100%" height={56} borderRadius={16} />
+              <SkeletonLoader width="100%" height={56} borderRadius={16} />
+              <SkeletonLoader width="100%" height={56} borderRadius={16} />
+              <SkeletonLoader width="100%" height={56} borderRadius={16} />
+            </View>
+          ) : (
+            <>
+              {/* Botones dinámicos con drag & drop */}
+              <DraggableList
+                items={visibleBotones}
+                disabled={!editMode}
+                onReorder={(newItems) => setBotones(newItems)}
+                renderItem={({ item: boton, isDragging }) => {
+                  const seccion = getSeccion(boton.seccion);
+                  if (!seccion) return null;
+                  return (
+                    <NavButton
+                      label={seccion.label}
+                      iconName={seccion.icono}
+                      editMode={editMode}
+                      style={{ flex: 1, opacity: isDragging ? 0.85 : 1 }}
+                      onDelete={() => handleDeleteButton(boton.seccion)}
+                      onPress={() => {
+                        if (editMode) return;
+                        if (boton.seccion === 'ficha_medica' && mascota) {
+                          navigation.navigate('FichaMedica', { mascotaId: mascota.id });
+                        } else {
+                          navigation.navigate(seccion.ruta);
+                        }
+                      }}
+                      accessibilityLabel={`Ir a ${seccion.label}`}
+                    />
+                  );
+                }}
+              />
 
-          {/* SOS — siempre visible, siempre último */}
-          <NavButton
-            label="S.O.S Veterinario"
-            iconName="alert-circle-outline"
-            variant="danger"
-            onPress={() => { /* TODO: flujo SOS */ }}
-            accessibilityLabel="Emergencia veterinaria"
-          />
+              {/* SOS — siempre visible, siempre último */}
+              <NavButton
+                label="S.O.S Veterinario"
+                iconName="alert-circle-outline"
+                variant="danger"
+                onPress={() => { /* TODO: flujo SOS */ }}
+                accessibilityLabel="Emergencia veterinaria"
+              />
+            </>
+          )}
         </View>
       </ScrollView>
 

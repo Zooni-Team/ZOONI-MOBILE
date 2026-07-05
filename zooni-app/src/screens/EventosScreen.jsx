@@ -19,11 +19,12 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  ImageBackground,
+  SafeAreaView,
   Linking,
   Alert,
   ActivityIndicator,
   Animated,
-  Platform,
   StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,6 +33,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { fetchHome, fetchEventos } from '../services/api';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import { DEMO_USUARIO, DEMO_MASCOTA_ACTIVA } from '../constants/demoUsuario';
+import { HOME_BACKGROUND } from '../constants/homeAssets';
 import {
   agregarEventoCalendario,
   getEventosCalendario,
@@ -579,75 +581,73 @@ export default function EventosScreen() {
     [eventosAgregados, homeData, navigation],
   );
 
-  // ── Indicador de ciudad ───────────────────────────────────────
-  const textoIndicadorCiudad = ciudad
-    ? `📍 Eventos en ${ciudad}`
-    : '📍 Eventos cerca tuyo';
-
   // ── Render ────────────────────────────────────────────────────
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor="#C8F0D8" />
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* ── HEADER ── */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.hamburger}
-          onPress={() => setDrawerVisible(true)}
-          accessibilityLabel="Abrir menú"
-          accessibilityRole="button"
-        >
-          <Ionicons name="menu-outline" size={26} color="#2C2C2C" />
-        </TouchableOpacity>
-      </View>
-
-      {/* ── TÍTULO Y SUBTÍTULO ── */}
-      <View style={styles.tituloContainer}>
-        <Text style={styles.titulo}>🎉 Eventos</Text>
-        <Text style={styles.subtitulo}>
-          Actividades y jornadas para vos y tu mascota
-        </Text>
-        <Text style={styles.indicadorCiudad}>{textoIndicadorCiudad}</Text>
-      </View>
-
-      {/* ── CONTENIDO PRINCIPAL ── */}
-      {loading ? (
-        /* Skeleton loaders */
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          <SkeletonCard />
-          <SkeletonCard />
-        </ScrollView>
-      ) : eventos.length === 0 ? (
-        /* Estado vacío */
-        <View style={styles.emptyContainer}>
-          <Ionicons name="storefront-outline" size={60} color="#AAAAAA" />
-          <Text style={styles.emptyTitulo}>No hay eventos por ahora</Text>
-          <Text style={styles.emptySubtexto}>
-            Cuando haya actividades cerca tuyo, las vas a ver acá 🐾
-          </Text>
+      <ImageBackground
+        source={HOME_BACKGROUND}
+        style={styles.screenBackground}
+        imageStyle={styles.screenBackgroundImage}
+        resizeMode="cover"
+      >
+        {/* ── HEADER ── */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => setDrawerVisible(true)}
+            accessibilityLabel="Abrir menú"
+            accessibilityRole="button"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="menu" size={30} color="#0A0A0A" />
+          </TouchableOpacity>
         </View>
-      ) : (
-        /* Lista de eventos */
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          {eventos.map((evento) => (
-            <EventoCard
-              key={evento.id}
-              evento={evento}
-              yaAgregado={eventosAgregados.has(evento.id)}
-              expandido={descripcionExpandida.has(evento.id)}
-              onToggleDescripcion={toggleDescripcion}
-              onAgregarAlCalendario={agregarAlCalendario}
-              procesando={procesandoIds.get(evento.id) === true}
-            />
-          ))}
-        </ScrollView>
-      )}
+
+        {/* ── TÍTULO ── */}
+        <View style={styles.tituloContainer}>
+          <Text style={styles.titulo}>🎉 Eventos</Text>
+        </View>
+
+        {/* ── CONTENIDO PRINCIPAL ── */}
+        {loading ? (
+          /* Skeleton loaders */
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+          >
+            <SkeletonCard />
+            <SkeletonCard />
+          </ScrollView>
+        ) : eventos.length === 0 ? (
+          /* Estado vacío */
+          <View style={styles.emptyContainer}>
+            <Ionicons name="storefront-outline" size={60} color="#AAAAAA" />
+            <Text style={styles.emptyTitulo}>No hay eventos por ahora</Text>
+            <Text style={styles.emptySubtexto}>
+              Cuando haya actividades cerca tuyo, las vas a ver acá 🐾
+            </Text>
+          </View>
+        ) : (
+          /* Lista de eventos */
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+          >
+            {eventos.map((evento) => (
+              <EventoCard
+                key={evento.id}
+                evento={evento}
+                yaAgregado={eventosAgregados.has(evento.id)}
+                expandido={descripcionExpandida.has(evento.id)}
+                onToggleDescripcion={toggleDescripcion}
+                onAgregarAlCalendario={agregarAlCalendario}
+                procesando={procesandoIds.get(evento.id) === true}
+              />
+            ))}
+          </ScrollView>
+        )}
+      </ImageBackground>
 
       {/* ── DRAWER ── */}
       <HamburgerDrawer
@@ -657,7 +657,7 @@ export default function EventosScreen() {
         mascotaActiva={homeData?.mascotaActiva ?? DEMO_MASCOTA_ACTIVA}
         activeRoute="Eventos"
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -665,12 +665,10 @@ export default function EventosScreen() {
 // ESTILOS
 // ─────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  // ── Raíz ──────────────────────────────────────────────────
-  root: {
-    flex: 1,
-    backgroundColor: '#C8F0D8',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 44,
-  },
+  // ── Raíz — mismo fondo e igual estructura de header que Home ──
+  safeArea: { flex: 1, backgroundColor: '#D4F5E2' },
+  screenBackground: { flex: 1, width: '100%' },
+  screenBackgroundImage: { width: '100%', height: '100%' },
 
   // ── Header ────────────────────────────────────────────────
   header: {
@@ -679,9 +677,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     backgroundColor: 'transparent',
-  },
-  hamburger: {
-    padding: 12,
+    zIndex: 10,
   },
 
   // ── Título y subtítulo ────────────────────────────────────

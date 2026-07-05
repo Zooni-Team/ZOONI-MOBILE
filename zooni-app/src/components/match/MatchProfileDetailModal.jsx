@@ -17,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { especieIcono, PET_TYPE_OPTIONS } from '../../data/matchDemo';
 import { resolvePetPhotoSource } from '../../constants/matchAssets';
+import { resolvePetImage } from '../../constants/petImages';
 
 function especieLabel(especie) {
   return PET_TYPE_OPTIONS.find((p) => p.key === especie)?.label ?? especie;
@@ -76,13 +77,7 @@ export default function MatchProfileDetailModal({ visible, perfil, onClose }) {
                   </View>
                 )}
                 <View style={styles.petAvatarWrap}>
-                  {mascota.avatar_url ? (
-                    <Image source={{ uri: mascota.avatar_url }} style={styles.petAvatar} />
-                  ) : (
-                    <View style={styles.petAvatarFallback}>
-                      <Ionicons name={especieIcono(mascota.especie)} size={18} color="#2C2C2C" />
-                    </View>
-                  )}
+                  <Image source={resolvePetImage(mascota.imagen_asset)} style={styles.petAvatar} />
                 </View>
               </View>
 

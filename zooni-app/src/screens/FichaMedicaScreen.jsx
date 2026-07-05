@@ -25,13 +25,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+// Import estático: el import() dinámico no es confiable con Metro (el
+// bundler de Expo) para este tipo de caso. Solo se USA en la rama web
+// (generarPdfWeb) — en nativo, expo-print ya genera el PDF real sin este
+// problema, así que esta librería nunca llega a ejecutarse ahí.
+import jsPDF from 'jspdf';
 
 import { calcularEdad } from '../utils/calcularEdad';
 import { resolvePetImage } from '../constants/petImages';
 import SkeletonLoader from '../components/SkeletonLoader';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
-import { fetchMascota, actualizarPeso, actualizarRaza, actualizarFechaNacimiento } from '../services/fichaMedicaApi';
+import {
+  fetchMascota, actualizarPeso, actualizarRaza, actualizarFechaNacimiento,
+  fetchVacunas, fetchTratamientos,
+} from '../services/fichaMedicaApi';
+import { fetchRazas } from '../services/authApi';
+import OpcionPicker from '../components/OpcionPicker';
 
 // ─── FECHA PICKER (modal propio, sin dependencias externas) ──────────────────
 
@@ -196,9 +206,10 @@ export default function FichaMedicaScreen() {
   const [editandoPeso,   setEditandoPeso]   = useState(false);
   const [pesoBorrador,   setPesoBorrador]   = useState('');
   const [guardandoPeso,  setGuardandoPeso]  = useState(false);
-  const [editandoRaza,   setEditandoRaza]   = useState(false);
-  const [razaBorrador,   setRazaBorrador]   = useState('');
-  const [guardandoRaza,  setGuardandoRaza]  = useState(false);
+  const [showRazaPicker,   setShowRazaPicker]   = useState(false);
+  const [razasDisponibles, setRazasDisponibles] = useState([]);
+  const [cargandoRazas,    setCargandoRazas]    = useState(false);
+  const [guardandoRaza,    setGuardandoRaza]    = useState(false);
   const [editandoFecha,  setEditandoFecha]  = useState(false);
   const [fechaBorrador,  setFechaBorrador]  = useState(new Date());
   const [guardandoFecha, setGuardandoFecha] = useState(false);
@@ -207,7 +218,6 @@ export default function FichaMedicaScreen() {
   const { usuario, mascotaActiva: mascotaActivaDemo } = useUsuarioActivo();
 
   const pesoInputRef = useRef(null);
-  const razaInputRef = useRef(null);
 
   // ── Carga ─────────────────────────────────────────────────────────────────
   // Timeout de 3 segundos: si el backend no responde, mostrar la vista demo
@@ -250,21 +260,26 @@ export default function FichaMedicaScreen() {
     finally { setGuardandoPeso(false); }
   };
 
-  // ── Raza ──────────────────────────────────────────────────────────────────
-  const abrirEditRaza = () => {
-    setRazaBorrador(mascota.raza ?? '');
-    setEditandoRaza(true);
-    setTimeout(() => razaInputRef.current?.focus(), 100);
+  // ── Raza — mismo picker que en el registro, no texto libre ─────────────────
+  const abrirEditRaza = async () => {
+    setShowRazaPicker(true);
+    setCargandoRazas(true);
+    try {
+      const { razas } = await fetchRazas(mascota.especie);
+      setRazasDisponibles(razas.length ? razas : [{ id: null, nombre: 'Sin raza definida' }]);
+    } catch {
+      setRazasDisponibles([{ id: null, nombre: 'Sin raza definida' }]);
+    } finally {
+      setCargandoRazas(false);
+    }
   };
 
-  const confirmarRaza = async () => {
-    const valor = razaBorrador.trim();
-    if (!valor) { Alert.alert('Valor inválido', 'Ingresá una raza (o "Sin especificar" si no la sabés).'); return; }
+  const seleccionarRaza = async (opcion) => {
+    setShowRazaPicker(false);
     setGuardandoRaza(true);
     try {
-      const actualizada = await actualizarRaza(petId, valor);
+      const actualizada = await actualizarRaza(petId, opcion.nombre);
       setMascota((p) => ({ ...p, raza: actualizada.raza }));
-      setEditandoRaza(false);
     } catch { Alert.alert('Error', 'No se pudo actualizar la raza.'); }
     finally { setGuardandoRaza(false); }
   };
@@ -294,19 +309,21 @@ export default function FichaMedicaScreen() {
 
   const capitalizar = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
 
-  const formatFechaLarga = (iso) => {
+  const formatFecha = (iso) => {
     if (!iso) return null;
     const [y, mo, d] = iso.split('-').map(Number);
-    return new Date(y, mo - 1, d).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+    return `${d}/${mo}/${y}`;
   };
 
   // ── PDF ───────────────────────────────────────────────────────────────────
-  // Se genera localmente (expo-print) con los datos ya cargados en pantalla,
-  // sin depender de un endpoint de backend que hoy no existe.
-  const construirHtmlFicha = () => {
+  // Se genera localmente con los datos ya disponibles, sin depender de un
+  // backend que hoy no existe. Solo lo esencial: especie, raza, edad, peso,
+  // vacunas y tratamientos aplicados (sin datos del propietario).
+  const construirHtmlFicha = (vacunasAplicadas, tratamientosAplicados) => {
     const fechaGeneracion = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
-    const propietario = `${usuario?.nombre ?? ''} ${usuario?.apellido ?? ''}`.trim() || '—';
-    const fechaNac = formatFechaLarga(m.fecha_nacimiento) ?? '—';
+
+    const filaVacuna = (v) => `<tr><td class="label">${v.nombre}</td><td class="value">Aplicada: ${formatFecha(v.fecha_aplicacion) ?? '—'}</td></tr>`;
+    const filaTratamiento = (t) => `<tr><td class="label">${t.nombre}</td><td class="value">Inicio: ${formatFecha(t.fecha_inicio) ?? '—'}</td></tr>`;
 
     return `
       <html>
@@ -328,6 +345,7 @@ export default function FichaMedicaScreen() {
             td { padding: 10px 0; font-size: 14px; border-bottom: 1px solid #F0F0F0; }
             td.label { color: #6B6B6B; width: 45%; }
             td.value { font-weight: 700; text-align: right; color: #2C2C2C; }
+            .vacio { font-size: 13px; color: #AAAAAA; padding: 6px 0; }
             .footer {
               margin-top: 48px; padding-top: 16px; border-top: 1px solid #EFEFEF;
               font-size: 11px; color: #AAAAAA; text-align: center;
@@ -342,18 +360,21 @@ export default function FichaMedicaScreen() {
           <div class="container">
             <div class="section-title">Datos de la mascota</div>
             <table>
-              <tr><td class="label">Nombre</td><td class="value">${m.nombre}</td></tr>
               <tr><td class="label">Especie</td><td class="value">${capitalizar(m.especie) || '—'}</td></tr>
               <tr><td class="label">Raza</td><td class="value">${m.raza || 'Sin especificar'}</td></tr>
-              <tr><td class="label">Peso</td><td class="value">${formatPeso(m.peso)}</td></tr>
-              <tr><td class="label">Fecha de nacimiento</td><td class="value">${fechaNac}</td></tr>
               <tr><td class="label">Edad</td><td class="value">${edad}</td></tr>
+              <tr><td class="label">Peso</td><td class="value">${formatPeso(m.peso)}</td></tr>
             </table>
 
-            <div class="section-title">Propietario</div>
-            <table>
-              <tr><td class="label">Nombre</td><td class="value">${propietario}</td></tr>
-            </table>
+            <div class="section-title">Vacunas aplicadas</div>
+            ${vacunasAplicadas.length
+              ? `<table>${vacunasAplicadas.map(filaVacuna).join('')}</table>`
+              : '<div class="vacio">Sin vacunas registradas</div>'}
+
+            <div class="section-title">Tratamientos aplicados</div>
+            ${tratamientosAplicados.length
+              ? `<table>${tratamientosAplicados.map(filaTratamiento).join('')}</table>`
+              : '<div class="vacio">Sin tratamientos registrados</div>'}
 
             <div class="footer">
               Documento generado el ${fechaGeneracion} · Zooni — Cuidado inteligente para tu mascota
@@ -364,13 +385,72 @@ export default function FichaMedicaScreen() {
     `;
   };
 
+  // Descarga real en web: expo-print en el navegador ignora el HTML que le
+  // pasás y solo hace window.print() de la pantalla actual (por eso antes se
+  // imprimía toda la app) — para bajar un archivo de verdad hace falta
+  // generar el PDF nosotros mismos con jsPDF.
+  const generarPdfWeb = (vacunasAplicadas, tratamientosAplicados) => {
+    const doc = new jsPDF();
+    let y = 20;
+
+    doc.setFontSize(20);
+    doc.setTextColor(45, 189, 114);
+    doc.text('Ficha Médica Digital', 14, y);
+    y += 10;
+    doc.setFontSize(14);
+    doc.setTextColor(44, 44, 44);
+    doc.text(m.nombre ?? 'Mascota', 14, y);
+    y += 12;
+
+    const filaDato = (label, valor) => {
+      doc.setFontSize(11);
+      doc.setTextColor(107, 107, 107);
+      doc.text(`${label}:`, 14, y);
+      doc.setTextColor(44, 44, 44);
+      doc.text(String(valor), 60, y);
+      y += 8;
+    };
+    filaDato('Especie', capitalizar(m.especie) || '—');
+    filaDato('Raza', m.raza || 'Sin especificar');
+    filaDato('Edad', edad);
+    filaDato('Peso', formatPeso(m.peso));
+
+    const seccion = (titulo, items, formatear) => {
+      y += 8;
+      doc.setFontSize(13);
+      doc.setTextColor(45, 189, 114);
+      doc.text(titulo, 14, y);
+      y += 8;
+      doc.setFontSize(11);
+      doc.setTextColor(44, 44, 44);
+      if (!items.length) {
+        doc.setTextColor(170, 170, 170);
+        doc.text('Sin registros', 14, y);
+        y += 7;
+      } else {
+        items.forEach((item) => {
+          doc.text(formatear(item), 14, y);
+          y += 7;
+        });
+      }
+    };
+    seccion('Vacunas aplicadas', vacunasAplicadas, (v) => `• ${v.nombre} — aplicada ${formatFecha(v.fecha_aplicacion) ?? '—'}`);
+    seccion('Tratamientos aplicados', tratamientosAplicados, (t) => `• ${t.nombre} — inicio ${formatFecha(t.fecha_inicio) ?? '—'}`);
+
+    doc.save(`Ficha-medica-${(m.nombre ?? 'mascota').replace(/\s+/g, '-')}.pdf`);
+  };
+
   const generarPDF = async () => {
     setGenerandoPdf(true);
     try {
-      const html = construirHtmlFicha();
+      const [{ aplicadas: vacunasAplicadas }, { aplicados: tratamientosAplicados }] = petId
+        ? await Promise.all([fetchVacunas(petId), fetchTratamientos(petId)])
+        : [{ aplicadas: [] }, { aplicados: [] }];
+
       if (Platform.OS === 'web') {
-        await Print.printAsync({ html });
+        generarPdfWeb(vacunasAplicadas, tratamientosAplicados);
       } else {
+        const html = construirHtmlFicha(vacunasAplicadas, tratamientosAplicados);
         const { uri } = await Print.printToFileAsync({ html });
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(uri, {
@@ -441,25 +521,9 @@ export default function FichaMedicaScreen() {
 
           <FilaDato icono="paw-outline"     label="Especie:" valor={capitalizar(m.especie)} />
 
-          <FilaDato icono="pricetag-outline" label="Raza:" valor={m.raza || 'Sin especificar'}
-            onEditar={interactuable ? abrirEditRaza : undefined} editando={editandoRaza}>
-            <View style={s.editRow}>
-              <TextInput ref={razaInputRef} style={[s.editInput, { minWidth: 140, textAlign: 'left' }]} value={razaBorrador}
-                onChangeText={setRazaBorrador}
-                placeholder="Ej: Labrador Retriever" placeholderTextColor="#AAAAAA" />
-              {guardandoRaza
-                ? <ActivityIndicator size="small" color="#2DBD72" style={{ marginLeft: 6 }} />
-                : <>
-                    <TouchableOpacity onPress={confirmarRaza} style={s.btnOk}>
-                      <Ionicons name="checkmark" size={16} color="#FFF" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setEditandoRaza(false)} style={s.btnCancel}>
-                      <Ionicons name="close" size={16} color="#FFF" />
-                    </TouchableOpacity>
-                  </>
-              }
-            </View>
-          </FilaDato>
+          <FilaDato icono="pricetag-outline" label="Raza:"
+            valor={guardandoRaza ? 'Actualizando...' : (m.raza || 'Sin especificar')}
+            onEditar={interactuable ? abrirEditRaza : undefined} editando={false} />
 
           <FilaDato icono="barbell-outline" label="Peso:" valor={formatPeso(m.peso)}
             onEditar={interactuable ? abrirEditPeso : undefined} editando={editandoPeso}>
@@ -489,6 +553,16 @@ export default function FichaMedicaScreen() {
 
           <FechaPicker visible={editandoFecha} valor={fechaBorrador}
             onConfirmar={confirmarFecha} onCancelar={() => setEditandoFecha(false)} />
+
+          <OpcionPicker
+            visible={showRazaPicker}
+            titulo="Raza"
+            opciones={razasDisponibles}
+            valor={m.raza}
+            cargando={cargandoRazas}
+            onSeleccionar={seleccionarRaza}
+            onCerrar={() => setShowRazaPicker(false)}
+          />
 
           <Text style={[s.secTitulo, { marginTop: 24 }]}>Secciones</Text>
 

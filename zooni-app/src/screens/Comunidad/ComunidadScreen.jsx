@@ -285,7 +285,7 @@ export default function ComunidadScreen() {
           onPress={() => setDrawerOpen(true)}
           accessibilityLabel="Abrir menú"
         >
-          <Ionicons name="menu" size={24} color="#0A0A0A" />
+          <Ionicons name="menu" size={30} color="#0A0A0A" />
         </TouchableOpacity>
 
         {/* Banner modo cartel */}

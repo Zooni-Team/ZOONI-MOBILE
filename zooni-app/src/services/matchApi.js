@@ -96,7 +96,10 @@ function mapPerfil(mascota, miUsuario) {
       raza: mascota.Raza,
       edad_anios: edadDesde(mascota.FechaNacimiento),
       foto_real_url: mascota.Foto ?? null,
-      avatar_url: null,
+      // Antes venía hardcodeado en null: el avatarcito de Match nunca
+      // reflejaba el look aplicado en Closet. Se resuelve con el mismo
+      // ImagenAsset que usan Home y Ficha Médica.
+      imagen_asset: mascota.ImagenAsset ?? null,
     },
     intereses: user.Intereses ?? [],
   };

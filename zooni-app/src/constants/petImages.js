@@ -40,6 +40,13 @@ export const PET_IMAGES = {
   conejo_default:          FALLBACK,
   hamster_default:         FALLBACK,
   pajaro_default:          FALLBACK,
+
+  // ── Looks del Closet (Mestizo / Sin raza definida) — mismos archivos que
+  // constants/avatarImages.js, para que el avatar aplicado se vea igual acá
+  // (Home, Ficha Médica, Match) y no solo en la vista previa del Closet.
+  perro_mestizo_breakingbad:    require('../../assets/avatares/mestizo/perro_breakingbad.png'),
+  perro_mestizo_ballindeverdad: require('../../assets/avatares/mestizo/perro_ballindeverdad.png'),
+  perro_mestizo_bienagustin:    require('../../assets/avatares/mestizo/perro_bienagustin.png'),
 };
 
 /**
