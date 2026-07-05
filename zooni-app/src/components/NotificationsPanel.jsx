@@ -30,7 +30,7 @@ function timeAgo(dateStr) {
   return days === 1 ? 'ayer' : `hace ${days} días`;
 }
 
-export default function NotificationsPanel({ visible, onClose, onNavigate }) {
+export default function NotificationsPanel({ visible, onClose, onNavigate, onMarcarTodasLeidas }) {
   const [notificaciones, setNotificaciones] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -40,11 +40,11 @@ export default function NotificationsPanel({ visible, onClose, onNavigate }) {
       // Timeout de 2 segundos para notificaciones
       const dataPromise = Promise.race([
         fetchNotificaciones(),
-        new Promise((_, reject) => 
+        new Promise((_, reject) =>
           setTimeout(() => reject(new Error('timeout')), 2000)
         )
       ]);
-      
+
       const data = await dataPromise;
       setNotificaciones(data.notificaciones ?? []);
     } catch (error) {
@@ -59,16 +59,19 @@ export default function NotificationsPanel({ visible, onClose, onNavigate }) {
   useEffect(() => {
     if (visible) {
       load();
-      // Marcar como leídas después de 1.5s (tiempo de lectura)
+      // Marcar como leídas después de 1.5s (tiempo de lectura). Esto también
+      // tiene que apagar el circulito de la campana en Home al instante, no
+      // recién la próxima vez que se recargue Home desde cero.
       const timer = setTimeout(() => {
-        marcarTodasLeidas().catch(() => {/* sin backend */});
+        marcarTodasLeidas().then(() => onMarcarTodasLeidas?.()).catch(() => {/* sin backend */});
       }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [visible, load]);
+  }, [visible, load, onMarcarTodasLeidas]);
 
   const handleMarkAll = async () => {
     await marcarTodasLeidas();
+    onMarcarTodasLeidas?.();
     setNotificaciones((prev) => prev.map((n) => ({ ...n, leida: true })));
   };
 

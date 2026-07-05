@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, ActivityIndicator, Alert, Modal,
+  ScrollView, ActivityIndicator, Alert, Modal, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { crearCartel } from '../../api/comunidad';
 
 const TIPOS = [
@@ -18,12 +19,33 @@ export default function FormularioCartel({ coordenadas, onExito, onCancelar }) {
   const [desc,    setDesc]    = useState('');
   const [tel,     setTel]     = useState('');
   const [errTel,  setErrTel]  = useState('');
+  const [fotoUri, setFotoUri] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const validar = (v) => {
     const ok = /^[+]?[\d\s\-()\\.]{7,20}$/.test(v.trim());
     setErrTel(ok ? '' : 'Formato inválido. Ej: +54 11 1234-5678');
     return ok;
+  };
+
+  const elegirDeGaleria = async () => {
+    const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permiso.granted) {
+      Alert.alert('Sin permiso', 'Habilitá el acceso a la galería desde la configuración del dispositivo.');
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
+    if (!res.canceled && res.assets?.[0]?.uri) setFotoUri(res.assets[0].uri);
+  };
+
+  const abrirCamara = async () => {
+    const permiso = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permiso.granted) {
+      Alert.alert('Sin permiso', 'Habilitá el acceso a la cámara desde la configuración del dispositivo.');
+      return;
+    }
+    const res = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+    if (!res.canceled && res.assets?.[0]?.uri) setFotoUri(res.assets[0].uri);
   };
 
   const submit = async () => {
@@ -35,6 +57,7 @@ export default function FormularioCartel({ coordenadas, onExito, onCancelar }) {
         tipo,
         descripcion: desc,
         telefono_contacto: tel.trim(),
+        fotoUri,
         lat: coordenadas.latitude,
         lng: coordenadas.longitude,
       });
@@ -80,6 +103,25 @@ export default function FormularioCartel({ coordenadas, onExito, onCancelar }) {
               onChangeText={v => { setTel(v); if (errTel) validar(v); }} />
             {errTel ? <Text style={styles.errText}>{errTel}</Text> : null}
 
+            <Text style={styles.lbl}>Foto (opcional)</Text>
+            {fotoUri && (
+              <View style={styles.previewWrap}>
+                <Image source={{ uri: fotoUri }} style={styles.preview} />
+                <TouchableOpacity style={styles.previewQuitar} onPress={() => setFotoUri(null)}
+                  accessibilityLabel="Quitar foto">
+                  <Ionicons name="close" size={14} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            )}
+            <View style={styles.fotoBtnsRow}>
+              <TouchableOpacity style={styles.btnFoto} onPress={elegirDeGaleria} activeOpacity={0.85} disabled={loading}>
+                <Text style={styles.btnFotoText}>Seleccionar archivo</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.btnFoto} onPress={abrirCamara} activeOpacity={0.85} disabled={loading}>
+                <Text style={styles.btnFotoText}>📷 Abrir cámara</Text>
+              </TouchableOpacity>
+            </View>
+
             <View style={styles.btnsRow}>
               <TouchableOpacity style={styles.btnCancel} onPress={onCancelar} disabled={loading}>
                 <Text style={styles.btnCancelText}>Cancelar</Text>
@@ -114,6 +156,16 @@ const styles = StyleSheet.create({
   tipoBtnOn:    { borderColor: '#2DBD72', backgroundColor: '#E8FFF2' },
   tipoBtnText:  { fontSize: 12, color: '#6B6B6B' },
   tipoBtnTextOn:{ color: '#2DBD72', fontWeight: '600' },
+  previewWrap: { alignSelf: 'flex-start', marginBottom: 10 },
+  preview: { width: 80, height: 80, borderRadius: 10 },
+  previewQuitar: {
+    position: 'absolute', top: -6, right: -6,
+    width: 22, height: 22, borderRadius: 11, backgroundColor: '#E63946',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  fotoBtnsRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
+  btnFoto: { flex: 1, backgroundColor: '#F5C842', borderRadius: 20, paddingVertical: 10, alignItems: 'center' },
+  btnFotoText: { fontSize: 12, fontWeight: '700', color: '#2C2C2C' },
   btnsRow: { flexDirection: 'row', gap: 10, marginTop: 20, marginBottom: 8 },
   btnCancel:    { flex: 1, backgroundColor: '#4A4A4A', borderRadius: 25, paddingVertical: 13, alignItems: 'center' },
   btnCancelText:{ color: '#fff', fontWeight: '700', fontSize: 14 },

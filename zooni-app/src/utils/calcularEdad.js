@@ -38,3 +38,18 @@ export function calcularEdad(fechaNacimiento) {
 
   return `${textoAnios} y ${textoMeses}`;
 }
+
+/**
+ * Igual que calcularEdad, pero como número de meses (para filtrar catálogos
+ * de vacunas/tratamientos/consejos por rango de edad). null si no hay fecha.
+ */
+export function calcularEdadMeses(fechaNacimiento) {
+  if (!fechaNacimiento) return null;
+  const nacimiento = new Date(fechaNacimiento);
+  if (isNaN(nacimiento.getTime())) return null;
+
+  const hoy = new Date();
+  let meses = (hoy.getFullYear() - nacimiento.getFullYear()) * 12 + (hoy.getMonth() - nacimiento.getMonth());
+  if (hoy.getDate() < nacimiento.getDate()) meses -= 1;
+  return Math.max(0, meses);
+}

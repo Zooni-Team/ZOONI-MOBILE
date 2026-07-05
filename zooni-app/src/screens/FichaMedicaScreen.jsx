@@ -31,7 +31,7 @@ import { resolvePetImage } from '../constants/petImages';
 import SkeletonLoader from '../components/SkeletonLoader';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
-import { fetchMascota, actualizarPeso, actualizarFechaNacimiento } from '../services/fichaMedicaApi';
+import { fetchMascota, actualizarPeso, actualizarRaza, actualizarFechaNacimiento } from '../services/fichaMedicaApi';
 
 // ─── FECHA PICKER (modal propio, sin dependencias externas) ──────────────────
 
@@ -196,6 +196,9 @@ export default function FichaMedicaScreen() {
   const [editandoPeso,   setEditandoPeso]   = useState(false);
   const [pesoBorrador,   setPesoBorrador]   = useState('');
   const [guardandoPeso,  setGuardandoPeso]  = useState(false);
+  const [editandoRaza,   setEditandoRaza]   = useState(false);
+  const [razaBorrador,   setRazaBorrador]   = useState('');
+  const [guardandoRaza,  setGuardandoRaza]  = useState(false);
   const [editandoFecha,  setEditandoFecha]  = useState(false);
   const [fechaBorrador,  setFechaBorrador]  = useState(new Date());
   const [guardandoFecha, setGuardandoFecha] = useState(false);
@@ -204,6 +207,7 @@ export default function FichaMedicaScreen() {
   const { usuario, mascotaActiva: mascotaActivaDemo } = useUsuarioActivo();
 
   const pesoInputRef = useRef(null);
+  const razaInputRef = useRef(null);
 
   // ── Carga ─────────────────────────────────────────────────────────────────
   // Timeout de 3 segundos: si el backend no responde, mostrar la vista demo
@@ -244,6 +248,25 @@ export default function FichaMedicaScreen() {
       setEditandoPeso(false);
     } catch { Alert.alert('Error', 'No se pudo actualizar el peso.'); }
     finally { setGuardandoPeso(false); }
+  };
+
+  // ── Raza ──────────────────────────────────────────────────────────────────
+  const abrirEditRaza = () => {
+    setRazaBorrador(mascota.raza ?? '');
+    setEditandoRaza(true);
+    setTimeout(() => razaInputRef.current?.focus(), 100);
+  };
+
+  const confirmarRaza = async () => {
+    const valor = razaBorrador.trim();
+    if (!valor) { Alert.alert('Valor inválido', 'Ingresá una raza (o "Sin especificar" si no la sabés).'); return; }
+    setGuardandoRaza(true);
+    try {
+      const actualizada = await actualizarRaza(petId, valor);
+      setMascota((p) => ({ ...p, raza: actualizada.raza }));
+      setEditandoRaza(false);
+    } catch { Alert.alert('Error', 'No se pudo actualizar la raza.'); }
+    finally { setGuardandoRaza(false); }
   };
 
   // ── Fecha ─────────────────────────────────────────────────────────────────
@@ -417,7 +440,26 @@ export default function FichaMedicaScreen() {
           <Text style={s.secTitulo}>Datos</Text>
 
           <FilaDato icono="paw-outline"     label="Especie:" valor={capitalizar(m.especie)} />
-          <FilaDato icono="pricetag-outline" label="Raza:"    valor={m.raza || 'Sin especificar'} />
+
+          <FilaDato icono="pricetag-outline" label="Raza:" valor={m.raza || 'Sin especificar'}
+            onEditar={interactuable ? abrirEditRaza : undefined} editando={editandoRaza}>
+            <View style={s.editRow}>
+              <TextInput ref={razaInputRef} style={[s.editInput, { minWidth: 140, textAlign: 'left' }]} value={razaBorrador}
+                onChangeText={setRazaBorrador}
+                placeholder="Ej: Labrador Retriever" placeholderTextColor="#AAAAAA" />
+              {guardandoRaza
+                ? <ActivityIndicator size="small" color="#2DBD72" style={{ marginLeft: 6 }} />
+                : <>
+                    <TouchableOpacity onPress={confirmarRaza} style={s.btnOk}>
+                      <Ionicons name="checkmark" size={16} color="#FFF" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setEditandoRaza(false)} style={s.btnCancel}>
+                      <Ionicons name="close" size={16} color="#FFF" />
+                    </TouchableOpacity>
+                  </>
+              }
+            </View>
+          </FilaDato>
 
           <FilaDato icono="barbell-outline" label="Peso:" valor={formatPeso(m.peso)}
             onEditar={interactuable ? abrirEditPeso : undefined} editando={editandoPeso}>

@@ -25,7 +25,10 @@ const DEMO_PHOTOS = {
 
 export const DEFAULT_FILTROS = {
   distancia_max_km: 10,
-  solo_cercanos: true,
+  // false por default: recién registrado nadie tiene ubicación todavía
+  // (se completa cuando el navegador/dispositivo da permiso de geolocalización),
+  // y con esto en true de entrada los perfiles nuevos no se ven entre sí.
+  solo_cercanos: false,
   tipos_mascota: ['cualquiera'],
   edad_mascota_min_meses: 0,
   edad_mascota_max_meses: 240,

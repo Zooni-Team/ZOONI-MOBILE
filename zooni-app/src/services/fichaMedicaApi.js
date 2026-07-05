@@ -5,6 +5,8 @@
  */
 
 import { supabase } from '../lib/supabase';
+import { calcularEdadMeses } from '../utils/calcularEdad';
+import { aplicaParaMascota } from '../utils/filtrarPorMascota';
 
 function mapMascota(m) {
   if (!m) return null;
@@ -29,6 +31,12 @@ export async function fetchMascota(petId) {
 
 export async function actualizarPeso(petId, peso) {
   const { data, error } = await supabase.from('Mascota').update({ Peso: peso }).eq('Id_Mascota', petId).select().single();
+  if (error) throw error;
+  return mapMascota(data);
+}
+
+export async function actualizarRaza(petId, raza) {
+  const { data, error } = await supabase.from('Mascota').update({ Raza: raza }).eq('Id_Mascota', petId).select().single();
   if (error) throw error;
   return mapMascota(data);
 }
@@ -73,9 +81,18 @@ export async function fetchVacunas(petId) {
 
   const especie = mascota?.especie ?? 'perro';
   const aplicadasMapeadas = (aplicadas ?? []).map(mapAplicada);
+  const perfil = {
+    edadMeses: calcularEdadMeses(mascota?.fecha_nacimiento),
+    pesoKg: mascota?.peso ?? null,
+    raza: mascota?.raza ?? null,
+  };
 
   const sugeridas = (catalogo ?? [])
     .filter((v) => v.Especie === especie)
+    .filter((v) => aplicaParaMascota({
+      edadMinMeses: v.EdadMinMeses, edadMaxMeses: v.EdadMaxMeses,
+      pesoMinKg: v.PesoMinKg, pesoMaxKg: v.PesoMaxKg, razas: v.Razas,
+    }, perfil))
     .map((v) => {
       const aplicacion = (aplicadas ?? []).find((a) => a.Id_Vacuna === v.Id_Vacuna);
       return {
@@ -176,9 +193,33 @@ export async function fetchTratamientos(petId) {
   if (errCatalogo) throw errCatalogo;
 
   const especie = mascota?.especie ?? 'perro';
+  const perfil = {
+    edadMeses: calcularEdadMeses(mascota?.fecha_nacimiento),
+    pesoKg: mascota?.peso ?? null,
+    raza: mascota?.raza ?? null,
+  };
+
+  // "Tratamiento" no tiene una columna que lo vincule al catálogo (a diferencia
+  // de MascotaVacuna.Id_Vacuna) — se matchea por nombre para saber si ya está
+  // aplicado, igual que hace Vacunas pero sin el id de por medio.
   const sugeridos = (catalogo ?? [])
     .filter((t) => t.especie === especie)
-    .map((t) => ({ id: t.id, nombre: t.nombre, frecuencia_descripcion: t.frecuencia_descripcion }));
+    .filter((t) => aplicaParaMascota({
+      edadMinMeses: t.edad_min_meses, edadMaxMeses: t.edad_max_meses,
+      pesoMinKg: t.peso_min_kg, pesoMaxKg: t.peso_max_kg, razas: t.razas,
+    }, perfil))
+    .map((t) => {
+      const aplicacion = (aplicados ?? []).find(
+        (a) => a.Nombre?.trim().toLowerCase() === t.nombre.trim().toLowerCase()
+      );
+      return {
+        id: t.id,
+        nombre: t.nombre,
+        frecuencia_descripcion: t.frecuencia_descripcion,
+        applied: !!aplicacion,
+        tratamiento_aplicado_id: aplicacion?.Id_Tratamiento ?? null,
+      };
+    });
 
   return { mascota, aplicados: (aplicados ?? []).map(mapTratamiento), sugeridos };
 }

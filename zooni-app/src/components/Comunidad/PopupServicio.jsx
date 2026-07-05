@@ -1,8 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 export default function PopupServicio({ servicio, onClose }) {
+  const navigation = useNavigation();
   const translateY = useRef(new Animated.Value(40)).current;
   const opacity    = useRef(new Animated.Value(0)).current;
 
@@ -17,6 +19,15 @@ export default function PopupServicio({ servicio, onClose }) {
     const url = servicio.google_maps_url ||
       `https://www.google.com/maps/search/?api=1&query=${servicio.lat},${servicio.lng}`;
     Linking.openURL(url);
+  };
+
+  const enviarMensaje = () => {
+    onClose();
+    navigation.navigate('Chat', {
+      servicioId: servicio.id,
+      nombre: servicio.nombre,
+      tipoServicio: servicio.tipo?.charAt(0).toUpperCase() + servicio.tipo?.slice(1),
+    });
   };
 
   return (
@@ -46,9 +57,15 @@ export default function PopupServicio({ servicio, onClose }) {
           <Text style={styles.info}>{servicio.descripcion}</Text>
         </View>
       )}
-      <TouchableOpacity style={styles.btnMaps} onPress={abrirMaps}>
-        <Text style={styles.btnMapsText}>Ver en Google Maps</Text>
-      </TouchableOpacity>
+      <View style={styles.btnsRow}>
+        <TouchableOpacity style={[styles.btnMaps, styles.btnMensaje]} onPress={enviarMensaje}>
+          <Ionicons name="chatbubble-outline" size={15} color="#2DBD72" />
+          <Text style={[styles.btnMapsText, styles.btnMensajeText]}>Enviar mensaje</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.btnMaps} onPress={abrirMaps}>
+          <Text style={styles.btnMapsText}>Ver en Google Maps</Text>
+        </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 }
@@ -65,6 +82,12 @@ const styles = StyleSheet.create({
   tipo:    { fontSize: 12, fontWeight: '600', color: '#2DBD72', marginBottom: 8 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   info:    { fontSize: 13, color: '#6B6B6B' },
-  btnMaps: { backgroundColor: '#2DBD72', borderRadius: 20, paddingVertical: 10, alignItems: 'center', marginTop: 10 },
+  btnsRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  btnMaps: { flex: 1, backgroundColor: '#2DBD72', borderRadius: 20, paddingVertical: 10, alignItems: 'center' },
   btnMapsText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  btnMensaje: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: '#F0FFF6', borderWidth: 1.5, borderColor: '#2DBD72',
+  },
+  btnMensajeText: { color: '#2DBD72' },
 });

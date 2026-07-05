@@ -32,7 +32,11 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { calcularEdad } from '../utils/calcularEdad';
 import { resolvePetImage } from '../constants/petImages';
-import { fetchTratamientos, crearTratamiento, eliminarTratamiento } from '../services/fichaMedicaApi';
+import {
+  fetchTratamientos,
+  crearTratamiento,
+  eliminarTratamiento as eliminarTratamientoApi,
+} from '../services/fichaMedicaApi';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -203,7 +207,7 @@ function CardAplicado({ tratamiento, onEliminar }) {
 
 // ─── COMPONENTE: CARD SUGERIDO ────────────────────────────────────────────────
 
-function CardSugerido({ sugerido, index }) {
+function CardSugerido({ sugerido, index, onRegistrar }) {
   const translateY = useRef(new Animated.Value(12)).current;
   const opacity    = useRef(new Animated.Value(0)).current;
 
@@ -216,8 +220,20 @@ function CardSugerido({ sugerido, index }) {
 
   return (
     <Animated.View style={[s.cardSugerido, { transform: [{ translateY }], opacity }]}>
-      <Text style={s.sugeridoNombre}>{sugerido.nombre}</Text>
-      <Text style={s.sugeridoFrec}>{sugerido.frecuencia_descripcion}</Text>
+      <View style={s.cardSugeridoInfo}>
+        <Text style={s.sugeridoNombre}>{sugerido.nombre}</Text>
+        <Text style={s.sugeridoFrecInline}>{sugerido.frecuencia_descripcion}</Text>
+      </View>
+      {sugerido.applied ? (
+        <View style={s.badgeAplicada}>
+          <Ionicons name="checkmark" size={12} color="#2DBD72" />
+          <Text style={s.badgeAplicadaTxt}>Aplicada</Text>
+        </View>
+      ) : (
+        <TouchableOpacity style={s.btnRegistrar} onPress={onRegistrar} accessibilityLabel={`Registrar ${sugerido.nombre}`}>
+          <Text style={s.btnRegistrarTxt}>Registrar</Text>
+        </TouchableOpacity>
+      )}
     </Animated.View>
   );
 }
@@ -333,6 +349,10 @@ export default function TratamientosScreen() {
   const [tratamientosSugeridos, setTratamientosSugeridos] = useState([]);
   const [loading,               setLoading]               = useState(true);
   const [modalVisible,          setModalVisible]          = useState(false);
+  // Sugerido que se está registrando desde el botón "Registrar" (null si se
+  // abrió el modal desde "Añadir" a secas) — se usa para marcarlo "Aplicada"
+  // al guardar, igual que hace Vacunas con vacunaPreseleccionada.
+  const [sugeridoEnRegistro,    setSugeridoEnRegistro]    = useState(null);
   const [formNombre,            setFormNombre]            = useState('');
   const [formFechaInicio,       setFormFechaInicio]       = useState(null);
   const [formProximoControl,    setFormProximoControl]    = useState(null);
@@ -447,9 +467,13 @@ export default function TratamientosScreen() {
   }
 
   // ── Modal ────────────────────────────────────────────────────────────────
-  function abrirModal() {
-    setFormNombre(''); setFormFechaInicio(null); setFormProximoControl(null);
+  // nombrePrefill: al tocar "Registrar" en un tratamiento sugerido, se abre
+  // el mismo modal con el nombre ya cargado (el usuario todavía puede
+  // editarlo, elegir la fecha y guardar).
+  function abrirModal(nombrePrefill = '', sugerido = null) {
+    setFormNombre(nombrePrefill); setFormFechaInicio(null); setFormProximoControl(null);
     setFormVeterinaria(''); setFormDescripcion(''); setFormErrors({});
+    setSugeridoEnRegistro(sugerido);
     setModalVisible(true);
     Animated.parallel([
       Animated.timing(modalScale,   { toValue: 1,    duration: 220, useNativeDriver: true }),
@@ -487,6 +511,13 @@ export default function TratamientosScreen() {
         veterinaria:     formVeterinaria.trim() || null,
       });
       setTratamientosAplicados((prev) => [nuevo, ...prev]);
+      if (sugeridoEnRegistro) {
+        setTratamientosSugeridos((prev) => prev.map((sg) => (
+          sg.id === sugeridoEnRegistro.id
+            ? { ...sg, applied: true, tratamiento_aplicado_id: nuevo.id }
+            : sg
+        )));
+      }
       cerrarModal();
       mostrarToast('Tratamiento registrado correctamente', '#2DBD72');
     } catch {
@@ -497,7 +528,18 @@ export default function TratamientosScreen() {
   }
 
   // ── Eliminar tratamiento ─────────────────────────────────────────────────
-  function eliminarTratamiento(id) {
+  // OJO: esta función y la importada de fichaMedicaApi se llamaban IGUAL
+  // ("eliminarTratamiento"), y la de acá abajo tapaba a la importada dentro
+  // de este archivo — confirmarEliminar terminaba llamándose a sí misma en
+  // vez de borrar de verdad en Supabase. Por eso el botón nunca funcionó,
+  // ni siquiera en el celular. Se renombró para que no vuelva a pasar.
+  function pedirConfirmacionEliminar(id) {
+    // Alert.alert con botones es un no-op en react-native-web: en el
+    // navegador nunca aparecía el diálogo.
+    if (Platform.OS === 'web') {
+      if (window.confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) confirmarEliminar(id);
+      return;
+    }
     Alert.alert(
       '¿Eliminar tratamiento?',
       '¿Seguro que querés eliminar este registro? Esta acción no se puede deshacer.',
@@ -510,8 +552,15 @@ export default function TratamientosScreen() {
 
   async function confirmarEliminar(id) {
     try {
-      await eliminarTratamiento(id);
+      await eliminarTratamientoApi(id);
       setTratamientosAplicados((prev) => prev.filter((t) => t.id !== id));
+      // Si venía de un sugerido "Aplicada", esa tarjeta tiene que volver a
+      // mostrar el botón "Registrar" — igual que ya se arregló en Vacunas.
+      setTratamientosSugeridos((prev) => prev.map((sg) => (
+        sg.tratamiento_aplicado_id === id
+          ? { ...sg, applied: false, tratamiento_aplicado_id: null }
+          : sg
+      )));
       mostrarToast('Tratamiento eliminado', '#E63946');
     } catch {
       mostrarToast('No se pudo eliminar el tratamiento', '#E63946');
@@ -589,7 +638,7 @@ export default function TratamientosScreen() {
               <Text style={s.secTitulo}>Tratamientos</Text>
               <Animated.View style={{ transform: [{ scale: btnScale }] }}>
                 <Pressable style={s.btnAnadir}
-                  onPressIn={pressInBtn} onPressOut={pressOutBtn} onPress={abrirModal}>
+                  onPressIn={pressInBtn} onPressOut={pressOutBtn} onPress={() => abrirModal()}>
                   <Ionicons name="add" size={16} color="#FFF" />
                   <Text style={s.btnAnadirTxt}>Añadir</Text>
                 </Pressable>
@@ -604,7 +653,7 @@ export default function TratamientosScreen() {
               <Text style={s.emptyTxt}>No hay tratamientos registrados</Text>
             ) : (
               tratamientosAplicados.map((t) => (
-                <CardAplicado key={t.id} tratamiento={t} onEliminar={eliminarTratamiento} />
+                <CardAplicado key={t.id} tratamiento={t} onEliminar={pedirConfirmacionEliminar} />
               ))
             )}
 
@@ -620,7 +669,7 @@ export default function TratamientosScreen() {
               <Text style={s.emptyTxt}>No hay tratamientos sugeridos para esta especie</Text>
             ) : (
               tratamientosSugeridos.map((sug, i) => (
-                <CardSugerido key={sug.id} sugerido={sug} index={i} />
+                <CardSugerido key={sug.id} sugerido={sug} index={i} onRegistrar={() => abrirModal(sug.nombre, sug)} />
               ))
             )}
 
@@ -820,8 +869,20 @@ const s = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     marginBottom: 10,
   },
-  sugeridoNombre: { flex: 1, fontSize: 14, fontWeight: '700', color: '#2C2C2C', paddingRight: 8 },
-  sugeridoFrec:   { fontSize: 12, color: '#6B6B6B', textAlign: 'right', flexShrink: 0, maxWidth: 90 },
+  cardSugeridoInfo:   { flex: 1, minWidth: 0, paddingRight: 8 },
+  sugeridoNombre:     { fontSize: 14, fontWeight: '700', color: '#2C2C2C' },
+  sugeridoFrecInline: { fontSize: 12, color: '#6B6B6B', marginTop: 2 },
+  btnRegistrar: {
+    backgroundColor: '#2DBD72', borderRadius: 14, paddingVertical: 7, paddingHorizontal: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
+  },
+  btnRegistrarTxt: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
+
+  badgeAplicada: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: '#E8F8F0', borderRadius: 14, paddingVertical: 5, paddingHorizontal: 10,
+  },
+  badgeAplicadaTxt: { fontSize: 12, fontWeight: '700', color: '#2DBD72' },
 
   // Skeleton
   skeletonCard:  { backgroundColor: '#E8E8E8', borderRadius: 12, padding: 16, marginBottom: 10, gap: 8 },

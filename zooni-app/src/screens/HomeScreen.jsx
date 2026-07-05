@@ -185,6 +185,7 @@ export default function HomeScreen() {
         visible={notifOpen}
         onClose={() => setNotifOpen(false)}
         onNavigate={handleNotifNavigate}
+        onMarcarTodasLeidas={() => setHomeData((d) => (d ? { ...d, notificacionesNoLeidas: 0 } : d))}
       />
 
       <ScrollView

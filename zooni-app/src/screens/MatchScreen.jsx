@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar,
+  ActivityIndicator, View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar,
   ImageBackground, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,7 +13,11 @@ import MatchSwipeStack from '../components/match/MatchSwipeStack';
 import MatchActionButtons from '../components/match/MatchActionButtons';
 import MatchCelebrationOverlay from '../components/match/MatchCelebrationOverlay';
 import MatchProfileDetailModal from '../components/match/MatchProfileDetailModal';
-import { fetchMatchPerfiles, postMatchLike, postMatchSkip } from '../services/matchApi';
+import MatchProfileSetup from '../components/match/MatchProfileSetup';
+import {
+  fetchMatchPerfiles, postMatchLike, postMatchSkip,
+  fetchMiPerfilMatch, perfilMatchCompleto, actualizarMiUbicacionMatch,
+} from '../services/matchApi';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
 import { getMatchCardLayout } from '../utils/matchLayout';
@@ -34,6 +38,8 @@ export default function MatchScreen() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [matchOverlay, setMatchOverlay] = useState(null);
   const [detailPerfil, setDetailPerfil] = useState(null);
+  // null = verificando si falta algo, false = falta completar, true = listo
+  const [perfilListo, setPerfilListo] = useState(null);
 
   const loadPerfiles = useCallback(async (showSkeleton = true) => {
     if (showSkeleton) setLoading(true);
@@ -48,8 +54,33 @@ export default function MatchScreen() {
   }, []);
 
   useEffect(() => {
-    loadPerfiles(true);
-  }, [loadPerfiles]);
+    let cancelado = false;
+    (async () => {
+      try {
+        const perfil = await fetchMiPerfilMatch();
+        if (!cancelado) setPerfilListo(perfilMatchCompleto(perfil));
+      } catch {
+        if (!cancelado) setPerfilListo(true); // si falla la consulta no bloqueamos el acceso
+      }
+    })();
+    return () => { cancelado = true; };
+  }, []);
+
+  useEffect(() => {
+    if (perfilListo) loadPerfiles(true);
+  }, [perfilListo, loadPerfiles]);
+
+  // El registro no pide ubicación: sin esto, User.Lat/Lng quedan null para
+  // siempre y ningún perfil nuevo calcula distancia contra otro (por eso
+  // dos cuentas recién creadas no se veían entre sí en el swipe).
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { actualizarMiUbicacionMatch(pos.coords.latitude, pos.coords.longitude).catch(() => {}); },
+      () => {}, // sin permiso: seguimos sin distancia, no bloquea el uso de Match
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    );
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -126,6 +157,20 @@ export default function MatchScreen() {
 
   const current = perfiles[index];
   const isEmpty = !loading && !current;
+
+  if (perfilListo === null) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.checking}>
+          <ActivityIndicator size="large" color="#2DBD72" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (perfilListo === false) {
+    return <MatchProfileSetup onListo={() => setPerfilListo(true)} />;
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -239,6 +284,7 @@ export default function MatchScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#D4F5E2' },
+  checking: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   screenBackground: { flex: 1, width: '100%' },
   screenBackgroundImage: { width: '100%', height: '100%' },
   header: {

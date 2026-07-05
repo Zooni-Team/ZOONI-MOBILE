@@ -18,7 +18,7 @@
  *   - overlayOpacity: el fondo oscuro aparece/desaparece con fade
  */
 
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   Animated, Dimensions, ScrollView, Alert, Image, Modal, Platform,
@@ -27,6 +27,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { clearToken } from '../services/api';
 import { clearCurrentUserId } from '../config/session';
+import { contarMensajesNoLeidos } from '../services/chatStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // El drawer ocupa el 80% del ancho, con un máximo de 320px
@@ -39,6 +40,7 @@ const MENU_ITEMS = [
   { key: 'inicio',        label: 'Inicio',                    icono: 'home-outline',               ruta: 'Home' },
   { key: 'comunidad',     label: 'Comunidad',                 icono: 'people-outline',              ruta: 'Comunidad' },
   { key: 'match',         label: 'Match',                     icono: 'paw-outline',                 ruta: 'Match' },
+  { key: 'mensajes',      label: 'Mensajes',                  icono: 'chatbubbles-outline',         ruta: 'Mensajes' },
   { key: 'planificador',  label: 'Planificador de Servicios', icono: 'calendar-outline',            ruta: 'Planificador' },
   { key: 'ficha_medica',  label: 'Ficha Médica',              icono: 'medkit-outline',              ruta: 'FichaMedica' },
   { key: 'calendario',    label: 'Calendario',                icono: 'today-outline',               ruta: 'Calendario' },
@@ -53,11 +55,19 @@ const MENU_ITEMS = [
 
 export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActiva, activeRoute }) {
   const navigation = useNavigation();
+  const [mensajesNoLeidos, setMensajesNoLeidos] = useState(0);
 
   // Posición horizontal del drawer (empieza fuera de pantalla a la izquierda)
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   // Opacidad del overlay oscuro
   const overlayOpacity = useRef(new Animated.Value(0)).current;
+
+  // Cuenta los mensajes sin leer cada vez que se abre el drawer (para el
+  // circulito rojo del ítem "Mensajes").
+  useEffect(() => {
+    if (!visible) return;
+    contarMensajesNoLeidos().then(setMensajesNoLeidos).catch(() => {});
+  }, [visible]);
 
   // Anima la apertura/cierre del drawer cuando cambia `visible`
   useEffect(() => {
@@ -182,12 +192,13 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
 
             // Resalta el ítem de la pantalla actual
             const isActive = activeRoute === item.ruta;
+            const badge = item.key === 'mensajes' ? mensajesNoLeidos : 0;
             return (
               <TouchableOpacity
                 key={item.key}
                 style={[styles.menuItem, isActive && styles.menuItemActive]}
                 onPress={() => item.isLogout ? handleLogout() : handleNavigate(item)}
-                accessibilityLabel={item.label}
+                accessibilityLabel={badge > 0 ? `${item.label}, ${badge} mensajes sin leer` : item.label}
               >
                 <Ionicons
                   name={item.icono}
@@ -203,6 +214,11 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
                 ]}>
                   {item.label}
                 </Text>
+                {badge > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeTxt}>{badge > 99 ? '99+' : badge}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             );
           })}
@@ -239,7 +255,14 @@ const styles = StyleSheet.create({
   menuItem: { flexDirection: 'row', alignItems: 'center', height: 52, paddingHorizontal: 20 },
   menuItemActive: { backgroundColor: 'rgba(45, 189, 114, 0.12)' }, // Verde suave para ítem activo
   menuIcon: { marginRight: 14 },
-  menuLabel: { fontSize: 15, color: '#2C2C2C' },
+  menuLabel: { flex: 1, fontSize: 15, color: '#2C2C2C' },
   menuLabelActive: { color: '#2DBD72', fontWeight: '700' },
+  badge: {
+    minWidth: 20, height: 20, borderRadius: 10, backgroundColor: '#E63946',
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5, marginLeft: 8,
+  },
+  // lineHeight igual al alto del círculo: es lo que realmente centra el
+  // número verticalmente (alignItems/justifyContent solos no alcanzan acá).
+  badgeTxt: { fontSize: 11, fontWeight: '700', color: '#FFFFFF', textAlign: 'center', lineHeight: 20 },
   menuLabelLogout: { color: '#E63946' }, // Rojo para cerrar sesión
 });

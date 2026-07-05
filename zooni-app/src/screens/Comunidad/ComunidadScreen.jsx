@@ -363,7 +363,10 @@ export default function ComunidadScreen() {
             </ScrollView>
             <View style={styles.tabSep} />
             <View style={styles.tabBody}>
-              {tab === 'Amigos'      && <TabAmigos onVerEnMapa={a => { flyTo(a.lat, a.lng); setSheetH('half'); }} />}
+              {tab === 'Amigos'      && <TabAmigos onVerEnMapa={a => {
+                if (a.lat == null || a.lng == null) { mostrarToast('📍 Este amigo todavía no compartió su ubicación'); return; }
+                flyTo(a.lat, a.lng); setSheetH('half');
+              }} />}
               {tab === 'Servicios'   && <TabServicios bbox={bbox} onSeleccionar={s => { setPopServ(s); flyTo(s.lat, s.lng); setSheetH('half'); }} />}
               {tab === 'Solicitudes' && <TabSolicitudes onRespuesta={() => { mostrarToast('✅ ¡Ahora son amigos!'); if (bbox) cargarMapa(bbox); }} />}
               {tab === 'Buscar'      && <BuscadorUsuarios onSolicitudEnviada={n => mostrarToast(`✅ Solicitud enviada a ${n}`)} />}

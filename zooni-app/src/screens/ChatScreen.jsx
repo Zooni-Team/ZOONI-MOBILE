@@ -1,10 +1,12 @@
 /**
- * ChatScreen.jsx — Conversación 1 a 1 de Match
+ * ChatScreen.jsx — Conversación 1 a 1 (Match) o con un servicio
  *
- * Se navega desde MatchCelebrationOverlay ("Enviar mensaje") con
- * { chatId, nombre, fotoPerfilUrl }. Sin backend de chat conectado todavía:
- * los mensajes se guardan localmente (ver services/chatStore.js) y se
- * reemplaza por la API/sockets real cuando se conecte.
+ * Dos formas de llegar acá:
+ *   - Desde MatchCelebrationOverlay o Mensajes: { chatId, nombre, fotoPerfilUrl }
+ *   - Desde Comunidad o Mensajes (servicios): { servicioId, nombre, tipoServicio }
+ * Los mensajes viven en Supabase (services/chatStore.js). Mientras la
+ * pantalla está en foco, hace polling liviano para traer mensajes nuevos
+ * del otro lado sin depender de una suscripción en tiempo real.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -22,15 +24,11 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 
-import { agregarMensaje, getMensajes } from '../services/chatStore';
+import { enviarMensaje, getMensajes, marcarLeidosMatch } from '../services/chatStore';
 
-const RESPUESTAS_AUTOMATICAS = [
-  '¡Hola! 🐾 Qué bueno matchear con vos',
-  '¡Hola! Me encantó el perfil de tu mascota 🐶',
-  '¡Hey! ¿Coordinamos un paseo juntos? 🐾',
-];
+const POLL_MS = 4000;
 
 function formatHora(iso) {
   const d = new Date(iso);
@@ -42,7 +40,8 @@ function formatHora(iso) {
 export default function ChatScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { chatId, nombre, fotoPerfilUrl } = route.params ?? {};
+  const { chatId, nombre, fotoPerfilUrl, servicioId, tipoServicio } = route.params ?? {};
+  const esServicio = !!servicioId;
 
   const [mensajes, setMensajes] = useState([]);
   const [texto, setTexto] = useState('');
@@ -50,47 +49,37 @@ export default function ChatScreen() {
   const scrollRef = useRef(null);
 
   const cargar = useCallback(async () => {
-    if (!chatId) return;
-    const guardados = await getMensajes(chatId);
+    const guardados = await getMensajes({ matchId: chatId, servicioId });
     setMensajes(guardados);
-  }, [chatId]);
+    if (chatId) marcarLeidosMatch(chatId).catch(() => {});
+  }, [chatId, servicioId]);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  // Mientras la pantalla está en foco, refresca sola para traer lo que
+  // escribió el otro lado (no hay suscripción en tiempo real todavía).
+  useFocusEffect(
+    useCallback(() => {
+      const interval = setInterval(cargar, POLL_MS);
+      return () => clearInterval(interval);
+    }, [cargar])
+  );
 
   useEffect(() => {
     requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
   }, [mensajes]);
 
-  async function enviarMensaje() {
+  async function handleEnviar() {
     const contenido = texto.trim();
-    if (!contenido || !chatId || enviando) return;
+    if (!contenido || enviando) return;
 
     setEnviando(true);
     setTexto('');
-
-    const nuevo = {
-      id: Date.now(),
-      texto: contenido,
-      autor: 'yo',
-      fecha: new Date().toISOString(),
-    };
-    const actualizados = await agregarMensaje(chatId, nuevo);
-    setMensajes(actualizados);
-    setEnviando(false);
-
-    // Primer mensaje de la conversación: simulamos una respuesta amistosa
-    // (sin backend de chat en tiempo real conectado todavía).
-    if (actualizados.length === 1) {
-      setTimeout(async () => {
-        const respuesta = {
-          id: Date.now() + 1,
-          texto: RESPUESTAS_AUTOMATICAS[Math.floor(Math.random() * RESPUESTAS_AUTOMATICAS.length)],
-          autor: 'otro',
-          fecha: new Date().toISOString(),
-        };
-        const conRespuesta = await agregarMensaje(chatId, respuesta);
-        setMensajes(conRespuesta);
-      }, 1200);
+    try {
+      const actualizados = await enviarMensaje({ matchId: chatId, servicioId, texto: contenido });
+      setMensajes(actualizados);
+    } finally {
+      setEnviando(false);
     }
   }
 
@@ -104,15 +93,32 @@ export default function ChatScreen() {
           <Ionicons name="arrow-back" size={24} color="#2C2C2C" />
         </TouchableOpacity>
 
-        {fotoPerfilUrl ? (
+        {esServicio ? (
+          <View style={s.avatarFallback}>
+            <Ionicons name="storefront-outline" size={18} color="#27AE60" />
+          </View>
+        ) : fotoPerfilUrl ? (
           <Image source={{ uri: fotoPerfilUrl }} style={s.avatar} />
         ) : (
           <View style={s.avatarFallback}>
             <Text style={s.avatarLetter}>{nombre?.[0] ?? '?'}</Text>
           </View>
         )}
-        <Text style={s.nombre} numberOfLines={1}>{nombre ?? 'Match'}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={s.nombre} numberOfLines={1}>{nombre ?? 'Chat'}</Text>
+          {esServicio && tipoServicio && <Text style={s.subNombre}>{tipoServicio}</Text>}
+        </View>
       </View>
+      <View style={s.headerDivider} />
+
+      {esServicio && (
+        <View style={s.avisoServicio}>
+          <Ionicons name="information-circle-outline" size={14} color="#6B6B6B" />
+          <Text style={s.avisoServicioTxt}>
+            Los negocios todavía no pueden responder por acá — tu mensaje les queda registrado.
+          </Text>
+        </View>
+      )}
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
@@ -123,8 +129,12 @@ export default function ChatScreen() {
         >
           {mensajes.length === 0 ? (
             <View style={s.emptyWrap}>
-              <Text style={s.emptyEmoji}>🎉</Text>
-              <Text style={s.emptyTxt}>¡Es un match! Escribile algo a {nombre ?? 'tu match'} 👋</Text>
+              <Text style={s.emptyEmoji}>{esServicio ? '💬' : '🎉'}</Text>
+              <Text style={s.emptyTxt}>
+                {esServicio
+                  ? `Escribile a ${nombre ?? 'este negocio'} 👋`
+                  : `¡Es un match! Escribile algo a ${nombre ?? 'tu match'} 👋`}
+              </Text>
             </View>
           ) : (
             mensajes.map((m) => (
@@ -147,11 +157,11 @@ export default function ChatScreen() {
             onChangeText={setTexto}
             multiline
             returnKeyType="send"
-            onSubmitEditing={enviarMensaje}
+            onSubmitEditing={handleEnviar}
           />
           <TouchableOpacity
             style={[s.btnEnviar, !texto.trim() && s.btnEnviarDisabled]}
-            onPress={enviarMensaje}
+            onPress={handleEnviar}
             disabled={!texto.trim() || enviando}
             accessibilityLabel="Enviar mensaje"
           >
@@ -169,8 +179,8 @@ const s = StyleSheet.create({
   header: {
     height: 60, flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16, gap: 12, backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1, borderBottomColor: '#EFEFEF',
   },
+  headerDivider: { height: 1, backgroundColor: '#EFEFEF' },
   backBtn: { width: 28, alignItems: 'center', justifyContent: 'center' },
   avatar: { width: 38, height: 38, borderRadius: 19 },
   avatarFallback: {
@@ -178,7 +188,14 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   avatarLetter: { fontSize: 15, fontWeight: '800', color: '#27AE60' },
-  nombre: { flex: 1, fontSize: 16, fontWeight: '700', color: '#2C2C2C' },
+  nombre: { fontSize: 16, fontWeight: '700', color: '#2C2C2C' },
+  subNombre: { fontSize: 12, color: '#6B6B6B', marginTop: 1 },
+
+  avisoServicio: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#F5F5F5',
+  },
+  avisoServicioTxt: { flex: 1, fontSize: 11, color: '#6B6B6B' },
 
   scroll: { flex: 1 },
   scrollContent: { flexGrow: 1, padding: 16, paddingBottom: 8 },

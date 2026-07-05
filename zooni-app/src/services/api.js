@@ -25,7 +25,8 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
-import { calcularEdad } from '../utils/calcularEdad';
+import { calcularEdad, calcularEdadMeses } from '../utils/calcularEdad';
+import { aplicaParaMascota } from '../utils/filtrarPorMascota';
 
 // ─────────────────────────────────────────────
 // TOKEN JWT — se mantiene solo para no romper HamburgerDrawer/pantallas
@@ -211,6 +212,8 @@ export async function aplicarAvatar(petId, imagenAsset) {
 // NOTIFICACIONES
 // ─────────────────────────────────────────────
 
+const RUTA_POR_TIPO_NOTIFICACION = { mensaje: 'Mensajes', amistad: 'Comunidad' };
+
 function mapNotificacion(n) {
   return {
     id: n.Id,
@@ -219,7 +222,7 @@ function mapNotificacion(n) {
     tipo: n.Tipo,
     leida: n.Leido,
     createdAt: n.Fecha,
-    redirigea: null,
+    redirigea: RUTA_POR_TIPO_NOTIFICACION[n.Tipo] ?? null,
   };
 }
 
@@ -357,8 +360,19 @@ export async function fetchConsejos(petId) {
     .eq('activo', true);
   if (errConsejos) throw errConsejos;
 
+  const perfil = {
+    edadMeses: calcularEdadMeses(mascota?.FechaNacimiento),
+    pesoKg: mascota?.Peso != null ? Number(mascota.Peso) : null,
+    raza: mascota?.Raza ?? null,
+  };
+
   return {
     mascota: mapMascota(mascota),
-    consejos: (consejos ?? []).map((c) => ({ id: c.id, categoria: c.categoria, contenido: c.contenido })),
+    consejos: (consejos ?? [])
+      .filter((c) => aplicaParaMascota({
+        edadMinMeses: c.edad_min_meses, edadMaxMeses: c.edad_max_meses,
+        pesoMinKg: c.peso_min_kg, pesoMaxKg: c.peso_max_kg, razas: c.razas,
+      }, perfil))
+      .map((c) => ({ id: c.id, categoria: c.categoria, contenido: c.contenido })),
   };
 }

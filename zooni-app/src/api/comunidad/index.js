@@ -8,6 +8,7 @@
 
 import { supabase } from '../../lib/supabase';
 import { getCurrentUserId } from '../../config/session';
+import { subirImagenPublica } from '../../utils/imagenStorage';
 
 function haversineKm(lat1, lng1, lat2, lng2) {
   if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return null;
@@ -117,6 +118,20 @@ export async function enviarSolicitud(usuarioDestinoId) {
     .from('amistades')
     .insert({ usuario_a_id: getCurrentUserId(), usuario_b_id: usuarioDestinoId, estado: 'pendiente' });
   if (error) throw error;
+
+  // La pestaña "Solicitudes" de Comunidad ya lee esto de "amistades" directo,
+  // pero el panel de Notificaciones del Home lee de la tabla "Notificacion" —
+  // sin este insert, la solicitud nunca aparecía ahí.
+  const { data: yo } = await supabase.from('User').select('Nombre, Apellido').eq('Id_User', getCurrentUserId()).single();
+  const nombreSolicitante = `${yo?.Nombre ?? ''} ${yo?.Apellido ?? ''}`.trim() || 'Alguien';
+  await supabase.from('Notificacion').insert({
+    Id_User: usuarioDestinoId,
+    Titulo: 'Nueva solicitud de amistad',
+    Mensaje: `${nombreSolicitante} te envió una solicitud de amistad`,
+    Tipo: 'amistad',
+    Leido: false,
+  });
+
   return { ok: true };
 }
 
@@ -184,6 +199,11 @@ function mapCartel(row, nombrePublicador, mascota) {
 }
 
 export async function crearCartel(datos) {
+  // A diferencia de la foto de mascota del registro (que queda solo en el
+  // dispositivo), acá hace falta subirla de verdad: el cartel lo ve gente
+  // que no tiene ese archivo local.
+  const fotoUrl = datos.fotoUri ? await subirImagenPublica(datos.fotoUri, 'carteles') : null;
+
   const { data: row, error } = await supabase
     .from('carteles')
     .insert({
@@ -191,6 +211,7 @@ export async function crearCartel(datos) {
       tipo: datos.tipo,
       descripcion: datos.descripcion || null,
       telefono_contacto: datos.telefono_contacto,
+      foto_url: fotoUrl,
       lat: datos.lat,
       lng: datos.lng,
     })

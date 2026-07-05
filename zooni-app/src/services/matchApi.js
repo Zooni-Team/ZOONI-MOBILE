@@ -16,6 +16,7 @@ import * as SecureStore from 'expo-secure-store';
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
 import { DEFAULT_FILTROS } from '../data/matchDemo';
+import { subirImagenPublica } from '../utils/imagenStorage';
 
 const FILTROS_KEY = 'zooni_match_filtros';
 
@@ -152,6 +153,64 @@ async function obtenerCandidatos() {
   return (candidatos ?? [])
     .filter((m) => m.User && !vistoIds.has(m.Id_Mascota))
     .map((m) => mapPerfil(m, miUsuario));
+}
+
+// ─────────────────────────────────────────────
+// PERFIL DE MATCH DEL USUARIO
+// ─────────────────────────────────────────────
+// El registro solo pide los datos de la mascota + login; para aparecer en el
+// swipe de Match hace falta además: foto de perfil (del dueño, no de la
+// mascota), fecha de nacimiento, género e intereses. Mientras falte algo de
+// esto, MatchScreen muestra el formulario de MatchProfileSetup en vez del
+// swipe.
+
+/** Trae los datos de Match del usuario actual (no vienen en fetchHome). */
+export async function fetchMiPerfilMatch() {
+  const { data, error } = await supabase
+    .from('User')
+    .select('FechaNacimiento, Genero, Intereses, FotoPerfil')
+    .eq('Id_User', getCurrentUserId())
+    .single();
+  if (error) throw error;
+  return {
+    fechaNacimiento: data.FechaNacimiento,
+    genero: data.Genero,
+    intereses: data.Intereses ?? [],
+    fotoPerfilUrl: data.FotoPerfil,
+  };
+}
+
+/** true si el usuario ya cargó todo lo que necesita su perfil de Match. */
+export function perfilMatchCompleto(perfil) {
+  return Boolean(
+    perfil?.fechaNacimiento
+    && perfil?.genero
+    && perfil?.intereses?.length > 0
+    && perfil?.fotoPerfilUrl,
+  );
+}
+
+/**
+ * Guarda el perfil de Match del usuario actual.
+ * `fotoUri` es opcional: si no viene, se mantiene la foto ya guardada.
+ */
+export async function guardarPerfilMatch({ fechaNacimiento, genero, intereses, fotoUri }) {
+  const patch = { FechaNacimiento: fechaNacimiento, Genero: genero, Intereses: intereses };
+  if (fotoUri) patch.FotoPerfil = await subirImagenPublica(fotoUri, 'perfiles');
+
+  const { error } = await supabase.from('User').update(patch).eq('Id_User', getCurrentUserId());
+  if (error) throw error;
+}
+
+/**
+ * Guarda la ubicación del usuario (User.Lat/Lng) para poder calcular
+ * distancia_km contra otros perfiles. El registro no la pide, así que sin
+ * esto ningún usuario nuevo tiene ubicación — MatchScreen llama a esto con
+ * la geolocalización del navegador/dispositivo apenas se abre Match.
+ */
+export async function actualizarMiUbicacionMatch(lat, lng) {
+  const { error } = await supabase.from('User').update({ Lat: lat, Lng: lng }).eq('Id_User', getCurrentUserId());
+  if (error) throw error;
 }
 
 // ─────────────────────────────────────────────

@@ -43,8 +43,6 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const TIPOS = ['Vacuna', 'Desparasitación', 'Tratamiento', 'Otro'];
-
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
 /** "2026-03-19" → "19/3/2026" */
@@ -350,33 +348,6 @@ const fp = StyleSheet.create({
   btnOkTxt:     { fontSize: 15, fontWeight: '700', color: '#FFF' },
 });
 
-// ─── COMPONENTE: SELECTOR DE TIPO (dropdown propio) ──────────────────────────
-
-function TipoPicker({ visible, valor, onSeleccionar, onCerrar }) {
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCerrar}>
-      <TouchableOpacity style={tp.overlay} activeOpacity={1} onPress={onCerrar}>
-        <View style={tp.container}>
-          {TIPOS.map((t) => (
-            <TouchableOpacity key={t} style={[tp.item, valor === t && tp.itemOn]} onPress={() => onSeleccionar(t)}>
-              <Text style={[tp.itemTxt, valor === t && tp.itemTxtOn]}>{t}</Text>
-              {valor === t && <Ionicons name="checkmark" size={16} color="#2DBD72" />}
-            </TouchableOpacity>
-          ))}
-        </View>
-      </TouchableOpacity>
-    </Modal>
-  );
-}
-
-const tp = StyleSheet.create({
-  overlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', alignItems: 'center' },
-  container: { backgroundColor: '#FFF', borderRadius: 16, width: '75%', paddingVertical: 8 },
-  item:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 18 },
-  itemOn:    { backgroundColor: '#F0FFF6' },
-  itemTxt:   { fontSize: 15, color: '#2C2C2C' },
-  itemTxtOn: { color: '#2DBD72', fontWeight: '700' },
-});
 
 // ─── DATOS DEMO (sin backend de vacunas conectado) ───────────────────────────
 
@@ -438,7 +409,6 @@ export default function VacunasScreen() {
 
   const [guardando,        setGuardando]        = useState(false);
   const [showFechaPicker,  setShowFechaPicker]  = useState(false);
-  const [showTipoPicker,   setShowTipoPicker]   = useState(false);
 
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMensaje, setToastMensaje] = useState('');
@@ -606,6 +576,12 @@ export default function VacunasScreen() {
 
   // ── Eliminar ─────────────────────────────────────────────────────────────
   function eliminarVacuna(vacunaId) {
+    // Alert.alert con botones es un no-op en react-native-web: en el navegador
+    // nunca aparecía el diálogo (ni el botón "Eliminar" se llegaba a tocar).
+    if (Platform.OS === 'web') {
+      if (window.confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) confirmarEliminar(vacunaId);
+      return;
+    }
     Alert.alert(
       '¿Eliminar vacuna?',
       '¿Seguro que querés eliminar este registro? Esta acción no se puede deshacer.',
@@ -617,9 +593,20 @@ export default function VacunasScreen() {
   }
 
   async function confirmarEliminar(vacunaId) {
+    const vacuna = vacunasAplicadas.find((v) => v.id === vacunaId);
     try {
       await eliminarVacunaAplicada(vacunaId);
       setVacunasAplicadas((prev) => prev.filter((v) => v.id !== vacunaId));
+      // Si venía del calendario sugerido, esa tarjeta tiene que volver a
+      // mostrarse como pendiente — si no, quedaba marcada "Aplicada" para
+      // siempre y no dejaba volver a registrarla.
+      if (vacuna?.vacuna_sugerida_id != null) {
+        setVacunasSugeridas((prev) => prev.map((sg) => (
+          sg.id === vacuna.vacuna_sugerida_id
+            ? { ...sg, applied: false, proximo_refuerzo: null }
+            : sg
+        )));
+      }
       mostrarToast('Vacuna eliminada', '#E63946');
     } catch {
       mostrarToast('No se pudo eliminar la vacuna', '#E63946');
@@ -703,7 +690,7 @@ export default function VacunasScreen() {
           {/* ── SECCIÓN CALENDARIO SUGERIDO ── */}
           <View style={s.secSugeridosRow}>
             <Ionicons name="calendar-outline" size={16} color="#2C2C2C" />
-            <Text style={s.secSugeridosTitulo}>Calendario sugerido</Text>
+            <Text style={s.secSugeridosTitulo}>Vacunas sugeridas</Text>
           </View>
 
           {loading ? (
@@ -765,14 +752,12 @@ export default function VacunasScreen() {
                   </TouchableOpacity>
                   {formErrors.fecha && <Text style={s.errorTxt}>{formErrors.fecha}</Text>}
 
-                  {/* Tipo */}
-                  <TouchableOpacity
-                    style={[s.inputFecha, (modalModo === 'marcar') && s.inputDisabled]}
-                    onPress={() => modalModo !== 'marcar' && setShowTipoPicker(true)}
-                  >
+                  {/* Tipo — fijo en "Vacuna": esta pantalla es específicamente de
+                      vacunas, no tiene sentido registrar acá un tratamiento o una
+                      desparasitación (para eso está la pantalla de Tratamientos). */}
+                  <View style={[s.inputFecha, s.inputDisabled]}>
                     <Text style={s.inputFechaTxt}>{formTipo}</Text>
-                    <Ionicons name="chevron-down" size={16} color="#6B6B6B" />
-                  </TouchableOpacity>
+                  </View>
 
                   {/* Veterinaria */}
                   <TextInput
@@ -809,13 +794,6 @@ export default function VacunasScreen() {
         valor={formFecha}
         onConfirmar={(d) => { setFormFecha(d); setShowFechaPicker(false); if (formErrors.fecha) setFormErrors((p) => ({ ...p, fecha: null })); }}
         onCancelar={() => setShowFechaPicker(false)}
-      />
-
-      <TipoPicker
-        visible={showTipoPicker}
-        valor={formTipo}
-        onSeleccionar={(t) => { setFormTipo(t); setShowTipoPicker(false); }}
-        onCerrar={() => setShowTipoPicker(false)}
       />
     </SafeAreaView>
   );
@@ -900,9 +878,13 @@ const s = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     marginBottom: 10,
   },
-  cardSugeridoLeft:  { flex: 1, paddingRight: 8 },
-  cardSugeridoRight: { alignItems: 'flex-end', justifyContent: 'center', gap: 4 },
-  sugeridoNombre: { fontSize: 14, fontWeight: '700', color: '#2C2C2C', flexWrap: 'wrap' },
+  // minWidth: 0 + maxWidth en la columna de al lado: sin esto, un texto largo
+  // en cualquiera de los dos lados (nombre o frecuencia) puede empujar al otro
+  // a un ancho casi nulo y el texto se parte letra por letra (bug real visto
+  // con una frecuencia larga).
+  cardSugeridoLeft:  { flex: 1, minWidth: 0, paddingRight: 8 },
+  cardSugeridoRight: { maxWidth: '45%', alignItems: 'flex-end', justifyContent: 'center', gap: 4 },
+  sugeridoNombre: { fontSize: 14, fontWeight: '700', color: '#2C2C2C' },
   sugeridoEstado: { fontSize: 12, textAlign: 'right' },
   sugeridoFrec:   { fontSize: 12, color: '#6B6B6B', textAlign: 'right' },
 
