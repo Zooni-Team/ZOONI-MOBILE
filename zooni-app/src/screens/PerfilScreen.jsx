@@ -4,7 +4,7 @@
  * Zona verde superior con avatar + nombre.
  * Card blanco inferior con botones, stats, bio, tabs grid/lista.
  * Modales: editar perfil, nueva publicación.
- * Sin backend → usa datos demo y opera sobre estado local.
+ * Conectado directo a Supabase (ver src/services/perfilApi.js) — sin backend propio.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -15,7 +15,6 @@ import {
   Dimensions,
   Image,
   ImageBackground,
-  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -30,62 +29,19 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import * as SecureStore from 'expo-secure-store';
-import axios from 'axios';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
+import {
+  fetchMiPerfil,
+  fetchMisPublicaciones,
+  actualizarMiPerfil,
+  actualizarMiFotoPerfil,
+  crearPublicacion,
+} from '../services/perfilApi';
 
-const { width: SW, height: SH } = Dimensions.get('window');
-const CELL = Math.floor(SW / 3);
-
-// ─── API ──────────────────────────────────────────────────────────────────────
-
-const BASE_URL = Platform.select({
-  android: 'http://10.0.2.2:5165/api/v1',
-  ios:     'http://localhost:5165/api/v1',
-  default: 'http://localhost:5165/api/v1',
-});
-
-async function getToken() {
-  try {
-    return Platform.OS === 'web'
-      ? (localStorage?.getItem('jwt_token') ?? null)
-      : await SecureStore.getItemAsync('jwt_token');
-  } catch { return null; }
-}
-
-async function api(method, endpoint, data = null, isForm = false) {
-  const token = await getToken();
-  return axios({
-    method, url: `${BASE_URL}${endpoint}`, data, timeout: 15000,
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(!isForm ? { 'Content-Type': 'application/json' } : {}),
-    },
-  });
-}
-
-// ─── DEMO DATA ────────────────────────────────────────────────────────────────
-
-const DEMO_PERFIL = {
-  id: 1, nombre: 'Sofía', apellido: 'García',
-  nombre_usuario: 'sofia_garcia',
-  bio: 'Amante de los animales 🐾',
-  ubicacion: 'Argentina',
-  foto_perfil_url: null,
-  total_publicaciones: 3, total_seguidores: 124, total_siguiendo: 87,
-};
-
-const DEMO_MASCOTA = {
-  id: 1, nombre: 'Titán', raza: 'Labrador Retriever',
-};
-
-const DEMO_PUBS = [
-  { id: 1, imagen_url: null, descripcion: 'Mi perro en el parque 🐾', creado_en: '2026-06-01T10:00:00Z' },
-  { id: 2, imagen_url: null, descripcion: 'Día de juegos 🎾',          creado_en: '2026-05-20T15:30:00Z' },
-  { id: 3, imagen_url: null, descripcion: null,                         creado_en: '2026-05-10T09:00:00Z' },
-];
+const { height: SH } = Dimensions.get('window');
 
 function formatFecha(iso) {
   if (!iso) return '';
@@ -188,7 +144,9 @@ export default function PerfilScreen() {
   const navigation = useNavigation();
 
   // Estado principal
-  const [perfil,     setPerfil]     = useState(null);
+  const [perfil,        setPerfil]        = useState(null);
+  const [mascotaActiva, setMascotaActiva] = useState(null);
+  const [stats,         setStats]         = useState({ totalPublicaciones: 0, totalAmigos: 0 });
   const [pubs,       setPubs]       = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [tab,        setTab]        = useState('grid'); // 'grid' | 'lista'
@@ -229,21 +187,20 @@ export default function PerfilScreen() {
   const cargar = useCallback(async () => {
     setLoading(true);
     try {
-      const [rp, rpubs] = await Promise.all([
-        api('get', '/perfil'),
-        api('get', '/perfil/publicaciones'),
+      const [perfilData, publicaciones] = await Promise.all([
+        fetchMiPerfil(),
+        fetchMisPublicaciones(),
       ]);
-      setPerfil(rp.data?.perfil ?? rp.data);
-      setPubs(rpubs.data?.publicaciones ?? []);
+      setPerfil(perfilData.usuario);
+      setMascotaActiva(perfilData.mascotaActiva);
+      setStats({ totalPublicaciones: perfilData.totalPublicaciones, totalAmigos: perfilData.totalAmigos });
+      setPubs(publicaciones);
     } catch {
-      // Demo fallback
-      await new Promise(r => setTimeout(r, 600));
-      setPerfil(DEMO_PERFIL);
-      setPubs(DEMO_PUBS);
+      mostrarToast('No se pudo cargar el perfil');
     } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { cargar(); }, [cargar]);
+  useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
 
   // ── Toast ────────────────────────────────────────────────────────────────
   function mostrarToast(msg) {
@@ -259,7 +216,7 @@ export default function PerfilScreen() {
   // ── Abrir modales ────────────────────────────────────────────────────────
   function abrirEditar() {
     setFNombre(perfil?.nombre ?? ''); setFApellido(perfil?.apellido ?? '');
-    setFUsuario(perfil?.nombre_usuario ?? ''); setFBio(perfil?.bio ?? '');
+    setFUsuario(perfil?.nombreUsuario ?? ''); setFBio(perfil?.bio ?? '');
     setFUbicacion(perfil?.ubicacion ?? ''); setFErrUser('');
     setModalEditar(true);
   }
@@ -268,12 +225,15 @@ export default function PerfilScreen() {
     setModalPublicar(true);
   }
   function cerrarPublicar() {
-    if (fImagen) {
-      Alert.alert('¿Cancelar publicación?', 'La imagen seleccionada se perderá.', [
-        { text: 'Seguir editando', style: 'cancel' },
-        { text: 'Sí, cancelar', style: 'destructive', onPress: () => setModalPublicar(false) },
-      ]);
-    } else { setModalPublicar(false); }
+    if (!fImagen) { setModalPublicar(false); return; }
+    if (Platform.OS === 'web') {
+      if (window.confirm('¿Cancelar publicación? La imagen seleccionada se perderá.')) setModalPublicar(false);
+      return;
+    }
+    Alert.alert('¿Cancelar publicación?', 'La imagen seleccionada se perderá.', [
+      { text: 'Seguir editando', style: 'cancel' },
+      { text: 'Sí, cancelar', style: 'destructive', onPress: () => setModalPublicar(false) },
+    ]);
   }
 
   // ── Guardar perfil ───────────────────────────────────────────────────────
@@ -284,108 +244,82 @@ export default function PerfilScreen() {
     if (!/^[a-z0-9_.]+$/.test(nu)) { setFErrUser('Solo letras minúsculas, números, _ y .'); return; }
     setFErrUser(''); setGuardando(true);
     try {
-      const res = await api('put', '/perfil', {
-        nombre: fNombre.trim() || null, apellido: fApellido.trim() || null,
-        nombre_usuario: nu, bio: fBio.trim() || null, ubicacion: fUbicacion.trim() || null,
+      const actualizado = await actualizarMiPerfil({
+        nombre: fNombre.trim(), apellido: fApellido.trim(),
+        nombreUsuario: nu, bio: fBio.trim(), ubicacion: fUbicacion.trim(),
       });
-      setPerfil(p => ({ ...p, ...(res.data?.perfil ?? {
-        nombre: fNombre, apellido: fApellido, nombre_usuario: nu,
-        bio: fBio, ubicacion: fUbicacion,
-      }) }));
+      setPerfil(actualizado);
       setModalEditar(false);
       mostrarToast('Perfil actualizado correctamente');
     } catch (err) {
-      const msg = err?.response?.data?.error ?? '';
-      if (msg.includes('ya está en uso')) {
+      if (err?.message === 'USERNAME_TAKEN') {
         setFErrUser('Ese nombre ya está en uso');
       } else {
-        // Sin backend o error de red → guardar local (demo)
-        setPerfil(p => ({ ...p, nombre: fNombre, apellido: fApellido,
-          nombre_usuario: nu, bio: fBio, ubicacion: fUbicacion }));
-        setModalEditar(false);
-        mostrarToast('Perfil actualizado correctamente');
+        mostrarToast('No se pudo actualizar el perfil');
       }
     } finally { setGuardando(false); }
   }
 
   // ── Cambiar foto ─────────────────────────────────────────────────────────
+  async function elegirFotoPerfil(modo) {
+    const perm = modo === 'galeria'
+      ? await ImagePicker.requestMediaLibraryPermissionsAsync()
+      : await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      if (Platform.OS === 'web') window.alert('Habilitá el acceso para elegir una foto.');
+      else Alert.alert('Sin permiso', 'Habilitá el acceso desde la configuración del dispositivo.');
+      return;
+    }
+    const res = modo === 'galeria'
+      ? await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 })
+      : await ImagePicker.launchCameraAsync({ quality: 0.8 });
+    if (res.canceled || !res.assets?.[0]?.uri) return;
+    await subirFoto(res.assets[0].uri);
+  }
   function cambiarFoto() {
     if (Platform.OS === 'web') {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.onchange = (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const uri = URL.createObjectURL(file);
-        subirFoto({ uri, mimeType: file.type });
-      };
-      input.click();
+      elegirFotoPerfil('galeria');
     } else {
       Alert.alert('Cambiar foto de perfil', '', [
-        { text: 'Galería', onPress: () => abrirPicker('galeria') },
-        { text: 'Cámara',  onPress: () => abrirPicker('camara') },
+        { text: 'Galería', onPress: () => elegirFotoPerfil('galeria') },
+        { text: 'Cámara',  onPress: () => elegirFotoPerfil('camara') },
         { text: 'Cancelar', style: 'cancel' },
       ]);
     }
   }
-  async function abrirPicker(modo) {
+  async function subirFoto(uri) {
     try {
-      const IP = await import('expo-image-picker').catch(() => null);
-      if (!IP) { subirFoto({ uri: 'https://picsum.photos/200', mimeType: 'image/jpeg' }); return; }
-      const perm = modo === 'galeria'
-        ? await IP.requestMediaLibraryPermissionsAsync()
-        : await IP.requestCameraPermissionsAsync();
-      if (!perm.granted) { Alert.alert('Permiso denegado'); return; }
-      const res = modo === 'galeria'
-        ? await IP.launchImageLibraryAsync({ quality: 0.8 })
-        : await IP.launchCameraAsync({ quality: 0.8 });
-      if (!res.canceled && res.assets?.[0]) subirFoto(res.assets[0]);
-    } catch { subirFoto({ uri: 'https://picsum.photos/200', mimeType: 'image/jpeg' }); }
-  }
-  async function subirFoto(asset) {
-    try {
-      const fd = new FormData();
-      fd.append('foto', { uri: asset.uri, type: asset.mimeType ?? 'image/jpeg', name: 'foto.jpg' });
-      const res = await api('put', '/perfil/foto', fd, true);
-      setPerfil(p => ({ ...p, foto_perfil_url: res.data?.foto_perfil_url ?? asset.uri }));
-    } catch { setPerfil(p => ({ ...p, foto_perfil_url: asset.uri })); }
-    mostrarToast('Foto actualizada correctamente');
+      const fotoPerfil = await actualizarMiFotoPerfil(uri);
+      setPerfil(p => ({ ...p, fotoPerfil }));
+      mostrarToast('Foto actualizada correctamente');
+    } catch {
+      mostrarToast('No se pudo actualizar la foto');
+    }
   }
 
   // ── Publicar ─────────────────────────────────────────────────────────────
-  async function selImagen(modo) {
-    try {
-      const IP = await import('expo-image-picker').catch(() => null);
-      if (!IP) { setFImagen({ uri: 'https://picsum.photos/400', mimeType: 'image/jpeg' }); setImgErr(false); return; }
-      const perm = modo === 'galeria'
-        ? await IP.requestMediaLibraryPermissionsAsync()
-        : await IP.requestCameraPermissionsAsync();
-      if (!perm.granted) return;
-      const res = modo === 'galeria'
-        ? await IP.launchImageLibraryAsync({ quality: 0.8 })
-        : await IP.launchCameraAsync({ quality: 0.8 });
-      if (!res.canceled && res.assets?.[0]) { setFImagen(res.assets[0]); setImgErr(false); }
-    } catch { setFImagen({ uri: 'https://picsum.photos/400', mimeType: 'image/jpeg' }); setImgErr(false); }
+  async function elegirImagenPublicar(modo) {
+    const perm = modo === 'galeria'
+      ? await ImagePicker.requestMediaLibraryPermissionsAsync()
+      : await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      if (Platform.OS === 'web') window.alert('Habilitá el acceso para elegir una foto.');
+      else Alert.alert('Sin permiso', 'Habilitá el acceso desde la configuración del dispositivo.');
+      return;
+    }
+    const res = modo === 'galeria'
+      ? await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 })
+      : await ImagePicker.launchCameraAsync({ quality: 0.8 });
+    if (res.canceled || !res.assets?.[0]?.uri) return;
+    setFImagen({ uri: res.assets[0].uri }); setImgErr(false);
   }
   function abrirPickerPublicar() {
     if (Platform.OS === 'web') {
-      // En web: usar input file nativo
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.onchange = (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const uri = URL.createObjectURL(file);
-        setFImagen({ uri, mimeType: file.type, name: file.name, _file: file });
-        setImgErr(false);
-      };
-      input.click();
+      elegirImagenPublicar('galeria');
     } else {
       Alert.alert('Agregar foto', '', [
-        { text: 'Galería', onPress: () => selImagen('galeria') },
-        { text: 'Cámara',  onPress: () => selImagen('camara') },
+        { text: 'Galería', onPress: () => elegirImagenPublicar('galeria') },
+        { text: 'Cámara',  onPress: () => elegirImagenPublicar('camara') },
         { text: 'Cancelar', style: 'cancel' },
       ]);
     }
@@ -394,28 +328,22 @@ export default function PerfilScreen() {
     if (!fImagen) { setImgErr(true); return; }
     setImgErr(false); setPublicando(true);
     try {
-      const fd = new FormData();
-      fd.append('imagen', { uri: fImagen.uri, type: fImagen.mimeType ?? 'image/jpeg', name: 'pub.jpg' });
-      if (fDesc.trim()) fd.append('descripcion', fDesc.trim());
-      const res = await api('post', '/publicaciones', fd, true);
-      const nueva = res.data?.publicacion ?? { id: Date.now(), imagen_url: fImagen.uri, descripcion: fDesc.trim() || null, creado_en: new Date().toISOString() };
+      const nueva = await crearPublicacion({
+        imagenUri: fImagen.uri, descripcion: fDesc.trim(), mascotaId: mascotaActiva?.id ?? null,
+      });
       setPubs(p => [nueva, ...p]);
-      setPerfil(p => ({ ...p, total_publicaciones: (p?.total_publicaciones ?? 0) + 1 }));
+      setStats(s => ({ ...s, totalPublicaciones: (s.totalPublicaciones ?? 0) + 1 }));
       setModalPublicar(false);
       mostrarToast('Publicación creada correctamente');
     } catch {
-      const nueva = { id: Date.now(), imagen_url: fImagen.uri, descripcion: fDesc.trim() || null, creado_en: new Date().toISOString() };
-      setPubs(p => [nueva, ...p]);
-      setPerfil(p => ({ ...p, total_publicaciones: (p?.total_publicaciones ?? 0) + 1 }));
-      setModalPublicar(false);
-      mostrarToast('Publicación creada correctamente');
+      mostrarToast('No se pudo crear la publicación');
     } finally { setPublicando(false); }
   }
 
   // ── Nombre a mostrar bajo el avatar ──────────────────────────────────────
-  const p = perfil ?? DEMO_PERFIL;
-  const displayName = p.nombre_usuario || [p.nombre, p.apellido].filter(Boolean).join(' ') || 'Usuario';
-  const displayNombreCompleto = [p.nombre, p.apellido].filter(Boolean).join(' ') || p.nombre_usuario || 'Usuario';
+  const p = perfil ?? {};
+  const displayName = p.nombreUsuario || [p.nombre, p.apellido].filter(Boolean).join(' ') || 'Usuario';
+  const displayNombreCompleto = [p.nombre, p.apellido].filter(Boolean).join(' ') || p.nombreUsuario || 'Usuario';
 
   // ── RENDER ───────────────────────────────────────────────────────────────
   return (
@@ -447,9 +375,9 @@ export default function PerfilScreen() {
           <View style={s.avatarWrap}>
             {loading
               ? <Skel w={84} h={84} r={42} />
-              : p.foto_perfil_url
+              : p.fotoPerfil
                 ? <TouchableOpacity onPress={cambiarFoto} accessibilityLabel="Cambiar foto">
-                    <Image source={{ uri: p.foto_perfil_url }} style={s.avatarImg} />
+                    <Image source={{ uri: p.fotoPerfil }} style={s.avatarImg} />
                   </TouchableOpacity>
                 : <TouchableOpacity onPress={cambiarFoto} accessibilityLabel="Cambiar foto">
                     <View style={s.avatarFallback}><Ionicons name="person" size={48} color="#FFF" /></View>
@@ -493,22 +421,15 @@ export default function PerfilScreen() {
             <TouchableOpacity style={s.statCol}
               onPress={() => scrollRef.current?.scrollTo({ y: 600, animated: true })}>
               {loading ? <Skel w={50} h={40} /> : <>
-                <Text style={s.statNum}>{p.total_publicaciones}</Text>
+                <Text style={s.statNum}>{stats.totalPublicaciones}</Text>
                 <Text style={s.statLbl}>publicaciones</Text>
               </>}
             </TouchableOpacity>
             <View style={s.statSep}/>
-            <TouchableOpacity style={s.statCol}>
+            <TouchableOpacity style={s.statCol} onPress={() => navigation.navigate('Comunidad')}>
               {loading ? <Skel w={50} h={40} /> : <>
-                <Text style={s.statNum}>{p.total_seguidores}</Text>
-                <Text style={s.statLbl}>seguidores</Text>
-              </>}
-            </TouchableOpacity>
-            <View style={s.statSep}/>
-            <TouchableOpacity style={s.statCol}>
-              {loading ? <Skel w={50} h={40} /> : <>
-                <Text style={s.statNum}>{p.total_siguiendo}</Text>
-                <Text style={s.statLbl}>siguiendo</Text>
+                <Text style={s.statNum}>{stats.totalAmigos}</Text>
+                <Text style={s.statLbl}>amigos</Text>
               </>}
             </TouchableOpacity>
           </View>
@@ -559,9 +480,13 @@ export default function PerfilScreen() {
             <View style={s.grid}>
               {pubs.map(pub => (
                 <TouchableOpacity key={pub.id} style={s.gridCell}
-                  onPress={()=>Alert.alert('Publicación', pub.descripcion ?? 'Sin descripción')}>
-                  {pub.imagen_url
-                    ? <Image source={{uri:pub.imagen_url}} style={s.gridImg}/>
+                  onPress={() => {
+                    const msg = pub.descripcion ?? 'Sin descripción';
+                    if (Platform.OS === 'web') window.alert(msg);
+                    else Alert.alert('Publicación', msg);
+                  }}>
+                  {pub.imagenUrl
+                    ? <Image source={{uri:pub.imagenUrl}} style={s.gridImg}/>
                     : <View style={[s.gridImg,s.gridPH]}><Ionicons name="image-outline" size={28} color="#AAAAAA"/></View>
                   }
                 </TouchableOpacity>
@@ -571,12 +496,12 @@ export default function PerfilScreen() {
             <View style={s.lista}>
               {pubs.map(pub => (
                 <View key={pub.id} style={s.listaCard}>
-                  {pub.imagen_url
-                    ? <Image source={{uri:pub.imagen_url}} style={s.listaImg}/>
+                  {pub.imagenUrl
+                    ? <Image source={{uri:pub.imagenUrl}} style={s.listaImg}/>
                     : <View style={[s.listaImg,s.listaImgPH]}><Ionicons name="image-outline" size={36} color="#AAAAAA"/></View>
                   }
                   {!!pub.descripcion && <Text style={s.listaDesc}>{pub.descripcion}</Text>}
-                  <Text style={s.listaFecha}>{formatFecha(pub.creado_en)}</Text>
+                  <Text style={s.listaFecha}>{formatFecha(pub.fecha)}</Text>
                 </View>
               ))}
             </View>
@@ -660,9 +585,9 @@ export default function PerfilScreen() {
         usuario={perfil ? {
           nombre: perfil.nombre,
           apellido: perfil.apellido,
-          fotoPerfil: perfil.foto_perfil_url ?? null,
+          fotoPerfil: perfil.fotoPerfil ?? null,
         } : null}
-        mascotaActiva={DEMO_MASCOTA}
+        mascotaActiva={mascotaActiva}
         activeRoute="Perfil"
       />
     </SafeAreaView>
