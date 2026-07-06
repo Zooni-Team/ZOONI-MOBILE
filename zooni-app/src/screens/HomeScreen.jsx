@@ -147,8 +147,11 @@ export default function HomeScreen() {
     setBotones(newBotones);
   };
 
-  const handleNotifNavigate = (ruta) => {    const screen = ruta.split('/')[0];
-    const map = { perfil: 'Perfil', match: 'Match', fichamedica: 'FichaMedica', comunidad: 'Comunidad' };
+  const handleNotifNavigate = (ruta) => {
+    // api.js manda nombres de pantalla ('Mensajes', 'Comunidad'); se normaliza
+    // a minúsculas para bancar también rutas viejas tipo 'perfil/...'.
+    const screen = ruta.split('/')[0].toLowerCase();
+    const map = { perfil: 'Perfil', match: 'Match', fichamedica: 'FichaMedica', comunidad: 'Comunidad', mensajes: 'Mensajes' };
     if (map[screen]) navigation.navigate(map[screen]);
   };
 
@@ -283,6 +286,9 @@ export default function HomeScreen() {
                         if (editMode) return;
                         if (boton.seccion === 'ficha_medica' && mascota) {
                           navigation.navigate('FichaMedica', { mascotaId: mascota.id });
+                        } else if (boton.seccion === 'closet' && mascota) {
+                          // Closet exige petId (sin él muestra error y vuelve atrás)
+                          navigation.navigate('Closet', { petId: mascota.id });
                         } else {
                           navigation.navigate(seccion.ruta);
                         }

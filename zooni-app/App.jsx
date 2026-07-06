@@ -24,6 +24,7 @@ import FichaMedicaScreen from './src/screens/FichaMedicaScreen';
 import ConsejosScreen from './src/screens/ConsejosScreen';
 import TratamientosScreen from './src/screens/TratamientosScreen';
 import VacunasScreen from './src/screens/VacunasScreen';
+import VirtualVetScreen from './src/screens/VirtualVetScreen';
 import EventosScreen     from './src/screens/EventosScreen';
 import CalendarioScreen  from './src/screens/CalendarioScreen';
 import ChatScreen        from './src/screens/ChatScreen';
@@ -81,6 +82,7 @@ export default function App() {
           <Stack.Screen name="Consejos" component={ConsejosScreen} />
           <Stack.Screen name="Tratamientos" component={TratamientosScreen} />
           <Stack.Screen name="Vacunas" component={VacunasScreen} />
+          <Stack.Screen name="VirtualVet" component={VirtualVetScreen} />
           <Stack.Screen name="Configuracion" component={PlaceholderScreen} />
           <Stack.Screen name="Notificaciones" component={PlaceholderScreen} />
         </Stack.Navigator>

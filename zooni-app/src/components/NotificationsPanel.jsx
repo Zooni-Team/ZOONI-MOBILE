@@ -70,14 +70,14 @@ export default function NotificationsPanel({ visible, onClose, onNavigate, onMar
   }, [visible, load, onMarcarTodasLeidas]);
 
   const handleMarkAll = async () => {
-    await marcarTodasLeidas();
+    try { await marcarTodasLeidas(); } catch { /* sin backend */ }
     onMarcarTodasLeidas?.();
     setNotificaciones((prev) => prev.map((n) => ({ ...n, leida: true })));
   };
 
   const handleTap = async (item) => {
     if (!item.leida) {
-      await marcarNotificacionLeida(item.id);
+      try { await marcarNotificacionLeida(item.id); } catch { /* sin backend */ }
       setNotificaciones((prev) =>
         prev.map((n) => (n.id === item.id ? { ...n, leida: true } : n)),
       );

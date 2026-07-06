@@ -467,8 +467,8 @@ const DEMO_EVENTOS = [
     titulo: 'Veterinario',
     descripcion: 'Veterinario para Titán',
     fecha_hora: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-    tipo: 'Paseo',
-    emoji: '🚶',
+    tipo: 'Turno Veterinario',
+    emoji: '🩺',
     color: '#5BC8D0',
   },
 ];

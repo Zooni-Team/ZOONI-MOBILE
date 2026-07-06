@@ -27,8 +27,7 @@ export const TODAS_LAS_SECCIONES = [
   { key: 'configuracion', label: 'Configuración',             icono: 'settings-outline',            ruta: 'Configuracion' },
 ];
 
-// Botones que aparecen por defecto en la Home si el usuario no personalizó nada
-export const DEFAULT_BOTONES_HOME = ['comunidad', 'ficha_medica', 'mis_mascotas'];
+// Los botones por defecto de la Home viven en DEFAULT_HOME_CONFIG (services/api.js)
 
 /**
  * getSeccion(key) — Busca una sección por su key

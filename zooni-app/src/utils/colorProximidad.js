@@ -4,11 +4,21 @@
  * de eventos según cuán cerca está su fecha_hora de hoy.
  */
 
-export function getColorByProximidad(fechaHora) {
+/**
+ * Diferencia en días de calendario entre hoy y el evento (ignora la hora).
+ * Antes se dividía el diff exacto en ms: un evento de hoy a la noche daba
+ * "Mañana" y uno de ayer a la noche daba "¡Hoy!".
+ */
+function diasHastaEvento(fechaHora) {
   const ahora = new Date();
-  const fechaEvento = new Date(fechaHora);
-  const diffMs = fechaEvento - ahora;
-  const dias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const evento = new Date(fechaHora);
+  const hoy0 = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+  const evento0 = new Date(evento.getFullYear(), evento.getMonth(), evento.getDate());
+  return Math.round((evento0 - hoy0) / (1000 * 60 * 60 * 24));
+}
+
+export function getColorByProximidad(fechaHora) {
+  const dias = diasHastaEvento(fechaHora);
 
   if (dias < 0)   return '#AAAAAA';  // pasado
   if (dias <= 3)  return '#E63946';  // hoy / muy próximo
@@ -19,10 +29,7 @@ export function getColorByProximidad(fechaHora) {
 }
 
 export function getTextoDias(fechaHora) {
-  const ahora = new Date();
-  const fechaEvento = new Date(fechaHora);
-  const diffMs = fechaEvento - ahora;
-  const dias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const dias = diasHastaEvento(fechaHora);
 
   if (dias < 0)   return 'Pasado';
   if (dias === 0) return '¡Hoy!';
