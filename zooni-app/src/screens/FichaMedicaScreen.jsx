@@ -32,6 +32,7 @@ import * as Sharing from 'expo-sharing';
 import jsPDF from 'jspdf';
 
 import { calcularEdad } from '../utils/calcularEdad';
+import { parseFechaLocal, toISODateLocal } from '../utils/fechaLocal';
 import { resolvePetImage } from '../constants/petImages';
 import SkeletonLoader from '../components/SkeletonLoader';
 import HamburgerDrawer from '../components/HamburgerDrawer';
@@ -286,14 +287,14 @@ export default function FichaMedicaScreen() {
 
   // ── Fecha ─────────────────────────────────────────────────────────────────
   const abrirEditFecha = () => {
-    setFechaBorrador(mascota.fecha_nacimiento ? new Date(mascota.fecha_nacimiento) : new Date());
+    setFechaBorrador(parseFechaLocal(mascota.fecha_nacimiento) ?? new Date());
     setEditandoFecha(true);
   };
 
   const confirmarFecha = async (fecha) => {
     setEditandoFecha(false);
     setGuardandoFecha(true);
-    const iso = fecha.toISOString().split('T')[0];
+    const iso = toISODateLocal(fecha);
     try {
       const actualizada = await actualizarFechaNacimiento(petId, iso);
       setMascota((p) => ({ ...p, fecha_nacimiento: actualizada.fecha_nacimiento }));

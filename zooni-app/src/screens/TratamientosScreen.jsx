@@ -31,6 +31,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { calcularEdad } from '../utils/calcularEdad';
+import { parseFechaLocal } from '../utils/fechaLocal';
 import { resolvePetImage } from '../constants/petImages';
 import {
   fetchTratamientos,
@@ -63,7 +64,7 @@ function toISO(date) {
 function calcularDiasRestantes(fechaISO) {
   if (!fechaISO) return null;
   const hoy   = new Date(); hoy.setHours(0, 0, 0, 0);
-  const fecha = new Date(fechaISO); fecha.setHours(0, 0, 0, 0);
+  const fecha = parseFechaLocal(fechaISO); fecha.setHours(0, 0, 0, 0);
   return Math.ceil((fecha - hoy) / (1000 * 60 * 60 * 24));
 }
 
@@ -77,8 +78,8 @@ function formatearContadorDias(dias) {
 
 function colorContador(dias) {
   if (dias === null) return '#2C2C2C';
-  if (dias <= 0)  return '#E63946';
-  if (dias === 0) return '#F5A623';
+  if (dias < 0)   return '#E63946';  // vencido
+  if (dias === 0) return '#F5A623';  // vence hoy
   return '#2C2C2C';
 }
 

@@ -31,6 +31,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { calcularEdad } from '../utils/calcularEdad';
+import { parseFechaLocal } from '../utils/fechaLocal';
 import { resolvePetImage } from '../constants/petImages';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import {
@@ -64,7 +65,7 @@ function toISO(date) {
 function diasHasta(fechaISO) {
   if (!fechaISO) return null;
   const hoy   = new Date(); hoy.setHours(0, 0, 0, 0);
-  const fecha = new Date(fechaISO); fecha.setHours(0, 0, 0, 0);
+  const fecha = parseFechaLocal(fechaISO); fecha.setHours(0, 0, 0, 0);
   return Math.ceil((fecha - hoy) / (1000 * 60 * 60 * 24));
 }
 
@@ -479,7 +480,7 @@ export default function VacunasScreen() {
   function abrirModalEditar(vacuna) {
     setFormTitulo(vacuna.nombre);
     setFormDescripcion(vacuna.descripcion ?? '');
-    setFormFecha(vacuna.fecha_aplicacion ? new Date(vacuna.fecha_aplicacion) : null);
+    setFormFecha(parseFechaLocal(vacuna.fecha_aplicacion));
     setFormTipo(vacuna.tipo ?? 'Vacuna');
     setFormVeterinaria(vacuna.veterinaria ?? '');
     setFormErrors({});

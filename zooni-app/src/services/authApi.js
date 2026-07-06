@@ -15,6 +15,7 @@
 import * as Crypto from 'expo-crypto';
 import { supabase } from '../lib/supabase';
 import { setCurrentUserId } from '../config/session';
+import { toISODateLocal } from '../utils/fechaLocal';
 
 async function hashPassword(password) {
   return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, password);
@@ -99,7 +100,8 @@ export async function login(email, password) {
 function fechaNacimientoDesdeMeses(edadMeses) {
   const d = new Date();
   d.setMonth(d.getMonth() - (edadMeses ?? 0));
-  return d.toISOString().split('T')[0];
+  // toISOString usa UTC: de noche (UTC-3) devolvía el día siguiente
+  return toISODateLocal(d);
 }
 
 const IMAGEN_ASSET_POR_ESPECIE = {

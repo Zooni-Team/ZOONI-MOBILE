@@ -4,10 +4,12 @@
  * @param {string | Date} fechaNacimiento - "YYYY-MM-DD" o instancia de Date
  * @returns {string} - Ej: "4 años y 4 meses" | "8 meses" | "1 año y 0 meses"
  */
+import { parseFechaLocal } from './fechaLocal';
+
 export function calcularEdad(fechaNacimiento) {
   if (!fechaNacimiento) return 'Edad desconocida';
 
-  const nacimiento = new Date(fechaNacimiento);
+  const nacimiento = parseFechaLocal(fechaNacimiento);
   if (isNaN(nacimiento.getTime())) return 'Fecha inválida';
 
   const hoy = new Date();
@@ -45,7 +47,7 @@ export function calcularEdad(fechaNacimiento) {
  */
 export function calcularEdadMeses(fechaNacimiento) {
   if (!fechaNacimiento) return null;
-  const nacimiento = new Date(fechaNacimiento);
+  const nacimiento = parseFechaLocal(fechaNacimiento);
   if (isNaN(nacimiento.getTime())) return null;
 
   const hoy = new Date();

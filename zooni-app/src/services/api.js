@@ -26,6 +26,7 @@ import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
 import { calcularEdad, calcularEdadMeses } from '../utils/calcularEdad';
+import { parseFechaLocal } from '../utils/fechaLocal';
 import { aplicaParaMascota } from '../utils/filtrarPorMascota';
 
 // ─────────────────────────────────────────────
@@ -80,7 +81,7 @@ function mapMascota(m) {
 
 function calcularEdadPartes(fechaNacimiento) {
   if (!fechaNacimiento) return { anios: null, meses: null };
-  const nacimiento = new Date(fechaNacimiento);
+  const nacimiento = parseFechaLocal(fechaNacimiento);
   const hoy = new Date();
   let anios = hoy.getFullYear() - nacimiento.getFullYear();
   let meses = hoy.getMonth() - nacimiento.getMonth();
