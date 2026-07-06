@@ -12,6 +12,7 @@ import {
   Image,
   Modal,
   Platform,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -39,7 +40,7 @@ import HamburgerDrawer from '../components/HamburgerDrawer';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import {
   fetchMascota, actualizarPeso, actualizarRaza, actualizarFechaNacimiento,
-  fetchVacunas, fetchTratamientos,
+  fetchVacunas, fetchTratamientos, fetchHistorialPeso, fetchConsultas,
 } from '../services/fichaMedicaApi';
 import { fetchRazas } from '../services/authApi';
 import OpcionPicker from '../components/OpcionPicker';
@@ -216,6 +217,10 @@ export default function FichaMedicaScreen() {
   const [guardandoFecha, setGuardandoFecha] = useState(false);
   const [generandoPdf,   setGenerandoPdf]   = useState(false);
   const [drawerOpen,     setDrawerOpen]     = useState(false);
+  const [refreshing,     setRefreshing]     = useState(false);
+  const [historialVisible,  setHistorialVisible]  = useState(false);
+  const [historialPeso,     setHistorialPeso]     = useState(null); // null = no cargado aún
+  const [cargandoHistorial, setCargandoHistorial] = useState(false);
   const { usuario, mascotaActiva: mascotaActivaDemo } = useUsuarioActivo();
 
   const pesoInputRef = useRef(null);
@@ -223,9 +228,9 @@ export default function FichaMedicaScreen() {
   // ── Carga ─────────────────────────────────────────────────────────────────
   // Timeout de 3 segundos: si el backend no responde, mostrar la vista demo
   // en vez de dejar al usuario esperando (mismo patrón que HomeScreen).
-  const cargarMascota = useCallback(async () => {
+  const cargarMascota = useCallback(async (silencioso = false) => {
     if (!petId) { setLoading(false); return; }
-    setLoading(true);
+    if (!silencioso) setLoading(true);
     try {
       const data = await fetchMascota(petId);
       if (!data) {
@@ -242,6 +247,27 @@ export default function FichaMedicaScreen() {
 
   useEffect(() => { cargarMascota(); }, [cargarMascota]);
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await cargarMascota(true);
+    if (historialPeso !== null) await cargarHistorial();
+    setRefreshing(false);
+  };
+
+  // ── Historial de peso ─────────────────────────────────────────────────────
+  const cargarHistorial = async () => {
+    setCargandoHistorial(true);
+    try { setHistorialPeso(await fetchHistorialPeso(petId)); }
+    catch { setHistorialPeso([]); }
+    finally { setCargandoHistorial(false); }
+  };
+
+  const toggleHistorial = async () => {
+    if (historialVisible) { setHistorialVisible(false); return; }
+    setHistorialVisible(true);
+    if (historialPeso === null) await cargarHistorial();
+  };
+
   // ── Peso ──────────────────────────────────────────────────────────────────
   const abrirEditPeso = () => {
     setPesoBorrador(mascota.peso != null ? String(mascota.peso).replace('.', ',') : '');
@@ -257,6 +283,8 @@ export default function FichaMedicaScreen() {
       const actualizada = await actualizarPeso(petId, n);
       setMascota((p) => ({ ...p, peso: actualizada.peso }));
       setEditandoPeso(false);
+      // Si el historial ya está a la vista, sumarle el registro nuevo
+      if (historialPeso !== null) cargarHistorial();
     } catch { Alert.alert('Error', 'No se pudo actualizar el peso.'); }
     finally { setGuardandoPeso(false); }
   };
@@ -316,15 +344,24 @@ export default function FichaMedicaScreen() {
     return `${d}/${mo}/${y}`;
   };
 
+  // Timestamp completo (historial_peso.fecha) → "5/7/2026"
+  const formatFechaCorta = (ts) => {
+    const d = new Date(ts);
+    return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+  };
+
   // ── PDF ───────────────────────────────────────────────────────────────────
   // Se genera localmente con los datos ya disponibles, sin depender de un
   // backend que hoy no existe. Solo lo esencial: especie, raza, edad, peso,
   // vacunas y tratamientos aplicados (sin datos del propietario).
-  const construirHtmlFicha = (vacunasAplicadas, tratamientosAplicados) => {
+  const construirHtmlFicha = (vacunasAplicadas, tratamientosAplicados, consultas) => {
     const fechaGeneracion = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
 
     const filaVacuna = (v) => `<tr><td class="label">${v.nombre}</td><td class="value">Aplicada: ${formatFecha(v.fecha_aplicacion) ?? '—'}</td></tr>`;
     const filaTratamiento = (t) => `<tr><td class="label">${t.nombre}</td><td class="value">Inicio: ${formatFecha(t.fecha_inicio) ?? '—'}</td></tr>`;
+    const filaConsulta = (c) =>
+      `<tr><td class="label">${formatFecha(c.fecha) ?? '—'} — ${c.motivo}</td><td class="value">${c.veterinario ?? ''}</td></tr>` +
+      (c.notas ? `<tr><td colspan="2" class="notas">${c.notas}</td></tr>` : '');
 
     return `
       <html>
@@ -347,6 +384,7 @@ export default function FichaMedicaScreen() {
             td.label { color: #6B6B6B; width: 45%; }
             td.value { font-weight: 700; text-align: right; color: #2C2C2C; }
             .vacio { font-size: 13px; color: #AAAAAA; padding: 6px 0; }
+            td.notas { font-size: 12px; color: #6B6B6B; padding: 2px 0 12px; font-style: italic; }
             .footer {
               margin-top: 48px; padding-top: 16px; border-top: 1px solid #EFEFEF;
               font-size: 11px; color: #AAAAAA; text-align: center;
@@ -377,6 +415,11 @@ export default function FichaMedicaScreen() {
               ? `<table>${tratamientosAplicados.map(filaTratamiento).join('')}</table>`
               : '<div class="vacio">Sin tratamientos registrados</div>'}
 
+            <div class="section-title">Consultas veterinarias</div>
+            ${consultas.length
+              ? `<table>${consultas.map(filaConsulta).join('')}</table>`
+              : '<div class="vacio">Sin consultas registradas</div>'}
+
             <div class="footer">
               Documento generado el ${fechaGeneracion} · Zooni — Cuidado inteligente para tu mascota
             </div>
@@ -390,7 +433,7 @@ export default function FichaMedicaScreen() {
   // pasás y solo hace window.print() de la pantalla actual (por eso antes se
   // imprimía toda la app) — para bajar un archivo de verdad hace falta
   // generar el PDF nosotros mismos con jsPDF.
-  const generarPdfWeb = (vacunasAplicadas, tratamientosAplicados) => {
+  const generarPdfWeb = (vacunasAplicadas, tratamientosAplicados, consultas) => {
     const doc = new jsPDF();
     let y = 20;
 
@@ -437,6 +480,8 @@ export default function FichaMedicaScreen() {
     };
     seccion('Vacunas aplicadas', vacunasAplicadas, (v) => `• ${v.nombre} — aplicada ${formatFecha(v.fecha_aplicacion) ?? '—'}`);
     seccion('Tratamientos aplicados', tratamientosAplicados, (t) => `• ${t.nombre} — inicio ${formatFecha(t.fecha_inicio) ?? '—'}`);
+    seccion('Consultas veterinarias', consultas, (c) =>
+      `• ${formatFecha(c.fecha) ?? '—'} — ${c.motivo}${c.veterinario ? ` (${c.veterinario})` : ''}`);
 
     doc.save(`Ficha-medica-${(m.nombre ?? 'mascota').replace(/\s+/g, '-')}.pdf`);
   };
@@ -444,14 +489,16 @@ export default function FichaMedicaScreen() {
   const generarPDF = async () => {
     setGenerandoPdf(true);
     try {
-      const [{ aplicadas: vacunasAplicadas }, { aplicados: tratamientosAplicados }] = petId
-        ? await Promise.all([fetchVacunas(petId), fetchTratamientos(petId)])
-        : [{ aplicadas: [] }, { aplicados: [] }];
+      // Consultas best-effort: si la migración 016 no está corrida, el PDF
+      // sale igual con vacunas y tratamientos.
+      const [{ aplicadas: vacunasAplicadas }, { aplicados: tratamientosAplicados }, consultas] = petId
+        ? await Promise.all([fetchVacunas(petId), fetchTratamientos(petId), fetchConsultas(petId).catch(() => [])])
+        : [{ aplicadas: [] }, { aplicados: [] }, []];
 
       if (Platform.OS === 'web') {
-        generarPdfWeb(vacunasAplicadas, tratamientosAplicados);
+        generarPdfWeb(vacunasAplicadas, tratamientosAplicados, consultas);
       } else {
-        const html = construirHtmlFicha(vacunasAplicadas, tratamientosAplicados);
+        const html = construirHtmlFicha(vacunasAplicadas, tratamientosAplicados, consultas);
         const { uri } = await Print.printToFileAsync({ html });
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(uri, {
@@ -492,7 +539,11 @@ export default function FichaMedicaScreen() {
         </View>
 
         <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}
-          showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh}
+              colors={['#2DBD72']} tintColor="#2DBD72" />
+          }>
 
           {/* Hero */}
           <View style={s.heroSection}>
@@ -547,6 +598,49 @@ export default function FichaMedicaScreen() {
             </View>
           </FilaDato>
 
+          {/* Historial de peso — desplegable, se guarda un punto por cada edición */}
+          {interactuable && (
+            <>
+              <TouchableOpacity style={s.histToggle} onPress={toggleHistorial}
+                accessibilityLabel={historialVisible ? 'Ocultar historial de peso' : 'Ver historial de peso'}>
+                <Ionicons name={historialVisible ? 'chevron-up' : 'chevron-down'} size={14} color="#2DBD72" />
+                <Text style={s.histToggleTxt}>
+                  {historialVisible ? 'Ocultar historial de peso' : 'Ver historial de peso'}
+                </Text>
+              </TouchableOpacity>
+
+              {historialVisible && (
+                <View style={s.histCard}>
+                  {cargandoHistorial ? (
+                    <ActivityIndicator size="small" color="#2DBD72" style={{ paddingVertical: 12 }} />
+                  ) : !historialPeso?.length ? (
+                    <Text style={s.histEmpty}>
+                      Todavía no hay registros — se guarda uno cada vez que actualizás el peso.
+                    </Text>
+                  ) : (
+                    historialPeso.map((h, i) => {
+                      const anterior = historialPeso[i + 1];
+                      const delta = anterior ? h.peso - anterior.peso : null;
+                      return (
+                        <View key={h.id} style={[s.histRow, i === historialPeso.length - 1 && s.histRowLast]}>
+                          <Text style={s.histFecha}>{formatFechaCorta(h.fecha)}</Text>
+                          <Text style={s.histPeso}>{formatPeso(h.peso)}</Text>
+                          <Text style={[
+                            s.histDelta,
+                            delta > 0 && s.histDeltaUp,
+                            delta < 0 && s.histDeltaDown,
+                          ]}>
+                            {delta == null || delta === 0 ? '—' : `${delta > 0 ? '+' : ''}${delta.toFixed(1)} kg`}
+                          </Text>
+                        </View>
+                      );
+                    })
+                  )}
+                </View>
+              )}
+            </>
+          )}
+
           <FilaDato icono="gift-outline" label="Edad:"
             valor={guardandoFecha ? 'Actualizando...' : edad}
             onEditar={interactuable ? abrirEditFecha : undefined}
@@ -573,6 +667,8 @@ export default function FichaMedicaScreen() {
             onPress={() => navigation.navigate('Vacunas', { petId: petId ?? 0 })} />
           <BotonNav icono="medkit-outline"        iconoColor="#E63946" texto="Tratamientos"
             onPress={() => navigation.navigate('Tratamientos', { petId: petId ?? 0 })} />
+          <BotonNav icono="clipboard-outline"     iconoColor="#5BC8D0" texto="Consultas veterinarias"
+            onPress={() => navigation.navigate('Consultas', { petId: petId ?? 0 })} />
           <BotonNav icono="bulb-outline"          iconoColor="#F5C842" texto="Consejos y curiosidades"
             onPress={() => navigation.navigate('Consejos', { petId: petId ?? 0 })} />
 
@@ -652,4 +748,17 @@ const s = StyleSheet.create({
 
   pdfBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#2DBD72', borderRadius: 30, height: 48, width: '65%', alignSelf: 'center', marginTop: 28, marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4 },
   pdfBtnTxt: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+
+  // Historial de peso (desplegable bajo la fila Peso)
+  histToggle:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 6, marginTop: -4, marginBottom: 8 },
+  histToggleTxt: { fontSize: 12, fontWeight: '700', color: '#2DBD72' },
+  histCard:      { backgroundColor: '#FFF', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 6, marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
+  histRow:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: '#F5F5F5' },
+  histRowLast:   { borderBottomWidth: 0 },
+  histFecha:     { flex: 1, fontSize: 13, color: '#6B6B6B' },
+  histPeso:      { fontSize: 14, fontWeight: '600', color: '#2C2C2C', marginRight: 12 },
+  histDelta:     { fontSize: 12, fontWeight: '700', color: '#AAAAAA', width: 64, textAlign: 'right' },
+  histDeltaUp:   { color: '#F5A623' },
+  histDeltaDown: { color: '#5BC8D0' },
+  histEmpty:     { fontSize: 12, color: '#9A9A9A', textAlign: 'center', paddingVertical: 12, lineHeight: 18 },
 });

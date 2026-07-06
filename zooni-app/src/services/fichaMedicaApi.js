@@ -32,7 +32,22 @@ export async function fetchMascota(petId) {
 export async function actualizarPeso(petId, peso) {
   const { data, error } = await supabase.from('Mascota').update({ Peso: peso }).eq('Id_Mascota', petId).select().single();
   if (error) throw error;
+  // Registro histórico best-effort: si la migración 016 no está corrida,
+  // el peso igual queda actualizado (solo se pierde el punto del historial).
+  try { await supabase.from('historial_peso').insert({ mascota_id: petId, peso_kg: peso }); } catch { /* sin tabla */ }
   return mapMascota(data);
+}
+
+/** Últimos registros de peso de la mascota (más reciente primero). */
+export async function fetchHistorialPeso(petId, limit = 12) {
+  const { data, error } = await supabase
+    .from('historial_peso')
+    .select('*')
+    .eq('mascota_id', petId)
+    .order('fecha', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []).map((r) => ({ id: r.id, peso: Number(r.peso_kg), fecha: r.fecha }));
 }
 
 export async function actualizarRaza(petId, raza) {
@@ -243,5 +258,51 @@ export async function crearTratamiento(petId, datos) {
 
 export async function eliminarTratamiento(id) {
   const { error } = await supabase.from('Tratamiento').delete().eq('Id_Tratamiento', id);
+  if (error) throw error;
+}
+
+// ─────────────────────────────────────────────
+// CONSULTAS VETERINARIAS (anotaciones de consultas pasadas)
+// ─────────────────────────────────────────────
+
+function mapConsulta(row) {
+  return {
+    id: row.id,
+    fecha: row.fecha,
+    motivo: row.motivo,
+    notas: row.notas,
+    veterinario: row.veterinario,
+  };
+}
+
+/** Trae las consultas registradas de la mascota (más reciente primero). */
+export async function fetchConsultas(petId) {
+  const { data, error } = await supabase
+    .from('consultas_veterinarias')
+    .select('*')
+    .eq('mascota_id', petId)
+    .order('fecha', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(mapConsulta);
+}
+
+export async function crearConsulta(petId, datos) {
+  const { data, error } = await supabase
+    .from('consultas_veterinarias')
+    .insert({
+      mascota_id: petId,
+      fecha: datos.fecha,
+      motivo: datos.motivo,
+      notas: datos.notas ?? null,
+      veterinario: datos.veterinario ?? null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return mapConsulta(data);
+}
+
+export async function eliminarConsulta(id) {
+  const { error } = await supabase.from('consultas_veterinarias').delete().eq('id', id);
   if (error) throw error;
 }

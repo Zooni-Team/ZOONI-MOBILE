@@ -25,6 +25,7 @@ import {
   Alert,
   ActivityIndicator,
   Animated,
+  RefreshControl,
   StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -390,6 +391,7 @@ export default function EventosScreen() {
   const [homeData, setHomeData]             = useState(null);       // { usuario, mascotaActiva }
   const [eventos, setEventos]               = useState([]);
   const [loading, setLoading]               = useState(true);
+  const [refreshing, setRefreshing]         = useState(false);
   const [ciudad, setCiudad]                 = useState(null);
   // Set de IDs de eventos ya agregados al calendario
   const [eventosAgregados, setEventosAgregados] = useState(new Set());
@@ -457,8 +459,8 @@ export default function EventosScreen() {
    * Si no hay ciudad, carga todos los eventos.
    * Si el backend falla o no devuelve eventos, usa EVENTOS_DEMO como fallback.
    */
-  async function cargarDatos() {
-    setLoading(true);
+  async function cargarDatos(silencioso = false) {
+    if (!silencioso) setLoading(true);
     try {
       // 1. Obtener datos del usuario (ciudad + mascota activa)
       let ciudadUsuario = null;
@@ -633,6 +635,17 @@ export default function EventosScreen() {
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={async () => {
+                  setRefreshing(true);
+                  await cargarDatos(true);
+                  setRefreshing(false);
+                }}
+                colors={['#2DBD72']} tintColor="#2DBD72"
+              />
+            }
           >
             {eventos.map((evento) => (
               <EventoCard

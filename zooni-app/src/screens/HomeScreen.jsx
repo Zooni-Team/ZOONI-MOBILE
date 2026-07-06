@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   View, Text, Image, ImageBackground, StyleSheet, TouchableOpacity,
   Animated, ScrollView, Dimensions, SafeAreaView, StatusBar, Platform,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -53,6 +54,7 @@ export default function HomeScreen() {
   const [homeData, setHomeData] = useState(null);
   const [botones, setBotones] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -62,8 +64,10 @@ export default function HomeScreen() {
   const petNameOpacity = useRef(new Animated.Value(1)).current;
   const petFloatY = useRef(new Animated.Value(0)).current;
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  // silencioso: refresca los datos sin volver a mostrar los skeletons
+  // (lo usa el pull-to-refresh, que ya muestra su propio spinner).
+  const loadData = useCallback(async (silencioso = false) => {
+    if (!silencioso) setLoading(true);
     try {
       // Timeout de 3 segundos: si el backend no responde, usar datos demo
       const dataPromise = Promise.race([
@@ -96,6 +100,12 @@ export default function HomeScreen() {
   // a enfocar. useFocusEffect refresca los datos cada vez que Home
   // recupera el foco (incluye el primer montaje).
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData(true);
+    setRefreshing(false);
+  }, [loadData]);
 
   useEffect(() => {
     // Solo iniciar la animación flotante después de que termine la carga inicial
@@ -206,6 +216,10 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         scrollEnabled={!editMode}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh}
+            colors={['#2DBD72']} tintColor="#2DBD72" />
+        }
       >
 
         {/* ── ZONA 2: HERO ── */}

@@ -19,6 +19,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -483,6 +484,7 @@ export default function CalendarioScreen() {
 
   const [eventos, setEventos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [modalVisible,     setModalVisible]     = useState(false);
@@ -522,8 +524,8 @@ export default function CalendarioScreen() {
   // Sin backend de calendario conectado todavía: los eventos se leen de un
   // almacenamiento local compartido con EventosScreen (ver calendarioStore.js),
   // que se reemplaza por la API real cuando se conecte la base de datos.
-  const cargar = useCallback(async () => {
-    setLoading(true);
+  const cargar = useCallback(async (silencioso = false) => {
+    if (!silencioso) setLoading(true);
     const idMascota = petId ?? mascotaActiva?.id;
     const guardados = await getEventosCalendario(idMascota, DEMO_EVENTOS);
     setEventos(guardados.slice().sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora)));
@@ -533,6 +535,12 @@ export default function CalendarioScreen() {
   // Recarga cada vez que la pantalla vuelve a estar en foco (por ejemplo, al
   // volver de Eventos después de agregar uno al calendario).
   useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await cargar(true);
+    setRefreshing(false);
+  }, [cargar]);
 
   // ── Aparición del FAB (una sola vez, al terminar de cargar) ────────────────
   useEffect(() => {
@@ -701,7 +709,11 @@ export default function CalendarioScreen() {
         <Text style={s.titulo}>Calendario de Cuidados</Text>
 
         <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}
-          showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh}
+              colors={['#2DBD72']} tintColor="#2DBD72" />
+          }>
 
           {loading ? (
             <View><SkeletonCard /><SkeletonCard /></View>

@@ -1,9 +1,10 @@
 /**
- * TratamientosScreen.jsx — Pantalla "Tratamientos" de Zooni
+ * ConsultasScreen.jsx — Historial de consultas veterinarias de la mascota
  *
- * Navega desde FichaMedicaScreen con { petId }.
- * Muestra tratamientos aplicados (cards ámbar) y sugeridos (cards blancos).
- * Solo permite agregar y eliminar — no editar.
+ * Anotaciones de consultas pasadas (motivo, notas del veterinario, fecha)
+ * para tener el historial clínico a mano — se incluyen también en el PDF
+ * de la Ficha Médica. Navega desde FichaMedicaScreen con { petId }.
+ * Mismo patrón visual que TratamientosScreen.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -32,14 +33,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { calcularEdad } from '../utils/calcularEdad';
-import { parseFechaLocal } from '../utils/fechaLocal';
+import { toISODateLocal } from '../utils/fechaLocal';
 import { resolvePetImage } from '../constants/petImages';
-import {
-  fetchTratamientos,
-  crearTratamiento,
-  eliminarTratamiento as eliminarTratamientoApi,
-} from '../services/fichaMedicaApi';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
+import { fetchMascota, fetchConsultas, crearConsulta, eliminarConsulta } from '../services/fichaMedicaApi';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -50,38 +47,6 @@ function formatFecha(iso) {
   if (!iso) return null;
   const [y, m, d] = iso.split('-');
   return `${parseInt(d)}/${parseInt(m)}/${y}`;
-}
-
-/** Date → "YYYY-MM-DD" */
-function toISO(date) {
-  if (!date) return null;
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-/** Días restantes hasta proximo_control */
-function calcularDiasRestantes(fechaISO) {
-  if (!fechaISO) return null;
-  const hoy   = new Date(); hoy.setHours(0, 0, 0, 0);
-  const fecha = parseFechaLocal(fechaISO); fecha.setHours(0, 0, 0, 0);
-  return Math.ceil((fecha - hoy) / (1000 * 60 * 60 * 24));
-}
-
-function formatearContadorDias(dias) {
-  if (dias === null) return null;
-  if (dias > 1)  return `Faltan ${dias} días`;
-  if (dias === 1) return 'Falta 1 día';
-  if (dias === 0) return 'Vence hoy';
-  return `Vencido hace ${Math.abs(dias)} día(s)`;
-}
-
-function colorContador(dias) {
-  if (dias === null) return '#2C2C2C';
-  if (dias < 0)   return '#E63946';  // vencido
-  if (dias === 0) return '#F5A623';  // vence hoy
-  return '#2C2C2C';
 }
 
 function capitalizar(str) {
@@ -123,17 +88,10 @@ function Toast({ visible, mensaje, color }) {
   const opacity    = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.timing(translateY, { toValue: 0,   duration: 220, useNativeDriver: true }),
-        Animated.timing(opacity,    { toValue: 1,   duration: 220, useNativeDriver: true }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(translateY, { toValue: -12, duration: 200, useNativeDriver: true }),
-        Animated.timing(opacity,    { toValue: 0,   duration: 200, useNativeDriver: true }),
-      ]).start();
-    }
+    Animated.parallel([
+      Animated.timing(translateY, { toValue: visible ? 0 : -12, duration: visible ? 220 : 200, useNativeDriver: true }),
+      Animated.timing(opacity,    { toValue: visible ? 1 : 0,   duration: visible ? 220 : 200, useNativeDriver: true }),
+    ]).start();
   }, [visible, translateY, opacity]);
 
   return (
@@ -144,74 +102,12 @@ function Toast({ visible, mensaje, color }) {
   );
 }
 
-// ─── COMPONENTE: CARD TRATAMIENTO APLICADO ────────────────────────────────────
+// ─── COMPONENTE: CARD CONSULTA ────────────────────────────────────────────────
 
-function CardAplicado({ tratamiento, onEliminar }) {
+function CardConsulta({ consulta, index, onEliminar }) {
   const translateY = useRef(new Animated.Value(12)).current;
   const opacity    = useRef(new Animated.Value(0)).current;
   const scale      = useRef(new Animated.Value(1)).current;
-  const height     = useRef(new Animated.Value(1)).current; // usado para colapso
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(translateY, { toValue: 0, duration: 280, useNativeDriver: true }),
-      Animated.timing(opacity,    { toValue: 1, duration: 280, useNativeDriver: true }),
-    ]).start();
-  }, [translateY, opacity]);
-
-  const dias   = calcularDiasRestantes(tratamiento.proximo_control);
-  const cuenta = formatearContadorDias(dias);
-  const colDias = dias !== null && dias <= 0 ? '#E63946' : dias === 0 ? '#F5A623' : '#2C2C2C';
-
-  const colorProxControl = () => {
-    if (!tratamiento.proximo_control) return '#6B6B6B';
-    if (dias !== null && dias < 0) return '#E63946';
-    if (dias !== null && dias <= 7) return '#F5A623';
-    return '#6B6B6B';
-  };
-
-  const pressInElim  = () => Animated.timing(scale, { toValue: 0.90, duration: 100, useNativeDriver: true }).start();
-  const pressOutElim = () => Animated.timing(scale, { toValue: 1,    duration: 150, useNativeDriver: true }).start();
-
-  return (
-    <Animated.View style={[s.cardAplicado, { transform: [{ translateY }], opacity }]}>
-      {/* Columna izquierda */}
-      <View style={s.cardLeft}>
-        <Text style={s.cardNombre}>{tratamiento.nombre}</Text>
-        <Text style={s.cardField}>Inicio: {formatFecha(tratamiento.fecha_inicio) ?? '—'}</Text>
-        <Text style={[s.cardField, { color: colorProxControl() }]}>
-          Próximo control: {tratamiento.proximo_control ? formatFecha(tratamiento.proximo_control) : 'Sin fecha'}
-        </Text>
-        <Text style={s.cardField} numberOfLines={1} ellipsizeMode="tail">
-          Veterinaria: {tratamiento.veterinaria ?? 'Sin registro'}
-        </Text>
-        {cuenta !== null && (
-          <Text style={[s.cardContador, { color: colDias }]}>{cuenta}</Text>
-        )}
-      </View>
-      {/* Botón eliminar */}
-      <View style={s.cardRight}>
-        <Animated.View style={{ transform: [{ scale }] }}>
-          <Pressable
-            style={s.btnEliminar}
-            onPressIn={pressInElim}
-            onPressOut={pressOutElim}
-            onPress={() => onEliminar(tratamiento.id)}
-            accessibilityLabel="Eliminar tratamiento"
-          >
-            <Ionicons name="trash-outline" size={18} color="#FFF" />
-          </Pressable>
-        </Animated.View>
-      </View>
-    </Animated.View>
-  );
-}
-
-// ─── COMPONENTE: CARD SUGERIDO ────────────────────────────────────────────────
-
-function CardSugerido({ sugerido, index, onRegistrar }) {
-  const translateY = useRef(new Animated.Value(12)).current;
-  const opacity    = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -220,32 +116,44 @@ function CardSugerido({ sugerido, index, onRegistrar }) {
     ]).start();
   }, [index, translateY, opacity]);
 
+  const pressInElim  = () => Animated.timing(scale, { toValue: 0.90, duration: 100, useNativeDriver: true }).start();
+  const pressOutElim = () => Animated.timing(scale, { toValue: 1,    duration: 150, useNativeDriver: true }).start();
+
   return (
-    <Animated.View style={[s.cardSugerido, { transform: [{ translateY }], opacity }]}>
-      <View style={s.cardSugeridoInfo}>
-        <Text style={s.sugeridoNombre}>{sugerido.nombre}</Text>
-        <Text style={s.sugeridoFrecInline}>{sugerido.frecuencia_descripcion}</Text>
-      </View>
-      {sugerido.applied ? (
-        <View style={s.badgeAplicada}>
-          <Ionicons name="checkmark" size={12} color="#2DBD72" />
-          <Text style={s.badgeAplicadaTxt}>Aplicada</Text>
+    <Animated.View style={[s.cardConsulta, { transform: [{ translateY }], opacity }]}>
+      <View style={s.cardTop}>
+        <View style={s.cardFechaChip}>
+          <Ionicons name="calendar-outline" size={12} color="#2DBD72" />
+          <Text style={s.cardFechaTxt}>{formatFecha(consulta.fecha) ?? '—'}</Text>
         </View>
-      ) : (
-        <TouchableOpacity style={s.btnRegistrar} onPress={onRegistrar} accessibilityLabel={`Registrar ${sugerido.nombre}`}>
-          <Text style={s.btnRegistrarTxt}>Registrar</Text>
-        </TouchableOpacity>
+        <Animated.View style={{ transform: [{ scale }] }}>
+          <Pressable
+            style={s.btnEliminar}
+            onPressIn={pressInElim}
+            onPressOut={pressOutElim}
+            onPress={() => onEliminar(consulta.id)}
+            accessibilityLabel="Eliminar consulta"
+          >
+            <Ionicons name="trash-outline" size={16} color="#FFF" />
+          </Pressable>
+        </Animated.View>
+      </View>
+
+      <Text style={s.cardMotivo}>{consulta.motivo}</Text>
+      {consulta.veterinario && (
+        <Text style={s.cardField}>Veterinario/a: {consulta.veterinario}</Text>
+      )}
+      {consulta.notas && (
+        <Text style={s.cardNotas}>{consulta.notas}</Text>
       )}
     </Animated.View>
   );
 }
 
-// ─── COMPONENTE: INPUT FECHA (toca para seleccionar con DatePicker nativo) ────
-// DateTimePicker no está instalado → usamos un modal propio igual que FichaMedica
+// ─── COMPONENTE: FECHA PICKER (modal propio, igual que Tratamientos) ──────────
 
 function FechaPicker({ visible, titulo, valor, onConfirmar, onCancelar }) {
   const hoyAnio = new Date().getFullYear();
-  const anioMax = hoyAnio + 5; // tratamientos pueden ser futuros
 
   const [dia,  setDia]  = useState(valor ? valor.getDate() : new Date().getDate());
   const [mes,  setMes]  = useState(valor ? valor.getMonth() + 1 : new Date().getMonth() + 1);
@@ -262,7 +170,8 @@ function FechaPicker({ visible, titulo, valor, onConfirmar, onCancelar }) {
   const diasEnMes = new Date(anio, mes, 0).getDate();
   const dias  = Array.from({ length: diasEnMes }, (_, i) => i + 1);
   const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const anios = Array.from({ length: anioMax - (hoyAnio - 20) + 1 }, (_, i) => hoyAnio - 20 + i);
+  // Consultas pasadas: desde 20 años atrás hasta el año actual
+  const anios = Array.from({ length: 21 }, (_, i) => hoyAnio - i);
 
   const confirmar = () => onConfirmar(new Date(anio, mes - 1, Math.min(dia, diasEnMes)));
 
@@ -338,7 +247,7 @@ const fp = StyleSheet.create({
 
 // ─── SCREEN PRINCIPAL ─────────────────────────────────────────────────────────
 
-export default function TratamientosScreen() {
+export default function ConsultasScreen() {
   const navigation = useNavigation();
   const route      = useRoute();
   const petId      = route.params?.petId;
@@ -346,33 +255,25 @@ export default function TratamientosScreen() {
   const idMascota = petId ?? mascotaActivaDemo?.id;
 
   // ── Estado ───────────────────────────────────────────────────────────────
-  const [mascota,               setMascota]               = useState(null);
-  const [tratamientosAplicados, setTratamientosAplicados] = useState([]);
-  const [tratamientosSugeridos, setTratamientosSugeridos] = useState([]);
-  const [loading,               setLoading]               = useState(true);
-  const [refreshing,            setRefreshing]            = useState(false);
-  const [modalVisible,          setModalVisible]          = useState(false);
-  // Sugerido que se está registrando desde el botón "Registrar" (null si se
-  // abrió el modal desde "Añadir" a secas) — se usa para marcarlo "Aplicada"
-  // al guardar, igual que hace Vacunas con vacunaPreseleccionada.
-  const [sugeridoEnRegistro,    setSugeridoEnRegistro]    = useState(null);
-  const [formNombre,            setFormNombre]            = useState('');
-  const [formFechaInicio,       setFormFechaInicio]       = useState(null);
-  const [formProximoControl,    setFormProximoControl]    = useState(null);
-  const [formVeterinaria,       setFormVeterinaria]       = useState('');
-  const [formDescripcion,       setFormDescripcion]       = useState('');
-  const [formErrors,            setFormErrors]            = useState({});
-  const [guardando,             setGuardando]             = useState(false);
-  const [showPickerInicio,      setShowPickerInicio]      = useState(false);
-  const [showPickerControl,     setShowPickerControl]     = useState(false);
-  const [focusNombre,           setFocusNombre]           = useState(false);
-  const [focusVet,              setFocusVet]              = useState(false);
-  const [focusDesc,             setFocusDesc]             = useState(false);
-  const [toastVisible,          setToastVisible]          = useState(false);
-  const [toastMensaje,          setToastMensaje]          = useState('');
-  const [toastColor,            setToastColor]            = useState('#2DBD72');
+  const [mascota,      setMascota]      = useState(null);
+  const [consultas,    setConsultas]    = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [refreshing,   setRefreshing]   = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [formMotivo,      setFormMotivo]      = useState('');
+  const [formFecha,       setFormFecha]       = useState(null);
+  const [formVeterinario, setFormVeterinario] = useState('');
+  const [formNotas,       setFormNotas]       = useState('');
+  const [formErrors,      setFormErrors]      = useState({});
+  const [guardando,       setGuardando]       = useState(false);
+  const [showPickerFecha, setShowPickerFecha] = useState(false);
+  const [focusMotivo, setFocusMotivo] = useState(false);
+  const [focusVet,    setFocusVet]    = useState(false);
+  const [focusNotas,  setFocusNotas]  = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMensaje, setToastMensaje] = useState('');
+  const [toastColor,   setToastColor]   = useState('#2DBD72');
 
-  // Animaciones del modal
   const modalScale   = useRef(new Animated.Value(0.92)).current;
   const modalOpacity = useRef(new Animated.Value(0)).current;
   const heroScale    = useRef(new Animated.Value(0.88)).current;
@@ -380,72 +281,45 @@ export default function TratamientosScreen() {
   const btnScale     = useRef(new Animated.Value(1)).current;
   const toastTimer   = useRef(null);
 
-  // ── Datos hardcodeados para preview visual ───────────────────────────────
+  // ── Datos hardcodeados para preview visual (sin backend) ─────────────────
   const DEMO_MASCOTA = {
     id: 1, nombre: 'Titán', especie: 'perro',
     raza: 'Labrador Retriever', peso: 20.40,
     fecha_nacimiento: '2022-02-15', imagen_asset: 'perro_default',
   };
 
-  const DEMO_APLICADOS = [
+  const DEMO_CONSULTAS = [
     {
       id: 1,
-      nombre: 'Desparasitación Interna',
-      descripcion: 'Pastilla Milbemax administrada en consulta.',
-      fecha_inicio: '2026-03-19',
-      proximo_control: '2026-09-10',
-      veterinaria: 'Clínica Veterinaria Central',
+      fecha: '2026-05-20',
+      motivo: 'Control anual + vacunación',
+      notas: 'Todo en orden. Se aplicó refuerzo séxtuple. Mantener antiparasitario mensual.',
+      veterinario: 'Dra. Paula Gómez — Clínica Veterinaria Central',
     },
     {
       id: 2,
-      nombre: 'Control de Pulgas y Garrapatas',
-      descripcion: null,
-      fecha_inicio: '2026-04-01',
-      proximo_control: '2026-06-30',
-      veterinaria: null,
-    },
-    {
-      id: 3,
-      nombre: 'Profilaxis Cardiaca',
-      descripcion: 'Heartgard Plus mensual.',
-      fecha_inicio: '2026-01-10',
-      proximo_control: '2026-06-28', // vence muy pronto → naranja/rojo según fecha actual
-      veterinaria: 'VetSalud Palermo',
+      fecha: '2026-02-08',
+      motivo: 'Dermatitis en pata trasera',
+      notas: 'Se indicó crema con corticoide 2 veces por día durante 10 días. Volver si no mejora.',
+      veterinario: 'VetSalud Palermo',
     },
   ];
 
-  const DEMO_SUGERIDOS = [
-    { id: 1,  nombre: 'Desparasitación Interna',                frecuencia_descripcion: 'Cada 3 meses'  },
-    { id: 2,  nombre: 'Desparasitación Externa',                frecuencia_descripcion: 'Cada 2 meses'  },
-    { id: 3,  nombre: 'Control Dental',                         frecuencia_descripcion: 'Cada 6 meses'  },
-    { id: 4,  nombre: 'Chequeo General Veterinario',            frecuencia_descripcion: 'Cada 6 meses'  },
-    { id: 5,  nombre: 'Chequeo Articular y de Cadera',          frecuencia_descripcion: 'Cada 12 meses' },
-    { id: 6,  nombre: 'Control de Peso',                        frecuencia_descripcion: 'Cada 6 meses'  },
-    { id: 7,  nombre: 'Profilaxis Cardiaca',                    frecuencia_descripcion: 'Cada 6 meses'  },
-    { id: 8,  nombre: 'Control de Pulgas y Garrapatas',         frecuencia_descripcion: 'Cada 2 meses'  },
-    { id: 9,  nombre: 'Chequeo Dermatológico',                  frecuencia_descripcion: 'Cada 12 meses' },
-    { id: 10, nombre: 'Evaluación Conductual',                  frecuencia_descripcion: 'Cada 12 meses' },
-    { id: 11, nombre: 'Esterilización / Castración Preventiva', frecuencia_descripcion: 'Cada 12 meses' },
-  ];
-
-  // ── Carga inicial ──────────────────────────────────────────────────────────
+  // ── Carga ─────────────────────────────────────────────────────────────────
   const cargar = useCallback(async (silencioso = false) => {
     if (!silencioso) setLoading(true);
     try {
       if (idMascota) {
-        const { mascota: m, aplicados, sugeridos } = await fetchTratamientos(idMascota);
+        const [m, lista] = await Promise.all([fetchMascota(idMascota), fetchConsultas(idMascota)]);
         setMascota(m);
-        setTratamientosAplicados(aplicados);
-        setTratamientosSugeridos(sugeridos);
+        setConsultas(lista);
       } else {
         setMascota(DEMO_MASCOTA);
-        setTratamientosAplicados(DEMO_APLICADOS);
-        setTratamientosSugeridos(DEMO_SUGERIDOS);
+        setConsultas(DEMO_CONSULTAS);
       }
     } catch {
       setMascota(DEMO_MASCOTA);
-      setTratamientosAplicados(DEMO_APLICADOS);
-      setTratamientosSugeridos(DEMO_SUGERIDOS);
+      setConsultas(DEMO_CONSULTAS);
     }
     setLoading(false);
     animarHero();
@@ -476,17 +350,13 @@ export default function TratamientosScreen() {
   }
 
   // ── Modal ────────────────────────────────────────────────────────────────
-  // nombrePrefill: al tocar "Registrar" en un tratamiento sugerido, se abre
-  // el mismo modal con el nombre ya cargado (el usuario todavía puede
-  // editarlo, elegir la fecha y guardar).
-  function abrirModal(nombrePrefill = '', sugerido = null) {
-    setFormNombre(nombrePrefill); setFormFechaInicio(null); setFormProximoControl(null);
-    setFormVeterinaria(''); setFormDescripcion(''); setFormErrors({});
-    setSugeridoEnRegistro(sugerido);
+  function abrirModal() {
+    setFormMotivo(''); setFormFecha(null); setFormVeterinario(''); setFormNotas('');
+    setFormErrors({});
     setModalVisible(true);
     Animated.parallel([
-      Animated.timing(modalScale,   { toValue: 1,    duration: 220, useNativeDriver: true }),
-      Animated.timing(modalOpacity, { toValue: 1,    duration: 220, useNativeDriver: true }),
+      Animated.timing(modalScale,   { toValue: 1, duration: 220, useNativeDriver: true }),
+      Animated.timing(modalOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
     ]).start();
   }
 
@@ -497,60 +367,46 @@ export default function TratamientosScreen() {
       Animated.timing(modalOpacity, { toValue: 0,    duration: 160, useNativeDriver: true }),
     ]).start(() => {
       setModalVisible(false);
-      // Reset anims para próxima apertura
       modalScale.setValue(0.92);
       modalOpacity.setValue(0);
     });
   }
 
-  // ── Guardar tratamiento (demo: solo estado local) ────────────────────────
-  async function guardarTratamiento() {
+  // ── Guardar consulta ──────────────────────────────────────────────────────
+  async function guardarConsulta() {
     const errors = {};
-    if (!formNombre.trim()) errors.nombre = 'Este campo es requerido';
-    if (!formFechaInicio)   errors.fechaInicio = 'Seleccioná una fecha de inicio';
+    if (!formMotivo.trim()) errors.motivo = 'Este campo es requerido';
+    if (!formFecha)         errors.fecha  = 'Seleccioná la fecha de la consulta';
     if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
 
     setGuardando(true);
     try {
-      const nuevo = await crearTratamiento(idMascota, {
-        nombre:          formNombre.trim(),
-        descripcion:     formDescripcion.trim() || null,
-        fecha_inicio:    toISO(formFechaInicio),
-        proximo_control: formProximoControl ? toISO(formProximoControl) : null,
-        veterinaria:     formVeterinaria.trim() || null,
+      const nueva = await crearConsulta(idMascota, {
+        motivo:      formMotivo.trim(),
+        fecha:       toISODateLocal(formFecha),
+        veterinario: formVeterinario.trim() || null,
+        notas:       formNotas.trim() || null,
       });
-      setTratamientosAplicados((prev) => [nuevo, ...prev]);
-      if (sugeridoEnRegistro) {
-        setTratamientosSugeridos((prev) => prev.map((sg) => (
-          sg.id === sugeridoEnRegistro.id
-            ? { ...sg, applied: true, tratamiento_aplicado_id: nuevo.id }
-            : sg
-        )));
-      }
+      // Insertar manteniendo el orden por fecha descendente
+      setConsultas((prev) => [nueva, ...prev].sort((a, b) => (a.fecha < b.fecha ? 1 : -1)));
       cerrarModal();
-      mostrarToast('Tratamiento registrado correctamente', '#2DBD72');
+      mostrarToast('Consulta registrada correctamente', '#2DBD72');
     } catch {
-      mostrarToast('No se pudo guardar el tratamiento', '#E63946');
+      mostrarToast('No se pudo guardar la consulta', '#E63946');
     } finally {
       setGuardando(false);
     }
   }
 
-  // ── Eliminar tratamiento ─────────────────────────────────────────────────
-  // OJO: esta función y la importada de fichaMedicaApi se llamaban IGUAL
-  // ("eliminarTratamiento"), y la de acá abajo tapaba a la importada dentro
-  // de este archivo — confirmarEliminar terminaba llamándose a sí misma en
-  // vez de borrar de verdad en Supabase. Por eso el botón nunca funcionó,
-  // ni siquiera en el celular. Se renombró para que no vuelva a pasar.
+  // ── Eliminar ──────────────────────────────────────────────────────────────
   function pedirConfirmacionEliminar(id) {
-    // Alert.alert con botones es un no-op en react-native-web: en el
-    // navegador nunca aparecía el diálogo.
+    // Alert.alert con botones es un no-op en react-native-web → window.confirm
     if (Platform.OS === 'web') {
-      if (window.confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) confirmarEliminar(id);
+      if (window.confirm('¿Eliminar esta consulta? Esta acción no se puede deshacer.')) confirmarEliminar(id);
       return;
     }
     Alert.alert(
-      '¿Eliminar tratamiento?',
+      '¿Eliminar consulta?',
       '¿Seguro que querés eliminar este registro? Esta acción no se puede deshacer.',
       [
         { text: 'Cancelar', style: 'cancel' },
@@ -561,18 +417,11 @@ export default function TratamientosScreen() {
 
   async function confirmarEliminar(id) {
     try {
-      await eliminarTratamientoApi(id);
-      setTratamientosAplicados((prev) => prev.filter((t) => t.id !== id));
-      // Si venía de un sugerido "Aplicada", esa tarjeta tiene que volver a
-      // mostrar el botón "Registrar" — igual que ya se arregló en Vacunas.
-      setTratamientosSugeridos((prev) => prev.map((sg) => (
-        sg.tratamiento_aplicado_id === id
-          ? { ...sg, applied: false, tratamiento_aplicado_id: null }
-          : sg
-      )));
-      mostrarToast('Tratamiento eliminado', '#E63946');
+      await eliminarConsulta(id);
+      setConsultas((prev) => prev.filter((c) => c.id !== id));
+      mostrarToast('Consulta eliminada', '#E63946');
     } catch {
-      mostrarToast('No se pudo eliminar el tratamiento', '#E63946');
+      mostrarToast('No se pudo eliminar la consulta', '#E63946');
     }
   }
 
@@ -580,24 +429,20 @@ export default function TratamientosScreen() {
   const pressInBtn  = () => Animated.timing(btnScale, { toValue: 0.96, duration: 100, useNativeDriver: true }).start();
   const pressOutBtn = () => Animated.timing(btnScale, { toValue: 1,    duration: 150, useNativeDriver: true }).start();
 
-  // ── Datos de la mascota (demo si no hay backend) ─────────────────────────
+  // ── Datos mascota (demo si no hay backend) ────────────────────────────────
   const esDemo = !idMascota || !mascota;
   const m = mascota ?? {
     nombre: 'Tu mascota', especie: 'perro', raza: null,
     peso: null, fecha_nacimiento: null, imagen_asset: 'perro_default',
   };
-  const edad    = calcularEdad(m.fecha_nacimiento);
-  const petImg  = resolvePetImage(m.imagen_asset ?? m.imagenAsset);
-  const pesoFmt = m.peso != null
-    ? parseFloat(m.peso).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' kg'
-    : '—';
+  const edad   = calcularEdad(m.fecha_nacimiento);
+  const petImg = resolvePetImage(m.imagen_asset ?? m.imagenAsset);
 
-  // ── RENDER ───────────────────────────────────────────────────────────────
+  // ── RENDER ────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={s.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* Toast */}
       <Toast visible={toastVisible} mensaje={toastMensaje} color={toastColor} />
 
       <View style={s.screenBg}>
@@ -621,16 +466,13 @@ export default function TratamientosScreen() {
           {/* ── HERO ── */}
           <View style={s.hero}>
             <Animated.View style={{ transform: [{ scale: heroScale }], opacity: heroOpacity, alignItems: 'center' }}>
-              {/* Círculo decorativo */}
               <View style={s.petCircle} />
               <PetIllustration source={petImg} label={`Ilustración de ${m.nombre}`} />
               <Text style={s.heroTitulo} numberOfLines={1} ellipsizeMode="tail">
-                Tratamientos de {m.nombre}
+                Consultas de {m.nombre}
               </Text>
               <View style={s.heroInfo}>
-                <Text style={s.heroInfoTxt}>Edad: {edad}</Text>
-                <Text style={s.heroInfoTxt}>Peso: {pesoFmt}</Text>
-                <Text style={s.heroInfoTxt}>Raza: {m.raza ?? '—'}</Text>
+                <Text style={s.heroInfoTxt}>{capitalizar(m.especie)} · {m.raza ?? 'Sin raza definida'} · {edad}</Text>
               </View>
             </Animated.View>
           </View>
@@ -638,7 +480,6 @@ export default function TratamientosScreen() {
           {/* ── CARD BLANCO ── */}
           <View style={s.whiteCard}>
 
-            {/* Banner demo */}
             {esDemo && (
               <View style={s.demoBanner}>
                 <Ionicons name="alert-circle-outline" size={14} color="#F5A623" />
@@ -646,12 +487,11 @@ export default function TratamientosScreen() {
               </View>
             )}
 
-            {/* ── Sección aplicados ── */}
             <View style={s.secRow}>
-              <Text style={s.secTitulo}>Tratamientos</Text>
+              <Text style={s.secTitulo}>Historial clínico</Text>
               <Animated.View style={{ transform: [{ scale: btnScale }] }}>
                 <Pressable style={s.btnAnadir}
-                  onPressIn={pressInBtn} onPressOut={pressOutBtn} onPress={() => abrirModal()}>
+                  onPressIn={pressInBtn} onPressOut={pressOutBtn} onPress={abrirModal}>
                   <Ionicons name="add" size={16} color="#FFF" />
                   <Text style={s.btnAnadirTxt}>Añadir</Text>
                 </Pressable>
@@ -659,30 +499,19 @@ export default function TratamientosScreen() {
             </View>
 
             {loading ? (
-              <View>
-                <SkeletonCard /><SkeletonCard /><SkeletonCard />
+              <View><SkeletonCard /><SkeletonCard /><SkeletonCard /></View>
+            ) : consultas.length === 0 ? (
+              <View style={s.emptyWrap}>
+                <Ionicons name="clipboard-outline" size={42} color="#CCCCCC" />
+                <Text style={s.emptyTitulo}>Sin consultas registradas</Text>
+                <Text style={s.emptyTxt}>
+                  Anotá acá cada visita al veterinario (motivo, indicaciones, notas)
+                  para tener el historial clínico completo de {m.nombre}.
+                </Text>
               </View>
-            ) : tratamientosAplicados.length === 0 ? (
-              <Text style={s.emptyTxt}>No hay tratamientos registrados</Text>
             ) : (
-              tratamientosAplicados.map((t) => (
-                <CardAplicado key={t.id} tratamiento={t} onEliminar={pedirConfirmacionEliminar} />
-              ))
-            )}
-
-            {/* ── Sección sugeridos ── */}
-            <View style={s.secSugeridosRow}>
-              <Ionicons name="clipboard-outline" size={16} color="#2C2C2C" />
-              <Text style={s.secSugeridosTitulo}>Tratamientos sugeridos</Text>
-            </View>
-
-            {loading ? (
-              <View><SkeletonCard /><SkeletonCard /></View>
-            ) : tratamientosSugeridos.length === 0 ? (
-              <Text style={s.emptyTxt}>No hay tratamientos sugeridos para esta especie</Text>
-            ) : (
-              tratamientosSugeridos.map((sug, i) => (
-                <CardSugerido key={sug.id} sugerido={sug} index={i} onRegistrar={() => abrirModal(sug.nombre, sug)} />
+              consultas.map((c, i) => (
+                <CardConsulta key={c.id} consulta={c} index={i} onEliminar={pedirConfirmacionEliminar} />
               ))
             )}
 
@@ -698,80 +527,66 @@ export default function TratamientosScreen() {
               <Animated.View style={[s.modalCard, { transform: [{ scale: modalScale }], opacity: modalOpacity }]}>
                 <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-                  <Text style={s.modalTitulo}>Nuevo tratamiento</Text>
+                  <Text style={s.modalTitulo}>Nueva consulta</Text>
 
-                  {/* Nombre */}
+                  {/* Motivo */}
                   <TextInput
-                    style={[s.input, focusNombre && s.inputFocus, formErrors.nombre && s.inputError]}
-                    placeholder="Nombre del tratamiento"
+                    style={[s.input, focusMotivo && s.inputFocus, formErrors.motivo && s.inputError]}
+                    placeholder="Motivo de la consulta"
                     placeholderTextColor="#AAAAAA"
-                    value={formNombre}
-                    onChangeText={(v) => { setFormNombre(v); if (formErrors.nombre) setFormErrors((p) => ({ ...p, nombre: null })); }}
-                    onFocus={() => setFocusNombre(true)}
-                    onBlur={() => setFocusNombre(false)}
+                    value={formMotivo}
+                    onChangeText={(v) => { setFormMotivo(v); if (formErrors.motivo) setFormErrors((p) => ({ ...p, motivo: null })); }}
+                    onFocus={() => setFocusMotivo(true)}
+                    onBlur={() => setFocusMotivo(false)}
                     returnKeyType="next"
                   />
-                  {formErrors.nombre && <Text style={s.errorTxt}>{formErrors.nombre}</Text>}
+                  {formErrors.motivo && <Text style={s.errorTxt}>{formErrors.motivo}</Text>}
 
-                  {/* Fecha inicio */}
+                  {/* Fecha */}
                   <TouchableOpacity
-                    style={[s.inputFecha, formErrors.fechaInicio && s.inputError]}
-                    onPress={() => setShowPickerInicio(true)}
+                    style={[s.inputFecha, formErrors.fecha && s.inputError]}
+                    onPress={() => setShowPickerFecha(true)}
                   >
-                    <Text style={[s.inputFechaTxt, !formFechaInicio && { color: '#AAAAAA' }]}>
-                      {formFechaInicio ? toISO(formFechaInicio).split('-').reverse().join('/').replace(/^(\d+)\/(\d+)\/(\d+)$/, (_, d, m, y) => `${parseInt(d)}/${parseInt(m)}/${y}`) : 'dd/mm/aaaa'}
-                    </Text>
-                    <Text style={s.inputFechaLabel}>Inicio</Text>
-                    <Ionicons name="calendar-outline" size={18} color="#6B6B6B" />
-                  </TouchableOpacity>
-                  {formErrors.fechaInicio && <Text style={s.errorTxt}>{formErrors.fechaInicio}</Text>}
-
-                  {/* Próximo control */}
-                  <TouchableOpacity
-                    style={s.inputFecha}
-                    onPress={() => setShowPickerControl(true)}
-                  >
-                    <Text style={[s.inputFechaTxt, !formProximoControl && { color: '#AAAAAA' }]}>
-                      {formProximoControl ? toISO(formProximoControl).split('-').reverse().join('/').replace(/^(\d+)\/(\d+)\/(\d+)$/, (_, d, m, y) => `${parseInt(d)}/${parseInt(m)}/${y}`) : 'Próximo control (opcional)'}
+                    <Text style={[s.inputFechaTxt, !formFecha && { color: '#AAAAAA' }]}>
+                      {formFecha ? formatFecha(toISODateLocal(formFecha)) : 'Fecha de la consulta'}
                     </Text>
                     <Ionicons name="calendar-outline" size={18} color="#6B6B6B" />
                   </TouchableOpacity>
+                  {formErrors.fecha && <Text style={s.errorTxt}>{formErrors.fecha}</Text>}
 
-                  {/* Veterinaria */}
+                  {/* Veterinario */}
                   <TextInput
                     style={[s.input, focusVet && s.inputFocus]}
-                    placeholder="Veterinaria (opcional)"
+                    placeholder="Veterinario/a o clínica (opcional)"
                     placeholderTextColor="#AAAAAA"
-                    value={formVeterinaria}
-                    onChangeText={setFormVeterinaria}
+                    value={formVeterinario}
+                    onChangeText={setFormVeterinario}
                     onFocus={() => setFocusVet(true)}
                     onBlur={() => setFocusVet(false)}
                     returnKeyType="next"
                   />
 
-                  {/* Descripción */}
+                  {/* Notas */}
                   <TextInput
-                    style={[s.input, s.inputMulti, focusDesc && s.inputFocus]}
-                    placeholder="Notas u observaciones (opcional)"
+                    style={[s.input, s.inputMulti, focusNotas && s.inputFocus]}
+                    placeholder="Notas: diagnóstico, indicaciones, medicación… (opcional)"
                     placeholderTextColor="#AAAAAA"
-                    value={formDescripcion}
-                    onChangeText={setFormDescripcion}
-                    onFocus={() => setFocusDesc(true)}
-                    onBlur={() => setFocusDesc(false)}
+                    value={formNotas}
+                    onChangeText={setFormNotas}
+                    onFocus={() => setFocusNotas(true)}
+                    onBlur={() => setFocusNotas(false)}
                     multiline
-                    numberOfLines={3}
+                    numberOfLines={4}
                     textAlignVertical="top"
                   />
 
-                  {/* Botón Guardar */}
-                  <TouchableOpacity style={s.btnGuardar} onPress={guardarTratamiento} disabled={guardando}>
+                  <TouchableOpacity style={s.btnGuardar} onPress={guardarConsulta} disabled={guardando}>
                     {guardando
                       ? <ActivityIndicator size="small" color="#FFF" />
                       : <Text style={s.btnGuardarTxt}>Guardar</Text>
                     }
                   </TouchableOpacity>
 
-                  {/* Botón Cancelar */}
                   <TouchableOpacity style={s.btnCancelar} onPress={cerrarModal}>
                     <Text style={s.btnCancelarTxt}>Cancelar</Text>
                   </TouchableOpacity>
@@ -783,16 +598,11 @@ export default function TratamientosScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Fecha pickers */}
-      <FechaPicker visible={showPickerInicio} titulo="Fecha de inicio"
-        valor={formFechaInicio ?? new Date()}
-        onConfirmar={(d) => { setFormFechaInicio(d); setShowPickerInicio(false); if (formErrors.fechaInicio) setFormErrors((p) => ({ ...p, fechaInicio: null })); }}
-        onCancelar={() => setShowPickerInicio(false)} />
-
-      <FechaPicker visible={showPickerControl} titulo="Próximo control (opcional)"
-        valor={formProximoControl ?? new Date()}
-        onConfirmar={(d) => { setFormProximoControl(d); setShowPickerControl(false); }}
-        onCancelar={() => setShowPickerControl(false)} />
+      {/* Fecha picker */}
+      <FechaPicker visible={showPickerFecha} titulo="Fecha de la consulta"
+        valor={formFecha ?? new Date()}
+        onConfirmar={(d) => { setFormFecha(d); setShowPickerFecha(false); if (formErrors.fecha) setFormErrors((p) => ({ ...p, fecha: null })); }}
+        onCancelar={() => setShowPickerFecha(false)} />
 
     </SafeAreaView>
   );
@@ -844,58 +654,37 @@ const s = StyleSheet.create({
   btnAnadirTxt: { fontSize: 14, fontWeight: '700', color: '#FFF' },
 
   // Empty
-  emptyTxt: { fontSize: 14, color: '#6B6B6B', textAlign: 'center', marginTop: 4, marginBottom: 18 },
+  emptyWrap:   { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 16, gap: 8 },
+  emptyTitulo: { fontSize: 15, fontWeight: '700', color: '#6B6B6B' },
+  emptyTxt:    { fontSize: 13, color: '#9A9A9A', textAlign: 'center', lineHeight: 19 },
 
-  // Card aplicado (ámbar)
-  cardAplicado: {
-    backgroundColor: '#FFFBE6',
+  // Card consulta (celeste suave, distinta del ámbar de Tratamientos)
+  cardConsulta: {
+    backgroundColor: '#F2FBF6',
     borderRadius: 14,
-    borderWidth: 1, borderColor: '#F5E6A3',
+    borderWidth: 1, borderColor: '#D4EEDF',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
     paddingHorizontal: 14, paddingVertical: 12,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     marginBottom: 10,
   },
-  cardLeft:     { flex: 1, paddingRight: 10, gap: 3 },
-  cardRight:    { alignItems: 'center', justifyContent: 'center' },
-  cardNombre:   { fontSize: 14, fontWeight: '700', color: '#2C2C2C', marginBottom: 4 },
-  cardField:    { fontSize: 12, color: '#6B6B6B' },
-  cardContador: { fontSize: 13, fontWeight: '700', marginTop: 4 },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  cardFechaChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#FFFFFF', borderRadius: 12,
+    paddingVertical: 4, paddingHorizontal: 10,
+    borderWidth: 1, borderColor: '#D4EEDF',
+  },
+  cardFechaTxt: { fontSize: 12, fontWeight: '700', color: '#2DBD72' },
+  cardMotivo:   { fontSize: 14, fontWeight: '700', color: '#2C2C2C', marginBottom: 3 },
+  cardField:    { fontSize: 12, color: '#6B6B6B', marginBottom: 3 },
+  cardNotas:    { fontSize: 13, color: '#4A4A4A', lineHeight: 19, marginTop: 2 },
 
   // Botón eliminar
   btnEliminar: {
-    backgroundColor: '#E63946', width: 36, height: 36, borderRadius: 10,
+    backgroundColor: '#E63946', width: 32, height: 32, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
   },
-
-  // Sección sugeridos
-  secSugeridosRow:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 24, marginBottom: 12 },
-  secSugeridosTitulo: { fontSize: 16, fontWeight: '700', color: '#2C2C2C' },
-
-  // Card sugerido (blanco)
-  cardSugerido: {
-    backgroundColor: '#FFF',
-    borderRadius: 12, borderWidth: 1, borderColor: '#EFEFEF',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2,
-    paddingHorizontal: 14, paddingVertical: 12,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginBottom: 10,
-  },
-  cardSugeridoInfo:   { flex: 1, minWidth: 0, paddingRight: 8 },
-  sugeridoNombre:     { fontSize: 14, fontWeight: '700', color: '#2C2C2C' },
-  sugeridoFrecInline: { fontSize: 12, color: '#6B6B6B', marginTop: 2 },
-  btnRegistrar: {
-    backgroundColor: '#2DBD72', borderRadius: 14, paddingVertical: 7, paddingHorizontal: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
-  },
-  btnRegistrarTxt: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
-
-  badgeAplicada: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: '#E8F8F0', borderRadius: 14, paddingVertical: 5, paddingHorizontal: 10,
-  },
-  badgeAplicadaTxt: { fontSize: 12, fontWeight: '700', color: '#2DBD72' },
 
   // Skeleton
   skeletonCard:  { backgroundColor: '#E8E8E8', borderRadius: 12, padding: 16, marginBottom: 10, gap: 8 },
@@ -933,15 +722,14 @@ const s = StyleSheet.create({
   },
   inputFocus:   { borderColor: '#2DBD72' },
   inputError:   { borderColor: '#E63946' },
-  inputMulti:   { height: 72, textAlignVertical: 'top', marginBottom: 20 },
+  inputMulti:   { height: 92, textAlignVertical: 'top', marginBottom: 20 },
   inputFecha: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     borderWidth: 1.5, borderColor: '#DDDDDD', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
     marginBottom: 12, backgroundColor: '#FFF',
   },
-  inputFechaTxt:   { flex: 1, fontSize: 14, color: '#2C2C2C' },
-  inputFechaLabel: { fontSize: 11, color: '#AAAAAA', marginRight: 6 },
+  inputFechaTxt: { flex: 1, fontSize: 14, color: '#2C2C2C' },
   errorTxt:  { fontSize: 11, color: '#E63946', marginTop: -8, marginBottom: 8, marginLeft: 4 },
 
   // Botones del modal

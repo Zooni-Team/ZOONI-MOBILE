@@ -18,6 +18,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -395,6 +396,7 @@ export default function VacunasScreen() {
   const [vacunasAplicadas, setVacunasAplicadas] = useState([]);
   const [vacunasSugeridas, setVacunasSugeridas] = useState([]);
   const [loading,          setLoading]          = useState(true);
+  const [refreshing,       setRefreshing]       = useState(false);
 
   const [modalVisible,          setModalVisible]          = useState(false);
   const [modalModo,              setModalModo]             = useState('añadir'); // 'añadir' | 'marcar' | 'editar'
@@ -424,8 +426,8 @@ export default function VacunasScreen() {
   // ── Carga inicial ──────────────────────────────────────────────────────────
   const idMascota = petId ?? mascotaActivaDemo?.id;
 
-  const cargar = useCallback(async () => {
-    setLoading(true);
+  const cargar = useCallback(async (silencioso = false) => {
+    if (!silencioso) setLoading(true);
     try {
       if (idMascota) {
         const { mascota: m, aplicadas, sugeridas } = await fetchVacunas(idMascota);
@@ -450,6 +452,12 @@ export default function VacunasScreen() {
   }, [idMascota]);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await cargar(true);
+    setRefreshing(false);
+  }, [cargar]);
 
   // ── Toast ────────────────────────────────────────────────────────────────
   function mostrarToast(mensaje, color = '#2DBD72') {
@@ -648,7 +656,11 @@ export default function VacunasScreen() {
         </View>
 
         <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}
-          showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh}
+              colors={['#2DBD72']} tintColor="#2DBD72" />
+          }>
 
           {/* ── HERO ── */}
           <View style={s.hero}>
