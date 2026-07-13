@@ -5,7 +5,8 @@
  * Este archivo resuelve qué archivo de imagen local usar para cada nombre.
  *
  * CÓMO AGREGAR UNA NUEVA IMAGEN:
- *   1. Copiá el archivo .png a zooni-app/assets/mascotas/
+ *   1. Buscá el archivo .png en zooni-app/wwwroot/img/mascotas/{especie}s/{raza}/
+ *      (o agregalo ahí si es nuevo)
  *   2. Agregá una entrada en PET_IMAGES con el mismo key que guardarás en la DB
  *
  * IMPORTANTE: En React Native los require() deben ser estáticos (string literal).
@@ -18,7 +19,7 @@ const FALLBACK = require('../../assets/perro_basico.png');
 export const PET_IMAGES = {
   // ── Perros ──────────────────────────────────────────────────────────────
   perro_default:           FALLBACK,
-  perro_labrador:          FALLBACK, // reemplazar con require('../../assets/mascotas/perro_labrador.png')
+  perro_labrador:          FALLBACK, // reemplazar con require('../../wwwroot/img/mascotas/perros/labrador retriever/perro_basico.png')
   perro_golden:            FALLBACK,
   perro_bulldog:           FALLBACK,
   perro_beagle:            FALLBACK,

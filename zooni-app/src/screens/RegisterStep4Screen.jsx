@@ -28,16 +28,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { registro } from '../services/authApi';
 import { PAISES } from '../constants/registroAssets';
-import { resolvePetImage } from '../constants/petImages';
-
-const ASSET_POR_ESPECIE = {
-  perro: 'perro_default',
-  gato: 'gato_default',
-  conejo: 'conejo_default',
-  ave: 'pajaro_default',
-  hamster: 'hamster_default',
-  raton: 'hamster_default',
-};
+import { resolveMascotaBasicoImage } from '../constants/registroImages';
 
 function PaisPicker({ visible, valor, onSeleccionar, onCerrar }) {
   return (
@@ -89,7 +80,7 @@ export default function RegisterStep4Screen() {
   const [cargando, setCargando] = useState(false);
   const [focus, setFocus] = useState(null);
 
-  const petImg = resolvePetImage(ASSET_POR_ESPECIE[datos.especie] ?? 'perro_default');
+  const petImg = resolveMascotaBasicoImage(datos.especie, datos.razaNombre);
 
   const seleccionarPais = (p) => {
     setPais(p);

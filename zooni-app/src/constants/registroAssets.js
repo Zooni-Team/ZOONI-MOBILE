@@ -1,24 +1,10 @@
 /**
- * registroAssets.js — Imágenes y catálogo de especies del flujo Login/Registro
+ * registroAssets.js — Catálogo de especies y países del flujo Login/Registro
  *
- * TODAS las imágenes de este flujo son PLACEHOLDERS por ahora (usan
- * perro_basico.png). El orden y los nombres de archivo con los que hay que
- * reemplazarlas están documentados en /prompts/Instruction-CargarImagenes.md.
- *
- * Los require() de React Native deben ser literales estáticos, por eso cada
- * imagen es una línea propia y no un mapa dinámico.
+ * Las imágenes del flujo (mascota de bienvenida, cajas por especie, mascota
+ * básica por raza) viven en constants/registroImages.js, extraídas de
+ * ZOONI-MVC (wwwroot/img/).
  */
-
-const PLACEHOLDER = require('../../assets/perro_basico.png');
-
-// Ilustración del grupo de animales del Login (Login1.png de Figma)
-// Reemplazar por: require('../../assets/registro/login_illustration.png')
-export const LOGIN_ILLUSTRATION = PLACEHOLDER;
-
-// Perro asomando de la caja con "?" del Registro Paso 2 (Login4.png de Figma)
-// Es la MISMA para todas las especies.
-// Reemplazar por: require('../../assets/registro/mascota_sorpresa.png')
-export const MASCOTA_SORPRESA = PLACEHOLDER;
 
 /**
  * Especies del grid del Registro Paso 1 (Login2.png de Figma).

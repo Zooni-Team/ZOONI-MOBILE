@@ -20,19 +20,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
-import { resolvePetImage } from '../constants/petImages';
+import { resolveMascotaBasicoImage } from '../constants/registroImages';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_MIN = 7;
-
-const ASSET_POR_ESPECIE = {
-  perro: 'perro_default',
-  gato: 'gato_default',
-  conejo: 'conejo_default',
-  ave: 'pajaro_default',
-  hamster: 'hamster_default',
-  raton: 'hamster_default',
-};
 
 export default function RegisterStep3Screen() {
   const navigation = useNavigation();
@@ -49,7 +40,7 @@ export default function RegisterStep3Screen() {
   const [errores, setErrores] = useState({});
   const [focus, setFocus] = useState(null);
 
-  const petImg = resolvePetImage(ASSET_POR_ESPECIE[datosPrevios.especie] ?? 'perro_default');
+  const petImg = resolveMascotaBasicoImage(datosPrevios.especie, datosPrevios.razaNombre);
 
   // Validaciones en vivo: se muestran mientras el campo tiene contenido inválido,
   // y desaparecen apenas se corrige (no hace falta esperar a tocar "Continuar").

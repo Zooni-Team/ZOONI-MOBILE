@@ -24,10 +24,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Ionicons, FontAwesome } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { login } from '../services/authApi';
+import { MASCOTAS_BIENVENIDA, GOOGLE_ICON, FACEBOOK_ICON, APPLE_ICON } from '../constants/registroImages';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -105,6 +106,9 @@ export default function LoginScreen() {
         >
           <Text style={s.titulo}>Zooni</Text>
 
+          <Image source={MASCOTAS_BIENVENIDA} style={s.illustration} resizeMode="contain"
+            accessibilityLabel="Zooni mascotas" />
+
           {bannerVisible && (
             <Animated.View style={[s.banner, { opacity: bannerOpacity, transform: [{ translateY: bannerY }] }]}>
               <Ionicons name="checkmark-circle" size={20} color="#2DBD72" />
@@ -172,17 +176,14 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           <View style={s.socialRow}>
-            <TouchableOpacity style={[s.socialBtn, s.socialGoogle]} onPress={proximamente}
-              accessibilityLabel="Ingresar con Google">
-              <FontAwesome name="google" size={20} color="#DB4437" />
+            <TouchableOpacity onPress={proximamente} accessibilityLabel="Ingresar con Google">
+              <Image source={GOOGLE_ICON} style={s.socialImg} resizeMode="contain" />
             </TouchableOpacity>
-            <TouchableOpacity style={[s.socialBtn, s.socialFacebook]} onPress={proximamente}
-              accessibilityLabel="Ingresar con Facebook">
-              <FontAwesome name="facebook" size={20} color="#FFFFFF" />
+            <TouchableOpacity onPress={proximamente} accessibilityLabel="Ingresar con Facebook">
+              <Image source={FACEBOOK_ICON} style={s.socialImg} resizeMode="contain" />
             </TouchableOpacity>
-            <TouchableOpacity style={[s.socialBtn, s.socialApple]} onPress={proximamente}
-              accessibilityLabel="Ingresar con Apple">
-              <FontAwesome name="apple" size={22} color="#FFFFFF" />
+            <TouchableOpacity onPress={proximamente} accessibilityLabel="Ingresar con Apple">
+              <Image source={APPLE_ICON} style={s.socialImg} resizeMode="contain" />
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -197,8 +198,10 @@ const s = StyleSheet.create({
 
   titulo: {
     fontSize: 36, fontWeight: '800', color: '#5C3D1E',
-    textAlign: 'center', marginBottom: 32,
+    textAlign: 'center', marginBottom: 8,
   },
+
+  illustration: { width: '100%', height: 160, alignSelf: 'center', marginBottom: 20 },
 
   banner: {
     backgroundColor: '#F0FFF8', borderWidth: 1.5, borderColor: '#2DBD72', borderRadius: 12,
@@ -250,9 +253,6 @@ const s = StyleSheet.create({
   },
   btnProveedorTxt: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
 
-  socialRow: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginTop: 16 },
-  socialBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  socialGoogle: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDDDDD' },
-  socialFacebook: { backgroundColor: '#1877F2' },
-  socialApple: { backgroundColor: '#000000' },
+  socialRow: { flexDirection: 'row', justifyContent: 'center', gap: 30, marginTop: 16 },
+  socialImg: { width: 42, height: 42 },
 });

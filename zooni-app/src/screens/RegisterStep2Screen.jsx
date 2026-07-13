@@ -26,7 +26,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 
 import { fetchRazas } from '../services/authApi';
-import { MASCOTA_SORPRESA } from '../constants/registroAssets';
+import { resolveCajaImage } from '../constants/registroImages';
 import OpcionPicker from '../components/OpcionPicker';
 
 const SEXOS = ['Macho', 'Hembra'];
@@ -181,8 +181,8 @@ export default function RegisterStep2Screen() {
             <Text style={s.headerTxt}>Completá los datos de tu {capitalizar(especie)} 🐾</Text>
           </View>
 
-          <Image source={MASCOTA_SORPRESA} style={s.sorpresa} resizeMode="contain"
-            accessibilityLabel="Mascota sorpresa en caja" />
+          <Image source={resolveCajaImage(especie)} style={s.sorpresa} resizeMode="contain"
+            accessibilityLabel={`${capitalizar(especie)} en caja`} />
 
           <View style={s.card}>
             {/* Sexo */}
