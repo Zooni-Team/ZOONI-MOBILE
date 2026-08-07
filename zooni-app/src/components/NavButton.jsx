@@ -100,10 +100,12 @@ const styles = StyleSheet.create({
   },
   primary: { backgroundColor: '#F5C842' },  // Amarillo dorado
   danger: {
-    backgroundColor: '#E63946',             // Rojo S.O.S
-    shadowColor: '#E63946',                 // Sombra roja
-    shadowOpacity: 0.45,
-    shadowRadius: 14,
+    // Instruction-SOS §2.1: #D62031 (no #E63946 — con texto blanco de 17px
+    // da 4.17:1 y no pasa AA). Sombra teñida de rojo, sin animación de pulso.
+    backgroundColor: '#D62031',
+    shadowColor: '#E63946',
+    shadowOpacity: 0.32,
+    shadowRadius: 8,
     elevation: 6,
   },
   icon: { marginRight: 12 },
