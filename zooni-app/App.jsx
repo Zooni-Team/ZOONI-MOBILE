@@ -31,6 +31,7 @@ import CalendarioScreen  from './src/screens/CalendarioScreen';
 import ChatScreen        from './src/screens/ChatScreen';
 import MensajesScreen    from './src/screens/MensajesScreen';
 import PerfilScreen      from './src/screens/PerfilScreen';
+import SosScreen         from './src/screens/SosScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -85,6 +86,7 @@ export default function App() {
           <Stack.Screen name="Vacunas" component={VacunasScreen} />
           <Stack.Screen name="VirtualVet" component={VirtualVetScreen} />
           <Stack.Screen name="Consultas" component={ConsultasScreen} />
+          <Stack.Screen name="Sos" component={SosScreen} />
           <Stack.Screen name="Configuracion" component={PlaceholderScreen} />
           <Stack.Screen name="Notificaciones" component={PlaceholderScreen} />
         </Stack.Navigator>

@@ -318,7 +318,7 @@ export default function HomeScreen() {
                 label="S.O.S Veterinario"
                 iconName="alert-circle-outline"
                 variant="danger"
-                onPress={() => { /* TODO: flujo SOS */ }}
+                onPress={() => navigation.navigate('Sos')}
                 accessibilityLabel="Emergencia veterinaria"
               />
             </>
