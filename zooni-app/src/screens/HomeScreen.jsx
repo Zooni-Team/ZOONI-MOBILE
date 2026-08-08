@@ -315,10 +315,10 @@ export default function HomeScreen() {
 
               {/* SOS — siempre visible, siempre último */}
               <NavButton
-                label="S.O.S Veterinario"
-                iconName="alert-circle-outline"
+                label="SOS Veterinario"
+                iconName="medical"
                 variant="danger"
-                onPress={() => navigation.navigate('Sos')}
+                onPress={() => navigation.navigate('SOS')}
                 accessibilityLabel="Emergencia veterinaria"
               />
             </>

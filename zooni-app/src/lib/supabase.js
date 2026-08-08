@@ -22,10 +22,43 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
-  },
-});
+/**
+ * Sin .env, createClient(undefined) tira un error al importar el módulo y la
+ * app entera muere antes de renderizar. En su lugar se exporta un stub donde
+ * cualquier cadena (`.from().select().eq()...`) resuelve `{ data: null,
+ * error }`, así cada pantalla activa su propio fallback de datos demo.
+ */
+function crearStubSinConfig() {
+  const error = new Error(
+    'Supabase sin configurar (faltan las variables EXPO_PUBLIC_* en el .env)'
+  );
+  // Cada nodo es a la vez invocable (`.from(...)`) y navegable
+  // (`.storage.from`), y al hacerle await resuelve como query fallida.
+  const handler = {
+    get(_target, prop) {
+      // `await cadena` llama a .then() → resuelve como una query fallida
+      if (prop === 'then') {
+        return (resolve) => resolve({ data: null, error });
+      }
+      return crearNodo();
+    },
+    apply() {
+      return crearNodo();
+    },
+  };
+  function crearNodo() {
+    return new Proxy(function () {}, handler);
+  }
+  return crearNodo();
+}
+
+export const supabase =
+  supabaseUrl && supabaseAnonKey
+    ? createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+      })
+    : crearStubSinConfig();

@@ -86,7 +86,8 @@ export default function App() {
           <Stack.Screen name="Vacunas" component={VacunasScreen} />
           <Stack.Screen name="VirtualVet" component={VirtualVetScreen} />
           <Stack.Screen name="Consultas" component={ConsultasScreen} />
-          <Stack.Screen name="Sos" component={SosScreen} />
+          <Stack.Screen name="SOS"           component={SosScreen} />
+          <Stack.Screen name="VeterinariaDetalle" component={PlaceholderScreen} />
           <Stack.Screen name="Configuracion" component={PlaceholderScreen} />
           <Stack.Screen name="Notificaciones" component={PlaceholderScreen} />
         </Stack.Navigator>
