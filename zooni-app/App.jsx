@@ -32,6 +32,21 @@ import ChatScreen        from './src/screens/ChatScreen';
 import MensajesScreen    from './src/screens/MensajesScreen';
 import PerfilScreen      from './src/screens/PerfilScreen';
 import SosScreen         from './src/screens/SosScreen';
+import ConfiguracionScreen      from './src/screens/Configuracion/ConfiguracionScreen';
+import CuentaSeguridadScreen    from './src/screens/Configuracion/CuentaSeguridadScreen';
+import TemaScreen               from './src/screens/Configuracion/TemaScreen';
+import MediosCalidadScreen      from './src/screens/Configuracion/MediosCalidadScreen';
+import TiempoAppScreen          from './src/screens/Configuracion/TiempoAppScreen';
+import MisMascotasScreen        from './src/screens/Configuracion/MisMascotasScreen';
+import PrivacidadScreen         from './src/screens/Configuracion/PrivacidadScreen';
+import PermisosScreen           from './src/screens/Configuracion/PermisosScreen';
+import NotificacionesConfigScreen from './src/screens/Configuracion/NotificacionesScreen';
+import SuscripcionesScreen      from './src/screens/Configuracion/SuscripcionesScreen';
+import LegalScreen              from './src/screens/Configuracion/LegalScreen';
+import AyudaSoporteScreen       from './src/screens/Configuracion/AyudaSoporteScreen';
+import EliminarCuentaScreen     from './src/screens/Configuracion/EliminarCuentaScreen';
+import CambiarContrasenaScreen  from './src/screens/Configuracion/CambiarContrasenaScreen';
+import SesionesScreen           from './src/screens/Configuracion/SesionesScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -88,7 +103,21 @@ export default function App() {
           <Stack.Screen name="Consultas" component={ConsultasScreen} />
           <Stack.Screen name="SOS"           component={SosScreen} />
           <Stack.Screen name="VeterinariaDetalle" component={PlaceholderScreen} />
-          <Stack.Screen name="Configuracion" component={PlaceholderScreen} />
+          <Stack.Screen name="Configuracion"        component={ConfiguracionScreen} />
+          <Stack.Screen name="ConfigCuenta"         component={CuentaSeguridadScreen} />
+          <Stack.Screen name="ConfigTema"           component={TemaScreen} />
+          <Stack.Screen name="ConfigMedios"         component={MediosCalidadScreen} />
+          <Stack.Screen name="ConfigTiempo"         component={TiempoAppScreen} />
+          <Stack.Screen name="ConfigMascotas"       component={MisMascotasScreen} />
+          <Stack.Screen name="ConfigPrivacidad"     component={PrivacidadScreen} />
+          <Stack.Screen name="ConfigPermisos"       component={PermisosScreen} />
+          <Stack.Screen name="ConfigNotificaciones" component={NotificacionesConfigScreen} />
+          <Stack.Screen name="ConfigSuscripciones"  component={SuscripcionesScreen} />
+          <Stack.Screen name="ConfigLegal"          component={LegalScreen} />
+          <Stack.Screen name="ConfigAyuda"          component={AyudaSoporteScreen} />
+          <Stack.Screen name="ConfigEliminarCuenta" component={EliminarCuentaScreen} />
+          <Stack.Screen name="ConfigCambiarContrasena" component={CambiarContrasenaScreen} />
+          <Stack.Screen name="ConfigSesiones"       component={SesionesScreen} />
           <Stack.Screen name="Notificaciones" component={PlaceholderScreen} />
         </Stack.Navigator>
       </NavigationContainer>
