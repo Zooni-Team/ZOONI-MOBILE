@@ -48,38 +48,60 @@ export async function fetchRazas(especie) {
  */
 export async function login(email, password) {
   const mail = email.trim().toLowerCase();
-
-  const { data: usuario, error } = await supabase
-    .from('User')
-    .select('*')
-    .ilike('Mail', mail)
-    .maybeSingle();
-  if (error) throw error;
-  if (!usuario) throw new Error('credenciales');
-
   const hash = await hashPassword(password);
-  // Fallback a texto plano para los usuarios demo sembrados por SQL
-  // (ej: 'demo-sin-login'), que no pasaron por el registro de la app.
-  const coincide = usuario.Contrasena === hash || usuario.Contrasena === password;
-  if (!coincide) throw new Error('credenciales');
 
-  await setCurrentUserId(usuario.Id_User);
+  // Camino seguro: la comparación de hash se hace en el SERVIDOR
+  // (RPC login_user de 021_seguridad.sql). El cliente nunca ve el hash
+  // guardado. Devuelve null si mail o contraseña no coinciden, sin
+  // distinguir cuál (no se revela si el mail existe).
+  let usuario = null;
+  const { data: rpcData, error: rpcError } = await supabase
+    .rpc('login_user', { p_mail: mail, p_hash: hash });
+
+  if (!rpcError) {
+    if (!rpcData) throw new Error('credenciales');
+    usuario = rpcData;
+  } else if (esFuncionInexistente(rpcError)) {
+    // Fallback LEGACY: el 021 todavía no se ejecutó en esta base.
+    // Se mantiene solo para no romper el login en bases viejas — borrar
+    // este bloque cuando la migración esté corrida en todos lados.
+    const { data: filaUser, error } = await supabase
+      .from('User')
+      .select('*')
+      .ilike('Mail', mail)
+      .maybeSingle();
+    if (error) throw error;
+    if (!filaUser) throw new Error('credenciales');
+    const coincide = filaUser.Contrasena === hash || filaUser.Contrasena === password;
+    if (!coincide) throw new Error('credenciales');
+    usuario = {
+      id: filaUser.Id_User,
+      nombre: filaUser.Nombre,
+      apellido: filaUser.Apellido,
+      email: filaUser.Mail,
+      fotoPerfil: filaUser.FotoPerfil ?? null,
+    };
+  } else {
+    throw rpcError;
+  }
+
+  await setCurrentUserId(usuario.id);
 
   const { data: mascotas } = await supabase
     .from('Mascota')
     .select('*')
-    .eq('Id_User', usuario.Id_User)
+    .eq('Id_User', usuario.id)
     .order('EsActiva', { ascending: false });
 
   const mascotaActiva = mascotas?.[0] ?? null;
 
   return {
     usuario: {
-      id: usuario.Id_User,
-      nombre: usuario.Nombre,
-      apellido: usuario.Apellido,
-      email: usuario.Mail,
-      fotoPerfil: usuario.FotoPerfil ?? null,
+      id: usuario.id,
+      nombre: usuario.nombre,
+      apellido: usuario.apellido,
+      email: usuario.email,
+      fotoPerfil: usuario.fotoPerfil ?? null,
     },
     mascotaActiva: mascotaActiva
       ? {
@@ -91,6 +113,11 @@ export async function login(email, password) {
         }
       : null,
   };
+}
+
+/** PGRST202 = la función RPC no existe (todavía no se corrió el 021). */
+function esFuncionInexistente(error) {
+  return error?.code === 'PGRST202' || /function .* does not exist/i.test(error?.message ?? '');
 }
 
 // ─────────────────────────────────────────────
@@ -132,17 +159,65 @@ export async function registro(datos) {
 
   if ((usuario.password ?? '').length < 7) throw new Error('password_corta');
 
-  // a) email único
+  const hash = await hashPassword(usuario.password);
+  const ubicacionDisplay = [usuario.ciudad, usuario.provincia].filter(Boolean).join(', ') || null;
+
+  // Camino seguro: RPC atómica del servidor (021_seguridad.sql).
+  // Usuario + credencial + mascota + rol en una sola transacción: si algo
+  // falla, Postgres revierte todo solo — sin rollback manual con DELETEs.
+  const { data: rpcData, error: rpcError } = await supabase.rpc(
+    'registrar_usuario_con_mascota',
+    {
+      p_usuario: {
+        nombre: usuario.nombre.trim(),
+        apellido: usuario.apellido.trim(),
+        email: mail,
+        telefono: usuario.telefono?.trim() || null,
+        codigoTelefono: usuario.codigoTelefono?.trim() || null,
+        pais: usuario.pais ?? null,
+        paisCodigo: usuario.paisCodigo ?? null,
+        provincia: usuario.provincia?.trim() || null,
+        ciudad: usuario.ciudad?.trim() || null,
+        ubicacion: ubicacionDisplay,
+      },
+      p_hash: hash,
+      p_mascota: {
+        nombre: mascota.nombre.trim(),
+        especie: mascota.especie,
+        sexo: mascota.sexo,
+        raza: mascota.razaNombre,
+        peso: mascota.pesoKg ?? null,
+        fechaNacimiento: fechaNacimientoDesdeMeses(mascota.edadMeses),
+        imagenAsset: IMAGEN_ASSET_POR_ESPECIE[mascota.especie] ?? 'perro_default',
+      },
+    }
+  );
+
+  if (!rpcError) {
+    return {
+      mensaje: 'Cuenta creada exitosamente',
+      usuario: {
+        id: rpcData.id,
+        nombre: usuario.nombre.trim(),
+        apellido: usuario.apellido.trim(),
+        email: rpcData.email,
+      },
+    };
+  }
+
+  if (String(rpcError.message ?? '').includes('email_existente')) {
+    throw new Error('email_existente');
+  }
+  if (!esFuncionInexistente(rpcError)) throw rpcError;
+
+  // Fallback LEGACY (el 021 no está corrido): flujo viejo con rollback
+  // manual. Borrar cuando la migración esté aplicada en todos lados.
   const { data: existente } = await supabase
     .from('User')
     .select('Id_User')
     .ilike('Mail', mail)
     .maybeSingle();
   if (existente) throw new Error('email_existente');
-
-  // b) crear usuario
-  const hash = await hashPassword(usuario.password);
-  const ubicacionDisplay = [usuario.ciudad, usuario.provincia].filter(Boolean).join(', ') || null;
 
   const { data: nuevoUsuario, error: errUsuario } = await supabase
     .from('User')
@@ -166,7 +241,6 @@ export async function registro(datos) {
   const nuevoUserId = nuevoUsuario.Id_User;
 
   try {
-    // c) crear mascota (activa, es la primera)
     const { error: errMascota } = await supabase.from('Mascota').insert({
       Id_User: nuevoUserId,
       Nombre: mascota.nombre.trim(),
@@ -177,15 +251,11 @@ export async function registro(datos) {
       FechaNacimiento: fechaNacimientoDesdeMeses(mascota.edadMeses),
       ImagenAsset: IMAGEN_ASSET_POR_ESPECIE[mascota.especie] ?? 'perro_default',
       EsActiva: true,
-      // Foto: la subida a Supabase Storage no está integrada todavía;
-      // mascota.fotoUri queda solo en el dispositivo por ahora.
     });
     if (errMascota) throw errMascota;
 
-    // d) rol OWNER (id 1 en el seed de Role)
     await supabase.from('UserRole').insert({ Id_User: nuevoUserId, Id_Role: 1 });
   } catch (err) {
-    // Rollback manual: no dejar el usuario sin mascota
     await supabase.from('UserRole').delete().eq('Id_User', nuevoUserId);
     await supabase.from('Mascota').delete().eq('Id_User', nuevoUserId);
     await supabase.from('User').delete().eq('Id_User', nuevoUserId);

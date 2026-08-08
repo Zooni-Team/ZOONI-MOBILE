@@ -47,6 +47,9 @@ import AyudaSoporteScreen       from './src/screens/Configuracion/AyudaSoporteSc
 import EliminarCuentaScreen     from './src/screens/Configuracion/EliminarCuentaScreen';
 import CambiarContrasenaScreen  from './src/screens/Configuracion/CambiarContrasenaScreen';
 import SesionesScreen           from './src/screens/Configuracion/SesionesScreen';
+import AltaMascotaScreen        from './src/screens/Configuracion/AltaMascotaScreen';
+import EditarMascotaScreen      from './src/screens/Configuracion/EditarMascotaScreen';
+import EliminarMascotaScreen    from './src/screens/Configuracion/EliminarMascotaScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -85,7 +88,7 @@ export default function App() {
           <Stack.Screen name="RegisterStep4" component={RegisterStep4Screen} />
           <Stack.Screen name="Comunidad"     component={ComunidadScreen} />
           <Stack.Screen name="FichaMedica" component={FichaMedicaScreen} />          
-          <Stack.Screen name="MisMascotas"   component={PlaceholderScreen} />
+          <Stack.Screen name="MisMascotas"   component={MisMascotasScreen} />
           <Stack.Screen name="Match"         component={MatchScreen} />
           <Stack.Screen name="MatchFilters"  component={MatchFiltersScreen} />
           <Stack.Screen name="Planificador"  component={PlaceholderScreen} />
@@ -118,6 +121,9 @@ export default function App() {
           <Stack.Screen name="ConfigEliminarCuenta" component={EliminarCuentaScreen} />
           <Stack.Screen name="ConfigCambiarContrasena" component={CambiarContrasenaScreen} />
           <Stack.Screen name="ConfigSesiones"       component={SesionesScreen} />
+          <Stack.Screen name="AltaMascota"          component={AltaMascotaScreen} />
+          <Stack.Screen name="EditarMascota"        component={EditarMascotaScreen} />
+          <Stack.Screen name="EliminarMascota"      component={EliminarMascotaScreen} />
           <Stack.Screen name="Notificaciones" component={PlaceholderScreen} />
         </Stack.Navigator>
       </NavigationContainer>

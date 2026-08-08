@@ -33,7 +33,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { calcularEdad } from '../utils/calcularEdad';
 import { parseFechaLocal } from '../utils/fechaLocal';
-import { resolvePetImage } from '../constants/petImages';
+import { resolveMascotaVisual } from '../constants/petImages';
 import {
   fetchTratamientos,
   crearTratamiento,
@@ -587,7 +587,7 @@ export default function TratamientosScreen() {
     peso: null, fecha_nacimiento: null, imagen_asset: 'perro_default',
   };
   const edad    = calcularEdad(m.fecha_nacimiento);
-  const petImg  = resolvePetImage(m.imagen_asset ?? m.imagenAsset);
+  const petImg  = resolveMascotaVisual(m);
   const pesoFmt = m.peso != null
     ? parseFloat(m.peso).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' kg'
     : '—';

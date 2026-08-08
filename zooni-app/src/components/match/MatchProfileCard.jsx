@@ -9,7 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { especieIcono } from '../../data/matchDemo';
 import { resolvePetPhotoSource } from '../../constants/matchAssets';
-import { resolvePetImage } from '../../constants/petImages';
+import { resolveMascotaVisual } from '../../constants/petImages';
 
 export default function MatchProfileCard({ perfil, cardHeight, cardWidth, onPress }) {
   const { nombre, edad, barrio, ciudad, foto_perfil_url, mascota, intereses } = perfil;
@@ -32,7 +32,7 @@ export default function MatchProfileCard({ perfil, cardHeight, cardWidth, onPres
           </View>
         )}
         <View style={styles.petAvatarWrap}>
-          <Image source={resolvePetImage(mascota.imagen_asset)} style={styles.petAvatar} />
+          <Image source={resolveMascotaVisual(mascota)} style={styles.petAvatar} />
         </View>
       </View>
 

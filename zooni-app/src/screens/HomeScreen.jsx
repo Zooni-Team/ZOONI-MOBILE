@@ -16,7 +16,7 @@ import AddButtonModal from '../components/AddButtonModal';
 import NavButton from '../components/NavButton';
 import DraggableList from '../components/DraggableList';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
-import { resolvePetImage } from '../constants/petImages';
+import { resolveMascotaVisual } from '../constants/petImages';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 const HERO_HEIGHT = Math.min(SCREEN_HEIGHT * 0.40, 340);
@@ -251,7 +251,7 @@ export default function HomeScreen() {
                 // Foto real subida si tiene, si no el look/avatar aplicado en
                 // Closet — antes esto solo miraba la foto y por eso el avatar
                 // nunca se veía acá aunque sí en Ficha Médica.
-                source={mascota?.fotoUrl ? { uri: mascota.fotoUrl } : resolvePetImage(mascota?.imagen_asset)}
+                source={resolveMascotaVisual(mascota ?? {})}
                 label={mascota ? `Ilustración de ${mascota.nombre}` : 'Mascota'}
               />
             )}

@@ -34,7 +34,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { calcularEdad } from '../utils/calcularEdad';
 import { toISODateLocal } from '../utils/fechaLocal';
-import { resolvePetImage } from '../constants/petImages';
+import { resolveMascotaVisual } from '../constants/petImages';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { fetchMascota, fetchConsultas, crearConsulta, eliminarConsulta } from '../services/fichaMedicaApi';
 
@@ -436,7 +436,7 @@ export default function ConsultasScreen() {
     peso: null, fecha_nacimiento: null, imagen_asset: 'perro_default',
   };
   const edad   = calcularEdad(m.fecha_nacimiento);
-  const petImg = resolvePetImage(m.imagen_asset ?? m.imagenAsset);
+  const petImg = resolveMascotaVisual(m);
 
   // ── RENDER ────────────────────────────────────────────────────────────────
   return (

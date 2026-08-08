@@ -31,6 +31,7 @@ import { SettingsGroup, SettingsRow, T } from '../../components/settings/Setting
 import { clearToken, fetchHome } from '../../services/api';
 import { clearCurrentUserId } from '../../config/session';
 import { getSettings, subscribeSettings } from '../../services/settingsStore';
+import { fetchMisMascotas } from '../../services/petsApi';
 
 const APP_VERSION = 'Zooni 1.4.2 (build 218)';
 
@@ -53,6 +54,14 @@ export default function ConfiguracionScreen() {
   // Usuario y mascota activa para el encabezado del drawer (igual que Home)
   useFocusEffect(useCallback(() => {
     fetchHome().then(setHomeData).catch(() => {});
+  }, []));
+
+  // Cantidad real de mascotas activas del usuario (valor secundario de la fila)
+  const [mascotasCount, setMascotasCount] = useState(null);
+  useFocusEffect(useCallback(() => {
+    fetchMisMascotas()
+      .then(({ activas }) => setMascotasCount(activas.length))
+      .catch(() => setMascotasCount(null));
   }, []));
 
   const confirmarCerrarSesion = () => {
@@ -118,7 +127,10 @@ export default function ConfiguracionScreen() {
         {/* Grupo 2 — Mascotas y privacidad */}
         <SettingsGroup label="Mascotas y privacidad">
           <SettingsRow icon="paw-outline" tint="mascotas" label="Mis Mascotas"
-            value="3 mascotas" onPress={ir('ConfigMascotas')} />
+            value={mascotasCount != null
+              ? `${mascotasCount} ${mascotasCount === 1 ? 'mascota' : 'mascotas'}`
+              : null}
+            onPress={ir('ConfigMascotas')} />
           <SettingsRow icon="lock-closed-outline" tint="privacidad" label="Privacidad y visibilidad"
             value={settings.privacy.private_profile ? 'Perfil privado' : 'Perfil público'}
             onPress={ir('ConfigPrivacidad')} />

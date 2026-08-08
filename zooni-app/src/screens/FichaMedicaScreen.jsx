@@ -34,7 +34,7 @@ import jsPDF from 'jspdf';
 
 import { calcularEdad } from '../utils/calcularEdad';
 import { parseFechaLocal, toISODateLocal } from '../utils/fechaLocal';
-import { resolvePetImage } from '../constants/petImages';
+import { resolveMascotaVisual } from '../constants/petImages';
 import SkeletonLoader from '../components/SkeletonLoader';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
@@ -522,7 +522,7 @@ export default function FichaMedicaScreen() {
   const interactuable = !loading && !demoMascota;
   const m = mascota ?? DEMO_MASCOTA;
   const edad = calcularEdad(m.fecha_nacimiento);
-  const petImg = resolvePetImage(m.imagen_asset ?? m.imagenAsset);
+  const petImg = resolveMascotaVisual(m);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
