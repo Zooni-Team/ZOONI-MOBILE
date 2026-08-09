@@ -6,7 +6,8 @@
  * El modelo orienta pero nunca diagnostica ni receta, y ante lo concreto de
  * salud siempre deriva al veterinario. Ante una emergencia, corta y manda a SOS.
  *
- * La llamada a Groq usa la key del .env (ver src/config/groq.js).
+ * La llamada a Groq NO se hace desde acá: va a la Edge Function `zoonivet-chat`,
+ * que guarda la API key como secret. Ver src/services/zoonivetApi.js.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -34,7 +35,6 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { resolveMascotaVisual } from '../constants/petImages';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
-import { groqDisponible } from '../config/groq';
 import {
   construirContextoMascota,
   fetchMascotasParaChat,
@@ -171,7 +171,6 @@ export default function VirtualVetScreen() {
 
   const listRef = useRef(null);
   const abortRef = useRef(null);
-  const sinKey = !groqDisponible();
 
   const mascotaSel = mascotas.find((m) => m.id === petId) ?? null;
 
@@ -284,14 +283,6 @@ export default function VirtualVetScreen() {
         <View style={styles.headerBtn} />
       </View>
 
-      {sinKey && (
-        <View style={styles.avisoBar}>
-          <Text style={styles.avisoText}>
-            Falta la GROQ_API_KEY en el .env. El chat no puede responder hasta configurarla.
-          </Text>
-        </View>
-      )}
-
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -381,7 +372,7 @@ export default function VirtualVetScreen() {
                 value={input}
                 onChangeText={setInput}
                 multiline
-                editable={!enviando && !!ctx && !sinKey}
+                editable={!enviando && !!ctx}
                 maxLength={1000}
               />
             </View>
@@ -391,9 +382,9 @@ export default function VirtualVetScreen() {
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
-                style={[styles.sendBtn, (!input.trim() || !ctx || sinKey) && styles.sendBtnOff]}
+                style={[styles.sendBtn, (!input.trim() || !ctx) && styles.sendBtnOff]}
                 onPress={() => enviar(input)}
-                disabled={!input.trim() || !ctx || sinKey}
+                disabled={!input.trim() || !ctx}
               >
                 <Ionicons name="arrow-up" size={20} color={C.text} />
               </TouchableOpacity>
@@ -469,9 +460,6 @@ const styles = StyleSheet.create({
   },
   headerBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 20, fontWeight: '800', color: C.text },
-
-  avisoBar: { backgroundColor: C.amberTint, paddingHorizontal: 16, paddingVertical: 8 },
-  avisoText: { color: C.amberText, fontSize: 12, fontWeight: '600', textAlign: 'center' },
 
   ctxCard: {
     flexDirection: 'row',
