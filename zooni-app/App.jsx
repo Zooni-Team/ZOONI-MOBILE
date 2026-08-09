@@ -109,7 +109,7 @@ function RootNavigator({ initialRoute }) {
           <Stack.Screen name="Chat"          component={ChatScreen} />
           <Stack.Screen name="Mensajes"      component={MensajesScreen} />
           <Stack.Screen name="Eventos"       component={EventosScreen} />
-          <Stack.Screen name="ChatBot"       component={PlaceholderScreen} />
+          <Stack.Screen name="ChatBot"       component={VirtualVetScreen} />
           <Stack.Screen name="Closet"        component={ClosetScreen} />
           <Stack.Screen name="Perfil"        component={PerfilScreen} />
           <Stack.Screen name="Consejos" component={ConsejosScreen} />

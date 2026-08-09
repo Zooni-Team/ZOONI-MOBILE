@@ -662,7 +662,7 @@ export default function FichaMedicaScreen() {
           <Text style={[s.secTitulo, { marginTop: 24 }]}>Secciones</Text>
 
           <BotonNav icono="hardware-chip-outline" iconoColor="#2DBD72" texto="Virtual Vet"
-            onPress={() => navigation.navigate('VirtualVet')} />
+            onPress={() => navigation.navigate('VirtualVet', { petId })} />
           <BotonNav icono="medical-outline"       iconoColor="#2DBD72" texto="Vacunas"
             onPress={() => navigation.navigate('Vacunas', { petId: petId ?? 0 })} />
           <BotonNav icono="medkit-outline"        iconoColor="#E63946" texto="Tratamientos"
