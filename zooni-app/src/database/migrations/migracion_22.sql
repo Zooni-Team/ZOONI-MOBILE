@@ -167,13 +167,15 @@ begin
     v_dias  := v_fecha_reciente - v_fecha_previo;
     if v_delta <> 0 and v_dias > 0 then
       if v_dias >= 30 then
-        v_periodo := round(v_dias / 30.0) || ' meses';
+        v_periodo := round(v_dias / 30.0)::int || ' meses';
       else
         v_periodo := v_dias || ' días';
       end if;
+      -- Formato 'FM990.0' usa un punto literal (no depende del locale, a
+      -- diferencia de 'D'); después lo pasamos a coma como en el front.
       v_tendencia :=
         case when v_delta > 0 then 'subió ' else 'bajó ' end
-        || replace(to_char(abs(v_delta), 'FM990D0'), '.', ',')
+        || replace(to_char(abs(v_delta), 'FM990.0'), '.', ',')
         || ' kg en ' || v_periodo;
     end if;
   end if;
