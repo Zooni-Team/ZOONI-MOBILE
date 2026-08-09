@@ -15,6 +15,7 @@ import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
 import { parseFechaLocal } from '../utils/fechaLocal';
 import { enRango, sanitizarDigitos, sanitizarTexto } from '../utils/sanitizar';
+import { subirImagenPublica } from '../utils/imagenStorage';
 
 export const LIMITE_ACTIVAS = 10;
 
@@ -179,6 +180,8 @@ export async function recuperarMascota(id) {
       ArchivadaEn: null,
       MotivoArchivo: null,
       MotivoArchivoTexto: null,
+      // Si estaba "En memoria" por un toque sin querer, se limpia también
+      FechaFallecimiento: null,
     })
     .eq('Id_Mascota', id)
     .eq('Id_User', getCurrentUserId());
@@ -255,8 +258,16 @@ export async function crearMascota(datos) {
   }
   const microchip = datos.microchip ? sanitizarDigitos(datos.microchip, 15) : null;
 
+  // Foto real: se sube a Supabase Storage y se guarda su URL en Mascota.Foto
+  // (es la que muestra Match). Si viene una URL ya subida, se usa tal cual.
+  let fotoUrl = datos.fotoUrl ?? null;
+  if (!fotoUrl && datos.fotoUri) {
+    fotoUrl = await subirImagenPublica(datos.fotoUri, 'mascotas');
+  }
+
   const fila = {
     Id_User: userId,
+    Foto: fotoUrl,
     Nombre: sanitizarTexto(datos.nombre, 30),
     Especie: sanitizarTexto(datos.especie, 50),
     Raza: sanitizarTexto(datos.raza, 100),
@@ -287,6 +298,52 @@ export async function crearMascota(datos) {
   }
   await registrarHistorial(data.Id_Mascota, null, 'active', 'alta');
   return mapMascota(data);
+}
+
+// ─── GALERÍA DE FOTOS (varias fotos por mascota — migración 028) ─────────────
+
+/**
+ * Todas las fotos de una mascota para el carrusel: la portada (Mascota.Foto)
+ * primero, después las de la galería por orden. Devuelve array de
+ * { id, url, esPortada }. `id` null para la portada (no está en mascota_fotos).
+ */
+export async function fetchFotosMascota(idMascota, fotoPortada) {
+  const { data } = await supabase
+    .from('mascota_fotos').select('*')
+    .eq('id_mascota', idMascota)
+    .order('orden', { ascending: true });
+  const galeria = (data ?? []).map((f) => ({ id: f.id, url: f.url, esPortada: false }));
+  return fotoPortada
+    ? [{ id: null, url: fotoPortada, esPortada: true }, ...galeria]
+    : galeria;
+}
+
+/** Sube una foto nueva a la galería de la mascota. */
+export async function agregarFotoMascota(idMascota, uri) {
+  const url = await subirImagenPublica(uri, 'mascotas');
+  const { data, error } = await supabase
+    .from('mascota_fotos')
+    .insert({ id_mascota: idMascota, url, orden: Date.now() % 1000000 })
+    .select().single();
+  if (error) throw error;
+  return { id: data.id, url: data.url, esPortada: false };
+}
+
+/** Elimina una foto de la galería (no la portada). */
+export async function eliminarFotoMascota(fotoId) {
+  const { error } = await supabase.from('mascota_fotos').delete().eq('id', fotoId);
+  if (error) throw error;
+  return true;
+}
+
+/** Sube y setea la foto principal (portada) de una mascota. Devuelve la URL. */
+export async function setFotoPrincipalMascota(id, uri) {
+  const url = await subirImagenPublica(uri, 'mascotas');
+  const { error } = await supabase
+    .from('Mascota').update({ Foto: url })
+    .eq('Id_Mascota', id).eq('Id_User', getCurrentUserId());
+  if (error) throw error;
+  return url;
 }
 
 /**

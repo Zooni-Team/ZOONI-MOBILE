@@ -120,11 +120,17 @@ export async function fetchHome() {
   if (errUsuario) throw errUsuario;
   if (errMascotas) throw errMascotas;
 
-  const mascotaActiva = mascotas?.find((m) => m.EsActiva) ?? mascotas?.[0] ?? null;
+  // Solo las mascotas en estado 'active' (las archivadas/eliminadas del
+  // ciclo de vida de Mis Mascotas no aparecen en Home). El ?? 'active'
+  // banca bases donde la migración 020 todavía no corrió.
+  const activas = (mascotas ?? []).filter((m) => (m.Estado ?? 'active') === 'active');
+  const mascotaActiva = activas.find((m) => m.EsActiva) ?? activas[0] ?? null;
 
   return {
     usuario: mapUsuario(usuario),
     mascotaActiva: mapMascota(mascotaActiva),
+    // Todas las activas, para el selector con flechas del Home
+    mascotas: activas.map(mapMascota),
     notificacionesNoLeidas: notificacionesNoLeidas ?? 0,
   };
 }
@@ -171,7 +177,11 @@ export async function saveHomeConfig(config) {
 /** Marca `mascotaId` como la mascota activa del usuario (y desmarca las demás). */
 export async function activarMascota(mascotaId) {
   await supabase.from('Mascota').update({ EsActiva: false }).eq('Id_User', getCurrentUserId());
-  const { error } = await supabase.from('Mascota').update({ EsActiva: true }).eq('Id_Mascota', mascotaId);
+  const { error } = await supabase
+    .from('Mascota')
+    .update({ EsActiva: true })
+    .eq('Id_Mascota', mascotaId)
+    .eq('Id_User', getCurrentUserId());
   if (error) throw error;
 }
 
@@ -221,9 +231,10 @@ export async function aplicarAvatar(petId, imagenAsset) {
 // NOTIFICACIONES
 // ─────────────────────────────────────────────
 
-const RUTA_POR_TIPO_NOTIFICACION = { mensaje: 'Mensajes', amistad: 'Comunidad' };
+const RUTA_POR_TIPO_NOTIFICACION = { mensaje: 'Mensajes', amistad: 'Comunidad', match: 'Match' };
 
-function mapNotificacion(n) {
+function mapNotificacion(n, mascotasPorId) {
+  const m = n.Id_Mascota != null ? mascotasPorId?.get(n.Id_Mascota) : null;
   return {
     id: n.Id,
     titulo: n.Titulo,
@@ -232,10 +243,22 @@ function mapNotificacion(n) {
     leida: n.Leido,
     createdAt: n.Fecha,
     redirigea: RUTA_POR_TIPO_NOTIFICACION[n.Tipo] ?? null,
+    dataExtra: n.DataExtra ?? null,
+    // A qué mascota del usuario pertenece (para la mini imagen del panel)
+    mascota: m
+      ? {
+          id: m.Id_Mascota,
+          nombre: m.Nombre,
+          especie: m.Especie,
+          raza: m.Raza,
+          fotoUrl: m.Foto ?? null,
+          imagenAsset: m.ImagenAsset ?? null,
+        }
+      : null,
   };
 }
 
-/** Trae la lista paginada de notificaciones del usuario. */
+/** Trae la lista paginada de notificaciones del usuario, con su mascota. */
 export async function fetchNotificaciones(page = 1, limit = 20, soloNoLeidas = false) {
   let query = supabase
     .from('Notificacion')
@@ -246,9 +269,16 @@ export async function fetchNotificaciones(page = 1, limit = 20, soloNoLeidas = f
 
   if (soloNoLeidas) query = query.eq('Leido', false);
 
-  const { data, error } = await query;
+  // Las mascotas del usuario en paralelo, para resolver Id_Mascota → datos
+  // sin depender de un FK declarado en la base
+  const [{ data, error }, { data: mascotas }] = await Promise.all([
+    query,
+    supabase.from('Mascota').select('*').eq('Id_User', getCurrentUserId()),
+  ]);
   if (error) throw error;
-  return { notificaciones: (data ?? []).map(mapNotificacion) };
+
+  const mascotasPorId = new Map((mascotas ?? []).map((m) => [m.Id_Mascota, m]));
+  return { notificaciones: (data ?? []).map((n) => mapNotificacion(n, mascotasPorId)) };
 }
 
 /** Marca una notificación individual como leída. */

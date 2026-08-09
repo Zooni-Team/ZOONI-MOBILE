@@ -7,11 +7,13 @@
 
 import React, { useMemo, useState } from 'react';
 import {
-  Alert, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 import { SettingsGroup, SettingsScreen, T } from '../../components/settings/SettingsKit';
+import { cambiarMiContrasena } from '../../services/perfilApi';
+import AppDialog from '../../components/AppDialog';
 
 function fuerza(pass) {
   if (pass.length < 8) return { nivel: 'debil', label: 'Débil', color: T.sosRedText, ratio: 0.33 };
@@ -29,13 +31,36 @@ export default function CambiarContrasenaScreen() {
   const [nueva, setNueva] = useState('');
   const [repetir, setRepetir] = useState('');
 
-  const f = useMemo(() => fuerza(nueva), [nueva]);
-  const valido = actual.length >= 1 && nueva.length >= 8 && nueva === repetir;
+  const [guardando, setGuardando] = useState(false);
+  const [errorActual, setErrorActual] = useState(false);
+  const [dialogo, setDialogo] = useState(null);
 
-  const guardar = () => {
-    Alert.alert('Contraseña actualizada', 'Ya podés usar tu contraseña nueva.', [
-      { text: 'Listo', onPress: () => navigation.goBack() },
-    ]);
+  const f = useMemo(() => fuerza(nueva), [nueva]);
+  const valido = actual.length >= 1 && nueva.length >= 8 && nueva === repetir && !guardando;
+
+  const guardar = async () => {
+    setGuardando(true);
+    setErrorActual(false);
+    try {
+      const ok = await cambiarMiContrasena(actual, nueva);
+      setGuardando(false);
+      if (!ok) {
+        setErrorActual(true);
+        return;
+      }
+      setDialogo({
+        titulo: 'Contraseña actualizada',
+        mensaje: 'Ya podés usar tu contraseña nueva.',
+        botones: [{ texto: 'Listo', estilo: 'primary', onPress: () => navigation.goBack() }],
+      });
+    } catch {
+      setGuardando(false);
+      setDialogo({
+        titulo: 'No pudimos cambiar la contraseña',
+        mensaje: 'Revisá tu conexión y probá de nuevo.',
+        botones: [{ texto: 'Entendido', estilo: 'primary' }],
+      });
+    }
   };
 
   return (
@@ -44,8 +69,10 @@ export default function CambiarContrasenaScreen() {
       <SettingsGroup>
         <View style={s.campo}>
           <Text style={s.label}>Contraseña actual</Text>
-          <TextInput style={s.input} value={actual} onChangeText={setActual}
+          <TextInput style={[s.input, errorActual && { borderColor: T.sosRedText }]}
+            value={actual} onChangeText={(v) => { setActual(v); setErrorActual(false); }}
             secureTextEntry placeholder="••••••••" placeholderTextColor={T.textSoft} />
+          {errorActual && <Text style={s.errorTxt}>La contraseña actual no es correcta.</Text>}
         </View>
         <View style={s.campo}>
           <Text style={s.label}>Nueva contraseña</Text>
@@ -77,8 +104,18 @@ export default function CambiarContrasenaScreen() {
         accessibilityRole="button" accessibilityLabel="Guardar"
         accessibilityState={{ disabled: !valido }}
       >
-        <Text style={s.btnGuardarTxt}>Guardar</Text>
+        {guardando
+          ? <ActivityIndicator size="small" color={T.text} />
+          : <Text style={s.btnGuardarTxt}>Guardar</Text>}
       </TouchableOpacity>
+
+      <AppDialog
+        visible={!!dialogo}
+        titulo={dialogo?.titulo}
+        mensaje={dialogo?.mensaje}
+        botones={dialogo?.botones ?? []}
+        onCerrar={() => setDialogo(null)}
+      />
 
     </SettingsScreen>
   );

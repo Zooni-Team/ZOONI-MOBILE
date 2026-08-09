@@ -167,12 +167,18 @@ function CardArchivada({ m, onPress, onRecuperar, onMenu, disabled }) {
 
 // ─── CARD EN MEMORIA (§4.5) ─────────────────────────────────────────────────
 
-function CardMemoria({ m, onPress }) {
+function CardMemoria({ m, onPress, onMenu }) {
   const img = resolveMascotaVisual(m);
   const anioNac = m.fechaNacimiento ? new Date(m.fechaNacimiento).getFullYear() : null;
   const anioFin = m.fechaFallecimiento ? new Date(m.fechaFallecimiento).getFullYear() : null;
   return (
     <View style={s.cardArchivada}>
+      {/* Menú ⋮: por si se marcó "Falleció" sin querer (recuperar / eliminar) */}
+      <TouchableOpacity style={s.cardMenu} onPress={onMenu} accessibilityRole="button"
+        accessibilityLabel={`Más opciones de ${m.nombre}`}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <Ionicons name="ellipsis-vertical" size={20} color={P.textSoft} />
+      </TouchableOpacity>
       <View style={{ alignItems: 'center' }}>
         <Image source={img} style={s.avatarMemoria} resizeMode="cover" />
       </View>
@@ -291,9 +297,11 @@ export default function MisMascotasScreen() {
     }
   };
 
-  // ── Recuperar (§4.3 — baja fricción, sin sheet) ──
+  // ── Recuperar (§4.3 — baja fricción, sin sheet). Sirve también para
+  // sacar una mascota de "En memoria" si se marcó Falleció sin querer. ──
   const recuperar = async (m) => {
     setArchivadas((prev) => prev.filter((x) => x.id !== m.id));
+    setEnMemoria((prev) => prev.filter((x) => x.id !== m.id));
     try {
       await recuperarMascota(m.id);
       await cargar();
@@ -329,6 +337,8 @@ export default function MisMascotasScreen() {
       } catch {
         mostrarToast('No pudimos guardar el cambio', null, true);
       }
+    } else if (accion === 'recuperar') {
+      recuperar(m);
     } else if (accion === 'eliminar') {
       navigation.navigate('EliminarMascota', { mascota: m });
     }
@@ -468,7 +478,8 @@ export default function MisMascotasScreen() {
                 <TituloSeccion titulo="En memoria" contador={enMemoria.length} icono="heart-outline" />
                 {enMemoria.map((m) => (
                   <CardMemoria key={m.id} m={m}
-                    onPress={() => navigation.navigate('FichaMedica', { mascotaId: m.id })} />
+                    onPress={() => navigation.navigate('FichaMedica', { mascotaId: m.id })}
+                    onMenu={() => abrirMenu(m)} />
                 ))}
               </>
             )}
@@ -490,6 +501,14 @@ export default function MisMascotasScreen() {
               <TouchableOpacity style={s.sheetFila} onPress={() => accionMenu('principal')}>
                 <Ionicons name="star-outline" size={20} color={P.text} />
                 <Text style={s.sheetFilaTxt}>Marcar como principal</Text>
+              </TouchableOpacity>
+            )}
+            {(sheetMenu?.estado === 'archived' || sheetMenu?.estado === 'memorial') && (
+              <TouchableOpacity style={s.sheetFila} onPress={() => accionMenu('recuperar')}>
+                <Ionicons name="refresh-circle-outline" size={20} color={P.brandText} />
+                <Text style={[s.sheetFilaTxt, { color: P.brandText }]}>
+                  {sheetMenu?.estado === 'memorial' ? 'Recuperar (volver a activas)' : 'Recuperar'}
+                </Text>
               </TouchableOpacity>
             )}
             <View style={s.sheetDivider} />

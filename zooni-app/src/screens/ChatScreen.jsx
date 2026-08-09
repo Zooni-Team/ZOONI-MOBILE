@@ -27,6 +27,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 
 import { enviarMensaje, getMensajes, marcarLeidosMatch } from '../services/chatStore';
+import MatchInfoModal from '../components/chat/MatchInfoModal';
 
 const POLL_MS = 4000;
 
@@ -46,6 +47,7 @@ export default function ChatScreen() {
   const [mensajes, setMensajes] = useState([]);
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [infoAbierta, setInfoAbierta] = useState(false);
   const scrollRef = useRef(null);
 
   const cargar = useCallback(async () => {
@@ -93,21 +95,33 @@ export default function ChatScreen() {
           <Ionicons name="arrow-back" size={24} color="#2C2C2C" />
         </TouchableOpacity>
 
-        {esServicio ? (
-          <View style={s.avatarFallback}>
-            <Ionicons name="storefront-outline" size={18} color="#27AE60" />
+        {/* Tocar foto+nombre abre la ficha de perfil del match (no en servicios) */}
+        <TouchableOpacity
+          style={s.headerPerfil}
+          activeOpacity={esServicio ? 1 : 0.6}
+          onPress={() => { if (!esServicio && chatId) setInfoAbierta(true); }}
+          disabled={esServicio || !chatId}
+          accessibilityRole="button"
+          accessibilityLabel={esServicio ? nombre : `Ver perfil de ${nombre}`}
+        >
+          {esServicio ? (
+            <View style={s.avatarFallback}>
+              <Ionicons name="storefront-outline" size={18} color="#27AE60" />
+            </View>
+          ) : fotoPerfilUrl ? (
+            <Image source={{ uri: fotoPerfilUrl }} style={s.avatar} />
+          ) : (
+            <View style={s.avatarFallback}>
+              <Text style={s.avatarLetter}>{nombre?.[0] ?? '?'}</Text>
+            </View>
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={s.nombre} numberOfLines={1}>{nombre ?? 'Chat'}</Text>
+            {esServicio && tipoServicio
+              ? <Text style={s.subNombre}>{tipoServicio}</Text>
+              : !esServicio ? <Text style={s.subNombre}>Ver perfil</Text> : null}
           </View>
-        ) : fotoPerfilUrl ? (
-          <Image source={{ uri: fotoPerfilUrl }} style={s.avatar} />
-        ) : (
-          <View style={s.avatarFallback}>
-            <Text style={s.avatarLetter}>{nombre?.[0] ?? '?'}</Text>
-          </View>
-        )}
-        <View style={{ flex: 1 }}>
-          <Text style={s.nombre} numberOfLines={1}>{nombre ?? 'Chat'}</Text>
-          {esServicio && tipoServicio && <Text style={s.subNombre}>{tipoServicio}</Text>}
-        </View>
+        </TouchableOpacity>
       </View>
       <View style={s.headerDivider} />
 
@@ -169,6 +183,14 @@ export default function ChatScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {!esServicio && (
+        <MatchInfoModal
+          visible={infoAbierta}
+          matchId={chatId}
+          onClose={() => setInfoAbierta(false)}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -182,6 +204,7 @@ const s = StyleSheet.create({
   },
   headerDivider: { height: 1, backgroundColor: '#EFEFEF' },
   backBtn: { width: 28, alignItems: 'center', justifyContent: 'center' },
+  headerPerfil: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: { width: 38, height: 38, borderRadius: 19 },
   avatarFallback: {
     width: 38, height: 38, borderRadius: 19, backgroundColor: '#C8F0D8',

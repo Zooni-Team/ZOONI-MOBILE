@@ -170,12 +170,14 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   topCard: { position: 'absolute', width: '100%', height: '100%' },
+  // El sello aparece del lado hacia el que se desliza: corazón a la DERECHA
+  // (swipe derecha = like), X a la IZQUIERDA (swipe izquierda = rechazo).
   overlayLike: {
-    position: 'absolute', top: 36, left: 20,
+    position: 'absolute', top: 36, right: 20,
     borderWidth: 4, borderColor: '#2DBD72', borderRadius: 12, padding: 6,
   },
   overlayNope: {
-    position: 'absolute', top: 36, right: 20,
+    position: 'absolute', top: 36, left: 20,
     borderWidth: 4, borderColor: '#E63946', borderRadius: 12, padding: 6,
   },
 });

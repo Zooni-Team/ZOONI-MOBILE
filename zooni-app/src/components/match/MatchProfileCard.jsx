@@ -2,13 +2,12 @@
  * Tarjeta de perfil para la pantalla Match (vertical, sin scroll).
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, Image, Pressable,
+  View, Text, StyleSheet, Image, Pressable, TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { especieIcono } from '../../data/matchDemo';
-import { resolvePetPhotoSource } from '../../constants/matchAssets';
 import { resolveMascotaVisual } from '../../constants/petImages';
 
 export default function MatchProfileCard({ perfil, cardHeight, cardWidth, onPress }) {
@@ -17,11 +16,33 @@ export default function MatchProfileCard({ perfil, cardHeight, cardWidth, onPres
   const tags = [mascota.raza, ...intereses];
   const visibleTags = tags.slice(0, 3);
   const extraCount = tags.length - visibleTags.length;
-  const petPhotoSource = resolvePetPhotoSource(mascota);
+
+  // Carrusel: todas las fotos reales (portada + galería). Si una mascota vieja
+  // no tiene ninguna, cae en su ilustración por especie/raza — nunca ajena.
+  const fotos = (mascota.fotos?.length ? mascota.fotos : null);
+  const [fotoIdx, setFotoIdx] = useState(0);
+  const idx = fotos ? Math.min(fotoIdx, fotos.length - 1) : 0;
+  const petPhotoSource = fotos ? { uri: fotos[idx] } : resolveMascotaVisual(mascota);
+  const totalFotos = fotos?.length ?? 0;
 
   const cardContent = (
     <>
       <Image source={petPhotoSource} style={styles.petPhoto} />
+
+      {/* Zonas táctiles izquierda/derecha para pasar fotos (como Tinder) */}
+      {totalFotos > 1 && (
+        <>
+          <TouchableOpacity style={styles.navIzq} activeOpacity={1}
+            onPress={() => setFotoIdx((i) => Math.max(0, i - 1))} accessibilityLabel="Foto anterior" />
+          <TouchableOpacity style={styles.navDer} activeOpacity={1}
+            onPress={() => setFotoIdx((i) => Math.min(totalFotos - 1, i + 1))} accessibilityLabel="Foto siguiente" />
+          <View style={styles.dotsRow}>
+            {fotos.map((_, i) => (
+              <View key={i} style={[styles.dot, i === idx && styles.dotOn]} />
+            ))}
+          </View>
+        </>
+      )}
 
       <View style={styles.ownerPhotoWrap}>
         {foto_perfil_url ? (
@@ -109,24 +130,32 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'cover',
   },
-  ownerPhotoWrap: { position: 'absolute', top: 12, left: 12, zIndex: 2 },
+  navIzq: { position: 'absolute', left: 0, top: 0, bottom: 0, width: '33%', zIndex: 3 },
+  navDer: { position: 'absolute', right: 0, top: 0, bottom: 0, width: '33%', zIndex: 3 },
+  dotsRow: {
+    position: 'absolute', top: 10, left: 0, right: 0, zIndex: 4,
+    flexDirection: 'row', justifyContent: 'center', gap: 4, paddingHorizontal: 12,
+  },
+  dot: { flex: 1, maxWidth: 40, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.4)' },
+  dotOn: { backgroundColor: '#FFFFFF' },
+  ownerPhotoWrap: { position: 'absolute', top: 14, left: 14, zIndex: 2 },
   ownerPhoto: {
-    width: 48, height: 48, borderRadius: 24,
+    width: 68, height: 68, borderRadius: 34,
     borderWidth: 3, borderColor: '#FFFFFF',
   },
   ownerPhotoFallback: {
-    width: 48, height: 48, borderRadius: 24,
+    width: 68, height: 68, borderRadius: 34,
     borderWidth: 3, borderColor: '#FFFFFF',
     backgroundColor: '#C8F0D8', alignItems: 'center', justifyContent: 'center',
   },
-  ownerInitial: { fontSize: 18, fontWeight: '800', color: '#27AE60' },
+  ownerInitial: { fontSize: 26, fontWeight: '800', color: '#27AE60' },
   petAvatarWrap: { position: 'absolute', bottom: -12, right: -12 },
   petAvatar: {
-    width: 32, height: 32, borderRadius: 16,
+    width: 38, height: 38, borderRadius: 19,
     borderWidth: 2, borderColor: '#FFFFFF',
   },
   petAvatarFallback: {
-    width: 32, height: 32, borderRadius: 16,
+    width: 38, height: 38, borderRadius: 19,
     borderWidth: 2, borderColor: '#FFFFFF',
     backgroundColor: '#F5C842', alignItems: 'center', justifyContent: 'center',
   },

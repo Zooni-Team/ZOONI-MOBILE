@@ -9,6 +9,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 import { loadStoredUserId } from './src/config/session';
+import { ThemeProvider, useTheme } from './src/config/theme';
 import HomeScreen        from './src/screens/HomeScreen';
 import LoginScreen       from './src/screens/LoginScreen';
 import RegisterStep1Screen from './src/screens/RegisterStep1Screen';
@@ -75,11 +76,23 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer>
-        <Stack.Navigator
-          initialRouteName={initialRoute}
-          screenOptions={{ headerShown: false }}
-        >
+      <ThemeProvider>
+        <RootNavigator initialRoute={initialRoute} />
+      </ThemeProvider>
+    </GestureHandlerRootView>
+  );
+}
+
+// Navegador raíz: dentro del ThemeProvider para leer "reducir movimiento" y
+// desactivar las transiciones entre pantallas en toda la app cuando está activo.
+function RootNavigator({ initialRoute }) {
+  const { reduceMotion } = useTheme();
+  return (
+    <NavigationContainer>
+      <Stack.Navigator
+        initialRouteName={initialRoute}
+        screenOptions={{ headerShown: false, animation: reduceMotion ? 'none' : 'default' }}
+      >
           <Stack.Screen name="Home"          component={HomeScreen} />
           <Stack.Screen name="Login"         component={LoginScreen} />
           <Stack.Screen name="RegisterStep1" component={RegisterStep1Screen} />
@@ -127,7 +140,6 @@ export default function App() {
           <Stack.Screen name="Notificaciones" component={PlaceholderScreen} />
         </Stack.Navigator>
       </NavigationContainer>
-    </GestureHandlerRootView>
   );
 }
 

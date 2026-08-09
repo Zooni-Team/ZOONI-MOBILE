@@ -32,6 +32,7 @@ export default function RegisterStep3Screen() {
 
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
+  const [usuario, setUsuario] = useState('');
   const [mail, setMail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmar, setConfirmar] = useState('');
@@ -47,6 +48,11 @@ export default function RegisterStep3Screen() {
   const mailValido = EMAIL_REGEX.test(mail.trim());
   const mostrarErrorMail = mail.length > 0 && !mailValido;
 
+  // @usuario: 3–30 caracteres, letras, números, punto, guion y guion bajo
+  const usuarioLimpio = usuario.trim().replace(/^@/, '');
+  const usuarioValido = /^[a-zA-Z0-9._-]{3,30}$/.test(usuarioLimpio);
+  const mostrarErrorUsuario = usuario.length > 0 && !usuarioValido;
+
   const passwordValida = password.length >= PASSWORD_MIN;
   const mostrarErrorPassword = password.length > 0 && !passwordValida;
 
@@ -56,10 +62,11 @@ export default function RegisterStep3Screen() {
   const puedeAvanzar = useMemo(() => (
     nombre.trim().length > 0
     && apellido.trim().length > 0
+    && usuarioValido
     && mailValido
     && passwordValida
     && confirmarValido
-  ), [nombre, apellido, mailValido, passwordValida, confirmarValido]);
+  ), [nombre, apellido, usuarioValido, mailValido, passwordValida, confirmarValido]);
 
   const handleContinuar = () => {
     const errs = {};
@@ -72,6 +79,7 @@ export default function RegisterStep3Screen() {
       ...datosPrevios,
       usuarioNombre: nombre.trim(),
       usuarioApellido: apellido.trim(),
+      nombreUsuario: usuarioLimpio,
       email: mail.trim(),
       password,
     });
@@ -120,6 +128,16 @@ export default function RegisterStep3Screen() {
               value={apellido} onChangeText={(v) => { setApellido(v); setErrores((p) => ({ ...p, apellido: null })); }}
               onFocus={() => setFocus('apellido')} onBlur={() => setFocus(null)} returnKeyType="next" />
             {errores.apellido && <Text style={s.errorTxt}>{errores.apellido}</Text>}
+
+            {/* @usuario — se pide en el registro; después se cambia desde Configuración */}
+            <View style={[s.inputRow, focus === 'usuario' && s.inputFocus, mostrarErrorUsuario && s.inputError]}>
+              <Text style={s.arroba}>@</Text>
+              <TextInput style={s.inputPass} placeholder="nombre de usuario" placeholderTextColor="#AAAAAA"
+                value={usuario} onChangeText={(v) => setUsuario(v.replace(/[^a-zA-Z0-9._@-]/g, ''))}
+                autoCapitalize="none" autoCorrect={false} maxLength={31}
+                onFocus={() => setFocus('usuario')} onBlur={() => setFocus(null)} returnKeyType="next" />
+            </View>
+            {mostrarErrorUsuario && <Text style={s.errorTxt}>Usá 3 a 30 letras, números, punto, guion o guion bajo</Text>}
 
             <TextInput style={[s.input, focus === 'mail' && s.inputFocus, mostrarErrorMail && s.inputError]}
               placeholder="Mail" placeholderTextColor="#AAAAAA"
@@ -203,6 +221,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 14, marginBottom: 10,
   },
   inputPass: { flex: 1, paddingVertical: 13, fontSize: 15, color: '#2C2C2C', textAlign: 'center' },
+  arroba: { fontSize: 15, fontWeight: '700', color: '#6B6B6B' },
   inputFocus: { borderColor: '#2DBD72' },
   inputError: { borderColor: '#E63946' },
   errorTxt: { fontSize: 11, color: '#E63946', marginTop: -6, marginBottom: 8, marginLeft: 4 },

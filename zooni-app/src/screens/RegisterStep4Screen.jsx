@@ -108,6 +108,7 @@ export default function RegisterStep4Screen() {
         usuario: {
           nombre: datos.usuarioNombre,
           apellido: datos.usuarioApellido,
+          nombreUsuario: datos.nombreUsuario,
           email: datos.email,
           password: datos.password,
           pais: pais.nombre,
@@ -125,6 +126,8 @@ export default function RegisterStep4Screen() {
     } catch (err) {
       if (err?.message === 'email_existente') {
         Alert.alert('Email en uso', 'Ya existe una cuenta con ese email.');
+      } else if (err?.message === 'usuario_existente') {
+        Alert.alert('Usuario en uso', 'Ese nombre de usuario ya está tomado. Volvé atrás y elegí otro.');
       } else if (err?.message === 'password_corta') {
         Alert.alert('Contraseña inválida', 'La contraseña debe tener al menos 7 caracteres.');
       } else {

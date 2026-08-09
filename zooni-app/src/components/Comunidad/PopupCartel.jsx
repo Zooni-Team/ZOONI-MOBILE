@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Alert, Image, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { eliminarCartel } from '../../api/comunidad';
+import PersonaProfileModal from '../PersonaProfileModal';
 
 const LABELS = {
   perdida: 'Mascota Perdida', encontrada: 'Mascota Encontrada',
@@ -12,6 +13,7 @@ export default function PopupCartel({ cartel, userId, onClose, onEliminado }) {
   const translateY = useRef(new Animated.Value(40)).current;
   const opacity    = useRef(new Animated.Value(0)).current;
   const [verMas, setVerMas] = useState(false);
+  const [verPerfil, setVerPerfil] = useState(false);
 
   useEffect(() => {
     Animated.parallel([
@@ -91,7 +93,13 @@ export default function PopupCartel({ cartel, userId, onClose, onEliminado }) {
             <Text style={styles.info}>{cartel.telefono_contacto}</Text>
           </View>
         )}
-        <Text style={styles.meta}>Publicado por: {cartel.publicado_por} · {fecha}</Text>
+        <TouchableOpacity onPress={() => cartel.usuario_id != null && setVerPerfil(true)}
+          disabled={cartel.usuario_id == null} accessibilityRole="button"
+          accessibilityLabel={`Ver perfil de ${cartel.publicado_por}`}>
+          <Text style={styles.meta}>
+            Publicado por: <Text style={styles.metaLink}>{cartel.publicado_por}</Text> · {fecha}
+          </Text>
+        </TouchableOpacity>
         {parseInt(cartel.usuario_id) === userId && (
           <TouchableOpacity style={styles.btnElim} onPress={handleEliminar}>
             <Ionicons name="trash-outline" size={16} color="#FFF" />
@@ -99,6 +107,12 @@ export default function PopupCartel({ cartel, userId, onClose, onEliminado }) {
           </TouchableOpacity>
         )}
       </ScrollView>
+
+      <PersonaProfileModal
+        visible={verPerfil}
+        usuarioId={cartel.usuario_id != null ? parseInt(cartel.usuario_id, 10) : null}
+        onClose={() => setVerPerfil(false)}
+      />
     </Animated.View>
   );
 }
@@ -120,6 +134,7 @@ const styles = StyleSheet.create({
   info:     { fontSize: 13, color: '#6B6B6B' },
   verMas:   { fontSize: 12, color: '#2DBD72', fontWeight: '600', marginBottom: 4 },
   meta:     { fontSize: 11, color: '#AAAAAA', marginTop: 6 },
+  metaLink: { color: '#2DBD72', fontWeight: '700' },
   btnElim:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#E63946', borderRadius: 20, paddingVertical: 10, marginTop: 12 },
   btnElimText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });

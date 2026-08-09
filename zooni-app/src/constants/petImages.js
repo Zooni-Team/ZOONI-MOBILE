@@ -84,7 +84,7 @@ export function resolvePetImage(imagenAsset) {
  *   4. Fallback genérico
  */
 export function resolveMascotaVisual(mascota = {}) {
-  const fotoUrl = mascota.fotoUrl ?? mascota.foto_url ?? null;
+  const fotoUrl = mascota.fotoUrl ?? mascota.foto_url ?? mascota.foto_real_url ?? null;
   const asset = mascota.imagenAsset ?? mascota.imagen_asset ?? null;
   const { especie, raza } = mascota;
 

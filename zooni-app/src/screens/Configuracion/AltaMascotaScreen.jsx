@@ -223,6 +223,8 @@ export default function AltaMascotaScreen() {
     if (!sexo) errs.sexo = 'Seleccioná el sexo';
     if (!raza) errs.raza = 'Seleccioná una raza';
     if (peso <= 0) errs.peso = 'Ajustá el peso';
+    // Foto REAL obligatoria: es la que se ve en Match
+    if (!fotoUri) errs.foto = 'Agregá una foto real de tu mascota';
     setErrores(errs);
     if (Object.keys(errs).length > 0) return;
 
@@ -236,8 +238,7 @@ export default function AltaMascotaScreen() {
         peso,
         fechaNacimiento: fechaNacimientoDesdeMeses(edad),
         imagenAsset: IMAGEN_ASSET_POR_ESPECIE[especie] ?? 'perro_default',
-        // fotoUri queda solo en el dispositivo (igual que en el registro):
-        // la subida a Supabase Storage todavía no está integrada.
+        fotoUri, // se sube a Storage y se guarda en Mascota.Foto (la de Match)
       });
       // confirmar() funciona también en web (Alert.alert ahí es un no-op y
       // dejaba el botón cargando para siempre con la mascota ya creada)
@@ -365,8 +366,8 @@ export default function AltaMascotaScreen() {
             <SliderAmarillo value={edad} min={0} max={240} step={1} onChange={setEdad} />
             <Text style={s.sliderValor}>{edadFmt}</Text>
 
-            {/* Foto */}
-            <Text style={s.fotoLabel}>📷 Agregá una foto de tu mascota</Text>
+            {/* Foto REAL (obligatoria) */}
+            <Text style={s.fotoLabel}>📷 Agregá una foto real de tu mascota</Text>
             {fotoUri && (
               <View style={s.previewWrap}>
                 <Image source={{ uri: fotoUri }} style={s.preview} />
@@ -376,12 +377,15 @@ export default function AltaMascotaScreen() {
                 </TouchableOpacity>
               </View>
             )}
-            <TouchableOpacity style={s.btnFoto} onPress={elegirDeGaleria} activeOpacity={0.85}>
+            <TouchableOpacity style={[s.btnFoto, errores.foto && s.btnFotoError]}
+              onPress={() => { elegirDeGaleria(); setErrores((p2) => ({ ...p2, foto: null })); }} activeOpacity={0.85}>
               <Text style={s.btnFotoTxt}>Seleccionar archivo</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.btnFoto} onPress={abrirCamara} activeOpacity={0.85}>
+            <TouchableOpacity style={[s.btnFoto, errores.foto && s.btnFotoError]}
+              onPress={() => { abrirCamara(); setErrores((p2) => ({ ...p2, foto: null })); }} activeOpacity={0.85}>
               <Text style={s.btnFotoTxt}>📷 Abrir cámara</Text>
             </TouchableOpacity>
+            {errores.foto && <Text style={[s.errorTxt, { textAlign: 'center' }]}>{errores.foto}</Text>}
           </View>
         </ScrollView>
 
@@ -498,6 +502,7 @@ const s = StyleSheet.create({
     paddingVertical: 10, paddingHorizontal: 20,
     alignSelf: 'center', marginBottom: 10, minWidth: 190, alignItems: 'center',
   },
+  btnFotoError: { borderWidth: 1.5, borderColor: '#E63946' },
   btnFotoTxt: { fontSize: 14, fontWeight: '700', color: '#2C2C2C' },
 
   btnContinuar: {

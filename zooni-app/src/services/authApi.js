@@ -16,8 +16,9 @@ import * as Crypto from 'expo-crypto';
 import { supabase } from '../lib/supabase';
 import { setCurrentUserId } from '../config/session';
 import { toISODateLocal } from '../utils/fechaLocal';
+import { subirImagenPublica } from '../utils/imagenStorage';
 
-async function hashPassword(password) {
+export async function hashPassword(password) {
   return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, password);
 }
 
@@ -162,6 +163,36 @@ export async function registro(datos) {
   const hash = await hashPassword(usuario.password);
   const ubicacionDisplay = [usuario.ciudad, usuario.provincia].filter(Boolean).join(', ') || null;
 
+  // @usuario: chequeo de disponibilidad previo (el índice único del 025 es la
+  // garantía final). En el registro NO se setea NombreUsuarioCambiadoEn: el
+  // cooldown de 30 días es solo para cambios desde Configuración.
+  const nombreUsuario = usuario.nombreUsuario?.trim().replace(/^@/, '') || null;
+  if (nombreUsuario) {
+    const { data: usado } = await supabase
+      .from('User').select('Id_User').ilike('NombreUsuario', nombreUsuario).maybeSingle();
+    if (usado) throw new Error('usuario_existente');
+  }
+
+  // Setea el @usuario recién creado; si chocó con el índice único, avisa
+  const setUsuario = async (userId) => {
+    if (!nombreUsuario) return;
+    const { error } = await supabase.from('User')
+      .update({ NombreUsuario: nombreUsuario }).eq('Id_User', userId);
+    if (error && String(error.message ?? '').includes('idx_user_nombreusuario')) {
+      throw new Error('usuario_existente');
+    }
+  };
+
+  // Foto REAL de la mascota: se sube a Storage y se guarda en Mascota.Foto
+  // (obligatoria — la valida el Paso 2 del registro). Es la que muestra Match.
+  const fotoMascotaUrl = mascota.fotoUri
+    ? await subirImagenPublica(mascota.fotoUri, 'mascotas')
+    : null;
+  const setFotoMascota = async (userId) => {
+    if (!fotoMascotaUrl) return;
+    await supabase.from('Mascota').update({ Foto: fotoMascotaUrl }).eq('Id_User', userId);
+  };
+
   // Camino seguro: RPC atómica del servidor (021_seguridad.sql).
   // Usuario + credencial + mascota + rol en una sola transacción: si algo
   // falla, Postgres revierte todo solo — sin rollback manual con DELETEs.
@@ -194,6 +225,8 @@ export async function registro(datos) {
   );
 
   if (!rpcError) {
+    await setUsuario(rpcData.id);
+    await setFotoMascota(rpcData.id);
     return {
       mensaje: 'Cuenta creada exitosamente',
       usuario: {
@@ -243,6 +276,7 @@ export async function registro(datos) {
   try {
     const { error: errMascota } = await supabase.from('Mascota').insert({
       Id_User: nuevoUserId,
+      Foto: fotoMascotaUrl,
       Nombre: mascota.nombre.trim(),
       Especie: mascota.especie,
       Sexo: mascota.sexo,
@@ -255,6 +289,7 @@ export async function registro(datos) {
     if (errMascota) throw errMascota;
 
     await supabase.from('UserRole').insert({ Id_User: nuevoUserId, Id_Role: 1 });
+    await setUsuario(nuevoUserId);
   } catch (err) {
     await supabase.from('UserRole').delete().eq('Id_User', nuevoUserId);
     await supabase.from('Mascota').delete().eq('Id_User', nuevoUserId);

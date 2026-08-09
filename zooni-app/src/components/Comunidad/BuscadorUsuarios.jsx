@@ -2,12 +2,14 @@ import React, { useState, useRef } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { buscarUsuarios, enviarSolicitud } from '../../api/comunidad';
+import PersonaProfileModal from '../PersonaProfileModal';
 
 export default function BuscadorUsuarios({ onSolicitudEnviada }) {
   const [query,    setQuery]    = useState('');
   const [results,  setResults]  = useState([]);
   const [loading,  setLoading]  = useState(false);
   const [enviados, setEnviados] = useState(new Set());
+  const [perfilId, setPerfilId] = useState(null);
   const timer = useRef(null);
 
   const handleChange = (text) => {
@@ -60,11 +62,14 @@ export default function BuscadorUsuarios({ onSolicitudEnviada }) {
           const ya = enviados.has(u.usuario_id) || u.es_amigo;
           return (
             <View style={styles.item}>
-              <View style={styles.avatar}><Ionicons name="person" size={18} color="#AAAAAA" /></View>
-              <View style={styles.info}>
-                <Text style={styles.nombre}>{u.nombre}</Text>
-                <Text style={styles.sub}>{u.mascota_nombre}{u.barrio ? `  ·  ${u.barrio}` : ''}</Text>
-              </View>
+              <TouchableOpacity style={styles.persona} onPress={() => setPerfilId(u.usuario_id)}
+                accessibilityRole="button" accessibilityLabel={`Ver perfil de ${u.nombre}`}>
+                <View style={styles.avatar}><Ionicons name="person" size={18} color="#AAAAAA" /></View>
+                <View style={styles.info}>
+                  <Text style={styles.nombre}>{u.nombre}</Text>
+                  <Text style={styles.sub}>{u.mascota_nombre}{u.barrio ? `  ·  ${u.barrio}` : ''}</Text>
+                </View>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.btnAdd, ya && styles.btnYa]}
                 onPress={() => !ya && agregar(u)}
@@ -83,6 +88,8 @@ export default function BuscadorUsuarios({ onSolicitudEnviada }) {
         }}
         style={{ maxHeight: 300 }}
       />
+
+      <PersonaProfileModal visible={perfilId != null} usuarioId={perfilId} onClose={() => setPerfilId(null)} />
     </View>
   );
 }
@@ -92,6 +99,7 @@ const styles = StyleSheet.create({
   input:       { flex: 1, fontSize: 14, color: '#2C2C2C' },
   hint:        { color: '#AAAAAA', fontSize: 13, textAlign: 'center', marginTop: 12 },
   item:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  persona:     { flex: 1, flexDirection: 'row', alignItems: 'center' },
   avatar:      { width: 38, height: 38, borderRadius: 19, backgroundColor: '#F0F0F0', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
   info:        { flex: 1 },
   nombre:      { fontWeight: '700', fontSize: 14, color: '#2C2C2C' },

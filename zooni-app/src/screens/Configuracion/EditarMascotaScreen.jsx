@@ -8,14 +8,17 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Modal, Platform, Pressable, SafeAreaView,
+  ActivityIndicator, Alert, Image, Modal, Platform, Pressable, SafeAreaView,
   ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 
 import { fetchRazas } from '../../services/authApi';
-import { actualizarMascota } from '../../services/petsApi';
+import {
+  actualizarMascota, agregarFotoMascota, eliminarFotoMascota, fetchFotosMascota,
+} from '../../services/petsApi';
 import { sanitizarDecimal } from '../../utils/sanitizar';
 import { alerta } from '../../utils/dialogo';
 
@@ -68,6 +71,39 @@ export default function EditarMascotaScreen() {
   const [microchip, setMicrochip] = useState(original?.microchip ?? '');
   const [descripcion, setDescripcion] = useState(original?.descripcion ?? '');
   const [visibleEnMatch, setVisibleEnMatch] = useState(original?.visibleEnMatch ?? true);
+
+  // Galería de fotos (portada + adicionales) para Match
+  const [fotos, setFotos] = useState([]);
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+
+  useEffect(() => {
+    if (!original?.id) return;
+    fetchFotosMascota(original.id, original.fotoUrl).then(setFotos).catch(() => setFotos([]));
+  }, [original?.id, original?.fotoUrl]);
+
+  const agregarFoto = async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) { alerta('Sin permiso', 'Habilitá el acceso a la galería.'); return; }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7,
+      });
+      if (res.canceled || !res.assets?.[0]?.uri) return;
+      setSubiendoFoto(true);
+      const nueva = await agregarFotoMascota(original.id, res.assets[0].uri);
+      setFotos((prev) => [...prev, nueva]);
+    } catch {
+      alerta('No pudimos subir la foto', 'Probá de nuevo.');
+    } finally {
+      setSubiendoFoto(false);
+    }
+  };
+
+  const quitarFoto = async (foto) => {
+    if (foto.esPortada) { alerta('No se puede quitar la portada', 'Es la foto principal de tu mascota.'); return; }
+    setFotos((prev) => prev.filter((f) => f.id !== foto.id));
+    try { await eliminarFotoMascota(foto.id); } catch { /* si falla, recarga al reabrir */ }
+  };
 
   const hayCambios = useMemo(() => {
     if (!original) return false;
@@ -224,6 +260,32 @@ export default function EditarMascotaScreen() {
           {!microchipValido && <Text style={e.error}>El microchip tiene 15 números.</Text>}
         </Seccion>
 
+        <Seccion titulo="Fotos" abierta={abierta === 4} onToggle={() => setAbierta(abierta === 4 ? -1 : 4)}>
+          <Text style={e.fotosApoyo}>Estas son las fotos que ve la gente en Match. La primera es la portada.</Text>
+          <View style={e.fotosGrid}>
+            {fotos.map((f, i) => (
+              <View key={f.id ?? `portada-${i}`} style={e.fotoItem}>
+                <Image source={{ uri: f.url }} style={e.fotoImg} />
+                {f.esPortada && <View style={e.portadaBadge}><Text style={e.portadaBadgeTxt}>Portada</Text></View>}
+                {!f.esPortada && (
+                  <TouchableOpacity style={e.fotoQuitar} onPress={() => quitarFoto(f)}
+                    accessibilityLabel="Quitar foto">
+                    <Ionicons name="close" size={14} color="#FFF" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+            {fotos.length < 6 && (
+              <TouchableOpacity style={e.fotoAgregar} onPress={agregarFoto} disabled={subiendoFoto}
+                accessibilityRole="button" accessibilityLabel="Agregar foto">
+                {subiendoFoto
+                  ? <ActivityIndicator size="small" color={P.brandText} />
+                  : <Ionicons name="add" size={28} color={P.brandText} />}
+              </TouchableOpacity>
+            )}
+          </View>
+        </Seccion>
+
         <Seccion titulo="Perfil social" abierta={abierta === 3} onToggle={() => setAbierta(abierta === 3 ? -1 : 3)}>
           <Text style={e.label}>Descripción</Text>
           <TextInput style={[e.input, e.textarea]} value={descripcion} onChangeText={setDescripcion}
@@ -315,6 +377,24 @@ const e = StyleSheet.create({
 
   pieAccion: { alignItems: 'center', paddingVertical: 16 },
   pieAccionEliminar: { fontSize: 15, fontWeight: '700', color: P.sosRedText },
+
+  fotosApoyo: { fontSize: 13, color: P.textSoft, marginBottom: 12, lineHeight: 18 },
+  fotosGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  fotoItem: { width: 92, height: 92, borderRadius: 12, overflow: 'hidden' },
+  fotoImg: { width: '100%', height: '100%' },
+  portadaBadge: {
+    position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.55)',
+    paddingVertical: 3, alignItems: 'center',
+  },
+  portadaBadgeTxt: { fontSize: 10, fontWeight: '700', color: '#FFF' },
+  fotoQuitar: {
+    position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center',
+  },
+  fotoAgregar: {
+    width: 92, height: 92, borderRadius: 12, borderWidth: 1.5, borderColor: P.brandText,
+    borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF',
+  },
 
   selectFila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   selectTxt:  { flex: 1, fontSize: 15, color: P.text },

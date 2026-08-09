@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fetchSolicitudes, responderSolicitud } from '../../api/comunidad';
+import PersonaProfileModal from '../PersonaProfileModal';
 
 export default function TabSolicitudes({ onRespuesta }) {
   const [lista,   setLista]   = useState([]);
   const [loading, setLoading] = useState(true);
+  const [perfilId, setPerfilId] = useState(null);
 
   useEffect(() => {
     fetchSolicitudes().then(d => setLista(d.solicitudes || [])).catch(() => {}).finally(() => setLoading(false));
@@ -28,25 +30,31 @@ export default function TabSolicitudes({ onRespuesta }) {
   );
 
   return (
-    <FlatList
-      data={lista}
-      keyExtractor={s => String(s.id)}
-      renderItem={({ item: s }) => (
-        <View style={styles.item}>
-          <View style={styles.avatar}><Ionicons name="person" size={18} color="#AAAAAA" /></View>
-          <Text style={styles.nombre}>{s.nombre}</Text>
-          <View style={styles.btns}>
-            <TouchableOpacity style={styles.btnAc} onPress={() => responder(s.id, 'aceptar')}>
-              <Ionicons name="checkmark" size={18} color="#FFF" />
+    <>
+      <FlatList
+        data={lista}
+        keyExtractor={s => String(s.id)}
+        renderItem={({ item: s }) => (
+          <View style={styles.item}>
+            <TouchableOpacity style={styles.persona} onPress={() => setPerfilId(s.usuario_id)}
+              accessibilityRole="button" accessibilityLabel={`Ver perfil de ${s.nombre}`}>
+              <View style={styles.avatar}><Ionicons name="person" size={18} color="#AAAAAA" /></View>
+              <Text style={styles.nombre}>{s.nombre}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.btnRe} onPress={() => responder(s.id, 'rechazar')}>
-              <Ionicons name="close" size={18} color="#E63946" />
-            </TouchableOpacity>
+            <View style={styles.btns}>
+              <TouchableOpacity style={styles.btnAc} onPress={() => responder(s.id, 'aceptar')}>
+                <Ionicons name="checkmark" size={18} color="#FFF" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.btnRe} onPress={() => responder(s.id, 'rechazar')}>
+                <Ionicons name="close" size={18} color="#E63946" />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      )}
-      contentContainerStyle={{ paddingBottom: 20 }}
-    />
+        )}
+        contentContainerStyle={{ paddingBottom: 20 }}
+      />
+      <PersonaProfileModal visible={perfilId != null} usuarioId={perfilId} onClose={() => setPerfilId(null)} />
+    </>
   );
 }
 
@@ -54,6 +62,7 @@ const styles = StyleSheet.create({
   vacio:     { alignItems: 'center', paddingTop: 32 },
   vacioText: { color: '#6B6B6B', fontSize: 14 },
   item:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  persona:   { flex: 1, flexDirection: 'row', alignItems: 'center' },
   avatar:    { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F0F0F0', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
   nombre:    { flex: 1, fontWeight: '700', fontSize: 14, color: '#2C2C2C' },
   btns:      { flexDirection: 'row', gap: 8 },

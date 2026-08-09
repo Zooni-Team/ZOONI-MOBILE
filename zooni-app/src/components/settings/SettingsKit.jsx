@@ -26,6 +26,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../../config/theme';
 
 // ─── TOKENS (§3.1) ───────────────────────────────────────────────────────────
 
@@ -91,15 +92,17 @@ export function SettingsScreen({ title, children }) {
 // ─── GRUPO (label + card blanca) ─────────────────────────────────────────────
 
 export function SettingsGroup({ label, children }) {
+  const { highContrast } = useTheme();
   const hijos = React.Children.toArray(children).filter(Boolean);
   return (
     <View style={k.group}>
       {label ? <Text style={k.groupLabel}>{label}</Text> : null}
-      <View style={k.groupCard} accessibilityRole="list">
+      {/* Alto contraste: la tarjeta suma borde y los divisores se oscurecen */}
+      <View style={[k.groupCard, highContrast && k.groupCardHC]} accessibilityRole="list">
         {hijos.map((child, i) => (
           <View key={i}>
             {child}
-            {i < hijos.length - 1 && <View style={k.rowDivider} />}
+            {i < hijos.length - 1 && <View style={[k.rowDivider, highContrast && k.rowDividerHC]} />}
           </View>
         ))}
       </View>
@@ -139,10 +142,16 @@ export function SettingsRow({ icon, tint, label, value, badge, disabled, onPress
 // ─── SWITCH (§3.5 SettingsToggle) ────────────────────────────────────────────
 
 function Knob({ on }) {
+  const { reduceMotion } = useTheme();
   const x = useRef(new Animated.Value(on ? 20 : 0)).current;
   React.useEffect(() => {
-    Animated.timing(x, { toValue: on ? 20 : 0, duration: 180, useNativeDriver: true }).start();
-  }, [on, x]);
+    // Con "reducir movimiento" el knob salta sin animar
+    Animated.timing(x, {
+      toValue: on ? 20 : 0,
+      duration: reduceMotion ? 0 : 180,
+      useNativeDriver: true,
+    }).start();
+  }, [on, x, reduceMotion]);
   return <Animated.View style={[k.knob, { transform: [{ translateX: x }] }]} />;
 }
 
@@ -301,7 +310,9 @@ const k = StyleSheet.create({
     backgroundColor: T.surface, borderRadius: 18, overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
   },
+  groupCardHC: { borderWidth: 1.5, borderColor: T.text },
   rowDivider: { height: 1, backgroundColor: T.divider, marginLeft: 60 },
+  rowDividerHC: { height: 1.5, backgroundColor: '#9AA5A0' },
 
   row: {
     minHeight: 56, flexDirection: 'row', alignItems: 'center',

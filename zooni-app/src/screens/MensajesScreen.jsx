@@ -25,6 +25,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import { fetchServicios } from '../api/comunidad';
 import { fetchMisConversacionesMatch, fetchMisUltimosMensajesServicios } from '../services/chatStore';
+import MatchInfoModal from '../components/chat/MatchInfoModal';
 
 const ICONOS_SERVICIO = { veterinaria: 'medkit-outline', paseador: 'walk-outline', petshop: 'bag-outline', peluqueria: 'cut-outline' };
 const COLORES_SERVICIO = { veterinaria: '#E63946', paseador: '#F5A623', petshop: '#F5C842', peluqueria: '#9B59B6' };
@@ -47,6 +48,7 @@ export default function MensajesScreen() {
   const [conversaciones, setConversaciones] = useState([]);
   const [servicios, setServicios] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [infoMatch, setInfoMatch] = useState(null); // conversación cuya ficha se abre
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -122,11 +124,16 @@ export default function MensajesScreen() {
           }
           renderItem={({ item: c }) => (
             <TouchableOpacity style={st.item} onPress={() => abrirChatPersona(c)}>
-              {c.fotoPerfilUrl ? (
-                <Image source={{ uri: c.fotoPerfilUrl }} style={st.avatar} />
-              ) : (
-                <View style={st.avatarFallback}><Text style={st.avatarLetra}>{c.nombre?.[0] ?? '?'}</Text></View>
-              )}
+              {/* Tocar solo la foto abre la ficha de perfil (como Instagram);
+                  tocar el resto de la fila abre el chat. */}
+              <TouchableOpacity onPress={() => setInfoMatch(c)} activeOpacity={0.7}
+                accessibilityRole="button" accessibilityLabel={`Ver perfil de ${c.nombre}`}>
+                {c.fotoPerfilUrl ? (
+                  <Image source={{ uri: c.fotoPerfilUrl }} style={st.avatar} />
+                ) : (
+                  <View style={st.avatarFallback}><Text style={st.avatarLetra}>{c.nombre?.[0] ?? '?'}</Text></View>
+                )}
+              </TouchableOpacity>
               <View style={st.info}>
                 <Text style={st.nombre} numberOfLines={1}>{c.nombre}</Text>
                 <Text style={st.preview} numberOfLines={1}>{c.ultimoMensaje ?? 'Todavía no hay mensajes'}</Text>
@@ -158,6 +165,13 @@ export default function MensajesScreen() {
           )}
         />
       )}
+
+      <MatchInfoModal
+        visible={!!infoMatch}
+        matchId={infoMatch?.chatId}
+        onClose={() => setInfoMatch(null)}
+        onAbrirChat={() => infoMatch && abrirChatPersona(infoMatch)}
+      />
     </SafeAreaView>
   );
 }

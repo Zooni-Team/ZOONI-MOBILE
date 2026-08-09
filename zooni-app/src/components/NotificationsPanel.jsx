@@ -1,7 +1,7 @@
 /**
  * NotificationsPanel — Mini pestaña desplegable en Home (debajo del header).
  */
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fetchNotificaciones, marcarNotificacionLeida, marcarTodasLeidas } from '../services/api';
+import { chatDeMatchPorMascota } from '../services/matchApi';
+import { resolveMascotaVisual } from '../constants/petImages';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DROPDOWN_TOP = 56;
@@ -34,45 +36,44 @@ export default function NotificationsPanel({ visible, onClose, onNavigate, onMar
   const [notificaciones, setNotificaciones] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Timeout de 2 segundos para notificaciones
-      const dataPromise = Promise.race([
-        fetchNotificaciones(),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('timeout')), 2000)
-        )
-      ]);
-
-      const data = await dataPromise;
-      setNotificaciones(data.notificaciones ?? []);
-    } catch (error) {
-      // demo / sin backend / timeout
-      console.log('Notificaciones: sin backend o timeout');
-      setNotificaciones([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // Home pasa onMarcarTodasLeidas como arrow inline (cambia en cada render):
+  // si el efecto dependiera de ella, el panel se recargaba solo a los pocos
+  // segundos (marcar leídas → re-render de Home → callback nueva → efecto
+  // re-disparado → spinner). Con el ref, el efecto depende SOLO de `visible`.
+  const onMarcarTodasRef = useRef(onMarcarTodasLeidas);
+  onMarcarTodasRef.current = onMarcarTodasLeidas;
 
   useEffect(() => {
-    if (visible) {
-      load();
-      // Marcar como leídas después de 1.5s (tiempo de lectura). Esto también
-      // tiene que apagar el circulito de la campana en Home al instante, no
-      // recién la próxima vez que se recargue Home desde cero.
-      const timer = setTimeout(() => {
-        marcarTodasLeidas().then(() => onMarcarTodasLeidas?.()).catch(() => {/* sin backend */});
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [visible, load, onMarcarTodasLeidas]);
+    if (!visible) return;
+    let cancelado = false;
+
+    // Solo NO leídas: las que ya se marcaron leídas (con "Marcar todas" o al
+    // tocarlas) no vuelven a aparecer al reabrir el panel. Sin auto-marcado al
+    // abrir: las notificaciones persisten hasta que el usuario las marque.
+    (async () => {
+      setLoading(true);
+      try {
+        const data = await Promise.race([
+          fetchNotificaciones(1, 20, true),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000)),
+        ]);
+        if (!cancelado) setNotificaciones(data.notificaciones ?? []);
+      } catch {
+        if (!cancelado) setNotificaciones([]);
+      } finally {
+        if (!cancelado) setLoading(false);
+      }
+    })();
+
+    return () => { cancelado = true; };
+  }, [visible]);
 
   const handleMarkAll = async () => {
+    // Marcar todas como leídas = el panel queda vacío. Optimista: la lista
+    // se limpia al toque aunque el backend tarde o falle.
+    setNotificaciones([]);
+    onMarcarTodasRef.current?.();
     try { await marcarTodasLeidas(); } catch { /* sin backend */ }
-    onMarcarTodasLeidas?.();
-    setNotificaciones((prev) => prev.map((n) => ({ ...n, leida: true })));
   };
 
   const handleTap = async (item) => {
@@ -82,6 +83,32 @@ export default function NotificationsPanel({ visible, onClose, onNavigate, onMar
         prev.map((n) => (n.id === item.id ? { ...n, leida: true } : n)),
       );
     }
+    // Con chatId va directo a la conversación (ej: el chat del match)
+    if (item.dataExtra?.chatId) {
+      onClose();
+      onNavigate({
+        screen: 'Chat',
+        params: {
+          chatId: item.dataExtra.chatId,
+          nombre: item.dataExtra.nombre ?? 'Chat',
+          fotoPerfilUrl: item.dataExtra.fotoPerfilUrl ?? null,
+        },
+      });
+      return;
+    }
+
+    // Match sin DataExtra (notificación vieja): buscar el chat en el momento
+    if (item.tipo === 'match' && item.mascota?.id) {
+      try {
+        const chat = await chatDeMatchPorMascota(item.mascota.id);
+        if (chat) {
+          onClose();
+          onNavigate({ screen: 'Chat', params: chat });
+          return;
+        }
+      } catch { /* cae a la pantalla genérica */ }
+    }
+
     const ruta = item.redirigea ?? item.redirige_a;
     if (ruta) {
       onClose();
@@ -96,8 +123,11 @@ export default function NotificationsPanel({ visible, onClose, onNavigate, onMar
       style={[styles.item, !item.leida && styles.itemUnread]}
       onPress={() => handleTap(item)}
     >
+      {/* Mini imagen de la mascota a la que pertenece la notificación */}
       <View style={styles.avatarWrap}>
-        {item.fotoUrl ? (
+        {item.mascota ? (
+          <Image source={resolveMascotaVisual(item.mascota)} style={styles.avatar} />
+        ) : item.fotoUrl ? (
           <Image source={{ uri: item.fotoUrl }} style={styles.avatar} />
         ) : (
           <View style={[styles.avatar, styles.avatarFallback]}>
@@ -108,6 +138,9 @@ export default function NotificationsPanel({ visible, onClose, onNavigate, onMar
       <View style={styles.textWrap}>
         <Text style={styles.titulo} numberOfLines={1}>{item.titulo}</Text>
         <Text style={styles.cuerpo} numberOfLines={2}>{item.cuerpo}</Text>
+        {item.mascota && (
+          <Text style={styles.mascotaNombre} numberOfLines={1}>🐾 {item.mascota.nombre}</Text>
+        )}
       </View>
       <View style={styles.rightWrap}>
         <Text style={styles.tiempo}>{timeAgo(item.createdAt)}</Text>
@@ -230,6 +263,7 @@ const styles = StyleSheet.create({
   textWrap: { flex: 1, marginRight: 6 },
   titulo: { fontSize: 13, fontWeight: '700', color: '#2C2C2C' },
   cuerpo: { fontSize: 12, color: '#6B6B6B', marginTop: 2 },
+  mascotaNombre: { fontSize: 11, fontWeight: '700', color: '#177046', marginTop: 2 },
   rightWrap: { alignItems: 'flex-end', gap: 4 },
   tiempo: { fontSize: 10, color: '#AAAAAA' },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#2DBD72' },

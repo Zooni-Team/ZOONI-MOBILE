@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import SkeletonLoader from '../components/SkeletonLoader';
@@ -14,10 +15,15 @@ import MatchActionButtons from '../components/match/MatchActionButtons';
 import MatchCelebrationOverlay from '../components/match/MatchCelebrationOverlay';
 import MatchProfileDetailModal from '../components/match/MatchProfileDetailModal';
 import MatchProfileSetup from '../components/match/MatchProfileSetup';
+import PetMatchProfileModal from '../components/match/PetMatchProfileModal';
 import {
   fetchMatchPerfiles, postMatchLike, postMatchSkip,
   fetchMiPerfilMatch, perfilMatchCompleto, actualizarMiUbicacionMatch,
+  fetchMisMascotasMatch,
 } from '../services/matchApi';
+import { setFotoPrincipalMascota } from '../services/petsApi';
+import { resolveMascotaVisual } from '../constants/petImages';
+import { alerta } from '../utils/dialogo';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
 import { getMatchCardLayout } from '../utils/matchLayout';
@@ -40,6 +46,13 @@ export default function MatchScreen() {
   const [detailPerfil, setDetailPerfil] = useState(null);
   // null = verificando si falta algo, false = falta completar, true = listo
   const [perfilListo, setPerfilListo] = useState(null);
+  const [perfilMatch, setPerfilMatch] = useState(null); // datos ya cargados (foto, fecha…)
+
+  // Perfil de Match POR MASCOTA: detecta cuáles activas no lo tienen todavía
+  const [misMascotas, setMisMascotas] = useState([]);
+  const [setupMascota, setSetupMascota] = useState(null); // mascota del modal
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const activaIdRef = useRef(null);
 
   const loadPerfiles = useCallback(async (showSkeleton = true) => {
     if (showSkeleton) setLoading(true);
@@ -58,7 +71,7 @@ export default function MatchScreen() {
     (async () => {
       try {
         const perfil = await fetchMiPerfilMatch();
-        if (!cancelado) setPerfilListo(perfilMatchCompleto(perfil));
+        if (!cancelado) { setPerfilMatch(perfil); setPerfilListo(perfilMatchCompleto(perfil)); }
       } catch {
         if (!cancelado) setPerfilListo(true); // si falla la consulta no bloqueamos el acceso
       }
@@ -82,12 +95,34 @@ export default function MatchScreen() {
     );
   }, []);
 
+  /**
+   * Relee mis mascotas y el estado de sus perfiles de Match. Si la mascota
+   * activa cambió (alternada con las flechas del Home), recarga el swipe:
+   * los likes/vistos son por mascota.
+   */
+  const loadMisMascotas = useCallback(async () => {
+    try {
+      const lista = await fetchMisMascotasMatch();
+      setMisMascotas(lista);
+      const activa = lista.find((m) => m.esActiva) ?? lista[0] ?? null;
+      if (activa && activaIdRef.current && activaIdRef.current !== activa.id) {
+        loadPerfiles(true);
+      }
+      activaIdRef.current = activa?.id ?? null;
+    } catch { /* sin conexión: no bloquea */ }
+  }, [loadPerfiles]);
+
+  useEffect(() => {
+    if (perfilListo) loadMisMascotas();
+  }, [perfilListo, loadMisMascotas]);
+
   useFocusEffect(
     useCallback(() => {
+      loadMisMascotas();
       if (consumeMatchReloadFromFilters()) {
         loadPerfiles(true);
       }
-    }, [loadPerfiles])
+    }, [loadPerfiles, loadMisMascotas])
   );
 
   /** Avanza al siguiente perfil al instante; like/skip al servidor en segundo plano. */
@@ -158,6 +193,38 @@ export default function MatchScreen() {
   const current = perfiles[index];
   const isEmpty = !loading && !current;
 
+  // Mascota activa sin perfil de Match → prompt en lugar del swipe (los
+  // votos se emiten como ella). Otras sin perfil → banner ofreciendo crearlo.
+  const mascotaActivaMatch = misMascotas.find((m) => m.esActiva) ?? null;
+  const activaSinPerfil = mascotaActivaMatch && !mascotaActivaMatch.perfilCreado;
+  // Foto REAL obligatoria: si la mascota activa no tiene, no puede aparecer en
+  // Match hasta subir una (aplica también a los perfiles ya existentes).
+  const activaSinFoto = mascotaActivaMatch && !activaSinPerfil && !mascotaActivaMatch.fotoUrl;
+  const otrasSinPerfil = misMascotas.filter((m) => !m.perfilCreado && !m.esActiva);
+
+  const marcarPerfilCreado = (id) => {
+    setMisMascotas((prev) => prev.map((m) => (m.id === id ? { ...m, perfilCreado: true } : m)));
+    setSetupMascota(null);
+  };
+
+  const subirFotoMascota = async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) { alerta('Sin permiso', 'Habilitá el acceso a la galería.'); return; }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7,
+      });
+      if (res.canceled || !res.assets?.[0]?.uri) return;
+      setSubiendoFoto(true);
+      const url = await setFotoPrincipalMascota(mascotaActivaMatch.id, res.assets[0].uri);
+      setMisMascotas((prev) => prev.map((m) => (m.id === mascotaActivaMatch.id ? { ...m, fotoUrl: url } : m)));
+    } catch {
+      alerta('No pudimos subir la foto', 'Probá de nuevo.');
+    } finally {
+      setSubiendoFoto(false);
+    }
+  };
+
   if (perfilListo === null) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -169,7 +236,7 @@ export default function MatchScreen() {
   }
 
   if (perfilListo === false) {
-    return <MatchProfileSetup onListo={() => setPerfilListo(true)} />;
+    return <MatchProfileSetup perfilActual={perfilMatch} onListo={() => setPerfilListo(true)} />;
   }
 
   return (
@@ -202,8 +269,62 @@ export default function MatchScreen() {
         </View>
         <View style={styles.headerDivider} />
 
+        {/* El perfil de Match de las otras mascotas propias se crea al
+            activarlas desde Home — acá no se muestra nada del usuario. */}
+
         <View style={styles.body}>
-          {loading ? (
+          {activaSinPerfil ? (
+            /* La mascota activa no tiene perfil: setup antes de poder swipear */
+            <View style={styles.empty}>
+              <View style={styles.setupAvatarWrap}>
+                <ImageBackground
+                  source={resolveMascotaVisual(mascotaActivaMatch)}
+                  style={styles.setupAvatar}
+                  imageStyle={{ borderRadius: 60 }}
+                />
+              </View>
+              <Text style={styles.emptyTitle}>
+                {mascotaActivaMatch.nombre} todavía no tiene perfil de Match.{'\n'}
+                Crealo para empezar a conocer otras mascotas.
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyBtn}
+                onPress={() => setSetupMascota(mascotaActivaMatch)}
+                accessibilityRole="button"
+                accessibilityLabel={`Crear perfil de Match de ${mascotaActivaMatch.nombre}`}
+              >
+                <Text style={styles.emptyBtnText}>Crear perfil de {mascotaActivaMatch.nombre}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : activaSinFoto ? (
+            /* Perfil listo pero la mascota activa no tiene foto real: la pedimos */
+            <View style={styles.empty}>
+              <View style={styles.setupAvatarWrap}>
+                <ImageBackground
+                  source={resolveMascotaVisual(mascotaActivaMatch)}
+                  style={styles.setupAvatar}
+                  imageStyle={{ borderRadius: 60, opacity: 0.5 }}
+                />
+                <View style={styles.camaraBadge}>
+                  <Ionicons name="camera" size={22} color="#FFFFFF" />
+                </View>
+              </View>
+              <Text style={styles.emptyTitle}>
+                Para aparecer en Match, {mascotaActivaMatch.nombre} necesita{'\n'}una foto real (no el dibujo).
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyBtn}
+                onPress={subirFotoMascota}
+                disabled={subiendoFoto}
+                accessibilityRole="button"
+                accessibilityLabel={`Subir foto real de ${mascotaActivaMatch.nombre}`}
+              >
+                {subiendoFoto
+                  ? <ActivityIndicator size="small" color="#FFFFFF" />
+                  : <Text style={styles.emptyBtnText}>Subir foto de {mascotaActivaMatch.nombre}</Text>}
+              </TouchableOpacity>
+            </View>
+          ) : loading ? (
             <SkeletonLoader
               width={cardWidth}
               height={cardHeight}
@@ -238,7 +359,7 @@ export default function MatchScreen() {
         </View>
 
         <View style={styles.actionsWrap}>
-          {!loading && !isEmpty && (
+          {!loading && !isEmpty && !activaSinPerfil && !activaSinFoto && (
             <MatchActionButtons
               canUndo={history.length > 0 && !processingRef.current}
               onUndo={handleUndo}
@@ -253,6 +374,13 @@ export default function MatchScreen() {
         visible={!!detailPerfil}
         perfil={detailPerfil}
         onClose={() => setDetailPerfil(null)}
+      />
+
+      <PetMatchProfileModal
+        visible={!!setupMascota}
+        mascota={setupMascota}
+        onClose={() => setSetupMascota(null)}
+        onCreado={marcarPerfilCreado}
       />
 
       <MatchCelebrationOverlay
@@ -304,6 +432,26 @@ const styles = StyleSheet.create({
   },
   actionsWrap: { flexShrink: 0 },
   empty: { alignItems: 'center', paddingHorizontal: 32, gap: 16 },
+  petBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#E8F7EE', borderRadius: 14,
+    marginHorizontal: 20, marginTop: 10, paddingHorizontal: 14, paddingVertical: 10,
+  },
+  petBannerTxt: { flex: 1, fontSize: 13, color: '#177046', fontWeight: '600' },
+  petBannerBtn: {
+    fontSize: 13, fontWeight: '700', color: '#177046',
+    textDecorationLine: 'underline', padding: 4,
+  },
+  setupAvatarWrap: { alignItems: 'center', justifyContent: 'center' },
+  setupAvatar: {
+    width: 120, height: 120, borderRadius: 60, overflow: 'hidden',
+    borderWidth: 3, borderColor: '#2DBD72', backgroundColor: '#E4F9EA',
+  },
+  camaraBadge: {
+    position: 'absolute', width: 48, height: 48, borderRadius: 24,
+    backgroundColor: '#2DBD72', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 3, borderColor: '#FFFFFF',
+  },
   emptyTitle: { fontSize: 16, color: '#6B6B6B', textAlign: 'center', lineHeight: 24 },
   emptyBtn: {
     backgroundColor: '#2DBD72', borderRadius: 30, paddingHorizontal: 24, paddingVertical: 14, marginTop: 8,

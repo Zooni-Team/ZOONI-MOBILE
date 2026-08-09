@@ -29,8 +29,6 @@ export default function TemaScreen() {
     setDevice({ ...getSettings().device });
   };
 
-  const tamano = TAMANOS.find((t) => t.value === device.text_size) ?? TAMANOS[1];
-
   return (
     <SettingsScreen title="Tema de la aplicación">
 
@@ -53,10 +51,10 @@ export default function TemaScreen() {
           options={[
             { value: 'light', label: 'Claro' },
             { value: 'dark',  label: 'Oscuro', apoyo: 'Próximamente' },
-            { value: 'auto',  label: 'Automático', apoyo: 'Según el sistema' },
+            { value: 'auto',  label: 'Automático', apoyo: 'Próximamente' },
           ]}
           value={device.theme}
-          onChange={(v) => { if (v !== 'dark') set({ theme: v }); }}
+          onChange={(v) => { if (v === 'light') set({ theme: v }); }}
         />
         <SettingsSlider
           label="Tamaño del texto"
@@ -64,9 +62,10 @@ export default function TemaScreen() {
           value={device.text_size}
           onChange={(v) => set({ text_size: v })}
         />
-        {/* Línea de ejemplo que cambia en tiempo real */}
+        {/* Línea de ejemplo: escala en vivo con el escalado global de la app
+            (no lleva fontSize propio para no escalar doble) */}
         <View style={s.ejemploWrap}>
-          <Text style={[s.ejemplo, { fontSize: tamano.px }]}>
+          <Text style={s.ejemplo}>
             Titán tiene turno con la veterinaria el jueves.
           </Text>
         </View>
@@ -107,5 +106,5 @@ const s = StyleSheet.create({
   previewTag:    { fontSize: 12, color: T.textSoft, textAlign: 'center' },
 
   ejemploWrap: { paddingHorizontal: 16, paddingBottom: 14 },
-  ejemplo:     { color: T.textSoft, lineHeight: 26 },
+  ejemplo:     { fontSize: 15, color: T.textSoft, lineHeight: 22 },
 });

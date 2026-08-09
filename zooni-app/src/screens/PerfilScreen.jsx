@@ -32,6 +32,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import HamburgerDrawer from '../components/HamburgerDrawer';
+import AppDialog from '../components/AppDialog';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
 import {
   fetchMiPerfil,
@@ -39,6 +40,7 @@ import {
   actualizarMiPerfil,
   actualizarMiFotoPerfil,
   crearPublicacion,
+  eliminarPublicacion,
 } from '../services/perfilApi';
 
 const { height: SH } = Dimensions.get('window');
@@ -155,11 +157,12 @@ export default function PerfilScreen() {
   // Modales
   const [modalEditar,   setModalEditar]   = useState(false);
   const [modalPublicar, setModalPublicar] = useState(false);
+  const [pubAbierta,    setPubAbierta]    = useState(null); // publicación en el visor
+  const [confirmarBorrar, setConfirmarBorrar] = useState(null);
 
   // Form editar
   const [fNombre,   setFNombre]   = useState('');
   const [fApellido, setFApellido] = useState('');
-  const [fUsuario,  setFUsuario]  = useState('');
   const [fBio,      setFBio]      = useState('');
   const [fUbicacion,setFUbicacion]= useState('');
   const [fErrUser,  setFErrUser]  = useState('');
@@ -216,7 +219,7 @@ export default function PerfilScreen() {
   // ── Abrir modales ────────────────────────────────────────────────────────
   function abrirEditar() {
     setFNombre(perfil?.nombre ?? ''); setFApellido(perfil?.apellido ?? '');
-    setFUsuario(perfil?.nombreUsuario ?? ''); setFBio(perfil?.bio ?? '');
+    setFBio(perfil?.bio ?? '');
     setFUbicacion(perfil?.ubicacion ?? ''); setFErrUser('');
     setModalEditar(true);
   }
@@ -236,27 +239,20 @@ export default function PerfilScreen() {
     ]);
   }
 
-  // ── Guardar perfil ───────────────────────────────────────────────────────
+  // ── Guardar perfil (el @usuario se cambia desde Configuración) ────────────
   async function guardarPerfil() {
-    const nu = fUsuario.trim();
-    if (!nu) { setFErrUser('El nombre de usuario es requerido'); return; }
-    if (/\s/.test(nu)) { setFErrUser('No puede contener espacios'); return; }
-    if (!/^[a-z0-9_.]+$/.test(nu)) { setFErrUser('Solo letras minúsculas, números, _ y .'); return; }
+    if (!fNombre.trim()) { setFErrUser('El nombre es requerido'); return; }
     setFErrUser(''); setGuardando(true);
     try {
       const actualizado = await actualizarMiPerfil({
         nombre: fNombre.trim(), apellido: fApellido.trim(),
-        nombreUsuario: nu, bio: fBio.trim(), ubicacion: fUbicacion.trim(),
+        bio: fBio.trim(), ubicacion: fUbicacion.trim(),
       });
-      setPerfil(actualizado);
+      setPerfil((prev) => ({ ...prev, ...actualizado }));
       setModalEditar(false);
       mostrarToast('Perfil actualizado correctamente');
-    } catch (err) {
-      if (err?.message === 'USERNAME_TAKEN') {
-        setFErrUser('Ese nombre ya está en uso');
-      } else {
-        mostrarToast('No se pudo actualizar el perfil');
-      }
+    } catch {
+      mostrarToast('No se pudo actualizar el perfil');
     } finally { setGuardando(false); }
   }
 
@@ -340,6 +336,20 @@ export default function PerfilScreen() {
     } finally { setPublicando(false); }
   }
 
+  // ── Eliminar publicación ──────────────────────────────────────────────────
+  async function borrarPublicacion(pub) {
+    setConfirmarBorrar(null);
+    setPubAbierta(null);
+    try {
+      await eliminarPublicacion(pub.id);
+      setPubs(p => p.filter(x => x.id !== pub.id));
+      setStats(s => ({ ...s, totalPublicaciones: Math.max(0, (s.totalPublicaciones ?? 1) - 1) }));
+      mostrarToast('Publicación eliminada');
+    } catch {
+      mostrarToast('No se pudo eliminar la publicación');
+    }
+  }
+
   // ── Nombre a mostrar bajo el avatar ──────────────────────────────────────
   const p = perfil ?? {};
   const displayName = p.nombreUsuario || [p.nombre, p.apellido].filter(Boolean).join(' ') || 'Usuario';
@@ -385,11 +395,19 @@ export default function PerfilScreen() {
             }
           </View>
 
-          {/* Nombre */}
-          {loading
-            ? <Skel w={120} h={16} r={8} style={{ alignSelf:'center', marginTop:12, marginBottom:20 }} />
-            : <Text style={s.nombreUsuario} numberOfLines={1} ellipsizeMode="tail">{displayName}</Text>
-          }
+          {/* Nombre y apellido grande, @usuario abajo (estilo TikTok) */}
+          {loading ? (
+            <Skel w={120} h={16} r={8} style={{ alignSelf:'center', marginTop:12, marginBottom:20 }} />
+          ) : (
+            <View style={s.nombreBlock}>
+              <Text style={s.nombreUsuario} numberOfLines={1} ellipsizeMode="tail">
+                {displayNombreCompleto}
+              </Text>
+              {p.nombreUsuario ? (
+                <Text style={s.arrobaUsuario} numberOfLines={1}>@{p.nombreUsuario}</Text>
+              ) : null}
+            </View>
+          )}
         </View>
 
         {/* ══ CARD BLANCO ═════════════════════════════════════════════════ */}
@@ -440,13 +458,12 @@ export default function PerfilScreen() {
               <Skel w={140} h={14} r={6} style={{marginBottom:6}}/>
               <Skel w={200} h={12} r={6} style={{marginBottom:6}}/>
             </View>
-          ) : (
+          ) : (p.bio || p.ubicacion) ? (
             <View style={s.bioWrap}>
-              <Text style={s.bioNombre}>{displayNombreCompleto}</Text>
               {!!p.bio       && <Text style={s.bioTxt}>{p.bio}</Text>}
               {!!p.ubicacion && <Text style={s.bioTxt}>{p.ubicacion}</Text>}
             </View>
-          )}
+          ) : null}
 
           {/* ── Toast (banner inline antes de tabs) ── */}
           <Toast visible={showToast} mensaje={toastMsg} />
@@ -479,12 +496,7 @@ export default function PerfilScreen() {
           ) : tab === 'grid' ? (
             <View style={s.grid}>
               {pubs.map(pub => (
-                <TouchableOpacity key={pub.id} style={s.gridCell}
-                  onPress={() => {
-                    const msg = pub.descripcion ?? 'Sin descripción';
-                    if (Platform.OS === 'web') window.alert(msg);
-                    else Alert.alert('Publicación', msg);
-                  }}>
+                <TouchableOpacity key={pub.id} style={s.gridCell} onPress={() => setPubAbierta(pub)}>
                   {pub.imagenUrl
                     ? <Image source={{uri:pub.imagenUrl}} style={s.gridImg}/>
                     : <View style={[s.gridImg,s.gridPH]}><Ionicons name="image-outline" size={28} color="#AAAAAA"/></View>
@@ -495,14 +507,15 @@ export default function PerfilScreen() {
           ) : (
             <View style={s.lista}>
               {pubs.map(pub => (
-                <View key={pub.id} style={s.listaCard}>
+                <TouchableOpacity key={pub.id} style={s.listaCard} activeOpacity={0.9}
+                  onPress={() => setPubAbierta(pub)}>
                   {pub.imagenUrl
                     ? <Image source={{uri:pub.imagenUrl}} style={s.listaImg}/>
                     : <View style={[s.listaImg,s.listaImgPH]}><Ionicons name="image-outline" size={36} color="#AAAAAA"/></View>
                   }
                   {!!pub.descripcion && <Text style={s.listaDesc}>{pub.descripcion}</Text>}
                   <Text style={s.listaFecha}>{formatFecha(pub.fecha)}</Text>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
           )}
@@ -516,16 +529,25 @@ export default function PerfilScreen() {
           <Text style={s.modalTitulo}>Editar perfil</Text>
 
           <FocusInput placeholder="Nombre" placeholderTextColor="#AAAAAA"
-            value={fNombre} onChangeText={setFNombre} style={{marginBottom:12}} />
-          <FocusInput placeholder="Apellido" placeholderTextColor="#AAAAAA"
-            value={fApellido} onChangeText={setFApellido} style={{marginBottom:12}} />
-          <FocusInput
-            placeholder="@nombre_de_usuario" placeholderTextColor="#AAAAAA"
-            value={fUsuario}
-            onChangeText={v => { setFUsuario(v.toLowerCase().replace(/[^a-z0-9_.]/g,'')); setFErrUser(''); }}
-            autoCapitalize="none" autoCorrect={false}
+            value={fNombre} onChangeText={v => { setFNombre(v); setFErrUser(''); }}
             style={[{marginBottom: fErrUser ? 4 : 12}, !!fErrUser && s.inputErr]} />
           {!!fErrUser && <Text style={s.errTxt}>{fErrUser}</Text>}
+          <FocusInput placeholder="Apellido" placeholderTextColor="#AAAAAA"
+            value={fApellido} onChangeText={setFApellido} style={{marginBottom:12}} />
+
+          {/* El @usuario se cambia desde Configuración (con bloqueo de 30 días) */}
+          <TouchableOpacity style={s.usuarioRow}
+            onPress={() => { setModalEditar(false); navigation.navigate('ConfigCuenta'); }}
+            accessibilityRole="button" accessibilityLabel="Cambiar nombre de usuario en Configuración">
+            <View>
+              <Text style={s.usuarioRowLbl}>Nombre de usuario</Text>
+              <Text style={s.usuarioRowVal}>{p.nombreUsuario ? `@${p.nombreUsuario}` : 'Sin usuario'}</Text>
+            </View>
+            <View style={s.usuarioRowRight}>
+              <Text style={s.usuarioRowCfg}>Cambiar</Text>
+              <Ionicons name="chevron-forward" size={16} color="#8A8A8A" />
+            </View>
+          </TouchableOpacity>
 
           <FocusInput placeholder="Contá algo sobre vos y tu mascota..." placeholderTextColor="#AAAAAA"
             value={fBio} onChangeText={setFBio}
@@ -579,6 +601,59 @@ export default function PerfilScreen() {
           </TouchableOpacity>
       </AModal>
 
+      {/* ══ VISOR DE PUBLICACIÓN (estilo Instagram) ═════════════════════ */}
+      <Modal visible={!!pubAbierta} transparent animationType="slide"
+        onRequestClose={() => setPubAbierta(null)}>
+        <View style={s.pvRoot}>
+          <View style={s.pvHeader}>
+            <View style={s.pvAutor}>
+              {p.fotoPerfil
+                ? <Image source={{ uri: p.fotoPerfil }} style={s.pvAvatar} />
+                : <View style={[s.pvAvatar, s.pvAvatarPH]}><Ionicons name="person" size={16} color="#FFF" /></View>}
+              <View>
+                <Text style={s.pvNombre}>{displayNombreCompleto}</Text>
+                {p.nombreUsuario ? <Text style={s.pvUsuario}>@{p.nombreUsuario}</Text> : null}
+              </View>
+            </View>
+            <TouchableOpacity onPress={() => setPubAbierta(null)} style={s.pvClose}
+              accessibilityLabel="Cerrar">
+              <Ionicons name="close" size={26} color="#2C2C2C" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={s.pvScroll} showsVerticalScrollIndicator={false}>
+            {pubAbierta?.imagenUrl
+              ? <Image source={{ uri: pubAbierta.imagenUrl }} style={s.pvImg} resizeMode="contain" />
+              : <View style={[s.pvImg, s.pvImgPH]}><Ionicons name="image-outline" size={48} color="#AAA" /></View>}
+
+            {!!pubAbierta?.descripcion && (
+              <Text style={s.pvDesc}>
+                <Text style={s.pvDescUser}>{p.nombreUsuario ? `@${p.nombreUsuario} ` : ''}</Text>
+                {pubAbierta.descripcion}
+              </Text>
+            )}
+            <Text style={s.pvFecha}>{formatFecha(pubAbierta?.fecha)}</Text>
+
+            <TouchableOpacity style={s.pvBorrar} onPress={() => setConfirmarBorrar(pubAbierta)}
+              accessibilityRole="button" accessibilityLabel="Eliminar publicación">
+              <Ionicons name="trash-outline" size={16} color="#B3121D" />
+              <Text style={s.pvBorrarTxt}>Eliminar publicación</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      <AppDialog
+        visible={!!confirmarBorrar}
+        titulo="¿Eliminar publicación?"
+        mensaje="No vas a poder recuperarla."
+        botones={[
+          { texto: 'Eliminar', estilo: 'destructive', onPress: () => borrarPublicacion(confirmarBorrar) },
+          { texto: 'Cancelar', estilo: 'ghost' },
+        ]}
+        onCerrar={() => setConfirmarBorrar(null)}
+      />
+
       <HamburgerDrawer
         visible={drawerOpen}
         onClose={() => setDrawerOpen(false)}
@@ -615,8 +690,9 @@ const s = StyleSheet.create({
   avatarFallback:{ width:84, height:84, borderRadius:42, backgroundColor:'#DDDDDD',
                    alignItems:'center', justifyContent:'center',
                    shadowColor:'#000', shadowOffset:{width:0,height:2}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
-  nombreUsuario:{ fontSize:20, fontWeight:'700', color:'#2C2C2C', textAlign:'center',
-                  marginTop:12, marginBottom:20, paddingHorizontal:20 },
+  nombreBlock:  { alignItems:'center', marginTop:12, marginBottom:20, paddingHorizontal:20 },
+  nombreUsuario:{ fontSize:20, fontWeight:'700', color:'#2C2C2C', textAlign:'center' },
+  arrobaUsuario:{ fontSize:14, color:'#8A8A8A', textAlign:'center', marginTop:2 },
 
   // Card blanco
   card:        { backgroundColor:'#FFF', borderTopLeftRadius:28, borderTopRightRadius:28,
@@ -693,6 +769,14 @@ const s = StyleSheet.create({
   modalTitulo: { fontSize:18, fontWeight:'700', color:'#2DBD72', textAlign:'center', marginBottom:20 },
 
   // Inputs
+  usuarioRow:    { flexDirection:'row', alignItems:'center', justifyContent:'space-between',
+                   borderWidth:1.5, borderColor:'#EEE', borderRadius:10, backgroundColor:'#FAFAFA',
+                   paddingHorizontal:14, paddingVertical:10, marginBottom:12 },
+  usuarioRowLbl: { fontSize:12, color:'#8A8A8A' },
+  usuarioRowVal: { fontSize:15, fontWeight:'700', color:'#2C2C2C', marginTop:2 },
+  usuarioRowRight:{ flexDirection:'row', alignItems:'center', gap:4 },
+  usuarioRowCfg: { fontSize:13, fontWeight:'700', color:'#177046' },
+
   input:       { borderWidth:1.5, borderColor:'#DDDDDD', borderRadius:10,
                  paddingHorizontal:14, paddingVertical:12,
                  fontSize:14, color:'#2C2C2C', backgroundColor:'#FFF', marginBottom:12 },
@@ -724,4 +808,25 @@ const s = StyleSheet.create({
   btnCancelar:     { width:'100%', height:44, borderRadius:30, backgroundColor:'#E8E8E8',
                      alignItems:'center', justifyContent:'center', marginTop:10 },
   btnCancelarTxt:  { fontSize:15, fontWeight:'700', color:'#2C2C2C' },
+
+  // Visor de publicación
+  pvRoot:    { flex:1, backgroundColor:'#FFFFFF' },
+  pvHeader:  { height:56, flexDirection:'row', alignItems:'center', justifyContent:'space-between',
+               paddingHorizontal:12, borderBottomWidth:1, borderBottomColor:'#EFEFEF',
+               marginTop: Platform.OS === 'android' ? 24 : 0 },
+  pvAutor:   { flexDirection:'row', alignItems:'center', gap:10, flex:1 },
+  pvAvatar:  { width:36, height:36, borderRadius:18, borderWidth:1.5, borderColor:'#2DBD72' },
+  pvAvatarPH:{ backgroundColor:'#BEBEBE', alignItems:'center', justifyContent:'center' },
+  pvNombre:  { fontSize:14, fontWeight:'700', color:'#2C2C2C' },
+  pvUsuario: { fontSize:12, color:'#6B6B6B' },
+  pvClose:   { width:40, height:40, alignItems:'center', justifyContent:'center' },
+  pvScroll:  { paddingBottom:40 },
+  pvImg:     { width:'100%', height:380, backgroundColor:'#000' },
+  pvImgPH:   { backgroundColor:'#F0F0F0', alignItems:'center', justifyContent:'center' },
+  pvDesc:    { fontSize:14, color:'#2C2C2C', lineHeight:20, paddingHorizontal:16, paddingTop:14 },
+  pvDescUser:{ fontWeight:'700' },
+  pvFecha:   { fontSize:12, color:'#AAAAAA', paddingHorizontal:16, paddingTop:8 },
+  pvBorrar:  { flexDirection:'row', alignItems:'center', gap:8, alignSelf:'flex-start',
+               paddingHorizontal:16, paddingVertical:14, marginTop:8 },
+  pvBorrarTxt:{ fontSize:15, fontWeight:'700', color:'#B3121D' },
 });

@@ -16,7 +16,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { especieIcono, PET_TYPE_OPTIONS } from '../../data/matchDemo';
-import { resolvePetPhotoSource } from '../../constants/matchAssets';
 import { resolveMascotaVisual } from '../../constants/petImages';
 
 function especieLabel(especie) {
@@ -41,9 +40,9 @@ export default function MatchProfileDetailModal({ visible, perfil, onClose }) {
   if (!visible || !perfil) return null;
 
   const {
-    nombre, edad, barrio, ciudad, distancia_km, foto_perfil_url, mascota, intereses,
+    nombre, nombre_usuario, edad, barrio, ciudad, distancia_km, foto_perfil_url, mascota, intereses,
   } = perfil;
-  const petPhotoSource = resolvePetPhotoSource(mascota);
+  const petPhotoSource = resolveMascotaVisual(mascota);
   const petAgeLabel = `${mascota.edad_anios} año${mascota.edad_anios === 1 ? '' : 's'}`;
 
   return (
@@ -82,8 +81,9 @@ export default function MatchProfileDetailModal({ visible, perfil, onClose }) {
               </View>
 
               <View style={styles.photoCaption}>
-                <Text style={styles.photoCaptionName}>{nombre}, {edad}</Text>
-                <Text style={styles.photoCaptionLoc}>📍 {barrio}, {ciudad}</Text>
+                <Text style={styles.photoCaptionName}>{nombre}{edad != null ? `, ${edad}` : ''}</Text>
+                {nombre_usuario ? <Text style={styles.photoCaptionUser}>@{nombre_usuario}</Text> : null}
+                <Text style={styles.photoCaptionLoc}>📍 {barrio}{ciudad ? `, ${ciudad}` : ''}</Text>
               </View>
             </View>
 
@@ -198,6 +198,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
   photoCaptionName: { fontSize: 26, fontWeight: '800', color: '#FFFFFF' },
+  photoCaptionUser: { fontSize: 14, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
   photoCaptionLoc: { fontSize: 15, color: 'rgba(255,255,255,0.9)', marginTop: 4 },
   bodySection: {
     paddingHorizontal: 20,

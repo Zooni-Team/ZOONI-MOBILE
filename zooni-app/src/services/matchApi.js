@@ -15,6 +15,7 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
+import { fetchIdsBloqueados } from './moderacionApi';
 import { DEFAULT_FILTROS } from '../data/matchDemo';
 import { subirImagenPublica } from '../utils/imagenStorage';
 
@@ -79,11 +80,16 @@ async function miMascotaActiva() {
   return data;
 }
 
-function mapPerfil(mascota, miUsuario) {
+function mapPerfil(mascota, miUsuario, fotosPorMascota) {
   const user = mascota.User;
+  // Portada (Mascota.Foto) + galería (mascota_fotos), sin duplicar
+  const galeria = (fotosPorMascota?.get(mascota.Id_Mascota) ?? []).map((f) => f.url);
+  const fotos = [mascota.Foto, ...galeria].filter((u, i, arr) => u && arr.indexOf(u) === i);
   return {
     usuario_id: user.Id_User,
     nombre: user.Nombre,
+    nombre_usuario: user.NombreUsuario ?? null,
+    genero: user.Genero ?? null,
     edad: edadDesde(user.FechaNacimiento),
     foto_perfil_url: user.FotoPerfil ?? null,
     barrio: user.Ubicacion ?? null,
@@ -96,6 +102,8 @@ function mapPerfil(mascota, miUsuario) {
       raza: mascota.Raza,
       edad_anios: edadDesde(mascota.FechaNacimiento),
       foto_real_url: mascota.Foto ?? null,
+      // Todas las fotos (portada + galería) para el carrusel de la tarjeta
+      fotos,
       // Antes venía hardcodeado en null: el avatarcito de Match nunca
       // reflejaba el look aplicado en Closet. Se resuelve con el mismo
       // ImagenAsset que usan Home y Ficha Médica.
@@ -128,6 +136,19 @@ function aplicarFiltros(lista, filtros) {
       return true;
     });
   }
+  // Edad del dueño (max 65 = "65+", no pone techo)
+  if (filtros.edad_dueno_min != null || filtros.edad_dueno_max != null) {
+    result = result.filter((p) => {
+      if (p.edad == null) return true;
+      if (filtros.edad_dueno_min != null && p.edad < filtros.edad_dueno_min) return false;
+      if (filtros.edad_dueno_max != null && filtros.edad_dueno_max < 65 && p.edad > filtros.edad_dueno_max) return false;
+      return true;
+    });
+  }
+  // Género del dueño ('todos' = sin filtro)
+  if (filtros.genero_dueno?.length && !filtros.genero_dueno.includes('todos')) {
+    result = result.filter((p) => p.genero != null && filtros.genero_dueno.includes(p.genero));
+  }
   return result;
 }
 
@@ -137,7 +158,12 @@ async function obtenerCandidatos() {
 
   const [{ data: miUsuario }, { data: candidatos, error }, { data: votos }, { data: matches }] = await Promise.all([
     supabase.from('User').select('*').eq('Id_User', getCurrentUserId()).single(),
-    supabase.from('Mascota').select('*, User(*)').neq('Id_User', getCurrentUserId()),
+    // Nunca mascotas propias, ni archivadas/en memoria/eliminadas,
+    // ni las que su dueño sacó del pool de Match
+    supabase.from('Mascota').select('*, User(*)')
+      .neq('Id_User', getCurrentUserId())
+      .eq('Estado', 'active')
+      .eq('VisibleEnMatch', true),
     miMascota
       ? supabase.from('Voto').select('idMascotaDestino').eq('idMascotaOrigen', miMascota.Id_Mascota)
       : Promise.resolve({ data: [] }),
@@ -153,9 +179,136 @@ async function obtenerCandidatos() {
     ...(matches ?? []).flatMap((m) => [m.idMascotaUno, m.idMascotaDos]),
   ]);
 
-  return (candidatos ?? [])
-    .filter((m) => m.User && !vistoIds.has(m.Id_Mascota))
-    .map((m) => mapPerfil(m, miUsuario));
+  // Usuarios que bloqueé: sus mascotas no aparecen
+  const bloqueados = await fetchIdsBloqueados().catch(() => new Set());
+
+  const visibles = (candidatos ?? []).filter((m) =>
+    m.User
+    && !vistoIds.has(m.Id_Mascota)
+    && !bloqueados.has(m.Id_User)
+    // Foto real OBLIGATORIA: sin foto no aparece en Match (nunca se muestra la
+    // ilustración grande). Las mascotas viejas sin foto quedan fuera hasta que
+    // su dueño suba una.
+    && !!m.Foto
+    // Solo mascotas activas y visibles en Match (las archivadas/eliminadas
+    // del ciclo de vida y las que apagaron la visibilidad no aparecen)
+    && (m.Estado ?? 'active') === 'active'
+    && m.VisibleEnMatch !== false);
+
+  // Galería de fotos de todas las mascotas visibles, en una sola consulta
+  const ids = visibles.map((m) => m.Id_Mascota);
+  const fotosPorMascota = new Map();
+  if (ids.length) {
+    const { data: fotos } = await supabase
+      .from('mascota_fotos').select('*').in('id_mascota', ids)
+      .order('orden', { ascending: true });
+    for (const f of fotos ?? []) {
+      if (!fotosPorMascota.has(f.id_mascota)) fotosPorMascota.set(f.id_mascota, []);
+      fotosPorMascota.get(f.id_mascota).push(f);
+    }
+  }
+
+  return visibles.map((m) => mapPerfil(m, miUsuario, fotosPorMascota));
+}
+
+// ─────────────────────────────────────────────
+// PERFIL DE MATCH POR MASCOTA (migración 023)
+// ─────────────────────────────────────────────
+// Con varias mascotas activas, cada una tiene su propio perfil de Match.
+// La pantalla detecta cuáles no lo tienen y ofrece crearlo.
+
+/** Mascotas activas del usuario con el estado de su perfil de Match. */
+export async function fetchMisMascotasMatch() {
+  const { data, error } = await supabase
+    .from('Mascota')
+    .select('*')
+    .eq('Id_User', getCurrentUserId());
+  if (error) throw error;
+  return (data ?? [])
+    .filter((m) => (m.Estado ?? 'active') === 'active')
+    .map((m) => ({
+      id: m.Id_Mascota,
+      nombre: m.Nombre,
+      especie: m.Especie,
+      raza: m.Raza,
+      imagenAsset: m.ImagenAsset ?? null,
+      fotoUrl: m.Foto ?? null,
+      esActiva: !!m.EsActiva,
+      // Sin la migración 023 la columna no existe → se asume creado para
+      // no molestar con prompts que no se pueden guardar
+      perfilCreado: m.PerfilMatchCreado !== undefined ? !!m.PerfilMatchCreado : true,
+      descripcion: m.Descripcion ?? null,
+    }));
+}
+
+/** Crea/actualiza el perfil de Match de una mascota del usuario. */
+export async function crearPerfilMatchMascota(mascotaId, { descripcion, visibleEnMatch = true } = {}) {
+  const patch = { PerfilMatchCreado: true, VisibleEnMatch: visibleEnMatch };
+  if (descripcion !== undefined) patch.Descripcion = descripcion || null;
+  const { error } = await supabase
+    .from('Mascota')
+    .update(patch)
+    .eq('Id_Mascota', mascotaId)
+    .eq('Id_User', getCurrentUserId());
+  if (error) throw error;
+}
+
+// ─────────────────────────────────────────────
+// DETALLE DE UN MATCH (para la ficha de perfil desde el chat)
+// ─────────────────────────────────────────────
+
+/**
+ * Info completa de la OTRA persona de un match: su perfil, su mascota (la del
+ * match), intereses y desde cuándo son match. La usa la ficha tipo
+ * Instagram/WhatsApp que se abre al tocar la foto/nombre en el chat o la lista.
+ */
+export async function fetchDetalleMatch(matchId) {
+  const miId = getCurrentUserId();
+
+  const { data: match, error } = await supabase
+    .from('Match').select('*').eq('id', matchId).single();
+  if (error || !match) throw error ?? new Error('match_inexistente');
+
+  const soyUno = match.idUsuarioUno === miId;
+  const otroUserId = soyUno ? match.idUsuarioDos : match.idUsuarioUno;
+  const otraMascotaId = soyUno ? match.idMascotaDos : match.idMascotaUno;
+
+  const [{ data: yo }, { data: otro }, { data: mascota }] = await Promise.all([
+    supabase.from('User').select('Lat, Lng').eq('Id_User', miId).maybeSingle(),
+    supabase.from('User').select('*').eq('Id_User', otroUserId).single(),
+    otraMascotaId
+      ? supabase.from('Mascota').select('*').eq('Id_Mascota', otraMascotaId).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  return {
+    matchId,
+    fechaMatch: match.fecha ?? null,
+    persona: {
+      id: otro.Id_User,
+      nombre: `${otro.Nombre ?? ''} ${otro.Apellido ?? ''}`.trim() || 'Usuario',
+      nombreUsuario: otro.NombreUsuario ?? null,
+      edad: edadDesde(otro.FechaNacimiento),
+      genero: otro.Genero ?? null,
+      fotoPerfil: otro.FotoPerfil ?? null,
+      ubicacion: otro.Ubicacion ?? null,
+      distanciaKm: haversineKm(yo?.Lat, yo?.Lng, otro.Lat, otro.Lng),
+      intereses: otro.Intereses ?? [],
+    },
+    mascota: mascota
+      ? {
+          id: mascota.Id_Mascota,
+          nombre: mascota.Nombre,
+          especie: mascota.Especie,
+          raza: mascota.Raza,
+          edad: edadDesde(mascota.FechaNacimiento),
+          sexo: mascota.Sexo ?? null,
+          descripcion: mascota.Descripcion ?? null,
+          fotoUrl: mascota.Foto ?? null,
+          imagenAsset: mascota.ImagenAsset ?? null,
+        }
+      : null,
+  };
 }
 
 // ─────────────────────────────────────────────
@@ -264,6 +417,47 @@ export async function postMatchLike(mascotaDestinoId) {
     .single();
   if (error) throw error;
 
+  // Notificación para los DOS usuarios, cada una ligada a SU mascota
+  // (si el match fue con el perfil de tu perro, la campana dice tu perro,
+  // aunque estés parado en el perfil de tu gato). DataExtra guarda el chat
+  // del match para que el toque abra la conversación directa. Best-effort.
+  try {
+    const { data: miUsuario } = await supabase
+      .from('User').select('"Nombre","FotoPerfil"')
+      .eq('Id_User', getCurrentUserId()).single();
+
+    await supabase.from('Notificacion').insert([
+      {
+        Id_User: getCurrentUserId(),
+        Id_Mascota: miMascota.Id_Mascota,
+        Titulo: '¡Nuevo match!',
+        Mensaje: `${miMascota.Nombre} hizo match con ${mascotaDestino.Nombre}`,
+        Tipo: 'match',
+        Leido: false,
+        Fecha: new Date().toISOString(),
+        DataExtra: {
+          chatId: matchCreado.id,
+          nombre: mascotaDestino.User?.Nombre ?? 'Usuario',
+          fotoPerfilUrl: mascotaDestino.User?.FotoPerfil ?? null,
+        },
+      },
+      {
+        Id_User: mascotaDestino.Id_User,
+        Id_Mascota: mascotaDestino.Id_Mascota,
+        Titulo: '¡Nuevo match!',
+        Mensaje: `${mascotaDestino.Nombre} hizo match con ${miMascota.Nombre}`,
+        Tipo: 'match',
+        Leido: false,
+        Fecha: new Date().toISOString(),
+        DataExtra: {
+          chatId: matchCreado.id,
+          nombre: miUsuario?.Nombre ?? 'Usuario',
+          fotoPerfilUrl: miUsuario?.FotoPerfil ?? null,
+        },
+      },
+    ]);
+  } catch { /* la notificación nunca bloquea el match */ }
+
   return {
     match: true,
     match_id: matchCreado.id,
@@ -284,6 +478,36 @@ export async function postMatchSkip(mascotaDestinoId) {
     idMascotaDestino: mascotaDestinoId,
     leGusta: false,
   });
+}
+
+/**
+ * Resuelve el chat del match más reciente de una mascota propia.
+ * Lo usa el panel de notificaciones para las notificaciones de match que no
+ * tienen DataExtra (creadas antes de la migración 024, o si falló el insert).
+ * Devuelve { chatId, nombre, fotoPerfilUrl } o null.
+ */
+export async function chatDeMatchPorMascota(idMascota) {
+  const { data: match } = await supabase
+    .from('Match')
+    .select('*')
+    .or(`idMascotaUno.eq.${idMascota},idMascotaDos.eq.${idMascota}`)
+    .order('id', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!match) return null;
+
+  const otraMascotaId = match.idMascotaUno === idMascota ? match.idMascotaDos : match.idMascotaUno;
+  const { data: otra } = await supabase
+    .from('Mascota')
+    .select('*, User(*)')
+    .eq('Id_Mascota', otraMascotaId)
+    .single();
+
+  return {
+    chatId: match.id,
+    nombre: otra?.User?.Nombre ?? 'Usuario',
+    fotoPerfilUrl: otra?.User?.FotoPerfil ?? null,
+  };
 }
 
 export async function fetchMatchFiltros() {

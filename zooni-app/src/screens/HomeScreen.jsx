@@ -7,7 +7,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
-import { fetchHome, fetchHomeConfig, saveHomeConfig } from '../services/api';
+import { activarMascota, fetchHome, fetchHomeConfig, saveHomeConfig } from '../services/api';
 import { getSeccion } from '../services/secciones';
 import SkeletonLoader from '../components/SkeletonLoader';
 import HamburgerDrawer from '../components/HamburgerDrawer';
@@ -17,6 +17,7 @@ import NavButton from '../components/NavButton';
 import DraggableList from '../components/DraggableList';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
 import { resolveMascotaVisual } from '../constants/petImages';
+import { useTheme } from '../config/theme';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 const HERO_HEIGHT = Math.min(SCREEN_HEIGHT * 0.40, 340);
@@ -47,6 +48,7 @@ const DEMO_CONFIG = {
 
 export default function HomeScreen() {
   const navigation = useNavigation();
+  const { reduceMotion } = useTheme();
 
   // null (no los datos demo) para que el primer render nunca muestre a
   // "Titán" ni el orden de botones de mentira — antes arrancaba mostrando
@@ -108,6 +110,8 @@ export default function HomeScreen() {
   }, [loadData]);
 
   useEffect(() => {
+    // "Reducir movimiento" activo: la mascota queda quieta
+    if (reduceMotion) { petFloatY.setValue(0); return; }
     // Solo iniciar la animación flotante después de que termine la carga inicial
     if (!loading) {
       const bob = Animated.loop(
@@ -127,7 +131,7 @@ export default function HomeScreen() {
       bob.start();
       return () => bob.stop();
     }
-  }, [petFloatY, loading]);
+  }, [petFloatY, loading, reduceMotion]);
 
   const handleDeleteButton = (seccion) => {
     setBotones((prev) => prev.filter((b) => b.seccion !== seccion));
@@ -158,6 +162,11 @@ export default function HomeScreen() {
   };
 
   const handleNotifNavigate = (ruta) => {
+    // Destino con parámetros ({ screen, params }): ej. el chat de un match
+    if (typeof ruta === 'object' && ruta?.screen) {
+      navigation.navigate(ruta.screen, ruta.params);
+      return;
+    }
     // api.js manda nombres de pantalla ('Mensajes', 'Comunidad'); se normaliza
     // a minúsculas para bancar también rutas viejas tipo 'perfil/...'.
     const screen = ruta.split('/')[0].toLowerCase();
@@ -169,6 +178,25 @@ export default function HomeScreen() {
   const mascota = homeData?.mascotaActiva;
   const usuario = homeData?.usuario ?? null;
   const badge = homeData?.notificacionesNoLeidas ?? 0;
+  const mascotas = homeData?.mascotas ?? (mascota ? [mascota] : []);
+
+  /**
+   * Alterna la mascota activa con las flechas del hero (circular).
+   * Optimista: la UI cambia ya; el EsActiva se persiste en la base para que
+   * TODA la app siga a esta mascota (cada pantalla relee la activa al entrar).
+   */
+  const cambiarMascota = async (direccion) => {
+    if (mascotas.length < 2 || !mascota) return;
+    const i = mascotas.findIndex((m) => m.id === mascota.id);
+    const siguiente = mascotas[(i + direccion + mascotas.length) % mascotas.length];
+    setHomeData((d) => (d ? { ...d, mascotaActiva: siguiente } : d));
+    try {
+      await activarMascota(siguiente.id);
+    } catch {
+      // Si no se pudo persistir, recargar para volver al estado real
+      loadData(true);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -256,6 +284,30 @@ export default function HomeScreen() {
               />
             )}
           </Animated.View>
+
+          {/* Flechas para alternar entre mascotas (solo si hay más de una) */}
+          {!loading && mascotas.length > 1 && (
+            <>
+              <TouchableOpacity
+                style={[styles.petArrow, styles.petArrowLeft]}
+                onPress={() => cambiarMascota(-1)}
+                accessibilityRole="button"
+                accessibilityLabel="Mascota anterior"
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="chevron-back" size={26} color="#2C2C2C" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.petArrow, styles.petArrowRight]}
+                onPress={() => cambiarMascota(1)}
+                accessibilityRole="button"
+                accessibilityLabel="Mascota siguiente"
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="chevron-forward" size={26} color="#2C2C2C" />
+              </TouchableOpacity>
+            </>
+          )}
         </View>
 
         <View style={styles.heroButtonsGap} />
@@ -474,6 +526,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 2,
   },
+  // Flechas del selector de mascota (a la altura de la ilustración)
+  petArrow: {
+    position: 'absolute',
+    bottom: PET_IMAGE_SIZE / 2 - 70,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  petArrowLeft:  { left: 14 },
+  petArrowRight: { right: 14 },
   petImage: {
     width: PET_IMAGE_SIZE,
     height: PET_IMAGE_SIZE,

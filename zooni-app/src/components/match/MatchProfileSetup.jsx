@@ -63,13 +63,27 @@ function parsearFecha(texto) {
   return { dia, mes, anio };
 }
 
-export default function MatchProfileSetup({ onListo }) {
-  const [fotoUri, setFotoUri] = useState(null);
-  const [fechaTexto, setFechaTexto] = useState('');
-  const [genero, setGenero] = useState(null);
-  const [intereses, setIntereses] = useState([]);
+/** "1998-03-20" → "20/03/1998" para prellenar el campo si ya hay fecha. */
+function isoAFecha(iso) {
+  if (!iso) return '';
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+}
+
+export default function MatchProfileSetup({ onListo, perfilActual }) {
+  // Si ya hay foto de perfil cargada (registro / Perfil), se usa esa directo:
+  // no hace falta volver a subirla.
+  const fotoExistente = perfilActual?.fotoPerfilUrl ?? null;
+
+  const [fotoUri, setFotoUri] = useState(null);          // foto nueva elegida acá
+  const [fechaTexto, setFechaTexto] = useState(isoAFecha(perfilActual?.fechaNacimiento));
+  const [genero, setGenero] = useState(perfilActual?.genero ?? null);
+  const [intereses, setIntereses] = useState(perfilActual?.intereses ?? []);
   const [errores, setErrores] = useState({});
   const [guardando, setGuardando] = useState(false);
+
+  // La que se muestra en la vista previa: la nueva si eligió una, si no la ya cargada
+  const fotoMostrada = fotoUri ?? fotoExistente;
 
   const fechaParseada = useMemo(() => parsearFecha(fechaTexto), [fechaTexto]);
   const fechaValida = fechaParseada != null
@@ -102,7 +116,8 @@ export default function MatchProfileSetup({ onListo }) {
 
   const handleContinuar = async () => {
     const errs = {};
-    if (!fotoUri) errs.foto = 'Agregá una foto de perfil';
+    // Solo exige foto si no hay ninguna (ni nueva ni la ya cargada en el perfil)
+    if (!fotoUri && !fotoExistente) errs.foto = 'Agregá una foto de perfil';
     if (!fechaTexto) errs.fecha = 'Ingresá tu fecha de nacimiento';
     else if (!fechaParseada) errs.fecha = 'Fecha inválida';
     else if (!fechaValida) errs.fecha = `Tenés que ser mayor de ${EDAD_MINIMA} años`;
@@ -134,10 +149,14 @@ export default function MatchProfileSetup({ onListo }) {
 
           <View style={s.card}>
             <Text style={s.label}>Foto de perfil</Text>
-            {fotoUri && <Image source={{ uri: fotoUri }} style={s.preview} />}
+            {fotoMostrada && <Image source={{ uri: fotoMostrada }} style={s.preview} />}
+            {/* Si ya hay foto del perfil y no eligió una nueva, se avisa que se usa esa */}
+            {fotoExistente && !fotoUri && (
+              <Text style={s.fotoInfo}>Usamos la foto de tu perfil. Podés cambiarla si querés.</Text>
+            )}
             <View style={s.fotoBtnsRow}>
               <TouchableOpacity style={s.btnFoto} onPress={elegirDeGaleria} activeOpacity={0.85}>
-                <Text style={s.btnFotoText}>Seleccionar archivo</Text>
+                <Text style={s.btnFotoText}>{fotoMostrada ? 'Cambiar foto' : 'Seleccionar archivo'}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.btnFoto} onPress={abrirCamara} activeOpacity={0.85}>
                 <Text style={s.btnFotoText}>📷 Abrir cámara</Text>
@@ -195,7 +214,8 @@ const s = StyleSheet.create({
   },
   label: { fontSize: 14, fontWeight: '700', color: '#2DBD72', marginBottom: 10, marginTop: 16 },
 
-  preview: { width: 90, height: 90, borderRadius: 45, alignSelf: 'center', marginBottom: 12, backgroundColor: '#EFEFEF' },
+  preview: { width: 90, height: 90, borderRadius: 45, alignSelf: 'center', marginBottom: 8, backgroundColor: '#EFEFEF' },
+  fotoInfo: { fontSize: 12, color: '#6B6B6B', textAlign: 'center', marginBottom: 10 },
   fotoBtnsRow: { flexDirection: 'row', gap: 8 },
   btnFoto: { flex: 1, backgroundColor: '#F5C842', borderRadius: 20, paddingVertical: 12, alignItems: 'center' },
   btnFotoText: { fontSize: 13, fontWeight: '700', color: '#2C2C2C' },

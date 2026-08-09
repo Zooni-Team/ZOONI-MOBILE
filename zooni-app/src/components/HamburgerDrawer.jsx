@@ -21,13 +21,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Animated, Dimensions, ScrollView, Alert, Image, Modal, Platform,
+  Animated, Dimensions, ScrollView, Image, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { clearToken } from '../services/api';
 import { clearCurrentUserId } from '../config/session';
 import { contarMensajesNoLeidos } from '../services/chatStore';
+import AppDialog from './AppDialog';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // El drawer ocupa el 80% del ancho, con un máximo de 320px
@@ -56,6 +57,7 @@ const MENU_ITEMS = [
 export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActiva, activeRoute }) {
   const navigation = useNavigation();
   const [mensajesNoLeidos, setMensajesNoLeidos] = useState(0);
+  const [logoutDialog, setLogoutDialog] = useState(false);
 
   // Posición horizontal del drawer (empieza fuera de pantalla a la izquierda)
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
@@ -102,31 +104,16 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
   };
 
   /**
-   * handleLogout — Muestra un diálogo de confirmación antes de cerrar sesión.
-   * Si confirma: elimina el token JWT y redirige al Login.
+   * handleLogout — Abre el cartel de confirmación (estilo Zooni) antes de salir.
    */
-  const handleLogout = () => {
-    const salir = async () => {
-      onClose();
-      await clearToken();          // Token legacy (si quedó alguno guardado)
-      await clearCurrentUserId();  // Sesión actual (config/session.js)
-      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-    };
+  const handleLogout = () => setLogoutDialog(true);
 
-    // Alert.alert es un no-op en react-native-web → fallback a window.confirm
-    if (Platform.OS === 'web') {
-      if (window.confirm('¿Seguro que querés salir de tu cuenta?')) salir();
-      return;
-    }
-
-    Alert.alert(
-      '¿Cerrar sesión?',
-      '¿Seguro que querés salir de tu cuenta?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Sí, salir', style: 'destructive', onPress: salir },
-      ]
-    );
+  const salir = async () => {
+    setLogoutDialog(false);
+    onClose();
+    await clearToken();          // Token legacy (si quedó alguno guardado)
+    await clearCurrentUserId();  // Sesión actual (config/session.js)
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 
   /**
@@ -224,6 +211,17 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
           })}
         </ScrollView>
       </Animated.View>
+
+      <AppDialog
+        visible={logoutDialog}
+        titulo="¿Cerrar sesión?"
+        mensaje="Vas a tener que volver a iniciar sesión para usar Zooni."
+        botones={[
+          { texto: 'Cerrar sesión', estilo: 'destructive', onPress: salir },
+          { texto: 'Cancelar', estilo: 'ghost' },
+        ]}
+        onCerrar={() => setLogoutDialog(false)}
+      />
     </View>
     </Modal>
   );
