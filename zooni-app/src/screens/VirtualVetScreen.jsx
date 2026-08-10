@@ -47,7 +47,7 @@ const C = {
   bgTop: '#E4F9EA',
   bgBottom: '#A8E6BC',
   surface: '#FFFFFF',
-  bubbleUser: '#A8E6C0',
+  bubbleUser: '#7FD9A0',
   bubbleBot: '#FFFFFF',
   text: '#2C2C2C',
   textSoft: '#6B6B6B',
@@ -194,23 +194,31 @@ export default function VirtualVetScreen() {
   }, []);
 
   // Al elegir/cambiar mascota: traer su contexto y arrancar conversación nueva.
+  // El contexto es "best-effort": sirve para los chips personalizados, pero el
+  // chat funciona igual sin él (la Edge Function reconstruye el contexto con el
+  // petId). Por eso, si la RPC falla, igual dejamos la conversación arrancada.
   useEffect(() => {
-    if (petId == null) { setCtx(null); return; }
+    if (petId == null) { setCtx(null); setMensajes([]); return; }
     let cancelado = false;
     setCargandoCtx(true);
+    const nombreFallback = mascotas.find((m) => m.id === petId)?.nombre ?? null;
+    setMensajes([mensajeBienvenida({ nombre: nombreFallback })]);
     (async () => {
       try {
         const c = await construirContextoMascota(petId);
         if (cancelado) return;
         setCtx(c);
-        setMensajes(c ? [mensajeBienvenida(c)] : []);
+        if (c) setMensajes([mensajeBienvenida(c)]);
       } catch {
-        if (!cancelado) { setCtx(null); setMensajes([]); }
+        if (!cancelado) setCtx(null);
       } finally {
         if (!cancelado) setCargandoCtx(false);
       }
     })();
     return () => { cancelado = true; };
+    // Solo dependemos de petId: 'mascotas' se lee para el nombre de respaldo, pero
+    // no queremos reiniciar la conversación si la lista termina de cargar después.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [petId]);
 
   const scrollAlFondo = useCallback(() => {
@@ -350,6 +358,7 @@ export default function VirtualVetScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
+            style={styles.chipsScroll}
             contentContainerStyle={styles.chipsRow}
             keyboardShouldPersistTaps="handled"
           >
@@ -372,7 +381,7 @@ export default function VirtualVetScreen() {
                 value={input}
                 onChangeText={setInput}
                 multiline
-                editable={!enviando && !!ctx}
+                editable={!enviando && petId != null}
                 maxLength={1000}
               />
             </View>
@@ -446,7 +455,7 @@ function mensajeError(e) {
 
 // ─── Estilos ────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bgBottom },
+  safe: { flex: 1, backgroundColor: C.bgTop },
   flex: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
@@ -492,7 +501,10 @@ const styles = StyleSheet.create({
     width: 28, height: 28, borderRadius: 14, backgroundColor: C.surface,
     borderWidth: 1, borderColor: C.divider, alignItems: 'center', justifyContent: 'center', marginRight: 8,
   },
-  bubble: { maxWidth: '78%', borderRadius: 18, paddingVertical: 10, paddingHorizontal: 14 },
+  bubble: {
+    maxWidth: '78%', borderRadius: 18, paddingVertical: 10, paddingHorizontal: 14,
+    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 1,
+  },
   bubbleUser: { backgroundColor: C.bubbleUser, borderBottomRightRadius: 6 },
   bubbleBot: { backgroundColor: C.bubbleBot, borderWidth: 1, borderColor: C.divider, borderBottomLeftRadius: 6 },
   bubbleError: { borderColor: C.sosText, borderWidth: 1.5 },
@@ -519,9 +531,10 @@ const styles = StyleSheet.create({
   sosBtn: { backgroundColor: '#FFFFFF', borderRadius: 24, height: 48, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   sosBtnText: { color: C.sosText, fontSize: 15, fontWeight: '700' },
 
-  chipsRow: { paddingHorizontal: 12, paddingBottom: 8, gap: 8 },
+  chipsScroll: { flexGrow: 0, maxHeight: 48, marginBottom: 14 },
+  chipsRow: { paddingHorizontal: 12, paddingRight: 24, gap: 10, alignItems: 'center' },
   chip: {
-    height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#FFFFFF',
+    height: 38, paddingHorizontal: 16, borderRadius: 19, backgroundColor: '#FFFFFF',
     borderWidth: 1.5, borderColor: C.brandText, alignItems: 'center', justifyContent: 'center',
   },
   chipText: { color: C.brandText, fontSize: 14, fontWeight: '600' },

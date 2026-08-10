@@ -22,63 +22,12 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { getCategoriaInfo } from '../constants/categoriasConsejos';
 import { resolveMascotaVisual } from '../constants/petImages';
-import { fetchConsejos } from '../services/api';
+import { generarConsejos } from '../constants/consejosData';
+import { fetchMascota } from '../services/fichaMedicaApi';
 
-// ─── CONSEJOS DEMO ────────────────────────────────────────────────────────────
-// Se muestran cuando el backend no está disponible o no hay petId.
-
+// Mascota de respaldo si no hay petId o falla la carga: los consejos generales
+// de perro son un punto de partida razonable.
 const DEMO_MASCOTA = { nombre: 'Tu mascota', especie: 'perro', raza: null, fotoUrl: null };
-
-const DEMO_CONSEJOS = [
-  {
-    id: 1, categoria: 'alimentacion',
-    contenido: 'Establecé un horario fijo de comida. Las mascotas digieren mejor y se estresan menos cuando comen a la misma hora todos los días. Evitá darles sobras de mesa.',
-  },
-  {
-    id: 2, categoria: 'salud',
-    contenido: 'Llevá a tu mascota al veterinario al menos una vez al año aunque esté sana. Las vacunas y desparasitaciones al día son la mejor prevención contra enfermedades graves.',
-  },
-  {
-    id: 3, categoria: 'ejercicio',
-    contenido: 'El ejercicio diario no solo mantiene el peso saludable — también reduce la ansiedad y el aburrimiento. Un animal bien ejercitado es más tranquilo en casa.',
-  },
-  {
-    id: 4, categoria: 'comportamiento',
-    contenido: 'El refuerzo positivo es la herramienta más efectiva para enseñar. Premiá inmediatamente el comportamiento que querés repetir y simplemente ignorá el que no querés.',
-  },
-  {
-    id: 5, categoria: 'cuidado',
-    contenido: 'Revisá las orejas de tu mascota una vez por semana. Las infecciones de oído son comunes y muy molestas; detectarlas temprano evita tratamientos largos y costosos.',
-  },
-  {
-    id: 6, categoria: 'general',
-    contenido: 'Las mascotas perciben nuestras emociones con mucha precisión. Cuando estás tranquilo y seguro, tu compañero también lo estará. Tu estado de ánimo los afecta directamente.',
-  },
-  {
-    id: 7, categoria: 'alimentacion',
-    contenido: 'El agua fresca disponible las 24 horas es tan importante como la comida. La deshidratación puede causar problemas renales graves, especialmente en días de calor.',
-  },
-  {
-    id: 8, categoria: 'salud',
-    contenido: 'Revisá regularmente los dientes de tu mascota. La acumulación de sarro puede derivar en enfermedades cardíacas y renales. El cepillado 2 veces por semana marca la diferencia.',
-  },
-  {
-    id: 9, categoria: 'cuidado',
-    contenido: 'El pelaje necesita cepillado regular para evitar enredos, reducir la muda en casa y detectar parásitos a tiempo. La frecuencia depende de la raza y el largo del pelo.',
-  },
-  {
-    id: 10, categoria: 'comportamiento',
-    contenido: 'La socialización temprana es clave. Exponer a tu mascota a diferentes personas, animales y ambientes desde pequeña la hace más segura, adaptable y menos reactiva.',
-  },
-  {
-    id: 11, categoria: 'ejercicio',
-    contenido: 'Los juguetes de enriquecimiento mental como los Kong o los puzzles de comida cansan tanto como el ejercicio físico. Son ideales para días de lluvia o mascotas que viven en departamento.',
-  },
-  {
-    id: 12, categoria: 'general',
-    contenido: 'Nunca le des medicación humana a tu mascota sin consultar al veterinario. Muchos fármacos comunes para humanos — como ibuprofeno o paracetamol — son tóxicos para ellos.',
-  },
-];
 
 // ─── COMPONENTE IMAGEN MASCOTA ────────────────────────────────────────────────
 
@@ -198,7 +147,6 @@ export default function ConsejosScreen() {
   const [consejos,        setConsejos]        = useState([]);
   const [categoriaActiva, setCategoriaActiva] = useState('todos');
   const [loading,         setLoading]         = useState(true);
-  const [esDemo,          setEsDemo]          = useState(false);
 
   const heroScale   = useRef(new Animated.Value(0.88)).current;
   const heroOpacity = useRef(new Animated.Value(0)).current;
@@ -212,34 +160,16 @@ export default function ConsejosScreen() {
 
   const cargar = useCallback(async () => {
     setLoading(true);
-    // Sin petId válido → mostrar demo directamente
-    if (!petId || petId === 0) {
-      setMascota(DEMO_MASCOTA);
-      setConsejos(DEMO_CONSEJOS);
-      setEsDemo(true);
-      setLoading(false);
-      animarEntrada();
-      return;
-    }
-
     try {
-      const data = await fetchConsejos(petId);
-      setMascota(data.mascota ?? DEMO_MASCOTA);
-      const cons = data.consejos ?? [];
-      // Si el backend no tiene consejos aún, mostrar los demo
-      if (cons.length === 0) {
-        setConsejos(DEMO_CONSEJOS);
-        setEsDemo(true);
-      } else {
-        setConsejos(cons);
-        setEsDemo(false);
+      // Traemos la mascota real (especie + raza) para armar consejos a medida.
+      // Si no hay petId o falla, caemos a la mascota de respaldo.
+      let m = null;
+      if (petId && petId !== 0) {
+        m = await fetchMascota(petId).catch(() => null);
       }
-      animarEntrada();
-    } catch {
-      // Error de conexión → mostrar demo sin alert molesto
-      setMascota(DEMO_MASCOTA);
-      setConsejos(DEMO_CONSEJOS);
-      setEsDemo(true);
+      const mascotaFinal = m ?? DEMO_MASCOTA;
+      setMascota(mascotaFinal);
+      setConsejos(generarConsejos({ especie: mascotaFinal.especie, raza: mascotaFinal.raza }));
       animarEntrada();
     } finally {
       setLoading(false);
@@ -290,16 +220,6 @@ export default function ConsejosScreen() {
 
           {/* Card blanco */}
           <View style={st.whiteCard}>
-
-            {/* Banner demo */}
-            {esDemo && !loading && (
-              <View style={st.demoBanner}>
-                <Ionicons name="bulb-outline" size={14} color="#F5A623" />
-                <Text style={st.demoBannerTxt}>
-                  Consejos generales — conectá el backend para ver los de tu mascota
-                </Text>
-              </View>
-            )}
 
             {/* Chips */}
             {!loading && (

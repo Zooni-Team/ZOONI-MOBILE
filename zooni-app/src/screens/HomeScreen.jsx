@@ -65,6 +65,10 @@ export default function HomeScreen() {
 
   const petNameOpacity = useRef(new Animated.Value(1)).current;
   const petFloatY = useRef(new Animated.Value(0)).current;
+  // Transición al alternar de mascota (deslizar + fundir la ilustración y el nombre)
+  const petSwapX = useRef(new Animated.Value(0)).current;
+  const petSwapOpacity = useRef(new Animated.Value(1)).current;
+  const cambiandoMascota = useRef(false);
 
   // silencioso: refresca los datos sin volver a mostrar los skeletons
   // (lo usa el pull-to-refresh, que ya muestra su propio spinner).
@@ -185,17 +189,45 @@ export default function HomeScreen() {
    * Optimista: la UI cambia ya; el EsActiva se persiste en la base para que
    * TODA la app siga a esta mascota (cada pantalla relee la activa al entrar).
    */
-  const cambiarMascota = async (direccion) => {
-    if (mascotas.length < 2 || !mascota) return;
-    const i = mascotas.findIndex((m) => m.id === mascota.id);
-    const siguiente = mascotas[(i + direccion + mascotas.length) % mascotas.length];
-    setHomeData((d) => (d ? { ...d, mascotaActiva: siguiente } : d));
+  const persistirMascota = async (siguiente) => {
     try {
       await activarMascota(siguiente.id);
     } catch {
       // Si no se pudo persistir, recargar para volver al estado real
       loadData(true);
     }
+  };
+
+  const cambiarMascota = (direccion) => {
+    if (mascotas.length < 2 || !mascota || cambiandoMascota.current) return;
+    const i = mascotas.findIndex((m) => m.id === mascota.id);
+    const siguiente = mascotas[(i + direccion + mascotas.length) % mascotas.length];
+
+    // Sin animación (accesibilidad "reducir movimiento"): swap directo.
+    if (reduceMotion) {
+      setHomeData((d) => (d ? { ...d, mascotaActiva: siguiente } : d));
+      persistirMascota(siguiente);
+      return;
+    }
+
+    // La ilustración/nombre salen hacia el lado del gesto, se cambia la mascota
+    // fuera de cuadro y entra desde el lado opuesto (fundido + deslizamiento).
+    cambiandoMascota.current = true;
+    const salida = direccion > 0 ? -70 : 70;
+    Animated.parallel([
+      Animated.timing(petSwapX, { toValue: salida, duration: 170, useNativeDriver: true }),
+      Animated.timing(petSwapOpacity, { toValue: 0, duration: 170, useNativeDriver: true }),
+      Animated.timing(petNameOpacity, { toValue: 0, duration: 170, useNativeDriver: true }),
+    ]).start(() => {
+      setHomeData((d) => (d ? { ...d, mascotaActiva: siguiente } : d));
+      petSwapX.setValue(-salida);
+      Animated.parallel([
+        Animated.spring(petSwapX, { toValue: 0, friction: 7, tension: 60, useNativeDriver: true }),
+        Animated.timing(petSwapOpacity, { toValue: 1, duration: 260, useNativeDriver: true }),
+        Animated.timing(petNameOpacity, { toValue: 1, duration: 260, useNativeDriver: true }),
+      ]).start(() => { cambiandoMascota.current = false; });
+      persistirMascota(siguiente);
+    });
   };
 
   return (
@@ -253,7 +285,7 @@ export default function HomeScreen() {
         {/* ── ZONA 2: HERO ── */}
         <View style={styles.heroZone}>
           {(mascota || loading) && (
-            <Animated.View style={[styles.petNameWrap, { opacity: petNameOpacity }]}>
+            <Animated.View style={[styles.petNameWrap, { opacity: petNameOpacity, transform: [{ translateX: petSwapX }] }]}>
               {loading ? (
                 <SkeletonLoader width={140} height={36} borderRadius={10} />
               ) : (
@@ -269,7 +301,7 @@ export default function HomeScreen() {
           <Animated.View
             style={[
               styles.petImageWrap,
-              { transform: [{ translateY: petFloatY }] },
+              { opacity: petSwapOpacity, transform: [{ translateY: petFloatY }, { translateX: petSwapX }] },
             ]}
           >
             {loading ? (
@@ -346,7 +378,7 @@ export default function HomeScreen() {
                       label={seccion.label}
                       iconName={seccion.icono}
                       editMode={editMode}
-                      style={{ flex: 1, opacity: isDragging ? 0.85 : 1 }}
+                      style={{ width: '100%', opacity: isDragging ? 0.85 : 1 }}
                       onDelete={() => handleDeleteButton(boton.seccion)}
                       onPress={() => {
                         if (editMode) return;
