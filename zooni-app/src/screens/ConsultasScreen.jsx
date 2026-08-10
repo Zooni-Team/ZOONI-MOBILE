@@ -31,10 +31,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 
 import { calcularEdad } from '../utils/calcularEdad';
 import { toISODateLocal } from '../utils/fechaLocal';
 import { resolveMascotaVisual } from '../constants/petImages';
+import { subirImagenPublica } from '../utils/imagenStorage';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { fetchMascota, fetchConsultas, crearConsulta, eliminarConsulta } from '../services/fichaMedicaApi';
 
@@ -145,6 +147,9 @@ function CardConsulta({ consulta, index, onEliminar }) {
       )}
       {consulta.notas && (
         <Text style={s.cardNotas}>{consulta.notas}</Text>
+      )}
+      {consulta.imagen_url && (
+        <Image source={{ uri: consulta.imagen_url }} style={s.cardImagen} resizeMode="cover" />
       )}
     </Animated.View>
   );
@@ -264,6 +269,7 @@ export default function ConsultasScreen() {
   const [formFecha,       setFormFecha]       = useState(null);
   const [formVeterinario, setFormVeterinario] = useState('');
   const [formNotas,       setFormNotas]       = useState('');
+  const [formImagenUri,   setFormImagenUri]   = useState(null);
   const [formErrors,      setFormErrors]      = useState({});
   const [guardando,       setGuardando]       = useState(false);
   const [showPickerFecha, setShowPickerFecha] = useState(false);
@@ -352,7 +358,7 @@ export default function ConsultasScreen() {
   // ── Modal ────────────────────────────────────────────────────────────────
   function abrirModal() {
     setFormMotivo(''); setFormFecha(null); setFormVeterinario(''); setFormNotas('');
-    setFormErrors({});
+    setFormImagenUri(null); setFormErrors({});
     setModalVisible(true);
     Animated.parallel([
       Animated.timing(modalScale,   { toValue: 1, duration: 220, useNativeDriver: true }),
@@ -372,6 +378,20 @@ export default function ConsultasScreen() {
     });
   }
 
+  // ── Elegir imagen (galería) ────────────────────────────────────────────────
+  async function elegirImagen() {
+    const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permiso.granted) {
+      mostrarToast('Habilitá el acceso a la galería', '#E63946');
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+    });
+    if (!res.canceled && res.assets?.[0]?.uri) setFormImagenUri(res.assets[0].uri);
+  }
+
   // ── Guardar consulta ──────────────────────────────────────────────────────
   async function guardarConsulta() {
     const errors = {};
@@ -381,11 +401,22 @@ export default function ConsultasScreen() {
 
     setGuardando(true);
     try {
+      // Subir la imagen primero (si hay). Si falla, guardamos igual la consulta
+      // sin imagen para no perder la anotación.
+      let imagenUrl = null;
+      if (formImagenUri) {
+        try {
+          imagenUrl = await subirImagenPublica(formImagenUri, 'consultas');
+        } catch {
+          mostrarToast('No se pudo subir la imagen, guardo sin ella', '#F5A623');
+        }
+      }
       const nueva = await crearConsulta(idMascota, {
         motivo:      formMotivo.trim(),
         fecha:       toISODateLocal(formFecha),
         veterinario: formVeterinario.trim() || null,
         notas:       formNotas.trim() || null,
+        imagen_url:  imagenUrl,
       });
       // Insertar manteniendo el orden por fecha descendente
       setConsultas((prev) => [nueva, ...prev].sort((a, b) => (a.fecha < b.fecha ? 1 : -1)));
@@ -580,6 +611,21 @@ export default function ConsultasScreen() {
                     textAlignVertical="top"
                   />
 
+                  {/* Imagen adjunta (estudio, receta, foto de la lesión, etc.) */}
+                  {formImagenUri ? (
+                    <View style={s.imgPreviewWrap}>
+                      <Image source={{ uri: formImagenUri }} style={s.imgPreview} resizeMode="cover" />
+                      <TouchableOpacity style={s.imgQuitar} onPress={() => setFormImagenUri(null)} accessibilityLabel="Quitar imagen">
+                        <Ionicons name="close" size={16} color="#FFF" />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity style={s.btnImagen} onPress={elegirImagen}>
+                      <Ionicons name="image-outline" size={18} color="#2DBD72" />
+                      <Text style={s.btnImagenTxt}>Adjuntar imagen (opcional)</Text>
+                    </TouchableOpacity>
+                  )}
+
                   <TouchableOpacity style={s.btnGuardar} onPress={guardarConsulta} disabled={guardando}>
                     {guardando
                       ? <ActivityIndicator size="small" color="#FFF" />
@@ -678,6 +724,7 @@ const s = StyleSheet.create({
   cardMotivo:   { fontSize: 14, fontWeight: '700', color: '#2C2C2C', marginBottom: 3 },
   cardField:    { fontSize: 12, color: '#6B6B6B', marginBottom: 3 },
   cardNotas:    { fontSize: 13, color: '#4A4A4A', lineHeight: 19, marginTop: 2 },
+  cardImagen:   { width: '100%', height: 180, borderRadius: 10, marginTop: 10, backgroundColor: '#E8E8E8' },
 
   // Botón eliminar
   btnEliminar: {
@@ -731,6 +778,21 @@ const s = StyleSheet.create({
   },
   inputFechaTxt: { flex: 1, fontSize: 14, color: '#2C2C2C' },
   errorTxt:  { fontSize: 11, color: '#E63946', marginTop: -8, marginBottom: 8, marginLeft: 4 },
+
+  // Adjuntar imagen
+  btnImagen: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderWidth: 1.5, borderColor: '#2DBD72', borderStyle: 'dashed', borderRadius: 10,
+    paddingVertical: 12, marginBottom: 16, backgroundColor: '#F0FFF6',
+  },
+  btnImagenTxt: { fontSize: 14, fontWeight: '600', color: '#2DBD72' },
+  imgPreviewWrap: { position: 'relative', marginBottom: 16 },
+  imgPreview: { width: '100%', height: 160, borderRadius: 10, backgroundColor: '#E8E8E8' },
+  imgQuitar: {
+    position: 'absolute', top: 8, right: 8,
+    width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center', justifyContent: 'center',
+  },
 
   // Botones del modal
   btnGuardar: {

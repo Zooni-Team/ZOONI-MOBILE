@@ -256,6 +256,23 @@ export async function crearTratamiento(petId, datos) {
   return mapTratamiento(data);
 }
 
+export async function editarTratamiento(id, datos) {
+  const { data, error } = await supabase
+    .from('Tratamiento')
+    .update({
+      Nombre: datos.nombre,
+      Veterinario: datos.veterinaria ?? null,
+      FechaInicio: datos.fecha_inicio,
+      FechaFin: datos.proximo_control ?? null,
+      Observaciones: datos.descripcion ?? null,
+    })
+    .eq('Id_Tratamiento', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return mapTratamiento(data);
+}
+
 export async function eliminarTratamiento(id) {
   const { error } = await supabase.from('Tratamiento').delete().eq('Id_Tratamiento', id);
   if (error) throw error;
@@ -272,6 +289,7 @@ function mapConsulta(row) {
     motivo: row.motivo,
     notas: row.notas,
     veterinario: row.veterinario,
+    imagen_url: row.imagen_url ?? null,
   };
 }
 
@@ -295,6 +313,7 @@ export async function crearConsulta(petId, datos) {
       motivo: datos.motivo,
       notas: datos.notas ?? null,
       veterinario: datos.veterinario ?? null,
+      imagen_url: datos.imagen_url ?? null,
     })
     .select()
     .single();

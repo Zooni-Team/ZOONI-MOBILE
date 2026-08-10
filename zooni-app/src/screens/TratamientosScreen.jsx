@@ -37,6 +37,7 @@ import { resolveMascotaVisual } from '../constants/petImages';
 import {
   fetchTratamientos,
   crearTratamiento,
+  editarTratamiento as editarTratamientoApi,
   eliminarTratamiento as eliminarTratamientoApi,
 } from '../services/fichaMedicaApi';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
@@ -146,11 +147,11 @@ function Toast({ visible, mensaje, color }) {
 
 // ─── COMPONENTE: CARD TRATAMIENTO APLICADO ────────────────────────────────────
 
-function CardAplicado({ tratamiento, onEliminar }) {
+function CardAplicado({ tratamiento, onEditar, onEliminar }) {
   const translateY = useRef(new Animated.Value(12)).current;
   const opacity    = useRef(new Animated.Value(0)).current;
   const scale      = useRef(new Animated.Value(1)).current;
-  const height     = useRef(new Animated.Value(1)).current; // usado para colapso
+  const scaleEdit  = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -178,6 +179,9 @@ function CardAplicado({ tratamiento, onEliminar }) {
       {/* Columna izquierda */}
       <View style={s.cardLeft}>
         <Text style={s.cardNombre}>{tratamiento.nombre}</Text>
+        {tratamiento.descripcion ? (
+          <Text style={s.cardDesc}>{tratamiento.descripcion}</Text>
+        ) : null}
         <Text style={s.cardField}>Inicio: {formatFecha(tratamiento.fecha_inicio) ?? '—'}</Text>
         <Text style={[s.cardField, { color: colorProxControl() }]}>
           Próximo control: {tratamiento.proximo_control ? formatFecha(tratamiento.proximo_control) : 'Sin fecha'}
@@ -189,8 +193,19 @@ function CardAplicado({ tratamiento, onEliminar }) {
           <Text style={[s.cardContador, { color: colDias }]}>{cuenta}</Text>
         )}
       </View>
-      {/* Botón eliminar */}
+      {/* Botones editar / eliminar */}
       <View style={s.cardRight}>
+        <Animated.View style={{ transform: [{ scale: scaleEdit }] }}>
+          <Pressable
+            style={s.btnEditar}
+            onPressIn={() => Animated.timing(scaleEdit, { toValue: 0.90, duration: 100, useNativeDriver: true }).start()}
+            onPressOut={() => Animated.timing(scaleEdit, { toValue: 1, duration: 150, useNativeDriver: true }).start()}
+            onPress={() => onEditar(tratamiento)}
+            accessibilityLabel="Editar tratamiento"
+          >
+            <Ionicons name="create-outline" size={18} color="#FFF" />
+          </Pressable>
+        </Animated.View>
         <Animated.View style={{ transform: [{ scale }] }}>
           <Pressable
             style={s.btnEliminar}
@@ -356,6 +371,11 @@ export default function TratamientosScreen() {
   // abrió el modal desde "Añadir" a secas) — se usa para marcarlo "Aplicada"
   // al guardar, igual que hace Vacunas con vacunaPreseleccionada.
   const [sugeridoEnRegistro,    setSugeridoEnRegistro]    = useState(null);
+  // Única fuente de verdad para saber si el modal edita o crea: si hay un
+  // tratamiento acá, es edición; si es null, es alta. (Antes había además un
+  // `modalModo` separado y los dos podían desincronizarse: el botón decía
+  // "Guardar cambios" pero se creaba un duplicado en vez de actualizar.)
+  const [tratamientoEnEdicion,  setTratamientoEnEdicion]  = useState(null);
   const [formNombre,            setFormNombre]            = useState('');
   const [formFechaInicio,       setFormFechaInicio]       = useState(null);
   const [formProximoControl,    setFormProximoControl]    = useState(null);
@@ -483,6 +503,23 @@ export default function TratamientosScreen() {
     setFormNombre(nombrePrefill); setFormFechaInicio(null); setFormProximoControl(null);
     setFormVeterinaria(''); setFormDescripcion(''); setFormErrors({});
     setSugeridoEnRegistro(sugerido);
+    setTratamientoEnEdicion(null);
+    animarAperturaModal();
+  }
+
+  function abrirModalEditar(t) {
+    setFormNombre(t.nombre ?? '');
+    setFormFechaInicio(t.fecha_inicio ? parseFechaLocal(t.fecha_inicio) : null);
+    setFormProximoControl(t.proximo_control ? parseFechaLocal(t.proximo_control) : null);
+    setFormVeterinaria(t.veterinaria ?? '');
+    setFormDescripcion(t.descripcion ?? '');
+    setFormErrors({});
+    setSugeridoEnRegistro(null);
+    setTratamientoEnEdicion(t);
+    animarAperturaModal();
+  }
+
+  function animarAperturaModal() {
     setModalVisible(true);
     Animated.parallel([
       Animated.timing(modalScale,   { toValue: 1,    duration: 220, useNativeDriver: true }),
@@ -511,24 +548,32 @@ export default function TratamientosScreen() {
     if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
 
     setGuardando(true);
+    const datos = {
+      nombre:          formNombre.trim(),
+      descripcion:     formDescripcion.trim() || null,
+      fecha_inicio:    toISO(formFechaInicio),
+      proximo_control: formProximoControl ? toISO(formProximoControl) : null,
+      veterinaria:     formVeterinaria.trim() || null,
+    };
     try {
-      const nuevo = await crearTratamiento(idMascota, {
-        nombre:          formNombre.trim(),
-        descripcion:     formDescripcion.trim() || null,
-        fecha_inicio:    toISO(formFechaInicio),
-        proximo_control: formProximoControl ? toISO(formProximoControl) : null,
-        veterinaria:     formVeterinaria.trim() || null,
-      });
-      setTratamientosAplicados((prev) => [nuevo, ...prev]);
-      if (sugeridoEnRegistro) {
-        setTratamientosSugeridos((prev) => prev.map((sg) => (
-          sg.id === sugeridoEnRegistro.id
-            ? { ...sg, applied: true, tratamiento_aplicado_id: nuevo.id }
-            : sg
-        )));
+      if (tratamientoEnEdicion) {
+        const editado = await editarTratamientoApi(tratamientoEnEdicion.id, datos);
+        setTratamientosAplicados((prev) => prev.map((t) => (t.id === tratamientoEnEdicion.id ? editado : t)));
+        cerrarModal();
+        mostrarToast('Tratamiento actualizado correctamente', '#2DBD72');
+      } else {
+        const nuevo = await crearTratamiento(idMascota, datos);
+        setTratamientosAplicados((prev) => [nuevo, ...prev]);
+        if (sugeridoEnRegistro) {
+          setTratamientosSugeridos((prev) => prev.map((sg) => (
+            sg.id === sugeridoEnRegistro.id
+              ? { ...sg, applied: true, tratamiento_aplicado_id: nuevo.id }
+              : sg
+          )));
+        }
+        cerrarModal();
+        mostrarToast('Tratamiento registrado correctamente', '#2DBD72');
       }
-      cerrarModal();
-      mostrarToast('Tratamiento registrado correctamente', '#2DBD72');
     } catch {
       mostrarToast('No se pudo guardar el tratamiento', '#E63946');
     } finally {
@@ -666,7 +711,7 @@ export default function TratamientosScreen() {
               <Text style={s.emptyTxt}>No hay tratamientos registrados</Text>
             ) : (
               tratamientosAplicados.map((t) => (
-                <CardAplicado key={t.id} tratamiento={t} onEliminar={pedirConfirmacionEliminar} />
+                <CardAplicado key={t.id} tratamiento={t} onEditar={abrirModalEditar} onEliminar={pedirConfirmacionEliminar} />
               ))
             )}
 
@@ -698,7 +743,7 @@ export default function TratamientosScreen() {
               <Animated.View style={[s.modalCard, { transform: [{ scale: modalScale }], opacity: modalOpacity }]}>
                 <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-                  <Text style={s.modalTitulo}>Nuevo tratamiento</Text>
+                  <Text style={s.modalTitulo}>{tratamientoEnEdicion ? 'Editar tratamiento' : 'Nuevo tratamiento'}</Text>
 
                   {/* Nombre */}
                   <TextInput
@@ -767,7 +812,7 @@ export default function TratamientosScreen() {
                   <TouchableOpacity style={s.btnGuardar} onPress={guardarTratamiento} disabled={guardando}>
                     {guardando
                       ? <ActivityIndicator size="small" color="#FFF" />
-                      : <Text style={s.btnGuardarTxt}>Guardar</Text>
+                      : <Text style={s.btnGuardarTxt}>{tratamientoEnEdicion ? 'Guardar cambios' : 'Guardar'}</Text>
                     }
                   </TouchableOpacity>
 
@@ -857,12 +902,18 @@ const s = StyleSheet.create({
     marginBottom: 10,
   },
   cardLeft:     { flex: 1, paddingRight: 10, gap: 3 },
-  cardRight:    { alignItems: 'center', justifyContent: 'center' },
+  cardRight:    { flexDirection: 'column', gap: 8, alignItems: 'center', justifyContent: 'center' },
   cardNombre:   { fontSize: 14, fontWeight: '700', color: '#2C2C2C', marginBottom: 4 },
+  cardDesc:     { fontSize: 12, color: '#2C2C2C', fontStyle: 'italic', marginBottom: 4 },
   cardField:    { fontSize: 12, color: '#6B6B6B' },
   cardContador: { fontSize: 13, fontWeight: '700', marginTop: 4 },
 
-  // Botón eliminar
+  // Botones editar / eliminar
+  btnEditar: {
+    backgroundColor: '#5BC8D0', width: 36, height: 36, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
+  },
   btnEliminar: {
     backgroundColor: '#E63946', width: 36, height: 36, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',

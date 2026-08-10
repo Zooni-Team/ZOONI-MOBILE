@@ -171,6 +171,9 @@ function CardAplicado({ vacuna, onEditar, onEliminar }) {
     <Animated.View style={[s.cardAplicado, { transform: [{ translateY }], opacity }]}>
       <View style={s.cardLeft}>
         <Text style={s.cardNombre}>{vacuna.nombre}</Text>
+        {vacuna.descripcion ? (
+          <Text style={s.cardDesc}>{vacuna.descripcion}</Text>
+        ) : null}
         <Text style={s.cardField}>Aplicada: {formatFecha(vacuna.fecha_aplicacion) ?? '—'}</Text>
         <Text style={[s.cardField, { color: colorProximaDosis(vacuna.proximo_refuerzo) }]}>
           Próxima dosis: {vacuna.proximo_refuerzo ? formatFecha(vacuna.proximo_refuerzo) : '—'}
@@ -865,6 +868,7 @@ const s = StyleSheet.create({
   cardLeft:   { flex: 1, paddingRight: 10, gap: 3 },
   cardRight:  { flexDirection: 'column', gap: 8, alignItems: 'center', justifyContent: 'center' },
   cardNombre: { fontSize: 14, fontWeight: '700', color: '#2C2C2C', marginBottom: 4 },
+  cardDesc:   { fontSize: 12, color: '#2C2C2C', fontStyle: 'italic', marginBottom: 4 },
   cardField:  { fontSize: 12, color: '#6B6B6B' },
 
   btnEditar: {
