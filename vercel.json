@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "cd zooni-app && npm install",
+  "buildCommand": "cd zooni-app && npm run build:web",
+  "outputDirectory": "zooni-app/dist",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
