@@ -24,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import { resolveMascotaVisual } from '../../constants/petImages';
+import { formatearPeso } from '../../constants/pesoPorEspecie';
 import {
   LIMITE_ACTIVAS, MOTIVOS_ARCHIVO, archivarMascota, fetchMisMascotas,
   labelMotivo, marcarPrincipal, recuperarMascota,
@@ -93,7 +94,7 @@ function CardActiva({ m, onPress, onEditar, onArchivar, onMenu, disabled }) {
     m.especie ? { icono: 'paw-outline', txt: capitalizar(m.especie) } : null,
     m.raza ? { icono: 'ribbon-outline', txt: m.raza } : null,
     m.edadTexto ? { icono: 'calendar-outline', txt: m.edadTexto } : null,
-    m.peso != null ? { icono: 'barbell-outline', txt: `${m.peso} kg` } : null,
+    m.peso != null ? { icono: 'barbell-outline', txt: formatearPeso(m.peso) } : null,
   ].filter(Boolean);
 
   return (

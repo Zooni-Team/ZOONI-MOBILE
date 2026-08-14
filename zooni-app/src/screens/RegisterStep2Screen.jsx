@@ -32,6 +32,7 @@ import { fetchRazas } from '../services/authApi';
 import { resolveCajaImage } from '../constants/registroImages';
 import { calcularEdad } from '../utils/calcularEdad';
 import { toISODateLocal } from '../utils/fechaLocal';
+import { formatearPeso, pesoValido, rangoPeso, textoRangoPeso } from '../constants/pesoPorEspecie';
 import OpcionPicker from '../components/OpcionPicker';
 import FechaPicker from '../components/FechaPicker';
 import SliderAmarillo from '../components/SliderAmarillo';
@@ -51,7 +52,10 @@ export default function RegisterStep2Screen() {
   const [raza, setRaza] = useState(null);           // { id, nombre }
   const [razas, setRazas] = useState([]);
   const [cargandoRazas, setCargandoRazas] = useState(true);
-  const [peso, setPeso] = useState(0);              // kg
+  // El rango del peso depende de la especie: un hámster no puede pesar 50 kg y
+  // un canario no entra en un slider que avanza de a medio kilo.
+  const rango = rangoPeso(especie);
+  const [peso, setPeso] = useState(rango.inicial);   // kg
   // Guardamos la FECHA DE NACIMIENTO, no la edad: una edad fija en meses queda
   // vieja al día siguiente. Con la fecha, la edad se recalcula sola en toda la
   // app (calcularEdad) y sigue siendo correcta con el paso del tiempo.
@@ -116,7 +120,7 @@ export default function RegisterStep2Screen() {
     const errs = {};
     if (!sexo) errs.sexo = 'Seleccioná el sexo';
     if (!raza) errs.raza = 'Seleccioná una raza';
-    if (peso <= 0) errs.peso = 'Ajustá el peso';
+    if (!pesoValido(peso, especie)) errs.peso = `El peso tiene que estar entre ${textoRangoPeso(especie)}`;
     if (!fechaNacimiento) errs.fechaNacimiento = 'Elegí cuándo nació';
     // Foto REAL obligatoria: es la que se ve en Match
     if (!fotoUri) errs.foto = 'Agregá una foto real de tu mascota';
@@ -135,7 +139,7 @@ export default function RegisterStep2Screen() {
     });
   };
 
-  const pesoFmt = peso.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' kg';
+  const pesoFmt = formatearPeso(peso);
   const fechaFmt = fechaNacimiento
     ? fechaNacimiento.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
     : null;
@@ -179,13 +183,14 @@ export default function RegisterStep2Screen() {
             {errores.raza && <Text style={s.errorTxt}>{errores.raza}</Text>}
 
             {/* Peso */}
-            <Text style={s.sliderLabel}>Peso (kg)</Text>
+            <Text style={s.sliderLabel}>Peso</Text>
             <SliderAmarillo
-              value={peso} min={0} max={100} step={0.5}
+              value={peso} min={rango.min} max={rango.max} step={rango.step}
               onChange={(v) => { setPeso(v); setErrores((p2) => ({ ...p2, peso: null })); }}
-              etiquetaMenos="Bajar medio kilo" etiquetaMas="Subir medio kilo"
+              etiquetaMenos="Bajar el peso" etiquetaMas="Subir el peso"
             />
             <Text style={s.sliderValor}>{pesoFmt}</Text>
+            <Text style={s.sliderAyuda}>Habitual en {especie}s: {textoRangoPeso(especie)}</Text>
             {errores.peso && <Text style={[s.errorTxt, { textAlign: 'center' }]}>{errores.peso}</Text>}
 
             {/* Fecha de nacimiento (en vez de una edad fija, que se desactualiza) */}
@@ -293,7 +298,8 @@ const s = StyleSheet.create({
   errorTxt: { fontSize: 11, color: '#E63946', marginTop: -8, marginBottom: 8, marginLeft: 4 },
 
   sliderLabel: { fontSize: 14, fontWeight: '700', color: '#2DBD72', textAlign: 'center', marginTop: 8, marginBottom: 4 },
-  sliderValor: { fontSize: 16, fontWeight: '700', color: '#2C2C2C', textAlign: 'center', marginBottom: 12 },
+  sliderValor: { fontSize: 16, fontWeight: '700', color: '#2C2C2C', textAlign: 'center' },
+  sliderAyuda: { fontSize: 11, color: '#9A9A9A', textAlign: 'center', marginTop: 2, marginBottom: 12 },
 
   fotoLabel: { fontSize: 14, color: '#2C2C2C', marginTop: 8, marginBottom: 10, textAlign: 'center', fontWeight: '600' },
   previewWrap: { alignSelf: 'center', marginBottom: 10 },

@@ -37,6 +37,7 @@ import HamburgerDrawer from '../components/HamburgerDrawer';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
 import FechaPicker from '../components/FechaPicker';
+import HoraPicker from '../components/HoraPicker';
 import {
   getEventosCalendario,
   crearEventoCalendario,

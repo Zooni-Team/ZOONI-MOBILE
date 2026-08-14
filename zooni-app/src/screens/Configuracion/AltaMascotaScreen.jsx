@@ -39,6 +39,7 @@ import { fetchRazas } from '../../services/authApi';
 import { crearMascota } from '../../services/petsApi';
 import { toISODateLocal } from '../../utils/fechaLocal';
 import { calcularEdad } from '../../utils/calcularEdad';
+import { formatearPeso, pesoValido, rangoPeso, textoRangoPeso } from '../../constants/pesoPorEspecie';
 import { alerta, confirmar } from '../../utils/dialogo';
 
 const SEXOS = ['Macho', 'Hembra'];
@@ -101,7 +102,7 @@ export default function AltaMascotaScreen() {
   const [raza, setRaza] = useState(null);           // { id, nombre }
   const [razas, setRazas] = useState([]);
   const [cargandoRazas, setCargandoRazas] = useState(true);
-  const [peso, setPeso] = useState(0);              // kg
+  const [peso, setPeso] = useState(rangoPeso(null).inicial);   // kg
   // Fecha de nacimiento, no edad: una edad en meses queda vieja sola (ver el
   // comentario del Paso 2 del registro)
   const [fechaNacimiento, setFechaNacimiento] = useState(null);
@@ -145,6 +146,9 @@ export default function AltaMascotaScreen() {
     setErrNombre(!nombreOk);
     if (!especie) shakeGrid();
     if (!nombreOk || !especie) return;
+    // La especie recién se sabe acá: el peso arranca en el valor típico de ESA
+    // especie (35 g para un ave, 10 kg para un perro) y no en uno genérico.
+    setPeso(rangoPeso(especie).inicial);
     setPaso(2);
   };
 
@@ -183,7 +187,7 @@ export default function AltaMascotaScreen() {
     const errs = {};
     if (!sexo) errs.sexo = 'Seleccioná el sexo';
     if (!raza) errs.raza = 'Seleccioná una raza';
-    if (peso <= 0) errs.peso = 'Ajustá el peso';
+    if (!pesoValido(peso, especie)) errs.peso = `El peso tiene que estar entre ${textoRangoPeso(especie)}`;
     if (!fechaNacimiento) errs.fechaNacimiento = 'Elegí cuándo nació';
     // Foto REAL obligatoria: es la que se ve en Match
     if (!fotoUri) errs.foto = 'Agregá una foto real de tu mascota';
@@ -224,7 +228,8 @@ export default function AltaMascotaScreen() {
     }
   };
 
-  const pesoFmt = peso.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' kg';
+  const rango   = rangoPeso(especie);
+  const pesoFmt = formatearPeso(peso);
   const fechaFmt = fechaNacimiento
     ? fechaNacimiento.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
     : null;
@@ -318,12 +323,13 @@ export default function AltaMascotaScreen() {
             </TouchableOpacity>
             {errores.raza && <Text style={s.errorTxt}>{errores.raza}</Text>}
 
-            {/* Peso */}
-            <Text style={s.sliderLabel}>Peso (kg)</Text>
-            <SliderAmarillo value={peso} min={0} max={100} step={0.5}
+            {/* Peso — rango realista según la especie elegida en el paso 1 */}
+            <Text style={s.sliderLabel}>Peso</Text>
+            <SliderAmarillo value={peso} min={rango.min} max={rango.max} step={rango.step}
               onChange={(v) => { setPeso(v); setErrores((p2) => ({ ...p2, peso: null })); }}
-              etiquetaMenos="Bajar medio kilo" etiquetaMas="Subir medio kilo" />
+              etiquetaMenos="Bajar el peso" etiquetaMas="Subir el peso" />
             <Text style={s.sliderValor}>{pesoFmt}</Text>
+            <Text style={s.sliderAyuda}>Habitual en {especie}s: {textoRangoPeso(especie)}</Text>
             {errores.peso && <Text style={[s.errorTxt, { textAlign: 'center' }]}>{errores.peso}</Text>}
 
             {/* Fecha de nacimiento (igual que el Paso 2 del registro) */}
@@ -470,7 +476,8 @@ const s = StyleSheet.create({
   placeholder: { color: '#AAAAAA' },
 
   sliderLabel: { fontSize: 14, fontWeight: '700', color: '#2DBD72', textAlign: 'center', marginTop: 8, marginBottom: 4 },
-  sliderValor: { fontSize: 16, fontWeight: '700', color: '#2C2C2C', textAlign: 'center', marginBottom: 12 },
+  sliderValor: { fontSize: 16, fontWeight: '700', color: '#2C2C2C', textAlign: 'center' },
+  sliderAyuda: { fontSize: 11, color: '#9A9A9A', textAlign: 'center', marginTop: 2, marginBottom: 12 },
 
   fotoLabel: { fontSize: 14, color: '#2C2C2C', marginTop: 8, marginBottom: 10, textAlign: 'center', fontWeight: '600' },
   previewWrap: { alignSelf: 'center', marginBottom: 10 },

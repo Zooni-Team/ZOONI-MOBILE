@@ -25,7 +25,13 @@ export default function SliderAmarillo({
   const valorActual = useRef(value);
   valorActual.current = value;
 
-  const clamp = (v) => Math.max(min, Math.min(max, Math.round(v / step) * step));
+  // Los pasos chicos (0,005 kg para un canario) arrastran error de coma
+  // flotante: 7 * 0.005 da 0.035000000000000003 y eso terminaba en la base.
+  // Se redondea a los decimales que tenga el propio paso.
+  const decimales = (String(step).split('.')[1] ?? '').length;
+  const clamp = (v) => Number(
+    Math.max(min, Math.min(max, Math.round(v / step) * step)).toFixed(decimales)
+  );
   const paso  = (signo) => onChange(clamp(valorActual.current + signo * step));
 
   const frenar = () => {

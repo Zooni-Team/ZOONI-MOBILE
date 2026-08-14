@@ -45,6 +45,8 @@ import {
 import { fetchRazas } from '../services/authApi';
 import OpcionPicker from '../components/OpcionPicker';
 import FechaPicker from '../components/FechaPicker';
+import { formatearPeso, pesoValido, textoRangoPeso } from '../constants/pesoPorEspecie';
+import { imagenADataUri } from '../utils/imagenBase64';
 
 // ─── DATOS DEMO (sin backend conectado — mismos datos que Vacunas/Tratamientos) ──
 
@@ -184,7 +186,12 @@ export default function FichaMedicaScreen() {
 
   const confirmarPeso = async () => {
     const n = parseFloat(pesoBorrador.replace(',', '.'));
-    if (isNaN(n) || n <= 0 || n >= 500) { Alert.alert('Valor inválido', 'Ingresá un peso entre 0 y 500 kg.'); return; }
+    // El rango sale de la especie: 0–500 kg aceptaba cualquier cosa para un
+    // hámster y encima chocaba con el CHECK de la base.
+    if (isNaN(n) || !pesoValido(n, mascota?.especie)) {
+      Alert.alert('Valor inválido', `Ingresá un peso entre ${textoRangoPeso(mascota?.especie)}.`);
+      return;
+    }
     setGuardandoPeso(true);
     try {
       const actualizada = await actualizarPeso(petId, n);
@@ -238,10 +245,8 @@ export default function FichaMedicaScreen() {
   };
 
   // ── Helpers ───────────────────────────────────────────────────────────────
-  const formatPeso = (p) => {
-    if (p == null) return 'Sin registrar';
-    return parseFloat(p).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' kg';
-  };
+  // Debajo del kilo se muestra en gramos ("120 g" y no "0,12 kg")
+  const formatPeso = (p) => (p == null ? 'Sin registrar' : formatearPeso(p));
 
   const capitalizar = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
 
@@ -261,14 +266,37 @@ export default function FichaMedicaScreen() {
   // Se genera localmente con los datos ya disponibles, sin depender de un
   // backend que hoy no existe. Solo lo esencial: especie, raza, edad, peso,
   // vacunas y tratamientos aplicados (sin datos del propietario).
-  const construirHtmlFicha = (vacunasAplicadas, tratamientosAplicados, consultas) => {
+  const construirHtmlFicha = (vacunasAplicadas, tratamientosAplicados, consultas, fotoDataUri) => {
     const fechaGeneracion = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
 
-    const filaVacuna = (v) => `<tr><td class="label">${v.nombre}</td><td class="value">Aplicada: ${formatFecha(v.fecha_aplicacion) ?? '—'}</td></tr>`;
-    const filaTratamiento = (t) => `<tr><td class="label">${t.nombre}</td><td class="value">Inicio: ${formatFecha(t.fecha_inicio) ?? '—'}</td></tr>`;
-    const filaConsulta = (c) =>
-      `<tr><td class="label">${formatFecha(c.fecha) ?? '—'} — ${c.motivo}</td><td class="value">${c.veterinario ?? ''}</td></tr>` +
-      (c.notas ? `<tr><td colspan="2" class="notas">${c.notas}</td></tr>` : '');
+    // Todo lo que viene de la base se escapa: un nombre con "<" rompía el HTML
+    // y, en el peor caso, permitía inyectar marcado en el documento.
+    const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+
+    const tarjeta = (label, valor) => `
+      <div class="dato">
+        <div class="dato-label">${esc(label)}</div>
+        <div class="dato-valor">${esc(valor)}</div>
+      </div>`;
+
+    const item = (titulo, chip, lineas) => `
+      <div class="item">
+        <div class="item-top">
+          <span class="item-titulo">${esc(titulo)}</span>
+          ${chip ? `<span class="chip">${esc(chip)}</span>` : ''}
+        </div>
+        ${lineas.filter(Boolean).map((l) => `<div class="item-linea">${esc(l)}</div>`).join('')}
+      </div>`;
+
+    const seccion = (titulo, cantidad, contenido, vacio) => `
+      <div class="seccion">
+        <div class="seccion-titulo">
+          ${esc(titulo)}${cantidad ? `<span class="contador">${cantidad}</span>` : ''}
+        </div>
+        ${cantidad ? contenido : `<div class="vacio">${esc(vacio)}</div>`}
+      </div>`;
 
     return `
       <html>
@@ -276,59 +304,129 @@ export default function FichaMedicaScreen() {
           <meta charset="utf-8" />
           <style>
             * { box-sizing: border-box; }
+            @page { margin: 0; }
             body { font-family: Helvetica, Arial, sans-serif; margin: 0; color: #2C2C2C; }
-            .header { background-color: #2DBD72; padding: 32px 40px; color: #FFFFFF; }
-            .header h1 { margin: 0; font-size: 26px; letter-spacing: 0.4px; }
-            .header p { margin: 6px 0 0; font-size: 13px; opacity: 0.92; }
-            .container { padding: 32px 40px; }
-            .section-title {
-              font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
-              color: #6B6B6B; border-bottom: 2px solid #EFEFEF; padding-bottom: 6px; margin: 28px 0 12px;
+
+            /* Encabezado con la foto de la mascota */
+            .header {
+              background-color: #2DBD72; padding: 28px 40px; color: #FFFFFF;
+              display: flex; align-items: center;
             }
-            .section-title:first-of-type { margin-top: 0; }
-            table { width: 100%; border-collapse: collapse; }
-            td { padding: 10px 0; font-size: 14px; border-bottom: 1px solid #F0F0F0; }
-            td.label { color: #6B6B6B; width: 45%; }
-            td.value { font-weight: 700; text-align: right; color: #2C2C2C; }
-            .vacio { font-size: 13px; color: #AAAAAA; padding: 6px 0; }
-            td.notas { font-size: 12px; color: #6B6B6B; padding: 2px 0 12px; font-style: italic; }
+            .foto {
+              width: 96px; height: 96px; border-radius: 48px; object-fit: cover;
+              border: 4px solid rgba(255,255,255,0.85); background-color: #C8F0D8;
+              margin-right: 22px; flex-shrink: 0;
+            }
+            .header-txt { flex: 1; }
+            .header .nombre { margin: 0; font-size: 30px; font-weight: bold; letter-spacing: 0.3px; }
+            .header .sub { margin: 6px 0 0; font-size: 14px; opacity: 0.95; }
+            .header .doc { margin: 10px 0 0; font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; opacity: 0.85; }
+
+            .container { padding: 26px 40px 32px; }
+
+            /* Datos principales en tarjetas, no en una tabla de dos columnas */
+            .datos { display: flex; flex-wrap: wrap; margin: 0 -6px 8px; }
+            .dato {
+              width: 25%; padding: 0 6px 12px;
+            }
+            .dato-label {
+              font-size: 9px; letter-spacing: 0.8px; text-transform: uppercase;
+              color: #9A9A9A; margin-bottom: 3px;
+            }
+            .dato-valor { font-size: 14px; font-weight: bold; color: #2C2C2C; }
+
+            .seccion { margin-top: 22px; page-break-inside: auto; }
+            .seccion-titulo {
+              font-size: 12px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;
+              color: #2DBD72; border-bottom: 2px solid #E4F5EB;
+              padding-bottom: 6px; margin-bottom: 10px;
+            }
+            .contador {
+              display: inline-block; margin-left: 8px; background-color: #E4F5EB; color: #177046;
+              border-radius: 8px; padding: 1px 7px; font-size: 10px; letter-spacing: 0;
+            }
+
+            .item {
+              border-left: 3px solid #E4F5EB; padding: 7px 0 7px 12px; margin-bottom: 8px;
+              page-break-inside: avoid;
+            }
+            .item-top { margin-bottom: 2px; }
+            .item-titulo { font-size: 13px; font-weight: bold; color: #2C2C2C; }
+            .chip {
+              float: right; font-size: 10px; font-weight: bold; color: #6B6B6B;
+              background-color: #F4F4F4; border-radius: 8px; padding: 2px 8px;
+            }
+            .item-linea { font-size: 11px; color: #6B6B6B; line-height: 1.55; }
+
+            .vacio {
+              font-size: 12px; color: #AAAAAA; font-style: italic;
+              background-color: #FAFAFA; border-radius: 8px; padding: 10px 12px;
+            }
+
             .footer {
-              margin-top: 48px; padding-top: 16px; border-top: 1px solid #EFEFEF;
-              font-size: 11px; color: #AAAAAA; text-align: center;
+              margin-top: 34px; padding-top: 14px; border-top: 1px solid #EFEFEF;
+              font-size: 10px; color: #AAAAAA; text-align: center; line-height: 1.6;
             }
           </style>
         </head>
         <body>
           <div class="header">
-            <h1>Ficha Médica Digital</h1>
-            <p>${m.nombre}${m.especie ? ` · ${capitalizar(m.especie)}` : ''}</p>
+            ${fotoDataUri ? `<img class="foto" src="${fotoDataUri}" />` : ''}
+            <div class="header-txt">
+              <p class="nombre">${esc(m.nombre)}</p>
+              <p class="sub">${esc([capitalizar(m.especie), m.raza, edad].filter(Boolean).join(' · '))}</p>
+              <p class="doc">Ficha médica digital</p>
+            </div>
           </div>
+
           <div class="container">
-            <div class="section-title">Datos de la mascota</div>
-            <table>
-              <tr><td class="label">Especie</td><td class="value">${capitalizar(m.especie) || '—'}</td></tr>
-              <tr><td class="label">Raza</td><td class="value">${m.raza || 'Sin especificar'}</td></tr>
-              <tr><td class="label">Edad</td><td class="value">${edad}</td></tr>
-              <tr><td class="label">Peso</td><td class="value">${formatPeso(m.peso)}</td></tr>
-            </table>
+            <div class="datos">
+              ${tarjeta('Especie', capitalizar(m.especie) || '—')}
+              ${tarjeta('Raza', m.raza || 'Sin especificar')}
+              ${tarjeta('Edad', edad)}
+              ${tarjeta('Peso', formatPeso(m.peso))}
+            </div>
 
-            <div class="section-title">Vacunas aplicadas</div>
-            ${vacunasAplicadas.length
-              ? `<table>${vacunasAplicadas.map(filaVacuna).join('')}</table>`
-              : '<div class="vacio">Sin vacunas registradas</div>'}
+            ${seccion('Vacunas aplicadas', vacunasAplicadas.length,
+              vacunasAplicadas.map((v) => item(
+                v.nombre,
+                v.tipo,
+                [
+                  `Aplicada: ${formatFecha(v.fecha_aplicacion) ?? '—'}`,
+                  v.proximo_refuerzo ? `Próximo refuerzo: ${formatFecha(v.proximo_refuerzo)}` : null,
+                  v.veterinaria ? `Aplicada por: ${v.veterinaria}` : null,
+                  v.descripcion || null,
+                ],
+              )).join(''),
+              'Sin vacunas registradas')}
 
-            <div class="section-title">Tratamientos aplicados</div>
-            ${tratamientosAplicados.length
-              ? `<table>${tratamientosAplicados.map(filaTratamiento).join('')}</table>`
-              : '<div class="vacio">Sin tratamientos registrados</div>'}
+            ${seccion('Tratamientos', tratamientosAplicados.length,
+              tratamientosAplicados.map((t) => item(
+                t.nombre,
+                null,
+                [
+                  `Inicio: ${formatFecha(t.fecha_inicio) ?? '—'}`,
+                  t.proximo_control ? `Próximo control: ${formatFecha(t.proximo_control)}` : null,
+                  t.veterinaria ? `Veterinaria: ${t.veterinaria}` : null,
+                  t.descripcion || null,
+                ],
+              )).join(''),
+              'Sin tratamientos registrados')}
 
-            <div class="section-title">Consultas veterinarias</div>
-            ${consultas.length
-              ? `<table>${consultas.map(filaConsulta).join('')}</table>`
-              : '<div class="vacio">Sin consultas registradas</div>'}
+            ${seccion('Consultas veterinarias', consultas.length,
+              consultas.map((c) => item(
+                c.motivo,
+                formatFecha(c.fecha) ?? '—',
+                [
+                  c.veterinario ? `Veterinario/a: ${c.veterinario}` : null,
+                  c.notas || null,
+                ],
+              )).join(''),
+              'Sin consultas registradas')}
 
             <div class="footer">
-              Documento generado el ${fechaGeneracion} · Zooni — Cuidado inteligente para tu mascota
+              Documento generado el ${esc(fechaGeneracion)}<br />
+              Zooni — Cuidado inteligente para tu mascota
             </div>
           </div>
         </body>
@@ -340,55 +438,183 @@ export default function FichaMedicaScreen() {
   // pasás y solo hace window.print() de la pantalla actual (por eso antes se
   // imprimía toda la app) — para bajar un archivo de verdad hace falta
   // generar el PDF nosotros mismos con jsPDF.
-  const generarPdfWeb = (vacunasAplicadas, tratamientosAplicados, consultas) => {
-    const doc = new jsPDF();
-    let y = 20;
+  const generarPdfWeb = (vacunasAplicadas, tratamientosAplicados, consultas, fotoDataUri) => {
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const ANCHO = doc.internal.pageSize.getWidth();
+    const ALTO  = doc.internal.pageSize.getHeight();
+    const M = 16;                    // margen lateral
+    const LIMITE = ALTO - 20;        // desde acá, página nueva
+    let y = 0;
 
-    doc.setFontSize(20);
-    doc.setTextColor(45, 189, 114);
-    doc.text('Ficha Médica Digital', 14, y);
-    y += 10;
-    doc.setFontSize(14);
-    doc.setTextColor(44, 44, 44);
-    doc.text(m.nombre ?? 'Mascota', 14, y);
-    y += 12;
+    const VERDE  = [45, 189, 114];
+    const TEXTO  = [44, 44, 44];
+    const SUAVE  = [107, 107, 107];
+    const TENUE  = [154, 154, 154];
 
-    const filaDato = (label, valor) => {
-      doc.setFontSize(11);
-      doc.setTextColor(107, 107, 107);
-      doc.text(`${label}:`, 14, y);
-      doc.setTextColor(44, 44, 44);
-      doc.text(String(valor), 60, y);
-      y += 8;
+    // Antes el `y` crecía sin control: con muchas vacunas, todo lo que pasaba
+    // del alto de la hoja simplemente no se dibujaba.
+    const asegurarEspacio = (alto) => {
+      if (y + alto <= LIMITE) return;
+      doc.addPage();
+      y = 18;
     };
-    filaDato('Especie', capitalizar(m.especie) || '—');
-    filaDato('Raza', m.raza || 'Sin especificar');
-    filaDato('Edad', edad);
-    filaDato('Peso', formatPeso(m.peso));
 
-    const seccion = (titulo, items, formatear) => {
-      y += 8;
-      doc.setFontSize(13);
-      doc.setTextColor(45, 189, 114);
-      doc.text(titulo, 14, y);
-      y += 8;
-      doc.setFontSize(11);
-      doc.setTextColor(44, 44, 44);
-      if (!items.length) {
-        doc.setTextColor(170, 170, 170);
-        doc.text('Sin registros', 14, y);
-        y += 7;
-      } else {
-        items.forEach((item) => {
-          doc.text(formatear(item), 14, y);
-          y += 7;
-        });
+    // ── Encabezado verde con la foto ──────────────────────────────────────
+    const ALTO_HEADER = 42;
+    doc.setFillColor(...VERDE);
+    doc.rect(0, 0, ANCHO, ALTO_HEADER, 'F');
+
+    let xTexto = M;
+    if (fotoDataUri) {
+      const D = 26;
+      const cx = M + D / 2;
+      const cy = ALTO_HEADER / 2;
+      // Aro blanco + foto recortada en círculo (jsPDF no tiene border-radius:
+      // se usa un clip circular sobre el que se dibuja la imagen)
+      doc.setFillColor(255, 255, 255);
+      doc.circle(cx, cy, D / 2 + 1.4, 'F');
+      doc.saveGraphicsState();
+      doc.circle(cx, cy, D / 2).clip();
+      doc.addImage(fotoDataUri, M, cy - D / 2, D, D, undefined, 'FAST');
+      doc.restoreGraphicsState();
+      xTexto = M + D + 8;
+    }
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont(undefined, 'bold');
+    doc.setFontSize(22);
+    doc.text(m.nombre ?? 'Mascota', xTexto, 20);
+
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(10.5);
+    const subtitulo = [capitalizar(m.especie), m.raza, edad].filter(Boolean).join('  ·  ');
+    doc.text(subtitulo, xTexto, 27);
+
+    doc.setFontSize(8);
+    doc.text('FICHA MÉDICA DIGITAL', xTexto, 34);
+
+    y = ALTO_HEADER + 12;
+
+    // ── Datos principales en cuatro tarjetas ──────────────────────────────
+    const datos = [
+      ['ESPECIE', capitalizar(m.especie) || '—'],
+      ['RAZA',    m.raza || 'Sin especificar'],
+      ['EDAD',    edad],
+      ['PESO',    formatPeso(m.peso)],
+    ];
+    const anchoCol = (ANCHO - M * 2) / datos.length;
+    datos.forEach(([label, valor], i) => {
+      const x = M + i * anchoCol;
+      doc.setFontSize(6.8);
+      doc.setTextColor(...TENUE);
+      doc.setFont(undefined, 'normal');
+      doc.text(label, x, y);
+      doc.setFontSize(10.5);
+      doc.setTextColor(...TEXTO);
+      doc.setFont(undefined, 'bold');
+      // El texto se recorta al ancho de la columna para que no se pise con la
+      // de al lado (una raza larga se comía la siguiente)
+      doc.text(doc.splitTextToSize(String(valor), anchoCol - 4)[0], x, y + 5);
+    });
+    y += 16;
+
+    // ── Secciones ─────────────────────────────────────────────────────────
+    const tituloSeccion = (titulo, cantidad) => {
+      asegurarEspacio(16);
+      doc.setFont(undefined, 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(...VERDE);
+      doc.text(`${titulo.toUpperCase()}${cantidad ? `  (${cantidad})` : ''}`, M, y);
+      y += 2.5;
+      doc.setDrawColor(228, 245, 235);
+      doc.setLineWidth(0.6);
+      doc.line(M, y, ANCHO - M, y);
+      y += 6;
+    };
+
+    const itemPdf = (titulo, chip, lineas) => {
+      const visibles = lineas.filter(Boolean);
+      // Se mide antes de dibujar para no partir un ítem entre dos páginas
+      const envueltas = visibles.flatMap((l) => doc.splitTextToSize(l, ANCHO - M * 2 - 8));
+      asegurarEspacio(7 + envueltas.length * 4.4);
+
+      const yInicio = y;
+      doc.setFont(undefined, 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(...TEXTO);
+      doc.text(titulo, M + 5, y);
+
+      if (chip) {
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(...SUAVE);
+        doc.text(chip, ANCHO - M, y, { align: 'right' });
       }
+      y += 4.6;
+
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(8.6);
+      doc.setTextColor(...SUAVE);
+      envueltas.forEach((linea) => {
+        doc.text(linea, M + 5, y);
+        y += 4.4;
+      });
+
+      // Barra verde a la izquierda, como en la app
+      doc.setDrawColor(228, 245, 235);
+      doc.setLineWidth(1.2);
+      doc.line(M + 1, yInicio - 3, M + 1, y - 2.5);
+      y += 3;
     };
-    seccion('Vacunas aplicadas', vacunasAplicadas, (v) => `• ${v.nombre} — aplicada ${formatFecha(v.fecha_aplicacion) ?? '—'}`);
-    seccion('Tratamientos aplicados', tratamientosAplicados, (t) => `• ${t.nombre} — inicio ${formatFecha(t.fecha_inicio) ?? '—'}`);
-    seccion('Consultas veterinarias', consultas, (c) =>
-      `• ${formatFecha(c.fecha) ?? '—'} — ${c.motivo}${c.veterinario ? ` (${c.veterinario})` : ''}`);
+
+    const seccionVacia = (texto) => {
+      asegurarEspacio(10);
+      doc.setFont(undefined, 'italic');
+      doc.setFontSize(9);
+      doc.setTextColor(...TENUE);
+      doc.text(texto, M + 2, y);
+      doc.setFont(undefined, 'normal');
+      y += 8;
+    };
+
+    tituloSeccion('Vacunas aplicadas', vacunasAplicadas.length);
+    if (!vacunasAplicadas.length) seccionVacia('Sin vacunas registradas');
+    vacunasAplicadas.forEach((v) => itemPdf(v.nombre, v.tipo, [
+      `Aplicada: ${formatFecha(v.fecha_aplicacion) ?? '—'}`,
+      v.proximo_refuerzo ? `Próximo refuerzo: ${formatFecha(v.proximo_refuerzo)}` : null,
+      v.veterinaria ? `Aplicada por: ${v.veterinaria}` : null,
+      v.descripcion || null,
+    ]));
+
+    y += 4;
+    tituloSeccion('Tratamientos', tratamientosAplicados.length);
+    if (!tratamientosAplicados.length) seccionVacia('Sin tratamientos registrados');
+    tratamientosAplicados.forEach((t) => itemPdf(t.nombre, null, [
+      `Inicio: ${formatFecha(t.fecha_inicio) ?? '—'}`,
+      t.proximo_control ? `Próximo control: ${formatFecha(t.proximo_control)}` : null,
+      t.veterinaria ? `Veterinaria: ${t.veterinaria}` : null,
+      t.descripcion || null,
+    ]));
+
+    y += 4;
+    tituloSeccion('Consultas veterinarias', consultas.length);
+    if (!consultas.length) seccionVacia('Sin consultas registradas');
+    consultas.forEach((c) => itemPdf(c.motivo, formatFecha(c.fecha) ?? '—', [
+      c.veterinario ? `Veterinario/a: ${c.veterinario}` : null,
+      c.notas || null,
+    ]));
+
+    // ── Pie en todas las páginas ──────────────────────────────────────────
+    const fechaGeneracion = new Date().toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const paginas = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= paginas; p++) {
+      doc.setPage(p);
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...TENUE);
+      doc.text(`Generado el ${fechaGeneracion} · Zooni`, M, ALTO - 10);
+      doc.text(`${p} / ${paginas}`, ANCHO - M, ALTO - 10, { align: 'right' });
+    }
 
     doc.save(`Ficha-medica-${(m.nombre ?? 'mascota').replace(/\s+/g, '-')}.pdf`);
   };
@@ -402,10 +628,14 @@ export default function FichaMedicaScreen() {
         ? await Promise.all([fetchVacunas(petId), fetchTratamientos(petId), fetchConsultas(petId).catch(() => [])])
         : [{ aplicadas: [] }, { aplicados: [] }, []];
 
+      // La foto va incrustada en base64: ni expo-print ni jsPDF esperan a que
+      // baje una URL remota. Si falla, el PDF sale igual pero sin foto.
+      const fotoDataUri = await imagenADataUri(petImg);
+
       if (Platform.OS === 'web') {
-        generarPdfWeb(vacunasAplicadas, tratamientosAplicados, consultas);
+        generarPdfWeb(vacunasAplicadas, tratamientosAplicados, consultas, fotoDataUri);
       } else {
-        const html = construirHtmlFicha(vacunasAplicadas, tratamientosAplicados, consultas);
+        const html = construirHtmlFicha(vacunasAplicadas, tratamientosAplicados, consultas, fotoDataUri);
         const { uri } = await Print.printToFileAsync({ html });
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(uri, {

@@ -13,14 +13,11 @@ import { Animated, Image, StyleSheet, Text, View } from 'react-native';
 
 import { calcularEdad } from '../utils/calcularEdad';
 import { resolveMascotaVisual } from '../constants/petImages';
+import { formatearPeso } from '../constants/pesoPorEspecie';
 
-/** 20.4 → "20,40 kg" | null → "—" */
-export function formatearPeso(peso) {
-  if (peso == null) return '—';
-  const n = parseFloat(peso);
-  if (Number.isNaN(n)) return '—';
-  return `${n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kg`;
-}
+// El formato del peso vive en constants/pesoPorEspecie.js: debajo del kilo se
+// muestra en gramos, así un canario dice "35 g" y no "0,04 kg".
+export { formatearPeso };
 
 /**
  * @param {object}  mascota  { nombre, especie, raza, peso, fecha_nacimiento, imagen_asset }

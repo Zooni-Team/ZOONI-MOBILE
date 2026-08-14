@@ -20,6 +20,7 @@ import {
   actualizarMascota, agregarFotoMascota, eliminarFotoMascota, fetchFotosMascota,
 } from '../../services/petsApi';
 import { sanitizarDecimal } from '../../utils/sanitizar';
+import { pesoValido as esPesoValido, textoRangoPeso } from '../../constants/pesoPorEspecie';
 import { alerta } from '../../utils/dialogo';
 
 const P = {
@@ -129,11 +130,11 @@ export default function EditarMascotaScreen() {
 
   const nombreValido = nombre.trim().length >= 2 && nombre.trim().length <= 30;
   const microchipValido = microchip === '' || /^[0-9]{15}$/.test(microchip);
-  // Peso: obligatorio, solo números, entre 0,1 y 120 kg (la columna es
-  // DECIMAL(5,2): más de 999.99 revienta en la base con un 400)
+  // Peso: obligatorio y dentro del rango de SU especie. El mínimo fijo de
+  // 0,1 kg dejaba afuera a hámsters, aves y ratones, que pesan bastante menos.
   const pesoNum = Number(peso.replace(',', '.'));
-  const pesoValido = peso !== '' && !Number.isNaN(pesoNum) && pesoNum >= 0.1 && pesoNum <= 120;
-  const puedeGuardar = hayCambios && nombreValido && microchipValido && pesoValido && !guardando;
+  const pesoOk = peso !== '' && !Number.isNaN(pesoNum) && esPesoValido(pesoNum, original?.especie);
+  const puedeGuardar = hayCambios && nombreValido && microchipValido && pesoOk && !guardando;
 
   if (!original) {
     navigation.goBack();
@@ -228,10 +229,14 @@ export default function EditarMascotaScreen() {
           <Text style={e.label}>Peso (kg) *</Text>
           <TextInput style={e.input} value={peso}
             onChangeText={(v) => setPeso(sanitizarDecimal(v))}
-            keyboardType="decimal-pad" maxLength={5}
-            placeholder="Entre 0,1 y 120" placeholderTextColor={P.textSoft} />
+            keyboardType="decimal-pad" maxLength={6}
+            placeholder={`Entre ${textoRangoPeso(original?.especie)}`} placeholderTextColor={P.textSoft} />
           {peso === '' && <Text style={e.error}>El peso es obligatorio.</Text>}
-          {peso !== '' && !pesoValido && <Text style={e.error}>El peso va de 0,1 a 120 kg.</Text>}
+          {peso !== '' && !pesoOk && (
+            <Text style={e.error}>
+              En {original?.especie ?? 'esta especie'} el peso va de {textoRangoPeso(original?.especie)}.
+            </Text>
+          )}
 
           <Text style={e.label}>Tamaño</Text>
           <View style={e.chipsFila}>
