@@ -35,6 +35,8 @@ import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { getColorByProximidad, getTextoDias } from '../utils/colorProximidad';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
+import { haySesion } from '../config/session';
+import { fetchMisMascotas } from '../services/petsApi';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
 import FechaPicker from '../components/FechaPicker';
 import HoraPicker from '../components/HoraPicker';
@@ -327,6 +329,10 @@ export default function CalendarioScreen() {
   const { usuario, mascotaActiva } = useUsuarioActivo();
 
   const [eventos, setEventos] = useState([]);
+  // Mascota cuyo calendario se está viendo, y a la que se asignan los eventos
+  // nuevos. Con varias mascotas, cada una tiene su propio calendario.
+  const [mascotas,   setMascotas]   = useState([]);
+  const [mascotaSel, setMascotaSel] = useState(petId ?? null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -345,6 +351,8 @@ export default function CalendarioScreen() {
   const [formEmoji,       setFormEmoji]       = useState(null);
   const [formColor,       setFormColor]       = useState(null);
   const [formErrors,      setFormErrors]      = useState({});
+  // Mascota a la que se asigna el evento que se esta creando/editando
+  const [formMascota,     setFormMascota]     = useState(null);
 
   const [guardando,       setGuardando]       = useState(false);
   const [showDatePicker,  setShowDatePicker]  = useState(false);
@@ -370,10 +378,34 @@ export default function CalendarioScreen() {
   // que se reemplaza por la API real cuando se conecte la base de datos.
   const cargar = useCallback(async (silencioso = false) => {
     if (!silencioso) setLoading(true);
-    const idMascota = petId ?? mascotaActiva?.id;
-    const guardados = await getEventosCalendario(idMascota, DEMO_EVENTOS);
+    // Sin fallback a eventos de demo: mostraban un "Veterinario para Titán"
+    // inventado en el calendario del usuario. Sin datos, la lista va vacía.
+    const guardados = mascotaSel ? await getEventosCalendario(mascotaSel, []) : [];
     setEventos(guardados.slice().sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora)));
     setLoading(false);
+  }, [mascotaSel]);
+
+  // Mascotas del usuario, para poder elegir de quién es cada evento.
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      if (!haySesion()) return;
+      try {
+        const { activas } = await fetchMisMascotas();
+        if (cancelado) return;
+        setMascotas(activas);
+        // Preselección: la que vino por parámetro, si no la activa, si no la primera.
+        setMascotaSel((actual) => actual
+          ?? petId
+          ?? (activas.find((m) => m.id === mascotaActiva?.id)?.id)
+          ?? activas[0]?.id
+          ?? null);
+      } catch {
+        // Sin la lista, el calendario sigue funcionando con la mascota activa.
+        if (!cancelado) setMascotaSel((actual) => actual ?? petId ?? mascotaActiva?.id ?? null);
+      }
+    })();
+    return () => { cancelado = true; };
   }, [petId, mascotaActiva?.id]);
 
   // Recarga cada vez que la pantalla vuelve a estar en foco (por ejemplo, al
@@ -408,6 +440,7 @@ export default function CalendarioScreen() {
   function abrirModalAnadir() {
     setFormTitulo(''); setFormDescripcion(''); setFormFechaHora(null);
     setFormTipo('Vacuna'); setFormEmoji(null); setFormColor(null); setFormErrors({});
+    setFormMascota(mascotaSel);
     setEventoEnEdicion(null);
     setModalModo('añadir');
     abrirModal();
@@ -421,6 +454,7 @@ export default function CalendarioScreen() {
     setFormEmoji(evento.emoji ?? null);
     setFormColor(evento.color ?? null);
     setFormErrors({});
+    setFormMascota(evento.mascotaId ?? mascotaSel);
     setEventoEnEdicion(evento);
     setModalModo('editar');
     abrirModal();
@@ -477,7 +511,12 @@ export default function CalendarioScreen() {
     if (!formFechaHora)     errors.fechaHora = 'Seleccioná fecha y hora';
     if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
 
-    const idMascota = petId ?? mascotaActiva?.id;
+    // El evento va a la mascota elegida en el modal, no siempre a la activa.
+    const idMascota = formMascota ?? mascotaSel;
+    if (!idMascota) {
+      mostrarToast('Elegí una mascota para el evento', '#E63946');
+      return;
+    }
     setGuardando(true);
 
     try {
@@ -492,8 +531,13 @@ export default function CalendarioScreen() {
 
       if (modalModo === 'añadir') {
         const nuevo = await crearEventoCalendario(idMascota, datos);
-        const actualizados = [...eventos, nuevo].sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora));
-        setEventos(actualizados);
+        // Si se asignó a OTRA mascota, el evento no va en la lista que se está
+        // viendo: se cambia a su calendario para que el usuario vea que quedó.
+        if (idMascota !== mascotaSel) {
+          setMascotaSel(idMascota);
+        } else {
+          setEventos([...eventos, nuevo].sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora)));
+        }
         cerrarModal();
         mostrarToast('Evento registrado correctamente', '#2DBD72');
       } else {
@@ -552,6 +596,26 @@ export default function CalendarioScreen() {
 
         <Text style={s.titulo}>Calendario de Cuidados</Text>
 
+        {/* Selector de mascota: cada una tiene su propio calendario. Con una
+            sola mascota no se muestra, para no agregar ruido. */}
+        {mascotas.length > 1 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}
+            style={s.petTabs} contentContainerStyle={s.petTabsContent}>
+            {mascotas.map((mx) => (
+              <TouchableOpacity
+                key={mx.id}
+                style={[s.petTab, mascotaSel === mx.id && s.petTabOn]}
+                onPress={() => setMascotaSel(mx.id)}
+                accessibilityLabel={`Ver el calendario de ${mx.nombre}`}
+              >
+                <Text style={[s.petTabTxt, mascotaSel === mx.id && s.petTabTxtOn]} numberOfLines={1}>
+                  {mx.nombre}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+
         <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}
           showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
           refreshControl={
@@ -562,7 +626,11 @@ export default function CalendarioScreen() {
           {loading ? (
             <View><SkeletonCard /><SkeletonCard /></View>
           ) : eventos.length === 0 ? (
-            <Text style={s.emptyTxt}>No hay eventos programados.</Text>
+            <Text style={s.emptyTxt}>
+              {mascotaSel
+                ? 'No hay eventos programados.'
+                : 'Agregá una mascota para empezar a usar el calendario.'}
+            </Text>
           ) : (
             eventos.map((evento, i) => (
               <EventoCard key={evento.id} evento={evento} index={i}
@@ -659,20 +727,48 @@ export default function CalendarioScreen() {
                     ))}
                   </View>
 
-                  {/* Botón Guardar */}
+                  {/* Mascota a la que pertenece el evento */}
+                  {mascotas.length > 1 && (
+                    <>
+                      <Text style={s.pickerLabel}>¿Para qué mascota?</Text>
+                      <View style={s.petPickRow}>
+                        {mascotas.map((mx) => (
+                          <TouchableOpacity
+                            key={mx.id}
+                            style={[s.petPick, formMascota === mx.id && s.petPickOn]}
+                            onPress={() => setFormMascota(mx.id)}
+                            accessibilityLabel={`Asignar el evento a ${mx.nombre}`}
+                          >
+                            <Text style={[s.petPickTxt, formMascota === mx.id && s.petPickTxtOn]}
+                              numberOfLines={1}>
+                              {mx.nombre}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </>
+                  )}
+
+                </ScrollView>
+
+                {/*
+                  Los botones van FUERA del ScrollView, en un pie fijo: adentro
+                  quedaban debajo del contenido y en pantallas chicas había que
+                  scrollear para llegar a "Cancelar" — que ni siquiera se
+                  intuía que estuviera ahí. Cancelar a la izquierda y más
+                  angosto: la acción principal es guardar.
+                */}
+                <View style={s.modalPie}>
+                  <TouchableOpacity style={s.btnCancelar} onPress={cerrarModal} disabled={guardando}>
+                    <Text style={s.btnCancelarTxt}>Cancelar</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity style={s.btnGuardar} onPress={guardarEvento} disabled={guardando}>
                     {guardando
                       ? <ActivityIndicator size="small" color="#FFF" />
                       : <Text style={s.btnGuardarTxt}>{modalModo === 'editar' ? 'Guardar cambios' : 'Guardar'}</Text>
                     }
                   </TouchableOpacity>
-
-                  {/* Botón Cancelar */}
-                  <TouchableOpacity style={s.btnCancelar} onPress={cerrarModal}>
-                    <Text style={s.btnCancelarTxt}>Cancelar</Text>
-                  </TouchableOpacity>
-
-                </ScrollView>
+                </View>
               </Animated.View>
             </TouchableOpacity>
           </TouchableOpacity>
@@ -827,12 +923,41 @@ const s = StyleSheet.create({
   colorSwatch: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: 'transparent' },
   colorSwatchOn: { borderColor: '#2C2C2C' },
 
+  // Pie fijo del modal, siempre visible sin scrollear
+  modalPie: {
+    flexDirection: 'row', gap: 10, alignItems: 'center',
+    paddingTop: 14, marginTop: 4,
+    borderTopWidth: 1, borderTopColor: '#F0F0F0',
+  },
   btnGuardar: {
-    width: '100%', height: 48, borderRadius: 30,
+    flex: 1, height: 48, borderRadius: 30,
     backgroundColor: '#2DBD72', alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
   },
   btnGuardarTxt: { fontSize: 15, fontWeight: '700', color: '#FFF' },
-  btnCancelar:   { width: '100%', height: 44, borderRadius: 30, backgroundColor: '#E8E8E8', alignItems: 'center', justifyContent: 'center', marginTop: 10 },
-  btnCancelarTxt: { fontSize: 15, fontWeight: '700', color: '#2C2C2C' },
+  btnCancelar: {
+    paddingHorizontal: 22, height: 48, borderRadius: 30, backgroundColor: '#EFEFEF',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  btnCancelarTxt: { fontSize: 15, fontWeight: '700', color: '#6B6B6B' },
+
+  // Selector de mascota (pestañas de la pantalla y chips del modal)
+  petTabs: { flexGrow: 0, marginBottom: 6 },
+  petTabsContent: { paddingHorizontal: 20, gap: 8 },
+  petTab: {
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.75)', borderWidth: 1.5, borderColor: 'transparent',
+  },
+  petTabOn: { backgroundColor: '#FFFFFF', borderColor: '#2DBD72' },
+  petTabTxt: { fontSize: 13, color: '#6B6B6B', fontWeight: '600', maxWidth: 130 },
+  petTabTxtOn: { color: '#2DBD72', fontWeight: '700' },
+
+  petPickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 6 },
+  petPick: {
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18,
+    backgroundColor: '#F5F5F5', borderWidth: 1.5, borderColor: 'transparent',
+  },
+  petPickOn: { backgroundColor: '#F0FFF6', borderColor: '#2DBD72' },
+  petPickTxt: { fontSize: 13, color: '#6B6B6B', fontWeight: '600', maxWidth: 130 },
+  petPickTxtOn: { color: '#2DBD72', fontWeight: '700' },
 });

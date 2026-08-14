@@ -37,8 +37,6 @@ import { HOME_BACKGROUND } from '../constants/homeAssets';
 import {
   agregarEventoCalendario,
   getEventosCalendario,
-  marcarSembradoInicial,
-  yaSeSembroInicial,
 } from '../services/calendarioStore';
 
 // ─────────────────────────────────────────────────────────────
@@ -411,46 +409,31 @@ export default function EventosScreen() {
    * a aparecer disponible para agregar. Se llama al cargar y cada vez que
    * la pantalla recupera el foco (por ejemplo, al volver de Calendario).
    */
-  const sincronizarAgregados = useCallback(async (eventosActuales, petIdActual) => {
+  const sincronizarAgregados = useCallback(async (petIdActual) => {
     if (!petIdActual) { setEventosAgregados(new Set()); return; }
 
     const guardados = await getEventosCalendario(petIdActual, []);
-    const idsEnCalendario = new Set(
+    setEventosAgregados(new Set(
       guardados.filter((e) => e.origen === 'eventos').map((e) => e.origenId),
-    );
-
-    // Sembrado único (primera vez que se usa la app): los eventos que el
-    // backend/demo marca con `ya_en_calendario: true` se copian al calendario.
-    // Después de esta vez el store manda: si el usuario los elimina, NO se
-    // vuelven a agregar solos.
-    if (!(await yaSeSembroInicial())) {
-      const pendientes = eventosActuales.filter(
-        (e) => e.ya_en_calendario && !idsEnCalendario.has(e.id),
-      );
-      for (const evento of pendientes) {
-        await agregarEventoCalendario(petIdActual, {
-          origenId: evento.id,
-          titulo: evento.titulo,
-          descripcion: evento.descripcion
-            ? `${evento.descripcion}\n📍 ${evento.ubicacion_nombre}`
-            : `📍 ${evento.ubicacion_nombre}`,
-          fecha_hora: new Date(evento.fecha_hora).toISOString(),
-          tipo: 'Evento',
-          emoji: '🎉',
-          color: '#9B59B6',
-        });
-        idsEnCalendario.add(evento.id);
-      }
-      await marcarSembradoInicial();
-    }
-
-    setEventosAgregados(idsEnCalendario);
+    ));
   }, []);
 
+  /*
+    Acá había además un "sembrado inicial" que copiaba solo al calendario todos
+    los eventos con `ya_en_calendario: true`. Se eliminó por dos motivos:
+
+      · agregaba eventos que el usuario nunca agregó — de ahí que Eventos
+        mostrara "✓ Agregado al calendario" sin haber tocado nada;
+      · corría desde dos lados (la carga inicial y este efecto de foco) sin
+        coordinarse, así que las dos pasadas insertaban lo mismo antes de que
+        ninguna marcara el sembrado como hecho: los eventos salían duplicados.
+
+    El estado "ya agregado" ahora se deriva únicamente del calendario real.
+  */
   useFocusEffect(
     useCallback(() => {
-      if (eventos.length > 0) sincronizarAgregados(eventos, homeData?.mascotaActiva?.id);
-    }, [eventos, homeData, sincronizarAgregados]),
+      sincronizarAgregados(homeData?.mascotaActiva?.id);
+    }, [homeData?.mascotaActiva?.id, sincronizarAgregados]),
   );
 
   /**
@@ -491,7 +474,7 @@ export default function EventosScreen() {
       const eventosFinales = eventosData.length > 0 ? eventosData : EVENTOS_DEMO;
 
       setEventos(eventosFinales);
-      await sincronizarAgregados(eventosFinales, datosHome?.mascotaActiva?.id);
+      await sincronizarAgregados(datosHome?.mascotaActiva?.id);
     } catch (error) {
       console.error('Error al cargar eventos:', error);
 
@@ -503,7 +486,7 @@ export default function EventosScreen() {
 
       // En caso de error total, mostrar demo igual
       setEventos(EVENTOS_DEMO);
-      await sincronizarAgregados(EVENTOS_DEMO, undefined);
+      await sincronizarAgregados(undefined);
     } finally {
       setLoading(false);
     }

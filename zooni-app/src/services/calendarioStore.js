@@ -6,15 +6,21 @@
  * Los eventos ahora persisten en Postgres, filtrados por mascota_id.
  */
 
-import { Platform } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
 import { supabase } from '../lib/supabase';
 
-const SEED_KEY = 'zooni_calendario_seed_inicial_hecho';
+/*
+  Acá vivía un "sembrado inicial" que, la primera vez que se abría Eventos,
+  copiaba solo al calendario todos los eventos marcados `ya_en_calendario`.
+  Se eliminó: agregaba eventos que el usuario nunca había agregado (por eso
+  aparecían como "✓ Agregado al calendario" sin haberlos tocado) y, al correr
+  desde dos lugares a la vez, los insertaba por duplicado. Ahora al calendario
+  solo entra lo que el usuario agrega explícitamente.
+*/
 
 function mapRow(row) {
   return {
     id: row.id,
+    mascotaId: row.mascota_id,
     origen: row.origen,
     origenId: row.origen_evento_id ?? undefined,
     titulo: row.titulo,
@@ -86,10 +92,34 @@ export async function eliminarEventoCalendario(eventoId) {
 
 /**
  * Agrega un evento público (de EventosScreen) al calendario de `petId`.
- * `evento.origenId` es el id del evento público en la tabla `eventos`,
- * usado para no duplicarlo si ya fue agregado antes.
+ * `evento.origenId` es el id del evento público en la tabla `eventos`.
+ *
+ * Es IDEMPOTENTE: si ese evento ya está en el calendario de esa mascota,
+ * devuelve el que ya existe en vez de insertar otro.
+ *
+ * Antes insertaba a ciegas y el mismo evento terminaba duplicado por varios
+ * caminos a la vez: el sembrado automático corría dos veces (una al cargar la
+ * pantalla y otra al enfocarla) y un doble toque en "Agregar" también metía dos
+ * filas. La comprobación va acá, en el store, para que no dependa de que cada
+ * pantalla se acuerde de hacerla.
+ *
+ * La base además tiene un índice único que lo garantiza aunque dos
+ * dispositivos escriban a la vez (migración 035).
  */
 export async function agregarEventoCalendario(petId, evento) {
+  if (!petId) throw new Error('Falta la mascota a la que agregar el evento');
+
+  if (evento.origenId != null) {
+    const { data: existente } = await supabase
+      .from('eventos_calendario')
+      .select('*')
+      .eq('mascota_id', petId)
+      .eq('origen', 'eventos')
+      .eq('origen_evento_id', evento.origenId)
+      .limit(1);
+    if (existente?.length) return mapRow(existente[0]);
+  }
+
   const { data, error } = await supabase
     .from('eventos_calendario')
     .insert({
@@ -105,35 +135,30 @@ export async function agregarEventoCalendario(petId, evento) {
     })
     .select()
     .single();
+
+  // 23505 = el índice único lo frenó (dos inserciones simultáneas). No es un
+  // error para el usuario: el evento quedó en el calendario igual.
+  if (error?.code === '23505' && evento.origenId != null) {
+    const { data: yaEsta } = await supabase
+      .from('eventos_calendario')
+      .select('*')
+      .eq('mascota_id', petId)
+      .eq('origen', 'eventos')
+      .eq('origen_evento_id', evento.origenId)
+      .limit(1);
+    if (yaEsta?.length) return mapRow(yaEsta[0]);
+  }
   if (error) throw error;
   return mapRow(data);
 }
 
-/**
- * Sembrado inicial (una sola vez por dispositivo): los eventos públicos que
- * ya vienen marcados `ya_en_calendario: true` se copian al calendario la
- * primera vez que se abre EventosScreen. Después de esa vez, si el usuario
- * los elimina del calendario NO vuelven a aparecer solos.
- */
-export async function yaSeSembroInicial() {
-  try {
-    const raw = Platform.OS === 'web'
-      ? (typeof localStorage !== 'undefined' ? localStorage.getItem(SEED_KEY) : null)
-      : await SecureStore.getItemAsync(SEED_KEY);
-    return raw === '1';
-  } catch {
-    return false;
-  }
-}
-
-export async function marcarSembradoInicial() {
-  try {
-    if (Platform.OS === 'web') {
-      if (typeof localStorage !== 'undefined') localStorage.setItem(SEED_KEY, '1');
-    } else {
-      await SecureStore.setItemAsync(SEED_KEY, '1');
-    }
-  } catch {
-    // noop
-  }
+/** Quita del calendario de `petId` el evento público `origenId` (des-agregar). */
+export async function quitarEventoDelCalendario(petId, origenId) {
+  const { error } = await supabase
+    .from('eventos_calendario')
+    .delete()
+    .eq('mascota_id', petId)
+    .eq('origen', 'eventos')
+    .eq('origen_evento_id', origenId);
+  if (error) throw error;
 }
