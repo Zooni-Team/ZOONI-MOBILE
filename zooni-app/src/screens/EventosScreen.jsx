@@ -33,7 +33,6 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import { fetchHome, fetchEventos } from '../services/api';
 import HamburgerDrawer from '../components/HamburgerDrawer';
-import { DEMO_USUARIO, DEMO_MASCOTA_ACTIVA } from '../constants/demoUsuario';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
 import {
   agregarEventoCalendario,
@@ -666,8 +665,8 @@ export default function EventosScreen() {
       <HamburgerDrawer
         visible={drawerVisible}
         onClose={() => setDrawerVisible(false)}
-        usuario={homeData?.usuario ?? DEMO_USUARIO}
-        mascotaActiva={homeData?.mascotaActiva ?? DEMO_MASCOTA_ACTIVA}
+        usuario={homeData?.usuario ?? null}
+        mascotaActiva={homeData?.mascotaActiva ?? null}
         activeRoute="Eventos"
       />
     </SafeAreaView>

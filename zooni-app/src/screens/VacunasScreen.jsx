@@ -33,6 +33,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { parseFechaLocal } from '../utils/fechaLocal';
 import PetHero from '../components/PetHero';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
+import { haySesion } from '../config/session';
+import { MASCOTA_VACIA } from '../constants/mascotaVacia';
 import FechaPicker from '../components/FechaPicker';
 import {
   fetchVacunas,
@@ -333,15 +335,21 @@ export default function VacunasScreen() {
         setMascota(m);
         setVacunasAplicadas(aplicadas);
         setVacunasSugeridas(sugeridas);
+      } else if (haySesion()) {
+        // Logueado pero sin mascota activa todavía: pantalla vacía, no la
+        // mascota de demo (era la de OTRA cuenta, con vacunas ajenas).
+        setMascota(MASCOTA_VACIA);
+        setVacunasAplicadas([]);
+        setVacunasSugeridas([]);
       } else {
         setMascota(DEMO_MASCOTA);
         setVacunasAplicadas(DEMO_APLICADAS);
         setVacunasSugeridas(DEMO_SUGERIDAS);
       }
     } catch {
-      setMascota(DEMO_MASCOTA);
-      setVacunasAplicadas(DEMO_APLICADAS);
-      setVacunasSugeridas(DEMO_SUGERIDAS);
+      // Un error de red no puede inventar la mascota ni sus vacunas: se conserva
+      // lo último bueno y, si no había nada, queda el placeholder neutro.
+      setMascota((m) => m ?? MASCOTA_VACIA);
     }
     setLoading(false);
     Animated.parallel([

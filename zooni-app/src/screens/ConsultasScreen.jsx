@@ -37,6 +37,8 @@ import { toISODateLocal } from '../utils/fechaLocal';
 import PetHero from '../components/PetHero';
 import { subirImagenPublica } from '../utils/imagenStorage';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
+import { haySesion } from '../config/session';
+import { MASCOTA_VACIA } from '../constants/mascotaVacia';
 import { fetchMascota, fetchConsultas, crearConsulta, eliminarConsulta } from '../services/fichaMedicaApi';
 import FechaPicker from '../components/FechaPicker';
 
@@ -214,13 +216,18 @@ export default function ConsultasScreen() {
         const [m, lista] = await Promise.all([fetchMascota(idMascota), fetchConsultas(idMascota)]);
         setMascota(m);
         setConsultas(lista);
+      } else if (haySesion()) {
+        // Logueado pero sin mascota activa todavía: pantalla vacía, no la
+        // mascota de demo (era la de OTRA cuenta, con consultas ajenas).
+        setMascota(MASCOTA_VACIA);
+        setConsultas([]);
       } else {
         setMascota(DEMO_MASCOTA);
         setConsultas(DEMO_CONSULTAS);
       }
     } catch {
-      setMascota(DEMO_MASCOTA);
-      setConsultas(DEMO_CONSULTAS);
+      // Un error de red no puede inventar la mascota ni sus consultas.
+      setMascota((m) => m ?? MASCOTA_VACIA);
     }
     setLoading(false);
     animarHero();

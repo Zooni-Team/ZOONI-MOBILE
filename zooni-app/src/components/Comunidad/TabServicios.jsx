@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fetchServicios } from '../../api/comunidad';
+import { hayClaveGoogle } from '../../services/lugaresApi';
 
 const FILTROS = [
   { v: 'todos', l: 'Todos' }, { v: 'veterinaria', l: 'Veterinaria' },
@@ -43,12 +44,36 @@ export default function TabServicios({ bbox, onSeleccionar }) {
               <Ionicons name={ICONOS[s.tipo] || 'location-outline'} size={16} color="#FFF" />
             </View>
             <View style={styles.info}>
-              <Text style={styles.nombre}>{s.nombre}</Text>
-              <Text style={styles.dir}>{s.direccion}</Text>
+              <Text style={styles.nombre} numberOfLines={1}>{s.nombre}</Text>
+              <Text style={styles.dir} numberOfLines={1}>{s.direccion}</Text>
+              {/* Puntaje y estado solo existen en los locales traídos de Google */}
+              {(s.rating != null || s.abiertoAhora != null) && (
+                <View style={styles.metaRow}>
+                  {s.rating != null && (
+                    <View style={styles.metaItem}>
+                      <Ionicons name="star" size={11} color="#F5A623" />
+                      <Text style={styles.meta}>
+                        {s.rating.toFixed(1)}{s.ratingCount ? ` (${s.ratingCount})` : ''}
+                      </Text>
+                    </View>
+                  )}
+                  {s.abiertoAhora != null && (
+                    <Text style={[styles.meta, { color: s.abiertoAhora ? '#2DBD72' : '#E63946', fontWeight: '600' }]}>
+                      {s.abiertoAhora ? 'Abierto ahora' : 'Cerrado'}
+                    </Text>
+                  )}
+                </View>
+              )}
             </View>
           </TouchableOpacity>
         )}
-        ListEmptyComponent={<Text style={styles.vacio}>No hay servicios en esta área</Text>}
+        ListEmptyComponent={
+          <Text style={styles.vacio}>
+            {hayClaveGoogle()
+              ? 'No hay servicios en esta área'
+              : 'No hay servicios cargados en esta área.\nConfigurá EXPO_PUBLIC_GOOGLE_MAPS_API_KEY para ver los negocios reales de Google Maps.'}
+          </Text>
+        }
         contentContainerStyle={{ paddingBottom: 20 }}
       />
     </View>
@@ -66,5 +91,8 @@ const styles = StyleSheet.create({
   info:        { flex: 1 },
   nombre:      { fontWeight: '700', fontSize: 14, color: '#2C2C2C' },
   dir:         { fontSize: 12, color: '#6B6B6B', marginTop: 2 },
-  vacio:       { textAlign: 'center', color: '#AAAAAA', marginTop: 20 },
+  metaRow:     { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 3 },
+  metaItem:    { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  meta:        { fontSize: 11, color: '#6B6B6B' },
+  vacio:       { textAlign: 'center', color: '#AAAAAA', marginTop: 20, fontSize: 12, lineHeight: 18, paddingHorizontal: 16 },
 });

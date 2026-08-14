@@ -9,6 +9,7 @@
 import { supabase } from '../../lib/supabase';
 import { getCurrentUserId } from '../../config/session';
 import { subirImagenPublica } from '../../utils/imagenStorage';
+import { buscarLugaresGoogle, combinarServicios } from '../../services/lugaresApi';
 
 function haversineKm(lat1, lng1, lat2, lng2) {
   if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return null;
@@ -32,13 +33,29 @@ function aplicarBbox(query, bbox, latCol = 'lat', lngCol = 'lng') {
 // SERVICIOS
 // ─────────────────────────────────────────────
 
+/**
+ * Servicios del área visible: los cargados en Zooni MÁS los negocios reales
+ * que Google conoce ahí (veterinarias, pet shops y peluquerías caninas).
+ *
+ * La tabla `servicios` sola estaba prácticamente vacía, así que la pestaña
+ * mostraba "No hay servicios en esta área" en casi todos lados. Google aporta
+ * los locales que existen de verdad; ver lugaresApi.js para configurar la clave.
+ *
+ * Si Google no está configurado o falla, esto devuelve exactamente lo mismo que
+ * antes: los servicios propios. La pestaña nunca queda peor que como estaba.
+ */
 export async function fetchServicios(bbox, tipo) {
   let query = supabase.from('servicios').select('*');
   query = aplicarBbox(query, bbox);
   if (tipo && tipo !== 'todos') query = query.eq('tipo', tipo);
-  const { data, error } = await query;
-  if (error) throw error;
-  return { servicios: data ?? [] };
+
+  const [propios, deGoogle] = await Promise.all([
+    query,
+    buscarLugaresGoogle(bbox, tipo ?? 'todos'),
+  ]);
+  if (propios.error) throw propios.error;
+
+  return { servicios: combinarServicios(propios.data ?? [], deGoogle) };
 }
 
 // ─────────────────────────────────────────────

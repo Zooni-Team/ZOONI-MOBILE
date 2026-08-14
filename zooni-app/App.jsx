@@ -8,7 +8,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, ActivityIndicator, AppState, StyleSheet } from 'react-native';
 
-import { loadStoredUserId } from './src/config/session';
+import { loadStoredUserId, esperarSesion, haySesion } from './src/config/session';
 import { ThemeProvider, useTheme } from './src/config/theme';
 import { iniciarLatidoPresencia, marcarPresencia } from './src/services/presenciaApi';
 import HomeScreen        from './src/screens/HomeScreen';
@@ -70,12 +70,24 @@ export default function App() {
   // Latido de presencia: mantiene actualizado "última vez en línea" mientras la
   // app está abierta y lo refresca al volver del segundo plano (si se quedó
   // dormida, el último latido puede ser de hace rato).
+  //
+  // Espera a que la sesión esté restaurada ANTES de latir: este efecto corría en
+  // paralelo con loadStoredUserId(), así que el primer latido salía con el id
+  // que hubiera en ese momento y le escribía UltimaConexion a la cuenta
+  // equivocada. Si no hay nadie logueado no late (el Login no tiene presencia).
   useEffect(() => {
-    const frenar = iniciarLatidoPresencia();
-    const sub = AppState.addEventListener('change', (estado) => {
-      if (estado === 'active') marcarPresencia(true);
+    let frenar = null;
+    let cancelado = false;
+
+    esperarSesion().then(() => {
+      if (cancelado || !haySesion()) return;
+      frenar = iniciarLatidoPresencia();
     });
-    return () => { frenar(); sub.remove(); };
+
+    const sub = AppState.addEventListener('change', (estado) => {
+      if (estado === 'active' && haySesion()) marcarPresencia(true);
+    });
+    return () => { cancelado = true; frenar?.(); sub.remove(); };
   }, []);
 
   if (!initialRoute) {

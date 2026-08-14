@@ -39,6 +39,8 @@ import {
   eliminarTratamiento as eliminarTratamientoApi,
 } from '../services/fichaMedicaApi';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
+import { haySesion } from '../config/session';
+import { MASCOTA_VACIA } from '../constants/mascotaVacia';
 import FechaPicker from '../components/FechaPicker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -350,15 +352,20 @@ export default function TratamientosScreen() {
         setMascota(m);
         setTratamientosAplicados(aplicados);
         setTratamientosSugeridos(sugeridos);
+      } else if (haySesion()) {
+        // Logueado pero sin mascota activa todavía: pantalla vacía, no la
+        // mascota de demo (era la de OTRA cuenta, con tratamientos ajenos).
+        setMascota(MASCOTA_VACIA);
+        setTratamientosAplicados([]);
+        setTratamientosSugeridos([]);
       } else {
         setMascota(DEMO_MASCOTA);
         setTratamientosAplicados(DEMO_APLICADOS);
         setTratamientosSugeridos(DEMO_SUGERIDOS);
       }
     } catch {
-      setMascota(DEMO_MASCOTA);
-      setTratamientosAplicados(DEMO_APLICADOS);
-      setTratamientosSugeridos(DEMO_SUGERIDOS);
+      // Un error de red no puede inventar la mascota ni sus tratamientos.
+      setMascota((m) => m ?? MASCOTA_VACIA);
     }
     setLoading(false);
     animarHero();

@@ -15,6 +15,8 @@ export default function PopupServicio({ servicio, onClose }) {
     ]).start();
   }, []);
 
+  const esDeGoogle = servicio.origen === 'google';
+
   const abrirMaps = () => {
     const url = servicio.google_maps_url ||
       `https://www.google.com/maps/search/?api=1&query=${servicio.lat},${servicio.lng}`;
@@ -57,11 +59,43 @@ export default function PopupServicio({ servicio, onClose }) {
           <Text style={styles.info}>{servicio.descripcion}</Text>
         </View>
       )}
+      {(servicio.rating != null || servicio.abiertoAhora != null) && (
+        <View style={styles.infoRow}>
+          {servicio.rating != null && (
+            <>
+              <Ionicons name="star" size={13} color="#F5A623" />
+              <Text style={styles.info}>
+                {servicio.rating.toFixed(1)}
+                {servicio.ratingCount ? ` · ${servicio.ratingCount} reseñas` : ''}
+              </Text>
+            </>
+          )}
+          {servicio.abiertoAhora != null && (
+            <Text style={[styles.info, { color: servicio.abiertoAhora ? '#2DBD72' : '#E63946', fontWeight: '600' }]}>
+              {servicio.abiertoAhora ? 'Abierto ahora' : 'Cerrado'}
+            </Text>
+          )}
+        </View>
+      )}
       <View style={styles.btnsRow}>
-        <TouchableOpacity style={[styles.btnMaps, styles.btnMensaje]} onPress={enviarMensaje}>
-          <Ionicons name="chatbubble-outline" size={15} color="#2DBD72" />
-          <Text style={[styles.btnMapsText, styles.btnMensajeText]}>Enviar mensaje</Text>
-        </TouchableOpacity>
+        {/* Un negocio traído de Google no tiene usuario en Zooni: el chat no
+            iría a ninguna parte, así que en esos se ofrece llamar. */}
+        {esDeGoogle ? (
+          servicio.telefono && (
+            <TouchableOpacity
+              style={[styles.btnMaps, styles.btnMensaje]}
+              onPress={() => Linking.openURL(`tel:${servicio.telefono.replace(/[^+\d]/g, '')}`)}
+            >
+              <Ionicons name="call-outline" size={15} color="#2DBD72" />
+              <Text style={[styles.btnMapsText, styles.btnMensajeText]}>Llamar</Text>
+            </TouchableOpacity>
+          )
+        ) : (
+          <TouchableOpacity style={[styles.btnMaps, styles.btnMensaje]} onPress={enviarMensaje}>
+            <Ionicons name="chatbubble-outline" size={15} color="#2DBD72" />
+            <Text style={[styles.btnMapsText, styles.btnMensajeText]}>Enviar mensaje</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={styles.btnMaps} onPress={abrirMaps}>
           <Text style={styles.btnMapsText}>Ver en Google Maps</Text>
         </TouchableOpacity>

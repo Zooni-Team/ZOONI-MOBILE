@@ -38,6 +38,8 @@ import { resolveMascotaVisual } from '../constants/petImages';
 import SkeletonLoader from '../components/SkeletonLoader';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
+import { haySesion } from '../config/session';
+import { MASCOTA_VACIA } from '../constants/mascotaVacia';
 import {
   fetchMascota, actualizarPeso, actualizarRaza, actualizarFechaNacimiento,
   fetchVacunas, fetchTratamientos, fetchHistorialPeso, fetchConsultas,
@@ -657,7 +659,10 @@ export default function FichaMedicaScreen() {
   // Sin petId o error sin mascota (una vez terminada la carga): pantalla demo visual
   const demoMascota = !loading && (!petId || !mascota);
   const interactuable = !loading && !demoMascota;
-  const m = mascota ?? DEMO_MASCOTA;
+  // Con sesión iniciada nunca se muestra la mascota de demo: si los datos no
+  // llegaron, va el placeholder neutro. Titán solo aparece en la vista previa
+  // sin login, que es para lo que estaba pensado.
+  const m = mascota ?? (haySesion() ? MASCOTA_VACIA : DEMO_MASCOTA);
   const edad = calcularEdad(m.fecha_nacimiento);
   const petImg = resolveMascotaVisual(m);
 

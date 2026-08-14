@@ -23,28 +23,22 @@ const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 const HERO_HEIGHT = Math.min(SCREEN_HEIGHT * 0.40, 340);
 const PET_IMAGE_SIZE = 250;
 
-// Datos de demo para cuando no hay backend conectado
-const DEMO_DATA = {
-  usuario: { id: 1, nombre: 'Sofía', apellido: 'García', fotoPerfil: null },
-  mascotaActiva: {
-    id: 1,
-    nombre: 'Titán',
-    especie: 'perro',
-    raza: 'Labrador Retriever',
-    fotoUrl: null,
-    edadAnios: 4,
-    edadMeses: 2,
-  },
-  notificacionesNoLeidas: 0,
-};
+const BOTONES_POR_DEFECTO = [
+  { seccion: 'comunidad',   orden: 1, visible: true },
+  { seccion: 'ficha_medica', orden: 2, visible: true },
+  { seccion: 'match',       orden: 3, visible: true },
+];
 
-const DEMO_CONFIG = {
-  botones: [
-    { seccion: 'comunidad',   orden: 1, visible: true },
-    { seccion: 'ficha_medica', orden: 2, visible: true },
-    { seccion: 'match',       orden: 3, visible: true },
-  ],
-};
+/*
+  Antes acá vivía un DEMO_DATA con la mascota "Titán / Labrador Retriever" que
+  se aplicaba ante CUALQUIER error o demora de más de 3 segundos. Con una red
+  lenta eso pisaba la mascota real del usuario por una de mentira cada tanto —
+  el "se me pone una mascota default" del reporte.
+
+  Ahora un fallo no inventa datos: se conserva lo último que se cargó bien (o
+  los skeletons, si es la primera carga) y se avisa que no se pudo actualizar.
+*/
+const TIMEOUT_MS = 12000;
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -57,6 +51,7 @@ export default function HomeScreen() {
   const [botones, setBotones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [errorCarga, setErrorCarga] = useState(false);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -75,22 +70,26 @@ export default function HomeScreen() {
   const loadData = useCallback(async (silencioso = false) => {
     if (!silencioso) setLoading(true);
     try {
-      // Timeout de 3 segundos: si el backend no responde, usar datos demo
-      const dataPromise = Promise.race([
+      // El timeout es solo un cortafuegos para que la pantalla no quede colgada
+      // si el backend nunca responde. Es holgado a propósito: con 3 segundos,
+      // una red de celular normal lo cruzaba seguido.
+      let cortar;
+      const data = await Promise.race([
         Promise.all([fetchHome(), fetchHomeConfig()]),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('timeout')), 3000)
-        )
-      ]);
-      
-      const [data, config] = await dataPromise;
-      setHomeData(data);
-      setBotones(config.botones);
+        new Promise((_, reject) => {
+          cortar = setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS);
+        }),
+      ]).finally(() => clearTimeout(cortar));
+
+      setHomeData(data[0]);
+      setBotones(data[1].botones);
+      setErrorCarga(false);
     } catch (error) {
-      // Sin backend o timeout: usar datos de demo
-      console.log('Usando datos de demo:', error.message);
-      setHomeData(DEMO_DATA);
-      setBotones(DEMO_CONFIG.botones);
+      // Nunca se reemplazan los datos del usuario por datos inventados: se deja
+      // lo último bueno y se marca el error para poder reintentar.
+      console.log('No se pudo actualizar Home:', error.message);
+      setBotones((prev) => (prev.length ? prev : BOTONES_POR_DEFECTO));
+      setErrorCarga(true);
     } finally {
       setLoading(false);
       // Dar 100ms para que termine de renderizar la imagen antes de animar
@@ -281,6 +280,15 @@ export default function HomeScreen() {
             colors={['#2DBD72']} tintColor="#2DBD72" />
         }
       >
+        {/* Sustituye al viejo fallback de datos demo: se avisa que no se pudo
+            actualizar en vez de mostrar una mascota que no es la del usuario. */}
+        {errorCarga && (
+          <TouchableOpacity style={styles.avisoError} onPress={() => loadData()} activeOpacity={0.8}>
+            <Text style={styles.avisoErrorTxt}>
+              No se pudieron actualizar los datos. Tocá para reintentar.
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {/* ── ZONA 2: HERO ── */}
         <View style={styles.heroZone}>
@@ -505,6 +513,18 @@ const styles = StyleSheet.create({
   badgeText: { color: '#FFFFFF', fontSize: 9, fontWeight: '700' },
   scroll: { flex: 1, backgroundColor: 'transparent' },
   scrollContent: { flexGrow: 1, backgroundColor: 'transparent' },
+
+  avisoError: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: '#FFF3CD',
+    borderWidth: 1,
+    borderColor: '#F0D48A',
+  },
+  avisoErrorTxt: { color: '#7A5B00', fontSize: 13, textAlign: 'center' },
 
   // Hero — ~45% pantalla (Instruction-Home)
   heroZone: {
