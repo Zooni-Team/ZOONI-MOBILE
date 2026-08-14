@@ -44,100 +44,7 @@ import {
 } from '../services/fichaMedicaApi';
 import { fetchRazas } from '../services/authApi';
 import OpcionPicker from '../components/OpcionPicker';
-
-// ─── FECHA PICKER (modal propio, sin dependencias externas) ──────────────────
-
-function FechaPicker({ visible, valor, onConfirmar, onCancelar }) {
-  const [dia,  setDia]  = useState(valor.getDate());
-  const [mes,  setMes]  = useState(valor.getMonth() + 1);
-  const [anio, setAnio] = useState(valor.getFullYear());
-
-  useEffect(() => {
-    setDia(valor.getDate());
-    setMes(valor.getMonth() + 1);
-    setAnio(valor.getFullYear());
-  }, [valor]);
-
-  const diasEnMes = new Date(anio, mes, 0).getDate();
-  const dias  = Array.from({ length: diasEnMes }, (_, i) => i + 1);
-  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const hoyAnio = new Date().getFullYear();
-  const anios = Array.from({ length: 31 }, (_, i) => hoyAnio - i);
-
-  const confirmar = () => onConfirmar(new Date(anio, mes - 1, Math.min(dia, diasEnMes)));
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancelar}>
-      <View style={fp.overlay}>
-        <View style={fp.container}>
-          <Text style={fp.titulo}>Fecha de nacimiento</Text>
-          <View style={fp.row}>
-            {/* Día */}
-            <View style={fp.col}>
-              <Text style={fp.colLabel}>Día</Text>
-              <ScrollView style={fp.list} showsVerticalScrollIndicator={false}>
-                {dias.map((d) => (
-                  <TouchableOpacity key={d} style={[fp.item, dia === d && fp.itemOn]} onPress={() => setDia(d)}>
-                    <Text style={[fp.itemTxt, dia === d && fp.itemTxtOn]}>{String(d).padStart(2,'0')}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-            {/* Mes */}
-            <View style={[fp.col, { flex: 2 }]}>
-              <Text style={fp.colLabel}>Mes</Text>
-              <ScrollView style={fp.list} showsVerticalScrollIndicator={false}>
-                {meses.map((m, i) => (
-                  <TouchableOpacity key={m} style={[fp.item, mes === i+1 && fp.itemOn]} onPress={() => setMes(i+1)}>
-                    <Text style={[fp.itemTxt, mes === i+1 && fp.itemTxtOn]}>{m}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-            {/* Año */}
-            <View style={fp.col}>
-              <Text style={fp.colLabel}>Año</Text>
-              <ScrollView style={fp.list} showsVerticalScrollIndicator={false}>
-                {anios.map((a) => (
-                  <TouchableOpacity key={a} style={[fp.item, anio === a && fp.itemOn]} onPress={() => setAnio(a)}>
-                    <Text style={[fp.itemTxt, anio === a && fp.itemTxtOn]}>{a}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          </View>
-          <View style={fp.btns}>
-            <TouchableOpacity style={fp.btnCancel} onPress={onCancelar}>
-              <Text style={fp.btnCancelTxt}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={fp.btnOk} onPress={confirmar}>
-              <Text style={fp.btnOkTxt}>Confirmar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-const fp = StyleSheet.create({
-  overlay:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  container:  { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 36 },
-  titulo:     { fontSize: 16, fontWeight: '700', color: '#2C2C2C', textAlign: 'center', marginBottom: 16 },
-  row:        { flexDirection: 'row', gap: 8, height: 180 },
-  col:        { flex: 1 },
-  colLabel:   { fontSize: 12, fontWeight: '600', color: '#6B6B6B', textAlign: 'center', marginBottom: 6 },
-  list:       { flex: 1, borderWidth: 1, borderColor: '#F0F0F0', borderRadius: 10 },
-  item:       { paddingVertical: 10, paddingHorizontal: 4, alignItems: 'center' },
-  itemOn:     { backgroundColor: '#F0FFF6' },
-  itemTxt:    { fontSize: 14, color: '#2C2C2C' },
-  itemTxtOn:  { color: '#2DBD72', fontWeight: '700' },
-  btns:       { flexDirection: 'row', gap: 12, marginTop: 20 },
-  btnCancel:  { flex: 1, paddingVertical: 13, borderRadius: 30, backgroundColor: '#F0F0F0', alignItems: 'center' },
-  btnCancelTxt: { fontSize: 15, fontWeight: '700', color: '#6B6B6B' },
-  btnOk:      { flex: 1, paddingVertical: 13, borderRadius: 30, backgroundColor: '#2DBD72', alignItems: 'center' },
-  btnOkTxt:   { fontSize: 15, fontWeight: '700', color: '#FFF' },
-});
+import FechaPicker from '../components/FechaPicker';
 
 // ─── DATOS DEMO (sin backend conectado — mismos datos que Vacunas/Tratamientos) ──
 
@@ -646,7 +553,8 @@ export default function FichaMedicaScreen() {
             onEditar={interactuable ? abrirEditFecha : undefined}
             editando={false} />
 
-          <FechaPicker visible={editandoFecha} valor={fechaBorrador}
+          <FechaPicker visible={editandoFecha} titulo="Fecha de nacimiento"
+            valor={fechaBorrador} aniosAtras={30}
             onConfirmar={confirmarFecha} onCancelar={() => setEditandoFecha(false)} />
 
           <OpcionPicker

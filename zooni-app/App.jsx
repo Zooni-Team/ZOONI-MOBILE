@@ -6,10 +6,11 @@ import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, AppState, StyleSheet } from 'react-native';
 
 import { loadStoredUserId } from './src/config/session';
 import { ThemeProvider, useTheme } from './src/config/theme';
+import { iniciarLatidoPresencia, marcarPresencia } from './src/services/presenciaApi';
 import HomeScreen        from './src/screens/HomeScreen';
 import LoginScreen       from './src/screens/LoginScreen';
 import RegisterStep1Screen from './src/screens/RegisterStep1Screen';
@@ -64,6 +65,17 @@ export default function App() {
       const userId = await loadStoredUserId();
       setInitialRoute(userId ? 'Home' : 'Login');
     })();
+  }, []);
+
+  // Latido de presencia: mantiene actualizado "última vez en línea" mientras la
+  // app está abierta y lo refresca al volver del segundo plano (si se quedó
+  // dormida, el último latido puede ser de hace rato).
+  useEffect(() => {
+    const frenar = iniciarLatidoPresencia();
+    const sub = AppState.addEventListener('change', (estado) => {
+      if (estado === 'active') marcarPresencia(true);
+    });
+    return () => { frenar(); sub.remove(); };
   }, []);
 
   if (!initialRoute) {

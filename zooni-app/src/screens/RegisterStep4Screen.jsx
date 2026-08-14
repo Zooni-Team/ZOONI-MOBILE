@@ -219,30 +219,39 @@ export default function RegisterStep4Screen() {
             />
 
             {/*
-              El código se completa solo al elegir el país, pero SE PUEDE
-              corregir a mano: antes quedaba bloqueado (editable={!pais}) y con
-              un país elegido no había forma de arreglarlo.
+              Teléfono: el código de área va PEGADO al número, a la izquierda,
+              como en cualquier app — antes era un campo aparte arriba y quedaba
+              suelto, sin que se entendiera que eran una sola cosa.
+              El código se autocompleta al elegir el país pero se puede corregir
+              a mano; el conjunto es opcional y se puede dejar vacío.
             */}
-            <TextInput
-              style={[s.input, codigoAuto && s.inputCodigoAuto, focus === 'codigo' && s.inputFocus]}
-              placeholder="Código (opcional)" placeholderTextColor="#AAAAAA"
-              value={codigo}
-              onChangeText={(v) => { setCodigo(limpiarCodigo(v)); setCodigoAuto(false); }}
-              keyboardType="phone-pad"
-              maxLength={5}
-              onFocus={() => setFocus('codigo')} onBlur={() => setFocus(null)} returnKeyType="next"
-            />
-
-            {/* El teléfono es opcional: se puede dejar vacío y seguir */}
-            <TextInput
-              style={[s.input, focus === 'telefono' && s.inputFocus, errTelefono && s.inputError]}
-              placeholder="Teléfono (opcional)" placeholderTextColor="#AAAAAA"
-              value={telefono}
-              onChangeText={(v) => { setTelefono(limpiarTelefono(v)); setErrTelefono(null); }}
-              keyboardType="phone-pad"
-              maxLength={20}
-              onFocus={() => setFocus('telefono')} onBlur={() => setFocus(null)} returnKeyType="done"
-            />
+            <View style={[
+              s.telefonoRow,
+              (focus === 'codigo' || focus === 'telefono') && s.inputFocus,
+              errTelefono && s.inputError,
+            ]}>
+              <TextInput
+                style={[s.telefonoCodigo, codigoAuto && s.inputCodigoAuto]}
+                placeholder="+54" placeholderTextColor="#AAAAAA"
+                value={codigo}
+                onChangeText={(v) => { setCodigo(limpiarCodigo(v)); setCodigoAuto(false); }}
+                keyboardType="phone-pad"
+                maxLength={5}
+                onFocus={() => setFocus('codigo')} onBlur={() => setFocus(null)} returnKeyType="next"
+                accessibilityLabel="Código de país"
+              />
+              <View style={s.telefonoSep} />
+              <TextInput
+                style={s.telefonoNumero}
+                placeholder="Teléfono (opcional)" placeholderTextColor="#AAAAAA"
+                value={telefono}
+                onChangeText={(v) => { setTelefono(limpiarTelefono(v)); setErrTelefono(null); }}
+                keyboardType="phone-pad"
+                maxLength={20}
+                onFocus={() => setFocus('telefono')} onBlur={() => setFocus(null)} returnKeyType="done"
+                accessibilityLabel="Número de teléfono"
+              />
+            </View>
             {errTelefono && <Text style={s.errorTxt}>{errTelefono}</Text>}
             <Text style={s.ayudaTxt}>Sin el 0 ni el 15. Podés dejarlo vacío.</Text>
           </View>
@@ -291,6 +300,20 @@ const s = StyleSheet.create({
   paisTxt: { fontSize: 15, color: '#2C2C2C', textAlign: 'center' },
   placeholder: { color: '#AAAAAA' },
   inputCodigoAuto: { color: '#2DBD72', fontWeight: '700' },
+
+  // Código + número en una sola caja: se ve como un campo de teléfono entero
+  telefonoRow: {
+    flexDirection: 'row', alignItems: 'center',
+    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 10,
+    marginBottom: 10, overflow: 'hidden',
+  },
+  telefonoCodigo: {
+    width: 68, paddingVertical: 13, paddingHorizontal: 10,
+    fontSize: 15, color: '#2C2C2C', textAlign: 'center',
+  },
+  telefonoSep:    { width: 1, alignSelf: 'stretch', marginVertical: 8, backgroundColor: '#DDDDDD' },
+  telefonoNumero: { flex: 1, paddingVertical: 13, paddingHorizontal: 12, fontSize: 15, color: '#2C2C2C', textAlign: 'center' },
+
   inputFocus: { borderColor: '#2DBD72' },
   inputError: { borderColor: '#E63946' },
   errorTxt: { fontSize: 11, color: '#E63946', marginTop: -6, marginBottom: 8, marginLeft: 4 },

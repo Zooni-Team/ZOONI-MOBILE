@@ -36,6 +36,7 @@ import { getColorByProximidad, getTextoDias } from '../utils/colorProximidad';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
+import FechaPicker from '../components/FechaPicker';
 import {
   getEventosCalendario,
   crearEventoCalendario,
@@ -269,164 +270,6 @@ const dt = StyleSheet.create({
     backgroundColor: '#E8E8E8', alignItems: 'center', justifyContent: 'center',
   },
   btnCerrarTxt: { fontSize: 15, fontWeight: '700', color: '#2C2C2C' },
-});
-
-// ─── COMPONENTE: SELECTOR DE FECHA (día/mes/año) ─────────────────────────────
-
-function FechaPicker({ visible, valor, onConfirmar, onCancelar }) {
-  const hoy = new Date();
-
-  const [dia,  setDia]  = useState((valor ?? hoy).getDate());
-  const [mes,  setMes]  = useState((valor ?? hoy).getMonth() + 1);
-  const [anio, setAnio] = useState((valor ?? hoy).getFullYear());
-
-  useEffect(() => {
-    const v = valor ?? hoy;
-    setDia(v.getDate());
-    setMes(v.getMonth() + 1);
-    setAnio(v.getFullYear());
-  }, [valor, visible]); // eslint-disable-line
-
-  const diasEnMes = new Date(anio, mes, 0).getDate();
-  const dias  = Array.from({ length: diasEnMes }, (_, i) => i + 1);
-  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const hoyAnio = hoy.getFullYear();
-  const anios = Array.from({ length: 8 }, (_, i) => hoyAnio - 1 + i); // eventos pueden ser futuros
-
-  const confirmar = () => onConfirmar(new Date(anio, mes - 1, Math.min(dia, diasEnMes)));
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancelar}>
-      <View style={fp.overlay}>
-        <View style={fp.container}>
-          <Text style={fp.titulo}>Fecha del evento</Text>
-          <View style={fp.row}>
-            <View style={fp.col}>
-              <Text style={fp.colLabel}>Día</Text>
-              <ScrollView style={fp.list} showsVerticalScrollIndicator={false}>
-                {dias.map((d) => (
-                  <TouchableOpacity key={d} style={[fp.item, dia === d && fp.itemOn]} onPress={() => setDia(d)}>
-                    <Text style={[fp.itemTxt, dia === d && fp.itemTxtOn]}>{String(d).padStart(2,'0')}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-            <View style={[fp.col, { flex: 2 }]}>
-              <Text style={fp.colLabel}>Mes</Text>
-              <ScrollView style={fp.list} showsVerticalScrollIndicator={false}>
-                {meses.map((m, i) => (
-                  <TouchableOpacity key={m} style={[fp.item, mes === i+1 && fp.itemOn]} onPress={() => setMes(i+1)}>
-                    <Text style={[fp.itemTxt, mes === i+1 && fp.itemTxtOn]}>{m}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-            <View style={fp.col}>
-              <Text style={fp.colLabel}>Año</Text>
-              <ScrollView style={fp.list} showsVerticalScrollIndicator={false}>
-                {anios.map((a) => (
-                  <TouchableOpacity key={a} style={[fp.item, anio === a && fp.itemOn]} onPress={() => setAnio(a)}>
-                    <Text style={[fp.itemTxt, anio === a && fp.itemTxtOn]}>{a}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          </View>
-          <View style={fp.btns}>
-            <TouchableOpacity style={fp.btnCancel} onPress={onCancelar}>
-              <Text style={fp.btnCancelTxt}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={fp.btnOk} onPress={confirmar}>
-              <Text style={fp.btnOkTxt}>Siguiente</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-// ─── COMPONENTE: SELECTOR DE HORA (hora/minuto) ──────────────────────────────
-
-function HoraPicker({ visible, valor, onConfirmar, onCancelar }) {
-  const ahora = new Date();
-
-  const [hora,   setHora]   = useState((valor ?? ahora).getHours());
-  const [minuto, setMinuto] = useState((valor ?? ahora).getMinutes());
-
-  useEffect(() => {
-    const v = valor ?? ahora;
-    setHora(v.getHours());
-    setMinuto(v.getMinutes());
-  }, [valor, visible]); // eslint-disable-line
-
-  const horas   = Array.from({ length: 24 }, (_, i) => i);
-  const minutos = Array.from({ length: 60 }, (_, i) => i);
-
-  const confirmar = () => {
-    const d = new Date();
-    d.setHours(hora, minuto, 0, 0);
-    onConfirmar(d);
-  };
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancelar}>
-      <View style={fp.overlay}>
-        <View style={fp.container}>
-          <Text style={fp.titulo}>Hora del evento</Text>
-          <View style={fp.row}>
-            <View style={fp.col}>
-              <Text style={fp.colLabel}>Hora</Text>
-              <ScrollView style={fp.list} showsVerticalScrollIndicator={false}>
-                {horas.map((h) => (
-                  <TouchableOpacity key={h} style={[fp.item, hora === h && fp.itemOn]} onPress={() => setHora(h)}>
-                    <Text style={[fp.itemTxt, hora === h && fp.itemTxtOn]}>{String(h).padStart(2,'0')}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-            <View style={fp.col}>
-              <Text style={fp.colLabel}>Minuto</Text>
-              <ScrollView style={fp.list} showsVerticalScrollIndicator={false}>
-                {minutos.map((m) => (
-                  <TouchableOpacity key={m} style={[fp.item, minuto === m && fp.itemOn]} onPress={() => setMinuto(m)}>
-                    <Text style={[fp.itemTxt, minuto === m && fp.itemTxtOn]}>{String(m).padStart(2,'0')}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          </View>
-          <View style={fp.btns}>
-            <TouchableOpacity style={fp.btnCancel} onPress={onCancelar}>
-              <Text style={fp.btnCancelTxt}>Atrás</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={fp.btnOk} onPress={confirmar}>
-              <Text style={fp.btnOkTxt}>Confirmar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-const fp = StyleSheet.create({
-  overlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  container:    { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 36 },
-  titulo:       { fontSize: 16, fontWeight: '700', color: '#2C2C2C', textAlign: 'center', marginBottom: 16 },
-  row:          { flexDirection: 'row', gap: 8, height: 180 },
-  col:          { flex: 1 },
-  colLabel:     { fontSize: 12, fontWeight: '600', color: '#6B6B6B', textAlign: 'center', marginBottom: 6 },
-  list:         { flex: 1, borderWidth: 1, borderColor: '#F0F0F0', borderRadius: 10 },
-  item:         { paddingVertical: 10, paddingHorizontal: 4, alignItems: 'center' },
-  itemOn:       { backgroundColor: '#F0FFF6' },
-  itemTxt:      { fontSize: 14, color: '#2C2C2C' },
-  itemTxtOn:    { color: '#2DBD72', fontWeight: '700' },
-  btns:         { flexDirection: 'row', gap: 12, marginTop: 20 },
-  btnCancel:    { flex: 1, paddingVertical: 13, borderRadius: 30, backgroundColor: '#F0F0F0', alignItems: 'center' },
-  btnCancelTxt: { fontSize: 15, fontWeight: '700', color: '#6B6B6B' },
-  btnOk:        { flex: 1, paddingVertical: 13, borderRadius: 30, backgroundColor: '#2DBD72', alignItems: 'center' },
-  btnOkTxt:     { fontSize: 15, fontWeight: '700', color: '#FFF' },
 });
 
 // ─── COMPONENTE: SELECTOR DE TIPO (dropdown propio) ──────────────────────────
@@ -837,7 +680,10 @@ export default function CalendarioScreen() {
 
       <FechaPicker
         visible={showDatePicker}
+        titulo="Fecha del evento"
         valor={fechaTemporal ?? formFechaHora}
+        aniosAtras={1}
+        aniosAdelante={6}
         onConfirmar={onFechaConfirmada}
         onCancelar={() => setShowDatePicker(false)}
       />

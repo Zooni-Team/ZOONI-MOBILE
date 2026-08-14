@@ -52,6 +52,10 @@ const P = {
   ringMemorial: '#E8D9A8',
 };
 
+function capitalizar(str) {
+  return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
+}
+
 function formatFecha(iso) {
   if (!iso) return null;
   const d = new Date(iso);
@@ -85,30 +89,51 @@ function Toast({ toast, onUndo, onDismiss }) {
 
 function CardActiva({ m, onPress, onEditar, onArchivar, onMenu, disabled }) {
   const img = resolveMascotaVisual(m);
-  const meta = [m.edadTexto, m.peso != null ? `${m.peso} kg` : null].filter(Boolean).join(' · ');
+  const chips = [
+    m.especie ? { icono: 'paw-outline', txt: capitalizar(m.especie) } : null,
+    m.raza ? { icono: 'ribbon-outline', txt: m.raza } : null,
+    m.edadTexto ? { icono: 'calendar-outline', txt: m.edadTexto } : null,
+    m.peso != null ? { icono: 'barbell-outline', txt: `${m.peso} kg` } : null,
+  ].filter(Boolean);
+
   return (
-    <Pressable style={s.card} onPress={onPress} accessibilityRole="button"
-      accessibilityLabel={`${m.nombre}, ver detalle`}>
+    <Pressable
+      // La principal se distingue con un borde verde en toda la card, no solo
+      // con el chip: de un vistazo se ve cuál es sin tener que leer.
+      style={[s.card, m.esPrincipal && s.cardPrincipal]}
+      onPress={onPress} accessibilityRole="button"
+      accessibilityLabel={`${m.nombre}${m.esPrincipal ? ', mascota principal' : ''}, ver detalle`}>
+
+      {m.esPrincipal && (
+        <View style={s.cintaPrincipal}>
+          <Ionicons name="star" size={11} color="#FFF" />
+          <Text style={s.cintaPrincipalTxt}>Principal</Text>
+        </View>
+      )}
+
       <TouchableOpacity style={s.cardMenu} onPress={onMenu} accessibilityRole="button"
         accessibilityLabel={`Más opciones de ${m.nombre}`}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
         <Ionicons name="ellipsis-vertical" size={20} color={P.textSoft} />
       </TouchableOpacity>
 
-      <View style={s.avatarWrap}>
-        <Image source={img} style={s.avatarActiva} resizeMode="cover" />
-        {m.esPrincipal && (
-          <View style={s.chipPrincipal}>
-            <Text style={s.chipPrincipalTxt}>Principal</Text>
+      {/* Fila avatar + datos: antes era todo centrado en columna y la card
+          quedaba altísima con mucho aire muerto entre el nombre y los botones. */}
+      <View style={s.cardCuerpo}>
+        <Image source={img}
+          style={[s.avatarActiva, m.esPrincipal && s.avatarPrincipal]} resizeMode="cover" />
+        <View style={s.cardDatos}>
+          <Text style={s.nombreActiva} numberOfLines={1}>{m.nombre}</Text>
+          <View style={s.chipsWrap}>
+            {chips.map((c) => (
+              <View key={c.txt} style={s.chipDato}>
+                <Ionicons name={c.icono} size={11} color={P.textSoftMint} />
+                <Text style={s.chipDatoTxt} numberOfLines={1}>{c.txt}</Text>
+              </View>
+            ))}
           </View>
-        )}
+        </View>
       </View>
-
-      <Text style={s.nombreActiva} numberOfLines={1}>{m.nombre}</Text>
-      <Text style={s.especieRaza}>
-        {m.especie}{m.raza ? ` · ${m.raza}` : ''}
-      </Text>
-      {meta ? <Text style={s.metadatos}>{meta}</Text> : null}
 
       <View style={s.botonesFila}>
         <TouchableOpacity style={[s.btnEditar, disabled && s.btnDisabled]} onPress={onEditar}
@@ -146,15 +171,20 @@ function CardArchivada({ m, onPress, onRecuperar, onMenu, disabled }) {
         <Ionicons name="ellipsis-vertical" size={20} color={P.textSoft} />
       </TouchableOpacity>
 
-      <View style={{ alignItems: 'center' }}>
+      {/* Mismo layout en fila que la card activa, para que la lista se lea pareja */}
+      <View style={s.cardCuerpo}>
         <Image source={img} style={s.avatarArchivada} resizeMode="cover" />
+        <View style={s.cardDatos}>
+          <Text style={s.nombreArchivada} numberOfLines={1}>{m.nombre}</Text>
+          <Text style={s.especieRazaFila} numberOfLines={1}>
+            {capitalizar(m.especie)}{m.raza ? ` · ${m.raza}` : ''}
+          </Text>
+          {m.archivadaEn && (
+            <Text style={s.fechaArchivo}>Archivada el {formatFecha(m.archivadaEn)}</Text>
+          )}
+          {motivo ? <Text style={s.motivoArchivo}>{motivo}</Text> : null}
+        </View>
       </View>
-      <Text style={s.nombreArchivada} numberOfLines={1}>{m.nombre}</Text>
-      <Text style={s.especieRaza}>{m.especie}{m.raza ? ` · ${m.raza}` : ''}</Text>
-      {m.archivadaEn && (
-        <Text style={s.fechaArchivo}>Archivada el {formatFecha(m.archivadaEn)}</Text>
-      )}
-      {motivo ? <Text style={s.motivoArchivo}>{motivo}</Text> : null}
 
       <TouchableOpacity style={[s.btnRecuperar, disabled && s.btnDisabled]} onPress={onRecuperar}
         disabled={disabled} accessibilityRole="button" accessibilityLabel={`Recuperar a ${m.nombre}`}>
@@ -179,13 +209,15 @@ function CardMemoria({ m, onPress, onMenu }) {
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
         <Ionicons name="ellipsis-vertical" size={20} color={P.textSoft} />
       </TouchableOpacity>
-      <View style={{ alignItems: 'center' }}>
+      <View style={s.cardCuerpo}>
         <Image source={img} style={s.avatarMemoria} resizeMode="cover" />
+        <View style={s.cardDatos}>
+          <Text style={s.nombreArchivada} numberOfLines={1}>{m.nombre}</Text>
+          {anioNac && anioFin && (
+            <Text style={s.fechaArchivo}>{anioNac} – {anioFin}</Text>
+          )}
+        </View>
       </View>
-      <Text style={s.nombreArchivada} numberOfLines={1}>{m.nombre}</Text>
-      {anioNac && anioFin && (
-        <Text style={s.fechaArchivo}>{anioNac} – {anioFin}</Text>
-      )}
       <TouchableOpacity style={s.btnRecuerdos} onPress={onPress}
         accessibilityRole="button" accessibilityLabel={`Ver recuerdos de ${m.nombre}`}>
         <Ionicons name="images-outline" size={16} color={P.brandText} />
@@ -637,28 +669,45 @@ const s = StyleSheet.create({
   seccionLinea:    { height: 2, backgroundColor: P.brandText, marginTop: 6, borderRadius: 1 },
 
   card: {
-    backgroundColor: P.surface, borderRadius: 20, padding: 16, paddingTop: 20,
-    marginBottom: 12, alignItems: 'center',
+    backgroundColor: P.surface, borderRadius: 20, padding: 16,
+    marginBottom: 12,
+    borderWidth: 2, borderColor: 'transparent',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
   },
+  // Outline de la mascota principal (§ pedido): borde verde + fondo apenas
+  // teñido, para que se reconozca sin depender solo del texto del chip.
+  cardPrincipal: { borderColor: P.brand, backgroundColor: '#F6FFFA', paddingTop: 26 },
+  cintaPrincipal: {
+    position: 'absolute', top: 0, left: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: P.brandText,
+    borderBottomLeftRadius: 8, borderBottomRightRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 3,
+  },
+  cintaPrincipalTxt: { fontSize: 11, fontWeight: '700', color: '#FFF' },
+
   cardMenu: { position: 'absolute', top: 10, right: 10, width: 44, height: 44, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
 
-  avatarWrap:   { alignItems: 'center' },
+  cardCuerpo: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingRight: 36 },
+  cardDatos:  { flex: 1, minWidth: 0 },
   avatarActiva: {
-    width: 104, height: 104, borderRadius: 52, borderWidth: 3, borderColor: P.brand,
+    width: 76, height: 76, borderRadius: 38, borderWidth: 2, borderColor: P.divider,
     backgroundColor: P.bgTop,
   },
-  chipPrincipal: {
-    position: 'absolute', bottom: -6, alignSelf: 'center',
-    backgroundColor: P.brandText, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3,
+  avatarPrincipal: { borderColor: P.brand, borderWidth: 3 },
+
+  nombreActiva: { fontSize: 19, fontWeight: '800', color: P.text },
+  chipsWrap:    { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
+  chipDato: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: P.neutralBtn, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4,
+    maxWidth: '100%',
   },
-  chipPrincipalTxt: { fontSize: 11, fontWeight: '700', color: '#FFF' },
+  chipDatoTxt: { fontSize: 12, fontWeight: '600', color: P.textSoftMint, flexShrink: 1 },
 
-  nombreActiva: { fontSize: 20, fontWeight: '800', color: P.text, marginTop: 12 },
   especieRaza:  { fontSize: 14, color: P.textSoft, marginTop: 4, textAlign: 'center' },
-  metadatos:    { fontSize: 13, fontWeight: '600', color: P.textSoftMint, marginTop: 2 },
 
-  botonesFila: { flexDirection: 'row', gap: 12, marginTop: 16, alignSelf: 'stretch' },
+  botonesFila: { flexDirection: 'row', gap: 12, marginTop: 14, alignSelf: 'stretch' },
   btnEditar: {
     flex: 1, height: 40, borderRadius: 20, backgroundColor: P.cta,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -673,8 +722,9 @@ const s = StyleSheet.create({
   btnDisabled:    { opacity: 0.45 },
 
   cardArchivada: {
-    backgroundColor: P.surfaceArchived, borderRadius: 20, padding: 16, paddingTop: 40,
-    marginBottom: 12, alignItems: 'center',
+    backgroundColor: P.surfaceArchived, borderRadius: 20, padding: 16, paddingTop: 44,
+    marginBottom: 12,
+    borderWidth: 2, borderColor: 'transparent',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
   },
   chipArchivada: {
@@ -691,7 +741,8 @@ const s = StyleSheet.create({
     width: 72, height: 72, borderRadius: 36, borderWidth: 3, borderColor: P.ringMemorial,
     backgroundColor: P.bgTop,
   },
-  nombreArchivada: { fontSize: 18, fontWeight: '700', color: P.text, marginTop: 10 },
+  nombreArchivada: { fontSize: 18, fontWeight: '700', color: P.text },
+  especieRazaFila: { fontSize: 13, color: P.textSoft, marginTop: 2 },
   fechaArchivo:    { fontSize: 12, color: P.textSoft, marginTop: 4 },
   motivoArchivo:   { fontSize: 12, fontWeight: '600', color: P.textSoftMint, marginTop: 2 },
 

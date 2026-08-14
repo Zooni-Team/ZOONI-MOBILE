@@ -18,6 +18,9 @@ function mapRow(row) {
     texto: row.texto,
     autor: row.idUsuario === getCurrentUserId() ? 'yo' : 'otro',
     fecha: row.fecha,
+    // Para los tildes tipo WhatsApp: en mis mensajes, `leido` dice si el otro
+    // ya lo abrió (lo marca marcarLeidosMatch cuando entra al chat).
+    leido: !!row.leido,
   };
 }
 
@@ -133,6 +136,11 @@ export async function fetchMisConversacionesMatch() {
         ultimoMensaje: ultimo?.texto ?? null,
         fecha: ultimo?.fecha ?? m.fecha,
         noLeidos,
+        // Para el tilde en la vista previa del inbox: solo tiene sentido si el
+        // último mensaje lo mandé yo (si lo mandó el otro, no hay nada que
+        // confirmar de mi lado).
+        ultimoEsMio: ultimo ? ultimo.idUsuario === miId : false,
+        ultimoLeido: !!ultimo?.leido,
       };
     })
     .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));

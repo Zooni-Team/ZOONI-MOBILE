@@ -183,6 +183,106 @@ export function normalizar(texto) {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
+/** 1200 → "1,2 km" | 380 → "380 m" | null → null */
+export function formatearDistancia(metros) {
+  if (metros == null) return null;
+  if (metros < 1000) return `${metros} m`;
+  return `${(metros / 1000).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km`;
+}
+
+function horaDeCierreHoy(clinica, ahora) {
+  const rangos = clinica.horarios?.[DIAS_JS[ahora.getDay()]] ?? [];
+  const nowMin = ahora.getHours() * 60 + ahora.getMinutes();
+  for (const [desde, hasta] of rangos) {
+    if (nowMin >= minutosDe(desde) && nowMin < minutosDe(hasta)) return hasta;
+  }
+  return null;
+}
+
+/** Estado horario listo para la card: "Abierto · cierra 20:00", "Cerrado · abre 9:00"… */
+export function textoHorario(clinica, ahora = new Date()) {
+  if (clinica.is24h) return { texto: 'Abierto 24 hs', abierta: true };
+
+  const { abierta, cierraEnMin, abreA } = estadoHorario(clinica, ahora);
+  if (abierta === null) return { texto: 'Horario no informado', abierta: null };
+
+  if (abierta) {
+    // Faltando menos de una hora, lo que importa es el aviso y no el horario
+    if (cierraEnMin != null && cierraEnMin <= 60) {
+      return { texto: `Abierto · cierra en ${cierraEnMin} min`, abierta: true, porCerrar: true };
+    }
+    const cierre = horaDeCierreHoy(clinica, ahora);
+    return { texto: cierre ? `Abierto · cierra ${cierre}` : 'Abierto ahora', abierta: true };
+  }
+  return { texto: abreA ? `Cerrado · abre ${abreA}` : 'Cerrado', abierta: false };
+}
+
+const NOMBRE_DIA = {
+  mon: 'Lunes', tue: 'Martes', wed: 'Miércoles', thu: 'Jueves',
+  fri: 'Viernes', sat: 'Sábado', sun: 'Domingo',
+};
+const ORDEN_DIAS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+
+/** Horario semanal completo para desplegar en la card: [{ dia, rangos, esHoy }] */
+export function horarioSemanal(clinica, ahora = new Date()) {
+  if (clinica.is24h || !clinica.horarios) return [];
+  const hoyKey = DIAS_JS[ahora.getDay()];
+  return ORDEN_DIAS.map((k) => {
+    const rangos = clinica.horarios[k] ?? [];
+    return {
+      dia: NOMBRE_DIA[k],
+      rangos: rangos.length ? rangos.map(([d, h]) => `${d} a ${h}`).join(' · ') : 'Cerrado',
+      esHoy: k === hoyKey,
+    };
+  });
+}
+
+// ─── MAPAS ────────────────────────────────────────────────────────────────────
+
+/**
+ * Link de Google Maps con la ruta hasta la clínica. Con coordenadas apunta al
+ * punto exacto; si no las hay (ej. la que atiende a domicilio), busca por
+ * nombre + dirección. Es un universal link: abre la app de Maps si está
+ * instalada y el navegador si no — sin API key ni SDK nativo de por medio.
+ */
+export function urlComoLlegar(clinica) {
+  const destino = clinica.lat != null && clinica.lng != null
+    ? `${clinica.lat},${clinica.lng}`
+    : [clinica.nombre, clinica.direccion, clinica.barrio].filter(Boolean).join(', ');
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destino)}`;
+}
+
+/** Búsqueda de veterinarias de urgencia en Google Maps, centrada en el usuario. */
+export function urlBuscarEnMaps(coords) {
+  const consulta = coords?.lat != null
+    ? `veterinaria de urgencias/@${coords.lat},${coords.lng},14z`
+    : 'veterinaria de urgencias cerca de mi';
+  return `https://www.google.com/maps/search/${encodeURIComponent(consulta)}`;
+}
+
+// ─── UBICACIÓN DEL USUARIO ────────────────────────────────────────────────────
+
+/**
+ * Coordenadas del dispositivo, o null si no hay permiso ni soporte.
+ * Usa `navigator.geolocation`, que funciona igual en web y en nativo (React
+ * Native la implementa). NUNCA tira error ni bloquea: en una emergencia la
+ * lista tiene que aparecer sí o sí, con distancias o sin ellas.
+ */
+export function obtenerCoordenadas({ timeoutMs = 6000 } = {}) {
+  return new Promise((resolve) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return resolve(null);
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => resolve(null),
+        { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 5 * 60 * 1000 },
+      );
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
 // ─── REGISTRO DE LLAMADAS (fire-and-forget) ───────────────────────────────────
 
 let ultimoLog = { telefono: null, ts: 0 };

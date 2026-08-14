@@ -45,6 +45,10 @@ export async function fetchServicios(bbox, tipo) {
 // AMIGOS
 // ─────────────────────────────────────────────
 
+// Ventana para considerar a alguien "en línea" (mismo umbral que
+// utils/tiempoRelativo.UMBRAL_EN_LINEA_MS)
+const CINCO_MIN = 5 * 60 * 1000;
+
 async function miUbicacion() {
   const { data } = await supabase.from('ubicaciones_usuarios').select('*').eq('usuario_id', getCurrentUserId()).maybeSingle();
   return data;
@@ -72,16 +76,26 @@ export async function fetchAmigos() {
   const mascotaPorUsuario = new Map();
   (mascotas ?? []).forEach((m) => { if (!mascotaPorUsuario.has(m.Id_User)) mascotaPorUsuario.set(m.Id_User, m); });
 
-  const CINCO_MIN = 5 * 60 * 1000;
   const amigos = (usuarios ?? []).map((u) => {
     const ubi = ubicacionPorUsuario.get(u.Id_User);
-    const online = ubi ? (Date.now() - new Date(ubi.updated_at).getTime()) < CINCO_MIN : false;
+    /*
+      Última conexión: se toma el latido de presencia (User.UltimaConexion) y,
+      si esa columna todavía no existe o el usuario nunca la actualizó, se cae
+      al updated_at de su ubicación — que es lo único que había antes.
+      El estado "en línea" lo decide utils/tiempoRelativo.estadoPresencia con el
+      mismo umbral de 5 minutos que se usaba acá.
+    */
+    const ultimaConexion = u.UltimaConexion ?? ubi?.updated_at ?? null;
+    const online = ultimaConexion
+      ? (Date.now() - new Date(ultimaConexion).getTime()) < CINCO_MIN
+      : false;
     return {
       usuario_id: u.Id_User,
       nombre: `${u.Nombre ?? ''} ${u.Apellido ?? ''}`.trim(),
       mascota_nombre: mascotaPorUsuario.get(u.Id_User)?.Nombre ?? null,
       distancia_km: miUbi && ubi ? haversineKm(miUbi.lat, miUbi.lng, ubi.lat, ubi.lng) : null,
       online,
+      ultima_conexion: ultimaConexion,
       lat: ubi?.lat != null ? Number(ubi.lat) : null,
       lng: ubi?.lng != null ? Number(ubi.lng) : null,
     };

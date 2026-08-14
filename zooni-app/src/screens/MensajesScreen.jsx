@@ -26,21 +26,13 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { fetchServicios } from '../api/comunidad';
 import { fetchMisConversacionesMatch, fetchMisUltimosMensajesServicios } from '../services/chatStore';
 import MatchInfoModal from '../components/chat/MatchInfoModal';
+import { tiempoRelativoCorto } from '../utils/tiempoRelativo';
 
 const ICONOS_SERVICIO = { veterinaria: 'medkit-outline', paseador: 'walk-outline', petshop: 'bag-outline', peluqueria: 'cut-outline' };
 const COLORES_SERVICIO = { veterinaria: '#E63946', paseador: '#F5A623', petshop: '#F5C842', peluqueria: '#9B59B6' };
 
-function timeAgo(iso) {
-  if (!iso) return '';
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'ahora';
-  if (mins < 60) return `${mins} min`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs} h`;
-  const dias = Math.floor(hrs / 24);
-  return dias === 1 ? 'ayer' : `${dias} días`;
-}
+// El formato de tiempo vive en utils/tiempoRelativo.js — el mismo que usa el
+// chat, así que el inbox y la conversación ya no dicen cosas distintas.
 
 export default function MensajesScreen() {
   const navigation = useNavigation();
@@ -136,10 +128,18 @@ export default function MensajesScreen() {
               </TouchableOpacity>
               <View style={st.info}>
                 <Text style={st.nombre} numberOfLines={1}>{c.nombre}</Text>
-                <Text style={st.preview} numberOfLines={1}>{c.ultimoMensaje ?? 'Todavía no hay mensajes'}</Text>
+                <View style={st.previewFila}>
+                  {c.ultimoEsMio && c.ultimoMensaje && (
+                    <Ionicons name={c.ultimoLeido ? 'checkmark-done' : 'checkmark'}
+                      size={14} color={c.ultimoLeido ? '#34B7F1' : '#9B9B9B'} />
+                  )}
+                  <Text style={st.preview} numberOfLines={1}>
+                    {c.ultimoMensaje ?? 'Todavía no hay mensajes'}
+                  </Text>
+                </View>
               </View>
               <View style={st.derecha}>
-                {c.fecha && <Text style={st.fecha}>{timeAgo(c.fecha)}</Text>}
+                {c.fecha && <Text style={st.fecha}>{tiempoRelativoCorto(c.fecha)}</Text>}
                 {c.noLeidos > 0 && <View style={st.badge}><Text style={st.badgeTxt}>{c.noLeidos}</Text></View>}
               </View>
             </TouchableOpacity>
@@ -160,7 +160,7 @@ export default function MensajesScreen() {
                 <Text style={st.nombre} numberOfLines={1}>{s.nombre}</Text>
                 <Text style={st.preview} numberOfLines={1}>{s.ultimoMensaje ?? 'Tocá para escribirle'}</Text>
               </View>
-              {s.fecha && <Text style={st.fecha}>{timeAgo(s.fecha)}</Text>}
+              {s.fecha && <Text style={st.fecha}>{tiempoRelativoCorto(s.fecha)}</Text>}
             </TouchableOpacity>
           )}
         />
@@ -204,7 +204,8 @@ const st = StyleSheet.create({
   iconCircle: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1 },
   nombre: { fontSize: 15, fontWeight: '700', color: '#2C2C2C' },
-  preview: { fontSize: 13, color: '#6B6B6B', marginTop: 2 },
+  previewFila: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  preview: { flex: 1, fontSize: 13, color: '#6B6B6B' },
   derecha: { alignItems: 'flex-end', gap: 6 },
   fecha: { fontSize: 11, color: '#AAAAAA' },
   badge: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: '#2DBD72', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },

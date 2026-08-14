@@ -28,14 +28,24 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 
 import { enviarMensaje, getMensajes, marcarLeidosMatch } from '../services/chatStore';
 import MatchInfoModal from '../components/chat/MatchInfoModal';
+import { tiempoRelativo } from '../utils/tiempoRelativo';
 
 const POLL_MS = 4000;
 
-function formatHora(iso) {
-  const d = new Date(iso);
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  return `${hh}:${mm}`;
+/**
+ * Tildes de estado, solo en MIS mensajes (como WhatsApp):
+ *   ✓   gris  → enviado, el otro todavía no lo abrió
+ *   ✓✓  azul  → leído
+ * En un chat de servicio no hay nadie del otro lado que pueda leer, así que
+ * el mensaje se queda en "enviado" y no se muestra un doble tilde mentiroso.
+ */
+function TildesEstado({ leido }) {
+  return (
+    <View style={s.tildes} accessibilityLabel={leido ? 'Leído' : 'Enviado'}>
+      <Ionicons name={leido ? 'checkmark-done' : 'checkmark'}
+        size={14} color={leido ? '#34B7F1' : '#9B9B9B'} />
+    </View>
+  );
 }
 
 export default function ChatScreen() {
@@ -48,6 +58,9 @@ export default function ChatScreen() {
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [infoAbierta, setInfoAbierta] = useState(false);
+  // Reloj propio: sin esto "hace 2 minutos" se congelaba hasta que llegara
+  // otro mensaje. Se refresca al mismo ritmo que el polling.
+  const [ahora, setAhora] = useState(() => new Date());
   const scrollRef = useRef(null);
 
   const cargar = useCallback(async () => {
@@ -62,7 +75,10 @@ export default function ChatScreen() {
   // escribió el otro lado (no hay suscripción en tiempo real todavía).
   useFocusEffect(
     useCallback(() => {
-      const interval = setInterval(cargar, POLL_MS);
+      const interval = setInterval(() => {
+        cargar();
+        setAhora(new Date());
+      }, POLL_MS);
       return () => clearInterval(interval);
     }, [cargar])
   );
@@ -156,7 +172,12 @@ export default function ChatScreen() {
                 <View style={[s.burbuja, m.autor === 'yo' ? s.burbujaYo : s.burbujaOtro]}>
                   <Text style={[s.burbujaTxt, m.autor === 'yo' && s.burbujaTxtYo]}>{m.texto}</Text>
                 </View>
-                <Text style={[s.hora, m.autor === 'yo' && s.horaYo]}>{formatHora(m.fecha)}</Text>
+                {/* "hace 5 minutos" en vez de una hora suelta: en un chat lo que
+                    importa es hace cuánto se dijo, no a qué hora exacta. */}
+                <View style={s.metaFila}>
+                  <Text style={s.hora}>{tiempoRelativo(m.fecha, ahora)}</Text>
+                  {m.autor === 'yo' && !esServicio && <TildesEstado leido={m.leido} />}
+                </View>
               </View>
             ))
           )}
@@ -235,8 +256,9 @@ const s = StyleSheet.create({
   burbujaOtro: { backgroundColor: '#FFFFFF', borderBottomLeftRadius: 4 },
   burbujaTxt: { fontSize: 14, color: '#2C2C2C', lineHeight: 20 },
   burbujaTxtYo: { color: '#FFFFFF' },
-  hora: { fontSize: 10, color: '#6B6B6B', marginTop: 3, marginHorizontal: 4 },
-  horaYo: { color: '#6B6B6B' },
+  metaFila: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3, marginHorizontal: 4 },
+  hora:     { fontSize: 10, color: '#6B6B6B' },
+  tildes:   { flexDirection: 'row', alignItems: 'center' },
 
   inputRow: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 10,

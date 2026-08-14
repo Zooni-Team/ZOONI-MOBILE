@@ -21,6 +21,11 @@ const MESES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
 
+/** Date → "2026-8-14": identifica el día sin depender del objeto Date. */
+function toClave(d) {
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
 export default function FechaPicker({
   visible, titulo, valor, onConfirmar, onCancelar,
   aniosAtras = 20, aniosAdelante = 0,
@@ -28,17 +33,32 @@ export default function FechaPicker({
   const hoy = new Date();
   const hoyAnio = hoy.getFullYear();
 
-  const [dia,  setDia]  = useState(valor ? valor.getDate() : hoy.getDate());
-  const [mes,  setMes]  = useState(valor ? valor.getMonth() + 1 : hoy.getMonth() + 1);
-  const [anio, setAnio] = useState(valor ? valor.getFullYear() : hoyAnio);
+  const inicial = valor ?? hoy;
+  const [dia,  setDia]  = useState(inicial.getDate());
+  const [mes,  setMes]  = useState(inicial.getMonth() + 1);
+  const [anio, setAnio] = useState(inicial.getFullYear());
 
+  /*
+    Cada vez que se ABRE, el picker vuelve a la fecha que corresponde: la
+    guardada si el campo ya tiene uno, o el día de HOY si está vacío.
+
+    Antes el efecto solo corría `if (valor)`, así que con el campo vacío
+    quedaban los números de la última vez que se abrió (o los del montaje, que
+    podían ser de días atrás si la app quedó abierta) — de ahí que apareciera
+    "una fecha cualquiera". Se calcula `hoy` en el momento de abrir, no al
+    montar la pantalla, para que a la medianoche también sea el día correcto.
+  */
   useEffect(() => {
-    if (valor) {
-      setDia(valor.getDate());
-      setMes(valor.getMonth() + 1);
-      setAnio(valor.getFullYear());
-    }
-  }, [valor, visible]);
+    if (!visible) return;
+    const v = valor ?? new Date();
+    setDia(v.getDate());
+    setMes(v.getMonth() + 1);
+    setAnio(v.getFullYear());
+    // `valor` se compara por día calendario y no por identidad: los llamadores
+    // pasan `formFecha ?? new Date()`, que es un objeto nuevo en cada render y
+    // reiniciaría la selección del usuario en pleno uso.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, valor ? toClave(valor) : null]);
 
   const diasEnMes = new Date(anio, mes, 0).getDate();
   const dias  = Array.from({ length: diasEnMes }, (_, i) => i + 1);

@@ -90,7 +90,7 @@ function Toast({ visible }) {
 
 // ─── Thumbnail ───────────────────────────────────────────────────────────────
 
-function AvatarThumbnail({ avatar, isSelected, isActual, onPress, entryDelay }) {
+function AvatarThumbnail({ avatar, mascota, isSelected, isActual, onPress, entryDelay }) {
   const scale = useRef(new Animated.Value(0.8)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const pressScale = useRef(new Animated.Value(1)).current;
@@ -125,7 +125,7 @@ function AvatarThumbnail({ avatar, isSelected, isActual, onPress, entryDelay }) 
           ]}
         >
           <Animated.Image
-            source={resolveAvatarImage(avatar.asset_name)}
+            source={resolveAvatarImage(avatar.asset_name, mascota?.especie, mascota?.raza)}
             style={styles.thumbnailImage}
             resizeMode="contain"
           />
@@ -248,6 +248,7 @@ export default function ClosetScreen() {
   const renderThumbnail = ({ item, index }) => (
     <AvatarThumbnail
       avatar={item}
+      mascota={mascota}
       isSelected={avatarSeleccionado === item.asset_name}
       isActual={mascota?.imagen_asset === item.asset_name}
       onPress={() => seleccionarAvatar(item.asset_name)}
@@ -346,7 +347,7 @@ export default function ClosetScreen() {
 
                     {/* Avatar grande animado */}
                     <Animated.Image
-                      source={resolveAvatarImage(avatarSeleccionado, mascota?.especie)}
+                      source={resolveAvatarImage(avatarSeleccionado, mascota?.especie, mascota?.raza)}
                       style={[
                         styles.previewImage,
                         {

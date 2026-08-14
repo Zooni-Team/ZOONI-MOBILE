@@ -17,6 +17,7 @@ import { supabase } from '../lib/supabase';
 import { setCurrentUserId } from '../config/session';
 import { toISODateLocal } from '../utils/fechaLocal';
 import { subirImagenPublica } from '../utils/imagenStorage';
+import { marcarPresencia } from './presenciaApi';
 
 export async function hashPassword(password) {
   return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, password);
@@ -87,6 +88,10 @@ export async function login(email, password) {
   }
 
   await setCurrentUserId(usuario.id);
+
+  // Primer latido de presencia apenas entra: si no, hasta el próximo tick del
+  // intervalo figuraría desconectado en Comunidad.
+  marcarPresencia(true);
 
   const { data: mascotas } = await supabase
     .from('Mascota')
