@@ -54,6 +54,26 @@ function PaisPicker({ visible, valor, onSeleccionar, onCerrar }) {
   );
 }
 
+/**
+ * El teléfono se guarda en una columna de 30 caracteres y se usa para
+ * contactar: solo dígitos y separadores comunes. Antes entraba cualquier cosa
+ * (letras incluidas) y llegaba así a la base.
+ */
+function limpiarTelefono(v) {
+  return (v ?? '').replace(/[^\d\s-]/g, '');
+}
+
+/** El código de país es "+" y hasta 4 dígitos (+54, +598, +1…) */
+function limpiarCodigo(v) {
+  const soloDigitos = (v ?? '').replace(/\D/g, '').slice(0, 4);
+  return soloDigitos ? `+${soloDigitos}` : '';
+}
+
+/** Cuántos dígitos tiene el teléfono, ignorando espacios y guiones */
+function digitos(v) {
+  return (v ?? '').replace(/\D/g, '').length;
+}
+
 const pp = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', alignItems: 'center' },
   container: { backgroundColor: '#FFF', borderRadius: 16, width: '82%', paddingVertical: 12 },
@@ -77,6 +97,7 @@ export default function RegisterStep4Screen() {
   const [telefono, setTelefono] = useState('');
   const [showPais, setShowPais] = useState(false);
   const [errPais, setErrPais] = useState(false);
+  const [errTelefono, setErrTelefono] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [focus, setFocus] = useState(null);
 
@@ -92,6 +113,11 @@ export default function RegisterStep4Screen() {
 
   const handleContinuar = async () => {
     if (!pais) { setErrPais(true); return; }
+    // El teléfono es opcional, pero si lo cargan tiene que ser usable
+    if (telefono.trim() && (digitos(telefono) < 6 || digitos(telefono) > 15)) {
+      setErrTelefono('Ingresá un teléfono válido o dejalo vacío');
+      return;
+    }
     setCargando(true);
     try {
       await registro({
@@ -102,7 +128,7 @@ export default function RegisterStep4Screen() {
           razaId: datos.razaId,
           razaNombre: datos.razaNombre,
           pesoKg: datos.pesoKg,
-          edadMeses: datos.edadMeses,
+          fechaNacimiento: datos.fechaNacimiento,
           fotoUri: datos.fotoUri,
         },
         usuario: {
@@ -115,8 +141,9 @@ export default function RegisterStep4Screen() {
           paisCodigo: pais.codigo,
           provincia: provincia || null,
           ciudad: ciudad || null,
-          codigoTelefono: codigo || null,
-          telefono: telefono || null,
+          // Sin teléfono no se guarda el código suelto: no sirve de nada
+          codigoTelefono: telefono.trim() ? (codigo || null) : null,
+          telefono: telefono.trim() || null,
         },
       });
       navigation.reset({
@@ -191,24 +218,33 @@ export default function RegisterStep4Screen() {
               onFocus={() => setFocus('ciudad')} onBlur={() => setFocus(null)} returnKeyType="next"
             />
 
-            {/* Se completa solo al elegir el país (arriba) y no se puede tocar a mano */}
+            {/*
+              El código se completa solo al elegir el país, pero SE PUEDE
+              corregir a mano: antes quedaba bloqueado (editable={!pais}) y con
+              un país elegido no había forma de arreglarlo.
+            */}
             <TextInput
               style={[s.input, codigoAuto && s.inputCodigoAuto, focus === 'codigo' && s.inputFocus]}
-              placeholder="Código" placeholderTextColor="#AAAAAA"
+              placeholder="Código (opcional)" placeholderTextColor="#AAAAAA"
               value={codigo}
-              editable={!pais}
-              onChangeText={(v) => { setCodigo(v); setCodigoAuto(false); }}
+              onChangeText={(v) => { setCodigo(limpiarCodigo(v)); setCodigoAuto(false); }}
               keyboardType="phone-pad"
+              maxLength={5}
               onFocus={() => setFocus('codigo')} onBlur={() => setFocus(null)} returnKeyType="next"
             />
 
+            {/* El teléfono es opcional: se puede dejar vacío y seguir */}
             <TextInput
-              style={[s.input, focus === 'telefono' && s.inputFocus]}
-              placeholder="Teléfono" placeholderTextColor="#AAAAAA"
-              value={telefono} onChangeText={setTelefono}
+              style={[s.input, focus === 'telefono' && s.inputFocus, errTelefono && s.inputError]}
+              placeholder="Teléfono (opcional)" placeholderTextColor="#AAAAAA"
+              value={telefono}
+              onChangeText={(v) => { setTelefono(limpiarTelefono(v)); setErrTelefono(null); }}
               keyboardType="phone-pad"
+              maxLength={20}
               onFocus={() => setFocus('telefono')} onBlur={() => setFocus(null)} returnKeyType="done"
             />
+            {errTelefono && <Text style={s.errorTxt}>{errTelefono}</Text>}
+            <Text style={s.ayudaTxt}>Sin el 0 ni el 15. Podés dejarlo vacío.</Text>
           </View>
         </ScrollView>
 
@@ -258,6 +294,7 @@ const s = StyleSheet.create({
   inputFocus: { borderColor: '#2DBD72' },
   inputError: { borderColor: '#E63946' },
   errorTxt: { fontSize: 11, color: '#E63946', marginTop: -6, marginBottom: 8, marginLeft: 4 },
+  ayudaTxt: { fontSize: 11, color: '#9A9A9A', textAlign: 'center', marginTop: -2, marginBottom: 4 },
 
   btnContinuar: {
     backgroundColor: '#2DBD72', borderRadius: 30, height: 52,

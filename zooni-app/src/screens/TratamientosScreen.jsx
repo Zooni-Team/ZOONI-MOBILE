@@ -12,7 +12,6 @@ import {
   Alert,
   Animated,
   Dimensions,
-  Image,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -31,9 +30,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
-import { calcularEdad } from '../utils/calcularEdad';
 import { parseFechaLocal } from '../utils/fechaLocal';
-import { resolveMascotaVisual } from '../constants/petImages';
+import PetHero from '../components/PetHero';
 import {
   fetchTratamientos,
   crearTratamiento,
@@ -41,6 +39,7 @@ import {
   eliminarTratamiento as eliminarTratamientoApi,
 } from '../services/fichaMedicaApi';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
+import FechaPicker from '../components/FechaPicker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -83,16 +82,6 @@ function colorContador(dias) {
   if (dias < 0)   return '#E63946';  // vencido
   if (dias === 0) return '#F5A623';  // vence hoy
   return '#2C2C2C';
-}
-
-function capitalizar(str) {
-  return str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
-}
-
-// ─── COMPONENTE: IMAGEN MASCOTA ───────────────────────────────────────────────
-
-function PetIllustration({ source, label }) {
-  return <Image source={source} style={s.petImg} resizeMode="contain" accessibilityLabel={label} />;
 }
 
 // ─── COMPONENTE: SKELETON ─────────────────────────────────────────────────────
@@ -255,102 +244,6 @@ function CardSugerido({ sugerido, index, onRegistrar }) {
   );
 }
 
-// ─── COMPONENTE: INPUT FECHA (toca para seleccionar con DatePicker nativo) ────
-// DateTimePicker no está instalado → usamos un modal propio igual que FichaMedica
-
-function FechaPicker({ visible, titulo, valor, onConfirmar, onCancelar }) {
-  const hoyAnio = new Date().getFullYear();
-  const anioMax = hoyAnio + 5; // tratamientos pueden ser futuros
-
-  const [dia,  setDia]  = useState(valor ? valor.getDate() : new Date().getDate());
-  const [mes,  setMes]  = useState(valor ? valor.getMonth() + 1 : new Date().getMonth() + 1);
-  const [anio, setAnio] = useState(valor ? valor.getFullYear() : hoyAnio);
-
-  useEffect(() => {
-    if (valor) {
-      setDia(valor.getDate());
-      setMes(valor.getMonth() + 1);
-      setAnio(valor.getFullYear());
-    }
-  }, [valor, visible]);
-
-  const diasEnMes = new Date(anio, mes, 0).getDate();
-  const dias  = Array.from({ length: diasEnMes }, (_, i) => i + 1);
-  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const anios = Array.from({ length: anioMax - (hoyAnio - 20) + 1 }, (_, i) => hoyAnio - 20 + i);
-
-  const confirmar = () => onConfirmar(new Date(anio, mes - 1, Math.min(dia, diasEnMes)));
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancelar}>
-      <View style={fp.overlay}>
-        <View style={fp.container}>
-          <Text style={fp.titulo}>{titulo}</Text>
-          <View style={fp.row}>
-            <View style={fp.col}>
-              <Text style={fp.colLabel}>Día</Text>
-              <ScrollView style={fp.list} showsVerticalScrollIndicator={false}>
-                {dias.map((d) => (
-                  <TouchableOpacity key={d} style={[fp.item, dia === d && fp.itemOn]} onPress={() => setDia(d)}>
-                    <Text style={[fp.itemTxt, dia === d && fp.itemTxtOn]}>{String(d).padStart(2,'0')}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-            <View style={[fp.col, { flex: 2 }]}>
-              <Text style={fp.colLabel}>Mes</Text>
-              <ScrollView style={fp.list} showsVerticalScrollIndicator={false}>
-                {meses.map((m, i) => (
-                  <TouchableOpacity key={m} style={[fp.item, mes === i+1 && fp.itemOn]} onPress={() => setMes(i+1)}>
-                    <Text style={[fp.itemTxt, mes === i+1 && fp.itemTxtOn]}>{m}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-            <View style={fp.col}>
-              <Text style={fp.colLabel}>Año</Text>
-              <ScrollView style={fp.list} showsVerticalScrollIndicator={false}>
-                {anios.map((a) => (
-                  <TouchableOpacity key={a} style={[fp.item, anio === a && fp.itemOn]} onPress={() => setAnio(a)}>
-                    <Text style={[fp.itemTxt, anio === a && fp.itemTxtOn]}>{a}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          </View>
-          <View style={fp.btns}>
-            <TouchableOpacity style={fp.btnCancel} onPress={onCancelar}>
-              <Text style={fp.btnCancelTxt}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={fp.btnOk} onPress={confirmar}>
-              <Text style={fp.btnOkTxt}>Confirmar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-const fp = StyleSheet.create({
-  overlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  container:    { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 36 },
-  titulo:       { fontSize: 16, fontWeight: '700', color: '#2C2C2C', textAlign: 'center', marginBottom: 16 },
-  row:          { flexDirection: 'row', gap: 8, height: 180 },
-  col:          { flex: 1 },
-  colLabel:     { fontSize: 12, fontWeight: '600', color: '#6B6B6B', textAlign: 'center', marginBottom: 6 },
-  list:         { flex: 1, borderWidth: 1, borderColor: '#F0F0F0', borderRadius: 10 },
-  item:         { paddingVertical: 10, paddingHorizontal: 4, alignItems: 'center' },
-  itemOn:       { backgroundColor: '#F0FFF6' },
-  itemTxt:      { fontSize: 14, color: '#2C2C2C' },
-  itemTxtOn:    { color: '#2DBD72', fontWeight: '700' },
-  btns:         { flexDirection: 'row', gap: 12, marginTop: 20 },
-  btnCancel:    { flex: 1, paddingVertical: 13, borderRadius: 30, backgroundColor: '#F0F0F0', alignItems: 'center' },
-  btnCancelTxt: { fontSize: 15, fontWeight: '700', color: '#6B6B6B' },
-  btnOk:        { flex: 1, paddingVertical: 13, borderRadius: 30, backgroundColor: '#2DBD72', alignItems: 'center' },
-  btnOkTxt:     { fontSize: 15, fontWeight: '700', color: '#FFF' },
-});
-
 // ─── SCREEN PRINCIPAL ─────────────────────────────────────────────────────────
 
 export default function TratamientosScreen() {
@@ -500,7 +393,10 @@ export default function TratamientosScreen() {
   // el mismo modal con el nombre ya cargado (el usuario todavía puede
   // editarlo, elegir la fecha y guardar).
   function abrirModal(nombrePrefill = '', sugerido = null) {
-    setFormNombre(nombrePrefill); setFormFechaInicio(null); setFormProximoControl(null);
+    // La fecha de inicio arranca SIEMPRE en el día de hoy (se calcula al abrir
+    // el modal, no al montar la pantalla: si la app queda abierta de un día
+    // para el otro, el formulario igual propone la fecha correcta).
+    setFormNombre(nombrePrefill); setFormFechaInicio(new Date()); setFormProximoControl(null);
     setFormVeterinaria(''); setFormDescripcion(''); setFormErrors({});
     setSugeridoEnRegistro(sugerido);
     setTratamientoEnEdicion(null);
@@ -631,11 +527,6 @@ export default function TratamientosScreen() {
     nombre: 'Tu mascota', especie: 'perro', raza: null,
     peso: null, fecha_nacimiento: null, imagen_asset: 'perro_default',
   };
-  const edad    = calcularEdad(m.fecha_nacimiento);
-  const petImg  = resolveMascotaVisual(m);
-  const pesoFmt = m.peso != null
-    ? parseFloat(m.peso).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' kg'
-    : '—';
 
   // ── RENDER ───────────────────────────────────────────────────────────────
   return (
@@ -663,22 +554,8 @@ export default function TratamientosScreen() {
               colors={['#2DBD72']} tintColor="#2DBD72" />
           }>
 
-          {/* ── HERO ── */}
-          <View style={s.hero}>
-            <Animated.View style={{ transform: [{ scale: heroScale }], opacity: heroOpacity, alignItems: 'center' }}>
-              {/* Círculo decorativo */}
-              <View style={s.petCircle} />
-              <PetIllustration source={petImg} label={`Ilustración de ${m.nombre}`} />
-              <Text style={s.heroTitulo} numberOfLines={1} ellipsizeMode="tail">
-                Tratamientos de {m.nombre}
-              </Text>
-              <View style={s.heroInfo}>
-                <Text style={s.heroInfoTxt}>Edad: {edad}</Text>
-                <Text style={s.heroInfoTxt}>Peso: {pesoFmt}</Text>
-                <Text style={s.heroInfoTxt}>Raza: {m.raza ?? '—'}</Text>
-              </View>
-            </Animated.View>
-          </View>
+          {/* ── HERO ── (compartido con Vacunas, Consultas y Curiosidades) */}
+          <PetHero mascota={m} titulo="Tratamientos" anim={{ scale: heroScale, opacity: heroOpacity }} />
 
           {/* ── CARD BLANCO ── */}
           <View style={s.whiteCard}>
@@ -797,7 +674,7 @@ export default function TratamientosScreen() {
                   {/* Descripción */}
                   <TextInput
                     style={[s.input, s.inputMulti, focusDesc && s.inputFocus]}
-                    placeholder="Notas u observaciones (opcional)"
+                    placeholder="Descripción (opcional)"
                     placeholderTextColor="#AAAAAA"
                     value={formDescripcion}
                     onChangeText={setFormDescripcion}
@@ -829,12 +706,13 @@ export default function TratamientosScreen() {
       </Modal>
 
       {/* Fecha pickers */}
-      <FechaPicker visible={showPickerInicio} titulo="Fecha de inicio"
+      {/* Los tratamientos sí pueden tener fechas futuras (próximo control) */}
+      <FechaPicker visible={showPickerInicio} titulo="Fecha de inicio" aniosAdelante={5}
         valor={formFechaInicio ?? new Date()}
         onConfirmar={(d) => { setFormFechaInicio(d); setShowPickerInicio(false); if (formErrors.fechaInicio) setFormErrors((p) => ({ ...p, fechaInicio: null })); }}
         onCancelar={() => setShowPickerInicio(false)} />
 
-      <FechaPicker visible={showPickerControl} titulo="Próximo control (opcional)"
+      <FechaPicker visible={showPickerControl} titulo="Próximo control (opcional)" aniosAdelante={5}
         valor={formProximoControl ?? new Date()}
         onConfirmar={(d) => { setFormProximoControl(d); setShowPickerControl(false); }}
         onCancelar={() => setShowPickerControl(false)} />
@@ -855,13 +733,7 @@ const s = StyleSheet.create({
   header:    { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, backgroundColor: 'transparent' },
   headerBtn: { width: 44, alignItems: 'center', justifyContent: 'center' },
 
-  // Hero
-  hero:         { alignItems: 'center', paddingTop: 12, paddingBottom: 0, backgroundColor: 'transparent' },
-  petCircle:    { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: '#A8E6C0', opacity: 0.45, top: -15, alignSelf: 'center' },
-  petImg:       { width: 110, height: 110, zIndex: 1 },
-  heroTitulo:   { fontSize: 24, fontWeight: '800', color: '#2C2C2C', textAlign: 'center', marginTop: 10, paddingHorizontal: 20 },
-  heroInfo:     { alignItems: 'center', marginTop: 6, marginBottom: 22, gap: 2 },
-  heroInfoTxt:  { fontSize: 13, color: '#6B6B6B' },
+  // Hero → components/PetHero.jsx (compartido con Vacunas, Consultas y Curiosidades)
 
   // Card blanco
   whiteCard: {

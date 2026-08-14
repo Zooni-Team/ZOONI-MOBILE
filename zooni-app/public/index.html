@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="%LANG_ISO_CODE%">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+
+    <!--
+      Plantilla propia del index.html de Expo web (expo export la toma de
+      public/index.html en vez de la que trae @expo/cli).
+
+      Motivo: en el celular la web se comportaba como una página y no como una
+      app — doble tap y pellizco hacían zoom, el rebote de iOS despegaba la
+      pantalla del borde y al tocar un input Safari acercaba la vista sola.
+      Los ajustes de abajo son los que hacen que se sienta nativa.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+
+    <!-- Modo app al agregarla a la pantalla de inicio (iOS / Android) -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Zooni" />
+    <meta name="theme-color" content="#C8F0D8" />
+    <!-- Que el navegador no convierta teléfonos y fechas en links azules -->
+    <meta name="format-detection" content="telephone=no,date=no,address=no,email=no" />
+
+    <title>%WEB_TITLE%</title>
+
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+
+    <style id="zooni-app-shell">
+      html,
+      body,
+      #root {
+        /* Sin el rebote elástico ni el "pull to refresh" del navegador */
+        overscroll-behavior: none;
+        /* iOS agranda el texto solo al rotar si no se fija */
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+        background-color: #c8f0d8;
+      }
+
+      body {
+        /* El doble tap deja de hacer zoom y los taps responden sin los 300ms */
+        touch-action: manipulation;
+        /* Sin el flash gris de Android al tocar */
+        -webkit-tap-highlight-color: transparent;
+        margin: 0;
+      }
+
+      /* Nada de selección larga de texto en la interfaz… */
+      body {
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      /* …salvo donde el usuario escribe o donde hay texto para copiar */
+      input,
+      textarea,
+      [contenteditable='true'] {
+        -webkit-user-select: text;
+        user-select: text;
+      }
+
+      /*
+        Solo en pantallas táctiles: iOS acerca la vista al enfocar un input con
+        letra menor a 16px y después no vuelve. React Native Web escribe el
+        font-size inline, así que hace falta !important para ganarle.
+        En desktop no aplica y el diseño queda igual.
+      */
+      @media (pointer: coarse) {
+        input,
+        textarea,
+        select {
+          font-size: 16px !important;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Use static rendering with Expo Router to support running without JavaScript. -->
+    <noscript>
+      You need to enable JavaScript to run this app.
+    </noscript>
+    <!-- The root element for your Expo app. -->
+    <div id="root"></div>
+
+    <script>
+      // iOS ignora user-scalable=no desde Safari 10: el pellizco y el doble tap
+      // se cancelan a mano. `passive: false` es necesario para preventDefault.
+      (function () {
+        document.addEventListener(
+          'gesturestart',
+          function (e) { e.preventDefault(); },
+          { passive: false }
+        );
+        document.addEventListener(
+          'gesturechange',
+          function (e) { e.preventDefault(); },
+          { passive: false }
+        );
+
+        var ultimoTap = 0;
+        document.addEventListener(
+          'touchend',
+          function (e) {
+            var ahora = Date.now();
+            if (ahora - ultimoTap < 300) e.preventDefault(); // doble tap → zoom
+            ultimoTap = ahora;
+          },
+          { passive: false }
+        );
+
+        // Dos dedos o más: siempre pellizco, nunca scroll de la página
+        document.addEventListener(
+          'touchmove',
+          function (e) {
+            if (e.touches.length > 1) e.preventDefault();
+          },
+          { passive: false }
+        );
+      })();
+    </script>
+  </body>
+</html>

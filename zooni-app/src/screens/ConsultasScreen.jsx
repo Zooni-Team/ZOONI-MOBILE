@@ -33,12 +33,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 
-import { calcularEdad } from '../utils/calcularEdad';
 import { toISODateLocal } from '../utils/fechaLocal';
-import { resolveMascotaVisual } from '../constants/petImages';
+import PetHero from '../components/PetHero';
 import { subirImagenPublica } from '../utils/imagenStorage';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { fetchMascota, fetchConsultas, crearConsulta, eliminarConsulta } from '../services/fichaMedicaApi';
+import FechaPicker from '../components/FechaPicker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -49,16 +49,6 @@ function formatFecha(iso) {
   if (!iso) return null;
   const [y, m, d] = iso.split('-');
   return `${parseInt(d)}/${parseInt(m)}/${y}`;
-}
-
-function capitalizar(str) {
-  return str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
-}
-
-// ─── COMPONENTE: IMAGEN MASCOTA ───────────────────────────────────────────────
-
-function PetIllustration({ source, label }) {
-  return <Image source={source} style={s.petImg} resizeMode="contain" accessibilityLabel={label} />;
 }
 
 // ─── COMPONENTE: SKELETON ─────────────────────────────────────────────────────
@@ -154,101 +144,6 @@ function CardConsulta({ consulta, index, onEliminar }) {
     </Animated.View>
   );
 }
-
-// ─── COMPONENTE: FECHA PICKER (modal propio, igual que Tratamientos) ──────────
-
-function FechaPicker({ visible, titulo, valor, onConfirmar, onCancelar }) {
-  const hoyAnio = new Date().getFullYear();
-
-  const [dia,  setDia]  = useState(valor ? valor.getDate() : new Date().getDate());
-  const [mes,  setMes]  = useState(valor ? valor.getMonth() + 1 : new Date().getMonth() + 1);
-  const [anio, setAnio] = useState(valor ? valor.getFullYear() : hoyAnio);
-
-  useEffect(() => {
-    if (valor) {
-      setDia(valor.getDate());
-      setMes(valor.getMonth() + 1);
-      setAnio(valor.getFullYear());
-    }
-  }, [valor, visible]);
-
-  const diasEnMes = new Date(anio, mes, 0).getDate();
-  const dias  = Array.from({ length: diasEnMes }, (_, i) => i + 1);
-  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  // Consultas pasadas: desde 20 años atrás hasta el año actual
-  const anios = Array.from({ length: 21 }, (_, i) => hoyAnio - i);
-
-  const confirmar = () => onConfirmar(new Date(anio, mes - 1, Math.min(dia, diasEnMes)));
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancelar}>
-      <View style={fp.overlay}>
-        <View style={fp.container}>
-          <Text style={fp.titulo}>{titulo}</Text>
-          <View style={fp.row}>
-            <View style={fp.col}>
-              <Text style={fp.colLabel}>Día</Text>
-              <ScrollView style={fp.list} showsVerticalScrollIndicator={false}>
-                {dias.map((d) => (
-                  <TouchableOpacity key={d} style={[fp.item, dia === d && fp.itemOn]} onPress={() => setDia(d)}>
-                    <Text style={[fp.itemTxt, dia === d && fp.itemTxtOn]}>{String(d).padStart(2,'0')}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-            <View style={[fp.col, { flex: 2 }]}>
-              <Text style={fp.colLabel}>Mes</Text>
-              <ScrollView style={fp.list} showsVerticalScrollIndicator={false}>
-                {meses.map((m, i) => (
-                  <TouchableOpacity key={m} style={[fp.item, mes === i+1 && fp.itemOn]} onPress={() => setMes(i+1)}>
-                    <Text style={[fp.itemTxt, mes === i+1 && fp.itemTxtOn]}>{m}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-            <View style={fp.col}>
-              <Text style={fp.colLabel}>Año</Text>
-              <ScrollView style={fp.list} showsVerticalScrollIndicator={false}>
-                {anios.map((a) => (
-                  <TouchableOpacity key={a} style={[fp.item, anio === a && fp.itemOn]} onPress={() => setAnio(a)}>
-                    <Text style={[fp.itemTxt, anio === a && fp.itemTxtOn]}>{a}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          </View>
-          <View style={fp.btns}>
-            <TouchableOpacity style={fp.btnCancel} onPress={onCancelar}>
-              <Text style={fp.btnCancelTxt}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={fp.btnOk} onPress={confirmar}>
-              <Text style={fp.btnOkTxt}>Confirmar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-const fp = StyleSheet.create({
-  overlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  container:    { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 36 },
-  titulo:       { fontSize: 16, fontWeight: '700', color: '#2C2C2C', textAlign: 'center', marginBottom: 16 },
-  row:          { flexDirection: 'row', gap: 8, height: 180 },
-  col:          { flex: 1 },
-  colLabel:     { fontSize: 12, fontWeight: '600', color: '#6B6B6B', textAlign: 'center', marginBottom: 6 },
-  list:         { flex: 1, borderWidth: 1, borderColor: '#F0F0F0', borderRadius: 10 },
-  item:         { paddingVertical: 10, paddingHorizontal: 4, alignItems: 'center' },
-  itemOn:       { backgroundColor: '#F0FFF6' },
-  itemTxt:      { fontSize: 14, color: '#2C2C2C' },
-  itemTxtOn:    { color: '#2DBD72', fontWeight: '700' },
-  btns:         { flexDirection: 'row', gap: 12, marginTop: 20 },
-  btnCancel:    { flex: 1, paddingVertical: 13, borderRadius: 30, backgroundColor: '#F0F0F0', alignItems: 'center' },
-  btnCancelTxt: { fontSize: 15, fontWeight: '700', color: '#6B6B6B' },
-  btnOk:        { flex: 1, paddingVertical: 13, borderRadius: 30, backgroundColor: '#2DBD72', alignItems: 'center' },
-  btnOkTxt:     { fontSize: 15, fontWeight: '700', color: '#FFF' },
-});
 
 // ─── SCREEN PRINCIPAL ─────────────────────────────────────────────────────────
 
@@ -357,7 +252,10 @@ export default function ConsultasScreen() {
 
   // ── Modal ────────────────────────────────────────────────────────────────
   function abrirModal() {
-    setFormMotivo(''); setFormFecha(null); setFormVeterinario(''); setFormNotas('');
+    // La fecha arranca en el día de hoy (se calcula acá, al abrir, no al montar
+    // la pantalla: si la app queda abierta de un día para el otro, el
+    // formulario igual propone la fecha correcta).
+    setFormMotivo(''); setFormFecha(new Date()); setFormVeterinario(''); setFormNotas('');
     setFormImagenUri(null); setFormErrors({});
     setModalVisible(true);
     Animated.parallel([
@@ -422,8 +320,11 @@ export default function ConsultasScreen() {
       setConsultas((prev) => [nueva, ...prev].sort((a, b) => (a.fecha < b.fecha ? 1 : -1)));
       cerrarModal();
       mostrarToast('Consulta registrada correctamente', '#2DBD72');
-    } catch {
-      mostrarToast('No se pudo guardar la consulta', '#E63946');
+    } catch (err) {
+      // Mostramos el motivo real: con el mensaje genérico no había forma de
+      // saber si faltaba una migración, un permiso o la conexión.
+      const detalle = err?.message ? `: ${err.message}` : '';
+      mostrarToast(`No se pudo guardar la consulta${detalle}`, '#E63946');
     } finally {
       setGuardando(false);
     }
@@ -466,8 +367,6 @@ export default function ConsultasScreen() {
     nombre: 'Tu mascota', especie: 'perro', raza: null,
     peso: null, fecha_nacimiento: null, imagen_asset: 'perro_default',
   };
-  const edad   = calcularEdad(m.fecha_nacimiento);
-  const petImg = resolveMascotaVisual(m);
 
   // ── RENDER ────────────────────────────────────────────────────────────────
   return (
@@ -494,19 +393,8 @@ export default function ConsultasScreen() {
               colors={['#2DBD72']} tintColor="#2DBD72" />
           }>
 
-          {/* ── HERO ── */}
-          <View style={s.hero}>
-            <Animated.View style={{ transform: [{ scale: heroScale }], opacity: heroOpacity, alignItems: 'center' }}>
-              <View style={s.petCircle} />
-              <PetIllustration source={petImg} label={`Ilustración de ${m.nombre}`} />
-              <Text style={s.heroTitulo} numberOfLines={1} ellipsizeMode="tail">
-                Consultas de {m.nombre}
-              </Text>
-              <View style={s.heroInfo}>
-                <Text style={s.heroInfoTxt}>{capitalizar(m.especie)} · {m.raza ?? 'Sin raza definida'} · {edad}</Text>
-              </View>
-            </Animated.View>
-          </View>
+          {/* ── HERO ── (compartido con Vacunas, Tratamientos y Curiosidades) */}
+          <PetHero mascota={m} titulo="Consultas" anim={{ scale: heroScale, opacity: heroOpacity }} />
 
           {/* ── CARD BLANCO ── */}
           <View style={s.whiteCard}>
@@ -597,10 +485,10 @@ export default function ConsultasScreen() {
                     returnKeyType="next"
                   />
 
-                  {/* Notas */}
+                  {/* Descripción */}
                   <TextInput
                     style={[s.input, s.inputMulti, focusNotas && s.inputFocus]}
-                    placeholder="Notas: diagnóstico, indicaciones, medicación… (opcional)"
+                    placeholder="Descripción: diagnóstico, indicaciones… (opcional)"
                     placeholderTextColor="#AAAAAA"
                     value={formNotas}
                     onChangeText={setFormNotas}
@@ -666,13 +554,7 @@ const s = StyleSheet.create({
   header:    { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, backgroundColor: 'transparent' },
   headerBtn: { width: 44, alignItems: 'center', justifyContent: 'center' },
 
-  // Hero
-  hero:         { alignItems: 'center', paddingTop: 12, paddingBottom: 0, backgroundColor: 'transparent' },
-  petCircle:    { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: '#A8E6C0', opacity: 0.45, top: -15, alignSelf: 'center' },
-  petImg:       { width: 110, height: 110, zIndex: 1 },
-  heroTitulo:   { fontSize: 24, fontWeight: '800', color: '#2C2C2C', textAlign: 'center', marginTop: 10, paddingHorizontal: 20 },
-  heroInfo:     { alignItems: 'center', marginTop: 6, marginBottom: 22, gap: 2 },
-  heroInfoTxt:  { fontSize: 13, color: '#6B6B6B' },
+  // Hero → components/PetHero.jsx (compartido con Vacunas, Tratamientos y Curiosidades)
 
   // Card blanco
   whiteCard: {

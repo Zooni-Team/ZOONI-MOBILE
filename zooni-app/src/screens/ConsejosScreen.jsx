@@ -8,7 +8,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
-  Image,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -21,19 +20,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { getCategoriaInfo } from '../constants/categoriasConsejos';
-import { resolveMascotaVisual } from '../constants/petImages';
 import { generarConsejos } from '../constants/consejosData';
 import { fetchMascota } from '../services/fichaMedicaApi';
+import PetHero from '../components/PetHero';
 
 // Mascota de respaldo si no hay petId o falla la carga: los consejos generales
 // de perro son un punto de partida razonable.
 const DEMO_MASCOTA = { nombre: 'Tu mascota', especie: 'perro', raza: null, fotoUrl: null };
-
-// ─── COMPONENTE IMAGEN MASCOTA ────────────────────────────────────────────────
-
-function PetIllustration({ source, label }) {
-  return <Image source={source} resizeMode="contain" accessibilityLabel={label} style={st.petImage} />;
-}
 
 // ─── SKELETON ─────────────────────────────────────────────────────────────────
 
@@ -189,11 +182,6 @@ export default function ConsejosScreen() {
   );
 
 
-  const petImg = useMemo(
-    () => resolveMascotaVisual(mascota ?? {}),
-    [mascota]
-  );
-
   return (
     <SafeAreaView style={st.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
@@ -210,13 +198,9 @@ export default function ConsejosScreen() {
         <ScrollView style={st.scroll} contentContainerStyle={st.scrollContent}
           showsVerticalScrollIndicator={false}>
 
-          {/* Hero */}
-          <View style={st.hero}>
-            <Animated.View style={{ transform: [{ scale: heroScale }], opacity: heroOpacity }}>
-              <PetIllustration source={petImg}
-                label={mascota ? `Ilustración de ${mascota.nombre}` : 'Mascota'} />
-            </Animated.View>
-          </View>
+          {/* Hero — el mismo de Vacunas, Tratamientos y Consultas */}
+          <PetHero mascota={mascota} titulo="Curiosidades"
+            anim={{ scale: heroScale, opacity: heroOpacity }} />
 
           {/* Card blanco */}
           <View style={st.whiteCard}>
@@ -273,10 +257,10 @@ const st = StyleSheet.create({
   header:      { height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, backgroundColor: 'transparent' },
   headerBtn:   { width: 40, alignItems: 'center', justifyContent: 'center' },
 
-  hero:    { alignItems: 'center', justifyContent: 'center', marginTop: 8, marginBottom: 0, paddingVertical: 16 },
-  petImage: { width: 200, height: 200, backgroundColor: 'transparent' },
+  // Hero → components/PetHero.jsx (compartido con Vacunas, Tratamientos y Consultas)
 
-  whiteCard: { backgroundColor: '#FFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40, minHeight: 400 },
+  // Mismo bottom sheet que Vacunas, Tratamientos y Consultas
+  whiteCard: { backgroundColor: '#FFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 22, paddingBottom: 40, minHeight: 400 },
 
   demoBanner:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFF8E1', borderRadius: 10, padding: 10, marginBottom: 12 },
   demoBannerTxt: { fontSize: 12, color: '#F5A623', textAlign: 'center' },

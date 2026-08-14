@@ -3,8 +3,8 @@
  *
  * Mismo recorrido que crear la mascota en el REGISTRO:
  *   Paso 1 (= RegisterStep1): nombre + grilla de especies con ilustraciones
- *   Paso 2 (= RegisterStep2): sexo y raza (dropdowns), sliders amarillos de
- *   peso y edad, y foto — con la mascota "en caja" arriba.
+ *   Paso 2 (= RegisterStep2): sexo y raza (dropdowns), slider amarillo de peso,
+ *   fecha de nacimiento y foto — con la mascota "en caja" arriba.
  * La única diferencia es el final: acá se guarda la mascota del usuario
  * logueado (crearMascota → Supabase) en vez de seguir a los pasos de cuenta.
  */
@@ -33,9 +33,12 @@ import * as ImagePicker from 'expo-image-picker';
 import { ESPECIES } from '../../constants/registroAssets';
 import { resolveCajaImage } from '../../constants/registroImages';
 import OpcionPicker from '../../components/OpcionPicker';
+import FechaPicker from '../../components/FechaPicker';
+import SliderAmarillo from '../../components/SliderAmarillo';
 import { fetchRazas } from '../../services/authApi';
 import { crearMascota } from '../../services/petsApi';
 import { toISODateLocal } from '../../utils/fechaLocal';
+import { calcularEdad } from '../../utils/calcularEdad';
 import { alerta, confirmar } from '../../utils/dialogo';
 
 const SEXOS = ['Macho', 'Hembra'];
@@ -54,12 +57,6 @@ const IMAGEN_ASSET_POR_ESPECIE = {
 
 function capitalizar(str) {
   return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
-}
-
-function fechaNacimientoDesdeMeses(edadMeses) {
-  const d = new Date();
-  d.setMonth(d.getMonth() - (edadMeses ?? 0));
-  return toISODateLocal(d);
 }
 
 /** Tile de especie — igual que en RegisterStep1 */
@@ -87,45 +84,6 @@ function EspecieTile({ especie, seleccionada, onPress }) {
   );
 }
 
-/** Slider amarillo — igual que en RegisterStep2 */
-function SliderAmarillo({ value, min, max, step, onChange }) {
-  const [trackWidth, setTrackWidth] = useState(1);
-  const updateFromX = (x) => {
-    if (trackWidth <= 1) return;
-    const ratio = Math.max(0, Math.min(1, x / trackWidth));
-    const raw = min + ratio * (max - min);
-    const stepped = Math.round(raw / step) * step;
-    onChange(Math.max(min, Math.min(max, stepped)));
-  };
-  const ratio = (value - min) / (max - min);
-  return (
-    <View
-      style={sl.hit}
-      onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
-      onStartShouldSetResponder={() => true}
-      onMoveShouldSetResponder={() => true}
-      onResponderGrant={(e) => updateFromX(e.nativeEvent.locationX)}
-      onResponderMove={(e) => updateFromX(e.nativeEvent.locationX)}
-    >
-      <View style={sl.track}>
-        <View style={[sl.fill, { width: `${ratio * 100}%` }]} />
-        <View style={[sl.thumb, { left: `${ratio * 100}%`, marginLeft: -11 }]} />
-      </View>
-    </View>
-  );
-}
-
-const sl = StyleSheet.create({
-  hit: { height: 40, justifyContent: 'center', width: '100%' },
-  track: { height: 6, backgroundColor: '#DDDDDD', borderRadius: 3, width: '100%' },
-  fill: { position: 'absolute', left: 0, height: 6, backgroundColor: '#F5C842', borderRadius: 3 },
-  thumb: {
-    position: 'absolute', width: 22, height: 22, borderRadius: 11,
-    backgroundColor: '#F5C842', borderWidth: 2, borderColor: '#FFFFFF', top: -8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 3,
-  },
-});
-
 export default function AltaMascotaScreen() {
   const navigation = useNavigation();
   const [paso, setPaso] = useState(1);
@@ -144,7 +102,10 @@ export default function AltaMascotaScreen() {
   const [razas, setRazas] = useState([]);
   const [cargandoRazas, setCargandoRazas] = useState(true);
   const [peso, setPeso] = useState(0);              // kg
-  const [edad, setEdad] = useState(0);              // meses
+  // Fecha de nacimiento, no edad: una edad en meses queda vieja sola (ver el
+  // comentario del Paso 2 del registro)
+  const [fechaNacimiento, setFechaNacimiento] = useState(null);
+  const [showFecha, setShowFecha] = useState(false);
   const [fotoUri, setFotoUri] = useState(null);
   const [showSexo, setShowSexo] = useState(false);
   const [showRaza, setShowRaza] = useState(false);
@@ -223,6 +184,7 @@ export default function AltaMascotaScreen() {
     if (!sexo) errs.sexo = 'Seleccioná el sexo';
     if (!raza) errs.raza = 'Seleccioná una raza';
     if (peso <= 0) errs.peso = 'Ajustá el peso';
+    if (!fechaNacimiento) errs.fechaNacimiento = 'Elegí cuándo nació';
     // Foto REAL obligatoria: es la que se ve en Match
     if (!fotoUri) errs.foto = 'Agregá una foto real de tu mascota';
     setErrores(errs);
@@ -236,7 +198,7 @@ export default function AltaMascotaScreen() {
         sexo,
         raza: raza.nombre,
         peso,
-        fechaNacimiento: fechaNacimientoDesdeMeses(edad),
+        fechaNacimiento: toISODateLocal(fechaNacimiento),
         imagenAsset: IMAGEN_ASSET_POR_ESPECIE[especie] ?? 'perro_default',
         fotoUri, // se sube a Storage y se guarda en Mascota.Foto (la de Match)
       });
@@ -263,7 +225,9 @@ export default function AltaMascotaScreen() {
   };
 
   const pesoFmt = peso.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' kg';
-  const edadFmt = edad < 12 ? `${edad} meses` : `${(edad / 12).toFixed(1)} años`;
+  const fechaFmt = fechaNacimiento
+    ? fechaNacimiento.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
 
   // ── PASO 1: nombre + especie (mismo layout que RegisterStep1) ──
   if (paso === 1) {
@@ -357,14 +321,24 @@ export default function AltaMascotaScreen() {
             {/* Peso */}
             <Text style={s.sliderLabel}>Peso (kg)</Text>
             <SliderAmarillo value={peso} min={0} max={100} step={0.5}
-              onChange={(v) => { setPeso(v); setErrores((p2) => ({ ...p2, peso: null })); }} />
+              onChange={(v) => { setPeso(v); setErrores((p2) => ({ ...p2, peso: null })); }}
+              etiquetaMenos="Bajar medio kilo" etiquetaMas="Subir medio kilo" />
             <Text style={s.sliderValor}>{pesoFmt}</Text>
             {errores.peso && <Text style={[s.errorTxt, { textAlign: 'center' }]}>{errores.peso}</Text>}
 
-            {/* Edad */}
-            <Text style={s.sliderLabel}>Edad</Text>
-            <SliderAmarillo value={edad} min={0} max={240} step={1} onChange={setEdad} />
-            <Text style={s.sliderValor}>{edadFmt}</Text>
+            {/* Fecha de nacimiento (igual que el Paso 2 del registro) */}
+            <Text style={s.sliderLabel}>¿Cuándo nació?</Text>
+            <TouchableOpacity
+              style={[s.dropdown, fechaNacimiento && s.dropdownSeleccionado, errores.fechaNacimiento && s.inputError]}
+              onPress={() => setShowFecha(true)}
+            >
+              <Text style={[s.dropdownTxt, !fechaNacimiento && s.placeholder]}>
+                {fechaFmt ?? 'Elegí la fecha de nacimiento'}
+              </Text>
+              <Ionicons name="calendar-outline" size={16} color="#6B6B6B" />
+            </TouchableOpacity>
+            {errores.fechaNacimiento && <Text style={[s.errorTxt, { textAlign: 'center' }]}>{errores.fechaNacimiento}</Text>}
+            {fechaNacimiento && <Text style={s.sliderValor}>{calcularEdad(fechaNacimiento)}</Text>}
 
             {/* Foto REAL (obligatoria) */}
             <Text style={s.fotoLabel}>📷 Agregá una foto real de tu mascota</Text>
@@ -396,6 +370,15 @@ export default function AltaMascotaScreen() {
             : <Text style={s.btnContinuarTxt}>Guardar mascota</Text>}
         </TouchableOpacity>
       </KeyboardAvoidingView>
+
+      <FechaPicker
+        visible={showFecha}
+        titulo="¿Cuándo nació?"
+        valor={fechaNacimiento ?? new Date()}
+        aniosAtras={30}
+        onConfirmar={(d) => { setFechaNacimiento(d); setShowFecha(false); setErrores((p2) => ({ ...p2, fechaNacimiento: null })); }}
+        onCancelar={() => setShowFecha(false)}
+      />
 
       <OpcionPicker
         visible={showSexo}

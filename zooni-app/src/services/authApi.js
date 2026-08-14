@@ -121,13 +121,48 @@ function esFuncionInexistente(error) {
   return error?.code === 'PGRST202' || /function .* does not exist/i.test(error?.message ?? '');
 }
 
+/** 23505 = unique_violation: chocó con el índice único del mail (migración 032). */
+function esMailDuplicado(error) {
+  const msg = String(error?.message ?? '');
+  return error?.code === '23505'
+    && (/idx_user_mail_unico/i.test(msg) || /mail/i.test(msg));
+}
+
+/**
+ * ¿Ya existe una cuenta con ese mail?
+ *
+ * Ojo con dos cosas que hacían que el chequeo viejo dejara pasar duplicados:
+ *   · .maybeSingle() DEVUELVE ERROR si hay más de una fila — como el error se
+ *     ignoraba, `data` quedaba en null y parecía que el mail estaba libre.
+ *   · .ilike() trata `%` y `_` como comodines; un mail con guion bajo
+ *     (juan_perez@…) matcheaba cualquier otra cosa. Se compara con .eq() sobre
+ *     el mail ya normalizado a minúsculas (la app siempre guarda en minúscula).
+ *
+ * Filas viejas guardadas con otra capitalización se le escapan a este chequeo,
+ * pero no al servidor: la RPC compara con lower(trim(Mail)) y el índice único
+ * de la 032 está sobre esa misma expresión.
+ */
+async function mailYaRegistrado(mail) {
+  const { data, error } = await supabase
+    .from('User').select('Id_User').eq('Mail', mail).limit(1);
+  if (error) return false; // sin conexión: que decida el índice único del servidor
+  return (data?.length ?? 0) > 0;
+}
+
 // ─────────────────────────────────────────────
 // REGISTRO
 // ─────────────────────────────────────────────
 
-function fechaNacimientoDesdeMeses(edadMeses) {
+/**
+ * Fecha de nacimiento de la mascota. El registro ahora la pide directamente
+ * (Paso 2); `edadMeses` queda solo como respaldo para cualquier pantalla vieja
+ * que todavía mande una edad en meses.
+ */
+function resolverFechaNacimiento(mascota) {
+  if (mascota.fechaNacimiento) return mascota.fechaNacimiento;
+  if (mascota.edadMeses == null) return null;
   const d = new Date();
-  d.setMonth(d.getMonth() - (edadMeses ?? 0));
+  d.setMonth(d.getMonth() - mascota.edadMeses);
   // toISOString usa UTC: de noche (UTC-3) devolvía el día siguiente
   return toISODateLocal(d);
 }
@@ -147,7 +182,7 @@ const IMAGEN_ASSET_POR_ESPECIE = {
  * Registra usuario + primera mascota.
  * @param {object} datos
  *   {
- *     mascota: { nombre, especie, sexo, razaNombre, pesoKg, edadMeses, fotoUri },
+ *     mascota: { nombre, especie, sexo, razaNombre, pesoKg, fechaNacimiento, fotoUri },
  *     usuario: { nombre, apellido, email, password, pais, paisCodigo,
  *                provincia, ciudad, codigoTelefono, telefono }
  *   }
@@ -159,6 +194,12 @@ export async function registro(datos) {
   const mail = usuario.email.trim().toLowerCase();
 
   if ((usuario.password ?? '').length < 7) throw new Error('password_corta');
+
+  // Chequeo temprano del mail: corta el registro ANTES de subir la foto a
+  // Storage (si no, cada intento repetido dejaba una imagen huérfana).
+  // No es la garantía — esa es el índice único de la 032 — pero da el mensaje
+  // correcto en el caso normal.
+  if (await mailYaRegistrado(mail)) throw new Error('email_existente');
 
   const hash = await hashPassword(usuario.password);
   const ubicacionDisplay = [usuario.ciudad, usuario.provincia].filter(Boolean).join(', ') || null;
@@ -218,7 +259,7 @@ export async function registro(datos) {
         sexo: mascota.sexo,
         raza: mascota.razaNombre,
         peso: mascota.pesoKg ?? null,
-        fechaNacimiento: fechaNacimientoDesdeMeses(mascota.edadMeses),
+        fechaNacimiento: resolverFechaNacimiento(mascota),
         imagenAsset: IMAGEN_ASSET_POR_ESPECIE[mascota.especie] ?? 'perro_default',
       },
     }
@@ -238,19 +279,14 @@ export async function registro(datos) {
     };
   }
 
-  if (String(rpcError.message ?? '').includes('email_existente')) {
+  if (String(rpcError.message ?? '').includes('email_existente') || esMailDuplicado(rpcError)) {
     throw new Error('email_existente');
   }
   if (!esFuncionInexistente(rpcError)) throw rpcError;
 
   // Fallback LEGACY (el 021 no está corrido): flujo viejo con rollback
   // manual. Borrar cuando la migración esté aplicada en todos lados.
-  const { data: existente } = await supabase
-    .from('User')
-    .select('Id_User')
-    .ilike('Mail', mail)
-    .maybeSingle();
-  if (existente) throw new Error('email_existente');
+  if (await mailYaRegistrado(mail)) throw new Error('email_existente');
 
   const { data: nuevoUsuario, error: errUsuario } = await supabase
     .from('User')
@@ -269,7 +305,9 @@ export async function registro(datos) {
     })
     .select()
     .single();
-  if (errUsuario) throw errUsuario;
+  // El índice único de la 032 es lo que realmente impide dos cuentas con el
+  // mismo mail; acá su error se traduce al mensaje que muestra la pantalla.
+  if (errUsuario) throw esMailDuplicado(errUsuario) ? new Error('email_existente') : errUsuario;
 
   const nuevoUserId = nuevoUsuario.Id_User;
 
@@ -282,7 +320,7 @@ export async function registro(datos) {
       Sexo: mascota.sexo,
       Raza: mascota.razaNombre,
       Peso: mascota.pesoKg,
-      FechaNacimiento: fechaNacimientoDesdeMeses(mascota.edadMeses),
+      FechaNacimiento: resolverFechaNacimiento(mascota),
       ImagenAsset: IMAGEN_ASSET_POR_ESPECIE[mascota.especie] ?? 'perro_default',
       EsActiva: true,
     });

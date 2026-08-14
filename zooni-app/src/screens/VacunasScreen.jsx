@@ -12,7 +12,6 @@ import {
   Alert,
   Animated,
   Dimensions,
-  Image,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -31,10 +30,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
-import { calcularEdad } from '../utils/calcularEdad';
 import { parseFechaLocal } from '../utils/fechaLocal';
-import { resolveMascotaVisual } from '../constants/petImages';
+import PetHero from '../components/PetHero';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
+import FechaPicker from '../components/FechaPicker';
 import {
   fetchVacunas,
   crearVacunaAplicada,
@@ -89,15 +88,6 @@ function estadoSugerida(sugerida) {
   return { texto: 'Al día', color: '#2DBD72' };
 }
 
-function capitalizar(str) {
-  return str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
-}
-
-// ─── COMPONENTE: IMAGEN MASCOTA (sin sombra, evita el artefacto rectangular) ──
-
-function PetIllustration({ source, label }) {
-  return <Image source={source} style={s.petImg} resizeMode="contain" accessibilityLabel={label} />;
-}
 
 // ─── COMPONENTE: SKELETON ─────────────────────────────────────────────────────
 
@@ -259,100 +249,6 @@ function CardSugerido({ sugerido, index, onMarcar }) {
   );
 }
 
-// ─── COMPONENTE: FECHA PICKER (modal propio, sin dependencias externas) ──────
-
-function FechaPicker({ visible, valor, onConfirmar, onCancelar }) {
-  const hoy = new Date();
-
-  const [dia,  setDia]  = useState((valor ?? hoy).getDate());
-  const [mes,  setMes]  = useState((valor ?? hoy).getMonth() + 1);
-  const [anio, setAnio] = useState((valor ?? hoy).getFullYear());
-
-  useEffect(() => {
-    const v = valor ?? hoy;
-    setDia(v.getDate());
-    setMes(v.getMonth() + 1);
-    setAnio(v.getFullYear());
-  }, [valor, visible]); // eslint-disable-line
-
-  const diasEnMes = new Date(anio, mes, 0).getDate();
-  const dias  = Array.from({ length: diasEnMes }, (_, i) => i + 1);
-  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const hoyAnio = hoy.getFullYear();
-  const anios = Array.from({ length: 21 }, (_, i) => hoyAnio - i); // vacunas no pueden ser futuras
-
-  const confirmar = () => onConfirmar(new Date(anio, mes - 1, Math.min(dia, diasEnMes)));
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancelar}>
-      <View style={fp.overlay}>
-        <View style={fp.container}>
-          <Text style={fp.titulo}>Fecha de aplicación</Text>
-          <View style={fp.row}>
-            <View style={fp.col}>
-              <Text style={fp.colLabel}>Día</Text>
-              <ScrollView style={fp.list} showsVerticalScrollIndicator={false}>
-                {dias.map((d) => (
-                  <TouchableOpacity key={d} style={[fp.item, dia === d && fp.itemOn]} onPress={() => setDia(d)}>
-                    <Text style={[fp.itemTxt, dia === d && fp.itemTxtOn]}>{String(d).padStart(2,'0')}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-            <View style={[fp.col, { flex: 2 }]}>
-              <Text style={fp.colLabel}>Mes</Text>
-              <ScrollView style={fp.list} showsVerticalScrollIndicator={false}>
-                {meses.map((m, i) => (
-                  <TouchableOpacity key={m} style={[fp.item, mes === i+1 && fp.itemOn]} onPress={() => setMes(i+1)}>
-                    <Text style={[fp.itemTxt, mes === i+1 && fp.itemTxtOn]}>{m}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-            <View style={fp.col}>
-              <Text style={fp.colLabel}>Año</Text>
-              <ScrollView style={fp.list} showsVerticalScrollIndicator={false}>
-                {anios.map((a) => (
-                  <TouchableOpacity key={a} style={[fp.item, anio === a && fp.itemOn]} onPress={() => setAnio(a)}>
-                    <Text style={[fp.itemTxt, anio === a && fp.itemTxtOn]}>{a}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          </View>
-          <View style={fp.btns}>
-            <TouchableOpacity style={fp.btnCancel} onPress={onCancelar}>
-              <Text style={fp.btnCancelTxt}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={fp.btnOk} onPress={confirmar}>
-              <Text style={fp.btnOkTxt}>Confirmar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-const fp = StyleSheet.create({
-  overlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  container:    { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 36 },
-  titulo:       { fontSize: 16, fontWeight: '700', color: '#2C2C2C', textAlign: 'center', marginBottom: 16 },
-  row:          { flexDirection: 'row', gap: 8, height: 180 },
-  col:          { flex: 1 },
-  colLabel:     { fontSize: 12, fontWeight: '600', color: '#6B6B6B', textAlign: 'center', marginBottom: 6 },
-  list:         { flex: 1, borderWidth: 1, borderColor: '#F0F0F0', borderRadius: 10 },
-  item:         { paddingVertical: 10, paddingHorizontal: 4, alignItems: 'center' },
-  itemOn:       { backgroundColor: '#F0FFF6' },
-  itemTxt:      { fontSize: 14, color: '#2C2C2C' },
-  itemTxtOn:    { color: '#2DBD72', fontWeight: '700' },
-  btns:         { flexDirection: 'row', gap: 12, marginTop: 20 },
-  btnCancel:    { flex: 1, paddingVertical: 13, borderRadius: 30, backgroundColor: '#F0F0F0', alignItems: 'center' },
-  btnCancelTxt: { fontSize: 15, fontWeight: '700', color: '#6B6B6B' },
-  btnOk:        { flex: 1, paddingVertical: 13, borderRadius: 30, backgroundColor: '#2DBD72', alignItems: 'center' },
-  btnOkTxt:     { fontSize: 15, fontWeight: '700', color: '#FFF' },
-});
-
 
 // ─── DATOS DEMO (sin backend de vacunas conectado) ───────────────────────────
 
@@ -472,8 +368,11 @@ export default function VacunasScreen() {
   }
 
   // ── Modal ────────────────────────────────────────────────────────────────
+  // La fecha de aplicación arranca en el día de hoy (se calcula al abrir el
+  // modal, así el valor sigue siendo correcto si la app quedó abierta de un
+  // día para el otro). Igual que en Tratamientos y Consultas.
   function abrirModalAnadir() {
-    setFormTitulo(''); setFormDescripcion(''); setFormFecha(null);
+    setFormTitulo(''); setFormDescripcion(''); setFormFecha(new Date());
     setFormTipo('Vacuna'); setFormVeterinaria(''); setFormErrors({});
     setVacunaEnEdicion(null); setVacunaPreseleccionada(null);
     setModalModo('añadir');
@@ -481,7 +380,7 @@ export default function VacunasScreen() {
   }
 
   function abrirModalMarcar(sugerida) {
-    setFormTitulo(sugerida.nombre); setFormDescripcion(''); setFormFecha(null);
+    setFormTitulo(sugerida.nombre); setFormDescripcion(''); setFormFecha(new Date());
     setFormTipo('Vacuna'); setFormVeterinaria(''); setFormErrors({});
     setVacunaPreseleccionada(sugerida); setVacunaEnEdicion(null);
     setModalModo('marcar');
@@ -630,11 +529,6 @@ export default function VacunasScreen() {
     nombre: 'Tu mascota', especie: 'perro', raza: null,
     peso: null, fecha_nacimiento: null, imagen_asset: 'perro_default',
   };
-  const edad    = calcularEdad(m.fecha_nacimiento);
-  const petImg  = resolveMascotaVisual(m);
-  const pesoFmt = m.peso != null
-    ? parseFloat(m.peso).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' kg'
-    : '—';
 
   const tituloModal = modalModo === 'editar' ? 'Editar vacuna'
     : modalModo === 'marcar' ? 'Marcar vacuna'
@@ -665,60 +559,51 @@ export default function VacunasScreen() {
               colors={['#2DBD72']} tintColor="#2DBD72" />
           }>
 
-          {/* ── HERO ── */}
-          <View style={s.hero}>
-            <Animated.View style={{ transform: [{ scale: heroScale }], opacity: heroOpacity, alignItems: 'center' }}>
-              <View style={s.petCircle} />
-              <PetIllustration source={petImg} label={`Ilustración de ${m.nombre}`} />
-              <Text style={s.heroTitulo} numberOfLines={1} ellipsizeMode="tail">
-                Vacunas de {m.nombre}
-              </Text>
-              <View style={s.heroInfo}>
-                <Text style={s.heroInfoTxt}>Edad: {edad}</Text>
-                <Text style={s.heroInfoTxt}>Peso: {pesoFmt}</Text>
-                <Text style={s.heroInfoTxt}>Raza: {m.raza ?? '—'}</Text>
-              </View>
-            </Animated.View>
-          </View>
+          {/* ── HERO ── (compartido con Tratamientos, Consultas y Curiosidades) */}
+          <PetHero mascota={m} titulo="Vacunas" anim={{ scale: heroScale, opacity: heroOpacity }} />
 
-          {/* ── SECCIÓN VACUNAS APLICADAS ── */}
-          <View style={s.secRow}>
-            <Text style={s.secTitulo}>Vacunas</Text>
-            <TouchableOpacity style={s.btnAnadir} onPress={abrirModalAnadir}>
-              <Ionicons name="add" size={16} color="#FFF" />
-              <Text style={s.btnAnadirTxt}>Añadir</Text>
-            </TouchableOpacity>
-          </View>
+          {/* ── CARD BLANCO ── */}
+          <View style={s.whiteCard}>
 
-          {loading ? (
-            <View><SkeletonCard /><SkeletonCard /></View>
-          ) : vacunasAplicadas.length === 0 ? (
-            <View style={s.emptyRow}>
-              <Ionicons name="create-outline" size={14} color="#6B6B6B" />
-              <Text style={s.emptyTxt}>No hay vacunas registradas</Text>
+            {/* ── SECCIÓN VACUNAS APLICADAS ── */}
+            <View style={s.secRow}>
+              <Text style={s.secTitulo}>Vacunas</Text>
+              <TouchableOpacity style={s.btnAnadir} onPress={abrirModalAnadir}>
+                <Ionicons name="add" size={16} color="#FFF" />
+                <Text style={s.btnAnadirTxt}>Añadir</Text>
+              </TouchableOpacity>
             </View>
-          ) : (
-            vacunasAplicadas.map((v) => (
-              <CardAplicado key={v.id} vacuna={v} onEditar={abrirModalEditar} onEliminar={eliminarVacuna} />
-            ))
-          )}
 
-          {/* ── SECCIÓN CALENDARIO SUGERIDO ── */}
-          <View style={s.secSugeridosRow}>
-            <Ionicons name="calendar-outline" size={16} color="#2C2C2C" />
-            <Text style={s.secSugeridosTitulo}>Vacunas sugeridas</Text>
+            {loading ? (
+              <View><SkeletonCard /><SkeletonCard /></View>
+            ) : vacunasAplicadas.length === 0 ? (
+              <View style={s.emptyRow}>
+                <Ionicons name="create-outline" size={14} color="#6B6B6B" />
+                <Text style={s.emptyTxt}>No hay vacunas registradas</Text>
+              </View>
+            ) : (
+              vacunasAplicadas.map((v) => (
+                <CardAplicado key={v.id} vacuna={v} onEditar={abrirModalEditar} onEliminar={eliminarVacuna} />
+              ))
+            )}
+
+            {/* ── SECCIÓN CALENDARIO SUGERIDO ── */}
+            <View style={s.secSugeridosRow}>
+              <Ionicons name="calendar-outline" size={16} color="#2C2C2C" />
+              <Text style={s.secSugeridosTitulo}>Vacunas sugeridas</Text>
+            </View>
+
+            {loading ? (
+              <View><SkeletonCard /><SkeletonCard /><SkeletonCard /></View>
+            ) : vacunasSugeridas.length === 0 ? (
+              <Text style={s.emptyTxt}>No hay vacunas sugeridas para esta especie</Text>
+            ) : (
+              vacunasSugeridas.map((sug, i) => (
+                <CardSugerido key={sug.id} sugerido={sug} index={i} onMarcar={abrirModalMarcar} />
+              ))
+            )}
+
           </View>
-
-          {loading ? (
-            <View><SkeletonCard /><SkeletonCard /><SkeletonCard /></View>
-          ) : vacunasSugeridas.length === 0 ? (
-            <Text style={s.emptyTxt}>No hay vacunas sugeridas para esta especie</Text>
-          ) : (
-            vacunasSugeridas.map((sug, i) => (
-              <CardSugerido key={sug.id} sugerido={sug} index={i} onMarcar={abrirModalMarcar} />
-            ))
-          )}
-
         </ScrollView>
       </View>
 
@@ -807,7 +692,8 @@ export default function VacunasScreen() {
 
       <FechaPicker
         visible={showFechaPicker}
-        valor={formFecha}
+        titulo="Fecha de aplicación"
+        valor={formFecha ?? new Date()}
         onConfirmar={(d) => { setFormFecha(d); setShowFechaPicker(false); if (formErrors.fecha) setFormErrors((p) => ({ ...p, fecha: null })); }}
         onCancelar={() => setShowFechaPicker(false)}
       />
@@ -821,23 +707,21 @@ const s = StyleSheet.create({
   safeArea:      { flex: 1, backgroundColor: '#C8F0D8' },
   screenBg:      { flex: 1, width: '100%', backgroundColor: '#C8F0D8' },
   scroll:        { flex: 1 },
-  scrollContent: { flexGrow: 1, paddingHorizontal: 20, paddingBottom: 40 },
+  scrollContent: { flexGrow: 1 },
 
   // Header
   header:    { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, backgroundColor: 'transparent' },
   headerBtn: { width: 32, alignItems: 'center', justifyContent: 'center' },
 
-  // Hero card blanco flotante
-  hero: {
-    alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 24,
-    paddingTop: 20, paddingBottom: 20, marginBottom: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4,
+  // Hero → components/PetHero.jsx (compartido con Tratamientos, Consultas y Curiosidades)
+
+  // Card blanco (mismo bottom sheet que Tratamientos y Consultas)
+  whiteCard: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingHorizontal: 20, paddingTop: 22, paddingBottom: 40,
+    minHeight: 400,
   },
-  petCircle:    { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: '#A8E6C0', opacity: 0.45, top: -15, alignSelf: 'center' },
-  petImg:       { width: 110, height: 110, zIndex: 1 },
-  heroTitulo:   { fontSize: 24, fontWeight: '800', color: '#2C2C2C', textAlign: 'center', marginTop: 10, paddingHorizontal: 20 },
-  heroInfo:     { alignItems: 'center', marginTop: 6, gap: 2 },
-  heroInfoTxt:  { fontSize: 13, color: '#6B6B6B' },
 
   // Sección row
   secRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },

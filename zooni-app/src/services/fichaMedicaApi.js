@@ -304,21 +304,43 @@ export async function fetchConsultas(petId) {
   return (data ?? []).map(mapConsulta);
 }
 
+/** PGRST204 = PostgREST no encontró una columna del insert en el esquema. */
+function esColumnaInexistente(error, columna) {
+  return error?.code === 'PGRST204'
+    || new RegExp(`'?${columna}'? column`, 'i').test(error?.message ?? '')
+    || /could not find the .* column/i.test(error?.message ?? '');
+}
+
 export async function crearConsulta(petId, datos) {
+  const base = {
+    mascota_id: petId,
+    fecha: datos.fecha,
+    motivo: datos.motivo,
+    notas: datos.notas ?? null,
+    veterinario: datos.veterinario ?? null,
+  };
+
   const { data, error } = await supabase
     .from('consultas_veterinarias')
-    .insert({
-      mascota_id: petId,
-      fecha: datos.fecha,
-      motivo: datos.motivo,
-      notas: datos.notas ?? null,
-      veterinario: datos.veterinario ?? null,
-      imagen_url: datos.imagen_url ?? null,
-    })
+    .insert({ ...base, imagen_url: datos.imagen_url ?? null })
     .select()
     .single();
-  if (error) throw error;
-  return mapConsulta(data);
+
+  if (!error) return mapConsulta(data);
+
+  // La migración 030 (que agrega imagen_url) puede no estar corrida en esta
+  // base: PostgREST devuelve 400 PGRST204 por la columna desconocida y se
+  // perdía la consulta entera. Reintentamos sin la imagen para no bloquear el
+  // alta — correr 030/031 en el SQL Editor habilita el adjunto.
+  if (!esColumnaInexistente(error, 'imagen_url')) throw error;
+
+  const { data: dataSinImagen, error: error2 } = await supabase
+    .from('consultas_veterinarias')
+    .insert(base)
+    .select()
+    .single();
+  if (error2) throw error2;
+  return mapConsulta(dataSinImagen);
 }
 
 export async function eliminarConsulta(id) {
