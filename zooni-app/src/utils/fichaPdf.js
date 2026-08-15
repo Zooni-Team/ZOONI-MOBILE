@@ -4,8 +4,13 @@
  * Vivía dentro de FichaMedicaScreen, donde no había forma de ejecutarlo sin
  * abrir la app: por eso se publicó un PDF que cortaba las secciones y nadie lo
  * notó. Acá está separado de la pantalla y recibe los datos por parámetro, así
- * que se puede renderizar y verificar de punta a punta (ver los tests que
- * comprueban que TODOS los registros cargados aparecen en el documento).
+ * que se puede renderizar y verificar de punta a punta sin abrir nada:
+ *
+ *     npm run verify:pdf        → scripts/verificar-ficha-pdf.mjs
+ *
+ * Ese script genera el documento con muchos registros y comprueba que TODOS
+ * aparezcan en el texto realmente dibujado dentro del PDF. Correlo después de
+ * tocar este archivo.
  *
  * Dos caminos, un mismo contenido:
  *   · web    → jsPDF, que baja un archivo de verdad (expo-print en el navegador

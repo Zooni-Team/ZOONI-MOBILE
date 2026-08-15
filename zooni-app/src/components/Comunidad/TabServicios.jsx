@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fetchServicios } from '../../api/comunidad';
-import { hayClaveGoogle } from '../../services/lugaresApi';
+import { areaBuscable } from '../../services/lugaresApi';
 
 const FILTROS = [
   { v: 'todos', l: 'Todos' }, { v: 'veterinaria', l: 'Veterinaria' },
@@ -15,16 +15,27 @@ const COLORES = { veterinaria: '#E63946', paseador: '#F5A623', petshop: '#F5C842
 export default function TabServicios({ bbox, onSeleccionar }) {
   const [lista,  setLista]  = useState([]);
   const [filtro, setFiltro] = useState('todos');
+  // Buscar en OpenStreetMap tarda bastante más que leer la tabla de Supabase:
+  // sin un indicador, la pestaña parecía vacía mientras todavía estaba cargando.
+  const [cargando, setCargando] = useState(false);
   const timer = useRef(null);
 
   useEffect(() => {
     clearTimeout(timer.current);
+    if (!bbox) return undefined;
+    setCargando(true);
     timer.current = setTimeout(() => {
-      if (!bbox) return;
-      fetchServicios(bbox, filtro).then(d => setLista(d.servicios || [])).catch(() => {});
+      fetchServicios(bbox, filtro)
+        .then(d => setLista(d.servicios || []))
+        .catch(() => {})
+        .finally(() => setCargando(false));
     }, 800);
     return () => clearTimeout(timer.current);
   }, [bbox, filtro]);
+
+  // Con el mapa muy alejado no se consulta al proveedor gratuito (barrería medio
+  // país). Conviene decirlo en vez de mostrar "no hay servicios", que es falso.
+  const demasiadoLejos = bbox && !areaBuscable(bbox);
 
   return (
     <View style={{ flex: 1 }}>
@@ -68,11 +79,18 @@ export default function TabServicios({ bbox, onSeleccionar }) {
           </TouchableOpacity>
         )}
         ListEmptyComponent={
-          <Text style={styles.vacio}>
-            {hayClaveGoogle()
-              ? 'No hay servicios en esta área'
-              : 'No hay servicios cargados en esta área.\nConfigurá EXPO_PUBLIC_GOOGLE_MAPS_API_KEY para ver los negocios reales de Google Maps.'}
-          </Text>
+          cargando ? (
+            <View style={styles.vacioBox}>
+              <ActivityIndicator size="small" color="#2DBD72" />
+              <Text style={styles.vacio}>Buscando lugares en esta zona…</Text>
+            </View>
+          ) : (
+            <Text style={styles.vacio}>
+              {demasiadoLejos
+                ? 'Acercá el mapa para ver las veterinarias y pet shops de la zona.'
+                : 'No hay servicios en esta área'}
+            </Text>
+          )
         }
         contentContainerStyle={{ paddingBottom: 20 }}
       />
@@ -95,4 +113,5 @@ const styles = StyleSheet.create({
   metaItem:    { flexDirection: 'row', alignItems: 'center', gap: 3 },
   meta:        { fontSize: 11, color: '#6B6B6B' },
   vacio:       { textAlign: 'center', color: '#AAAAAA', marginTop: 20, fontSize: 12, lineHeight: 18, paddingHorizontal: 16 },
+  vacioBox:    { alignItems: 'center', marginTop: 20, gap: 4 },
 });

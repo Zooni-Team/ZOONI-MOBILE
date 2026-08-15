@@ -1,23 +1,30 @@
 /**
- * lugaresApi.js — Veterinarias, pet shops y peluquerías caninas reales (Google Places)
+ * lugaresApi.js — Veterinarias, pet shops y peluquerías caninas reales
  *
- * La pestaña "Servicios" de Comunidad mostraba solo lo que hubiera cargado a
- * mano en la tabla `servicios` de Supabase, que en la práctica estaba casi
- * vacía. Acá se consultan los negocios reales que Google conoce en el área que
- * el usuario está mirando en el mapa.
+ * Este módulo decide DE DÓNDE salen los locales que ve el usuario en la pestaña
+ * "Servicios" de Comunidad, y combina lo que venga con los servicios propios de
+ * Zooni. Hay dos proveedores:
  *
- * Se usa Places API (New) — Text Search — y no Nearby Search porque "peluquería
- * canina" no existe como tipo de lugar en Google: Nearby solo tiene
- * `veterinary_care` y `pet_store`. Con Text Search las tres categorías se
- * resuelven igual, en español y con el mismo código.
+ *   · OpenStreetMap (services/lugaresOsm.js) — GRATIS, sin clave. El que se usa
+ *     por defecto y el que ve cualquiera que clone el repo y levante la app.
+ *   · Google Places — opcional, solo si hay clave configurada. Aporta puntaje,
+ *     cantidad de reseñas y "abierto ahora", que OSM no tiene.
  *
- * ─── CONFIGURACIÓN (hace falta una API key) ──────────────────────────────────
- * Google cobra por consulta y exige una clave propia, así que no puede venir
- * incluida en el repo. Para activarlo:
+ * ─── POR QUÉ EL CAMBIO ───────────────────────────────────────────────────────
+ * Antes esto era solo Google Places, que exige una clave de API con facturación
+ * activada. Sin esa clave —el caso real de la app— la pestaña quedaba vacía y
+ * el mapa no mostraba una sola veterinaria: la tabla `servicios` de Supabase
+ * está prácticamente vacía y era lo único que quedaba.
+ *
+ * Ahora el camino por defecto NO necesita clave, cuenta ni tarjeta: los datos
+ * salen de OpenStreetMap, el mismo proyecto que ya provee los tiles del mapa de
+ * Comunidad. Ver services/lugaresOsm.js para los detalles y los límites.
+ *
+ * ─── GOOGLE (opcional, ya no hace falta) ─────────────────────────────────────
+ * Si algún día se quiere el puntaje y el "abierto ahora" de Google:
  *
  *   1. En console.cloud.google.com: crear proyecto → habilitar "Places API (New)"
- *      → Credenciales → Crear clave de API. Requiere facturación activada
- *      (hay un nivel gratuito mensual que cubre de sobra el uso de la app).
+ *      → Credenciales → Crear clave de API. Requiere facturación activada.
  *   2. RESTRINGIR la clave, porque al ser EXPO_PUBLIC_ viaja al cliente y es
  *      visible: restricción de aplicación por referente HTTP (tu dominio de
  *      Vercel) y restricción de API a Places API (New) únicamente.
@@ -27,10 +34,16 @@
  *
  *   4. Reiniciar Expo: las EXPO_PUBLIC_ se incrustan en tiempo de build.
  *
- * SIN la clave la app NO se rompe: cae a la tabla `servicios` de Supabase, que
- * es exactamente lo que mostraba antes. Es decir, esto suma datos, no reemplaza
- * el camino que ya funcionaba.
+ * Con la clave puesta, Google reemplaza a OSM (es el mismo dato pero más rico).
+ * Sin clave —lo normal— se usa OSM y no falta nada esencial.
+ *
+ * Se usa Places API (New) — Text Search — y no Nearby Search porque "peluquería
+ * canina" no existe como tipo de lugar en Google: Nearby solo tiene
+ * `veterinary_care` y `pet_store`. Con Text Search las tres categorías se
+ * resuelven igual, en español y con el mismo código.
  */
+
+import { buscarLugaresOsm, areaConsultable } from './lugaresOsm';
 
 const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 const ENDPOINT = 'https://places.googleapis.com/v1/places:searchText';
@@ -197,6 +210,40 @@ export async function buscarLugaresGoogle(bbox, tipo = 'todos', { signal } = {})
     else if (r.reason?.name !== 'AbortError') console.warn('[lugares] Google Places:', r.reason?.message);
   }
   return lugares;
+}
+
+// ─── PROVEEDOR EFECTIVO ───────────────────────────────────────────────────────
+
+/**
+ * Locales reales en el área visible, del proveedor que corresponda.
+ *
+ * Es la única función que debería llamar el resto de la app: elige proveedor
+ * sola, así que ni Comunidad ni las pestañas tienen que saber si hay clave de
+ * Google configurada.
+ *
+ * @param {{lat_min,lat_max,lng_min,lng_max}} bbox  área visible
+ * @param {string} tipo  'todos' | 'veterinaria' | 'petshop' | 'peluqueria'
+ * @returns {Promise<Array>} lista con la forma de `servicios`
+ *
+ * Nunca tira error: si el proveedor falla, Comunidad tiene que seguir mostrando
+ * los servicios propios igual.
+ */
+export async function buscarLugares(bbox, tipo = 'todos', opciones = {}) {
+  // Con clave, Google: mismos locales pero con puntaje y "abierto ahora".
+  if (hayClaveGoogle()) return buscarLugaresGoogle(bbox, tipo, opciones);
+  // Sin clave —el caso normal—, OpenStreetMap: gratis y sin configurar nada.
+  return buscarLugaresOsm(bbox, tipo, opciones);
+}
+
+/**
+ * ¿Se puede buscar en el área que se está mirando?
+ *
+ * Solo dice que no cuando el mapa está tan alejado que el proveedor gratuito no
+ * consulta (ver AREA_MAX_GRADOS2 en lugaresOsm.js). Con clave de Google no hay
+ * tope: la restricción por rectángulo la resuelve el propio Places.
+ */
+export function areaBuscable(bbox) {
+  return hayClaveGoogle() ? !!bbox : areaConsultable(bbox);
 }
 
 // ─── COMBINAR CON LOS SERVICIOS PROPIOS ───────────────────────────────────────

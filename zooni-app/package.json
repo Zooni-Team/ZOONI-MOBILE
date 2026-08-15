@@ -9,6 +9,7 @@
     "web": "expo start --web",
     "build:web": "expo export --platform web",
     "vercel-build": "expo export --platform web",
+    "verify:pdf": "node scripts/verificar-ficha-pdf.mjs",
     "setup:home-assets": "node assets/setup-home-assets.js"
   },
   "dependencies": {

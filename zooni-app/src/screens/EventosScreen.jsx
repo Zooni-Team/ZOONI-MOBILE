@@ -34,6 +34,8 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { fetchHome, fetchEventos } from '../services/api';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
+import { fetchMisMascotas } from '../services/petsApi';
+import { haySesion } from '../config/session';
 import {
   agregarEventoCalendario,
   getEventosCalendario,
@@ -390,7 +392,12 @@ export default function EventosScreen() {
   const [loading, setLoading]               = useState(true);
   const [refreshing, setRefreshing]         = useState(false);
   const [ciudad, setCiudad]                 = useState(null);
-  // Set de IDs de eventos ya agregados al calendario
+  // Mascotas del usuario y a cuál se le agregan los eventos. Con más de una,
+  // el evento tiene que poder ir al calendario de la que el usuario elija — no
+  // siempre a la activa (el calendario es por mascota, ver CalendarioScreen).
+  const [mascotas, setMascotas]             = useState([]);
+  const [mascotaSel, setMascotaSel]         = useState(null);
+  // Set de IDs de eventos ya agregados al calendario DE LA MASCOTA ELEGIDA
   const [eventosAgregados, setEventosAgregados] = useState(new Set());
   // Set de IDs de eventos con descripción expandida
   const [descripcionExpandida, setDescripcionExpandida] = useState(new Set());
@@ -408,6 +415,10 @@ export default function EventosScreen() {
    * Así, si el usuario elimina el evento desde CalendarioScreen, acá vuelve
    * a aparecer disponible para agregar. Se llama al cargar y cada vez que
    * la pantalla recupera el foco (por ejemplo, al volver de Calendario).
+   *
+   * Se consulta el calendario de la mascota ELEGIDA: un evento puede estar
+   * agregado para una mascota y no para otra, y el botón tiene que reflejar
+   * la que se está viendo.
    */
   const sincronizarAgregados = useCallback(async (petIdActual) => {
     if (!petIdActual) { setEventosAgregados(new Set()); return; }
@@ -417,6 +428,28 @@ export default function EventosScreen() {
       guardados.filter((e) => e.origen === 'eventos').map((e) => e.origenId),
     ));
   }, []);
+
+  // Mascotas del usuario, para poder elegir a cuál se le agrega cada evento.
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      if (!haySesion()) return;
+      try {
+        const { activas } = await fetchMisMascotas();
+        if (cancelado) return;
+        setMascotas(activas);
+        // Preselección: la activa del usuario, si no la primera.
+        setMascotaSel((actual) => actual
+          ?? activas.find((m) => m.id === homeData?.mascotaActiva?.id)?.id
+          ?? activas[0]?.id
+          ?? null);
+      } catch {
+        // Sin la lista, la pantalla sigue funcionando con la mascota activa.
+        if (!cancelado) setMascotaSel((actual) => actual ?? homeData?.mascotaActiva?.id ?? null);
+      }
+    })();
+    return () => { cancelado = true; };
+  }, [homeData?.mascotaActiva?.id]);
 
   /*
     Acá había además un "sembrado inicial" que copiaba solo al calendario todos
@@ -432,9 +465,13 @@ export default function EventosScreen() {
   */
   useFocusEffect(
     useCallback(() => {
-      sincronizarAgregados(homeData?.mascotaActiva?.id);
-    }, [homeData?.mascotaActiva?.id, sincronizarAgregados]),
+      sincronizarAgregados(mascotaSel);
+    }, [mascotaSel, sincronizarAgregados]),
   );
+
+  // Al cambiar de mascota hay que releer SU calendario: lo agregado para una no
+  // vale para la otra. useFocusEffect ya cubre esto mientras la pantalla está
+  // enfocada, que es el único momento en que el selector se puede tocar.
 
   /**
    * cargarDatos — obtiene el perfil del usuario y los eventos de su ciudad.
@@ -474,7 +511,10 @@ export default function EventosScreen() {
       const eventosFinales = eventosData.length > 0 ? eventosData : EVENTOS_DEMO;
 
       setEventos(eventosFinales);
-      await sincronizarAgregados(datosHome?.mascotaActiva?.id);
+      // La mascota elegida manda; en el primer render todavía no está resuelta
+      // y se cae a la activa (el efecto de foco vuelve a sincronizar apenas el
+      // selector queda listo).
+      await sincronizarAgregados(mascotaSel ?? datosHome?.mascotaActiva?.id);
     } catch (error) {
       console.error('Error al cargar eventos:', error);
 
@@ -511,14 +551,14 @@ export default function EventosScreen() {
       // Guardia: ya agregado
       if (eventosAgregados.has(evento.id)) return;
 
-      // Guardia: sin mascota activa
-      const petId = homeData?.mascotaActiva?.id;
+      // El evento va al calendario de la mascota ELEGIDA en el selector.
+      const petId = mascotaSel ?? homeData?.mascotaActiva?.id;
 
       // Marcar como procesando
       setProcesandoIds((prev) => new Map(prev).set(evento.id, true));
 
       if (!petId) {
-        Alert.alert('Sin mascota activa', 'Elegí una mascota activa para agregar eventos a su calendario.');
+        Alert.alert('Sin mascota', 'Agregá una mascota para poder guardar eventos en su calendario.');
         setProcesandoIds((prev) => { const next = new Map(prev); next.delete(evento.id); return next; });
         return;
       }
@@ -562,8 +602,11 @@ export default function EventosScreen() {
         });
       }
     },
-    [eventosAgregados, homeData, navigation],
+    [eventosAgregados, homeData, mascotaSel, navigation],
   );
+
+  // Nombre de la mascota elegida, para dejar claro a dónde va lo que se agrega.
+  const nombreMascotaSel = mascotas.find((m) => m.id === mascotaSel)?.nombre ?? null;
 
   // ── Render ────────────────────────────────────────────────────
   return (
@@ -591,7 +634,33 @@ export default function EventosScreen() {
         {/* ── TÍTULO ── */}
         <View style={styles.tituloContainer}>
           <Text style={styles.titulo}>🎉 Eventos</Text>
+          {mascotas.length > 1 && nombreMascotaSel && (
+            <Text style={styles.subtitulo}>
+              Se agregan al calendario de {nombreMascotaSel}
+            </Text>
+          )}
         </View>
+
+        {/* Selector de mascota: cada una tiene su propio calendario, así que hay
+            que poder elegir a cuál va el evento. Con una sola no se muestra. */}
+        {mascotas.length > 1 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}
+            style={styles.petTabs} contentContainerStyle={styles.petTabsContent}>
+            {mascotas.map((mx) => (
+              <TouchableOpacity
+                key={mx.id}
+                style={[styles.petTab, mascotaSel === mx.id && styles.petTabOn]}
+                onPress={() => setMascotaSel(mx.id)}
+                accessibilityLabel={`Agregar los eventos al calendario de ${mx.nombre}`}
+              >
+                <Text style={[styles.petTabTxt, mascotaSel === mx.id && styles.petTabTxtOn]}
+                  numberOfLines={1}>
+                  {mx.nombre}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
 
         {/* ── CONTENIDO PRINCIPAL ── */}
         {loading ? (
@@ -701,6 +770,17 @@ const styles = StyleSheet.create({
     color: '#6B6B6B',
     textAlign: 'center',
   },
+
+  // ── Selector de mascota (mismo lenguaje visual que CalendarioScreen) ──
+  petTabs: { flexGrow: 0, marginBottom: 10 },
+  petTabsContent: { paddingHorizontal: 20, gap: 8 },
+  petTab: {
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.75)', borderWidth: 1.5, borderColor: 'transparent',
+  },
+  petTabOn: { backgroundColor: '#FFFFFF', borderColor: '#2DBD72' },
+  petTabTxt: { fontSize: 13, color: '#6B6B6B', fontWeight: '600', maxWidth: 130 },
+  petTabTxtOn: { color: '#2DBD72', fontWeight: '700' },
 
   // ── ScrollView ────────────────────────────────────────────
   scrollContent: {

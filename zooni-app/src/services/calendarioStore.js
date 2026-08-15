@@ -104,7 +104,7 @@ export async function eliminarEventoCalendario(eventoId) {
  * pantalla se acuerde de hacerla.
  *
  * La base además tiene un índice único que lo garantiza aunque dos
- * dispositivos escriban a la vez (migración 035).
+ * dispositivos escriban a la vez (migración 031).
  */
 export async function agregarEventoCalendario(petId, evento) {
   if (!petId) throw new Error('Falta la mascota a la que agregar el evento');
