@@ -34,6 +34,7 @@ import { useFocusEffect, useRoute } from '@react-navigation/native';
 
 import { getColorByProximidad, getTextoDias } from '../utils/colorProximidad';
 import HamburgerDrawer from '../components/HamburgerDrawer';
+import SelectorMascota from '../components/SelectorMascota';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { haySesion } from '../config/session';
 import { fetchMisMascotas } from '../services/petsApi';
@@ -598,23 +599,12 @@ export default function CalendarioScreen() {
 
         {/* Selector de mascota: cada una tiene su propio calendario. Con una
             sola mascota no se muestra, para no agregar ruido. */}
-        {mascotas.length > 1 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}
-            style={s.petTabs} contentContainerStyle={s.petTabsContent}>
-            {mascotas.map((mx) => (
-              <TouchableOpacity
-                key={mx.id}
-                style={[s.petTab, mascotaSel === mx.id && s.petTabOn]}
-                onPress={() => setMascotaSel(mx.id)}
-                accessibilityLabel={`Ver el calendario de ${mx.nombre}`}
-              >
-                <Text style={[s.petTabTxt, mascotaSel === mx.id && s.petTabTxtOn]} numberOfLines={1}>
-                  {mx.nombre}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
+        <SelectorMascota
+          mascotas={mascotas}
+          valor={mascotaSel}
+          onCambiar={setMascotaSel}
+          style={{ marginBottom: 6 }}
+        />
 
         <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}
           showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
@@ -969,21 +959,8 @@ const s = StyleSheet.create({
   },
   btnCancelarTxt: { fontSize: 15, fontWeight: '700', color: '#6B6B6B' },
 
-  // Selector de mascota (pestañas de la pantalla y chips del modal)
-  petTabs: { flexGrow: 0, marginBottom: 6 },
-  petTabsContent: { paddingHorizontal: 20, gap: 8, alignItems: 'center' },
-  petTab: {
-    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.75)', borderWidth: 1.5, borderColor: 'transparent',
-    // flexShrink: 0 — dentro de un ScrollView horizontal las pastillas se
-    // encogen hasta dejar solo el padding y el nombre (numberOfLines={1}, con
-    // overflow oculto) se recorta a nada: quedan bloques vacíos.
-    flexShrink: 0,
-  },
-  petTabOn: { backgroundColor: '#FFFFFF', borderColor: '#2DBD72' },
-  petTabTxt: { fontSize: 13, color: '#6B6B6B', fontWeight: '600', maxWidth: 130 },
-  petTabTxtOn: { color: '#2DBD72', fontWeight: '700' },
-
+  // Chips del modal para asignar el evento a una mascota. La tira de la
+  // pantalla ya no vive acá: es el componente SelectorMascota, compartido.
   petPickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
   petPick: {
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18,

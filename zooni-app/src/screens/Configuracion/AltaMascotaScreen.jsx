@@ -40,7 +40,8 @@ import { crearMascota } from '../../services/petsApi';
 import { toISODateLocal } from '../../utils/fechaLocal';
 import { calcularEdad } from '../../utils/calcularEdad';
 import { formatearPeso, pesoValido, rangoPeso, textoRangoPeso } from '../../constants/pesoPorEspecie';
-import { alerta, confirmar } from '../../utils/dialogo';
+import { alerta } from '../../utils/dialogo';
+import AppDialog from '../../components/AppDialog';
 
 const SEXOS = ['Macho', 'Hembra'];
 
@@ -89,6 +90,8 @@ export default function AltaMascotaScreen() {
   const navigation = useNavigation();
   const [paso, setPaso] = useState(1);
   const [guardando, setGuardando] = useState(false);
+  // Mascota recién creada: dispara el cartel de "¿completás la ficha médica?"
+  const [altaOk, setAltaOk] = useState(null);
 
   // Paso 1 (= RegisterStep1)
   const [nombre, setNombre] = useState('');
@@ -206,18 +209,14 @@ export default function AltaMascotaScreen() {
         imagenAsset: IMAGEN_ASSET_POR_ESPECIE[especie] ?? 'perro_default',
         fotoUri, // se sube a Storage y se guarda en Mascota.Foto (la de Match)
       });
-      // confirmar() funciona también en web (Alert.alert ahí es un no-op y
-      // dejaba el botón cargando para siempre con la mascota ya creada)
-      const irAFicha = await confirmar(
-        `¡${mascota.nombre} ya es parte de Zooni!`,
-        `${capitalizar(mascota.especie)}${mascota.raza ? ` · ${mascota.raza}` : ''}\n¿Querés completar su ficha médica ahora?`,
-        { textoOk: 'Completar ficha médica', textoCancelar: 'Listo' }
-      );
-      if (irAFicha) {
-        navigation.replace('FichaMedica', { mascotaId: mascota.id });
-      } else {
-        navigation.goBack();
-      }
+      /*
+        Cartel propio de la app (AppDialog) y no confirmar(): en web ese helper
+        cae en window.confirm, que se ve como el cuadro gris del navegador con
+        el "localhost:8081 dice" arriba. Es lo único de este flujo que no
+        parecía parte de Zooni.
+      */
+      setGuardando(false);
+      setAltaOk(mascota);
     } catch (e) {
       setGuardando(false);
       if (e?.code === 'LIMITE_ACTIVAS') {
@@ -377,11 +376,38 @@ export default function AltaMascotaScreen() {
         </TouchableOpacity>
       </KeyboardAvoidingView>
 
+      {/*
+        Alta lista: cartel de la app, no el confirm del navegador.
+
+        SIN `onCerrar` a propósito. AppDialog ejecuta onCerrar ANTES que el
+        onPress del botón, así que cualquier navegación puesta ahí pisaría la
+        del botón (el goBack se comía el replace a la ficha médica). Sin la
+        prop, el cartel no se cierra tocando afuera y hay que elegir una de las
+        dos opciones — que es lo correcto acá: la mascota ya está creada y
+        dejar al usuario de nuevo en el formulario invita a cargarla dos veces.
+      */}
+      <AppDialog
+        visible={!!altaOk}
+        titulo={altaOk ? `¡${altaOk.nombre} ya es parte de Zooni!` : ''}
+        mensaje={altaOk
+          ? `${capitalizar(altaOk.especie)}${altaOk.raza ? ` · ${altaOk.raza}` : ''}\n¿Querés completar su ficha médica ahora?`
+          : ''}
+        botones={[
+          {
+            texto: 'Completar ficha médica',
+            estilo: 'primary',
+            onPress: () => navigation.replace('FichaMedica', { mascotaId: altaOk.id }),
+          },
+          { texto: 'Más tarde', estilo: 'ghost', onPress: () => navigation.goBack() },
+        ]}
+      />
+
       <FechaPicker
         visible={showFecha}
         titulo="¿Cuándo nació?"
         valor={fechaNacimiento ?? new Date()}
         aniosAtras={30}
+        sinFuturo
         onConfirmar={(d) => { setFechaNacimiento(d); setShowFecha(false); setErrores((p2) => ({ ...p2, fechaNacimiento: null })); }}
         onCancelar={() => setShowFecha(false)}
       />

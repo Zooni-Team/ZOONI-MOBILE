@@ -222,7 +222,18 @@ export async function fetchMisMascotasMatch() {
   const { data, error } = await supabase
     .from('Mascota')
     .select('*')
-    .eq('Id_User', getCurrentUserId());
+    .eq('Id_User', getCurrentUserId())
+    /*
+      El ORDER BY no es cosmético: sin él Postgres devuelve las filas en el
+      orden físico de la tabla, y activarMascota hace dos UPDATE (apaga todas,
+      prende una). Cada UPDATE escribe una versión nueva de la fila al final
+      del heap, así que la mascota recién tocada saltaba al final de la lista y
+      las pastillas del selector se reordenaban solas en cada toque.
+
+      Por Id_Mascota, igual que fetchMisMascotas en petsApi: orden estable y el
+      mismo en todas las pantallas.
+    */
+    .order('Id_Mascota', { ascending: true });
   if (error) throw error;
   return (data ?? [])
     .filter((m) => (m.Estado ?? 'active') === 'active')
@@ -334,6 +345,35 @@ export async function fetchMiPerfilMatch() {
     intereses: data.Intereses ?? [],
     fotoPerfilUrl: data.FotoPerfil,
   };
+}
+
+/**
+ * Mi propia tarjeta de Match, con EXACTAMENTE la misma forma que las de los
+ * demás. La usa el botón "Así te ven" del header.
+ *
+ * Pasa por `mapPerfil`, el mismo mapeo que arma los perfiles del swipe, a
+ * propósito: si la vista previa se armara aparte, mostraría algo distinto de lo
+ * que ve la gente en cuanto una de las dos cambiara — que es justo lo que el
+ * usuario quiere poder comprobar acá.
+ *
+ * Devuelve null si todavía no hay mascota activa (nada que mostrar).
+ */
+export async function fetchMiTarjetaMatch() {
+  const [{ data: user, error }, mascota] = await Promise.all([
+    supabase.from('User').select('*').eq('Id_User', getCurrentUserId()).single(),
+    miMascotaActiva(),
+  ]);
+  if (error) throw error;
+  if (!user || !mascota) return null;
+
+  const { data: fotos } = await supabase
+    .from('mascota_fotos').select('*').eq('id_mascota', mascota.Id_Mascota)
+    .order('orden', { ascending: true });
+
+  const fotosPorMascota = new Map([[mascota.Id_Mascota, fotos ?? []]]);
+  // `miUsuario` es uno mismo, así que la distancia da 0: la tarjeta no la
+  // muestra en la vista previa (ver MiTarjetaMatchModal).
+  return mapPerfil({ ...mascota, User: user }, user, fotosPorMascota);
 }
 
 /** true si el usuario ya cargó todo lo que necesita su perfil de Match. */

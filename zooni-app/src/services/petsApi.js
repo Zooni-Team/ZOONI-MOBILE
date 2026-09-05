@@ -56,6 +56,9 @@ function mapMascota(m) {
     sexo: m.Sexo ?? null,
     fotoUrl: m.Foto ?? null,
     imagenAsset: m.ImagenAsset ?? 'perro_default',
+    // Si la columna todavía no existe (migración 032 sin correr), se asume
+    // true: mismo comportamiento que antes, la foto manda.
+    mostrarFoto: m.MostrarFoto ?? true,
     peso: m.Peso != null ? Number(m.Peso) : null,
     fechaNacimiento: m.FechaNacimiento ?? null,
     edadTexto: calcularEdadTexto(m.FechaNacimiento),
@@ -356,7 +359,7 @@ export async function actualizarMascota(id, patch) {
     fechaNacimiento: 'FechaNacimiento', peso: 'Peso', tamano: 'Tamano',
     castrado: 'Castrado', microchip: 'Microchip', descripcion: 'Descripcion',
     senas: 'SenasParticulares', visibleEnMatch: 'VisibleEnMatch',
-    imagenAsset: 'ImagenAsset', fotoUrl: 'Foto',
+    imagenAsset: 'ImagenAsset', fotoUrl: 'Foto', mostrarFoto: 'MostrarFoto',
   };
   // Longitudes máximas por campo de texto (mismas que los CHECK del 021)
   const maxLen = {

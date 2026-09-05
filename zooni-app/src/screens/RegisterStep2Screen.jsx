@@ -241,6 +241,7 @@ export default function RegisterStep2Screen() {
         titulo="¿Cuándo nació?"
         valor={fechaNacimiento ?? new Date()}
         aniosAtras={30}
+        sinFuturo
         onConfirmar={(d) => { setFechaNacimiento(d); setShowFecha(false); setErrores((p2) => ({ ...p2, fechaNacimiento: null })); }}
         onCancelar={() => setShowFecha(false)}
       />

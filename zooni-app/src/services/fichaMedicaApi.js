@@ -113,6 +113,10 @@ export async function fetchVacunas(petId) {
       return {
         id: v.Id_Vacuna,
         nombre: v.Nombre,
+        // La columna Dosis existía en el catálogo pero no se mapeaba, así que
+        // nunca llegaba a la pantalla: es la que dice "1 de 3" o "Refuerzo",
+        // el dato que ubica cada vacuna dentro del plan (migración 033).
+        dosis: v.Dosis ?? null,
         frecuencia_descripcion: v.FrecuenciaDescripcion ?? 'Sin frecuencia definida',
         applied: !!aplicacion,
         proximo_refuerzo: aplicacion?.ProximaDosis ?? null,

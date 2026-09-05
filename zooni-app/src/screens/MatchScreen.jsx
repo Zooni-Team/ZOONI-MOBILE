@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar,
-  ImageBackground, useWindowDimensions,
+  Image, ImageBackground, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -9,19 +9,25 @@ import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 
 import HamburgerDrawer from '../components/HamburgerDrawer';
+import SelectorMascota from '../components/SelectorMascota';
 import SkeletonLoader from '../components/SkeletonLoader';
 import MatchSwipeStack from '../components/match/MatchSwipeStack';
 import MatchActionButtons from '../components/match/MatchActionButtons';
 import MatchCelebrationOverlay from '../components/match/MatchCelebrationOverlay';
 import MatchProfileDetailModal from '../components/match/MatchProfileDetailModal';
 import MatchProfileSetup from '../components/match/MatchProfileSetup';
-import PetMatchProfileModal from '../components/match/PetMatchProfileModal';
+import MiTarjetaMatchModal from '../components/match/MiTarjetaMatchModal';
+import PetMatchOnboarding from '../components/match/PetMatchOnboarding';
 import {
   fetchMatchPerfiles, postMatchLike, postMatchSkip,
   fetchMiPerfilMatch, perfilMatchCompleto, actualizarMiUbicacionMatch,
   fetchMisMascotasMatch,
 } from '../services/matchApi';
 import { setFotoPrincipalMascota } from '../services/petsApi';
+// Cambiar de mascota en Match SÍ persiste: el backend resuelve quién swipea
+// desde Mascota.EsActiva (a diferencia del resto de las pantallas, donde el
+// cambio es local).
+import { activarMascota } from '../services/api';
 import { resolveMascotaVisual } from '../constants/petImages';
 import { alerta } from '../utils/dialogo';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
@@ -47,6 +53,7 @@ export default function MatchScreen() {
   // null = verificando si falta algo, false = falta completar, true = listo
   const [perfilListo, setPerfilListo] = useState(null);
   const [perfilMatch, setPerfilMatch] = useState(null); // datos ya cargados (foto, fecha…)
+  const [miTarjetaVisible, setMiTarjetaVisible] = useState(false); // "Así te ven"
 
   // Perfil de Match POR MASCOTA: detecta cuáles activas no lo tienen todavía
   const [misMascotas, setMisMascotas] = useState([]);
@@ -202,6 +209,35 @@ export default function MatchScreen() {
   const activaSinFoto = mascotaActivaMatch && !activaSinPerfil && !mascotaActivaMatch.fotoUrl;
   const otrasSinPerfil = misMascotas.filter((m) => !m.perfilCreado && !m.esActiva);
 
+  /*
+    Cambio de mascota en Match.
+
+    Acá NO alcanza con un cambio local como en el resto de las pantallas: quién
+    swipea lo resuelve el backend a partir de Mascota.EsActiva (ver matchApi),
+    y los likes y los perfiles ya vistos se guardan por mascota. Así que el
+    cambio se persiste y recién después se recargan los perfiles — si no, se
+    seguiría votando como la mascota anterior.
+  */
+  const [cambiandoMascota, setCambiandoMascota] = useState(false);
+
+  const elegirMascota = async (id) => {
+    if (id === mascotaActivaMatch?.id || cambiandoMascota) return;
+    setCambiandoMascota(true);
+    // Optimista: la tira marca la nueva enseguida y no espera a la red.
+    setMisMascotas((prev) => prev.map((m) => ({ ...m, esActiva: m.id === id })));
+    try {
+      await activarMascota(id);
+      activaIdRef.current = id;
+      await loadPerfiles(true);
+      await loadMisMascotas();
+    } catch {
+      alerta('No se pudo cambiar', 'Intentá de nuevo en un momento.');
+      await loadMisMascotas();   // vuelve al estado real
+    } finally {
+      setCambiandoMascota(false);
+    }
+  };
+
   const marcarPerfilCreado = (id) => {
     setMisMascotas((prev) => prev.map((m) => (m.id === id ? { ...m, perfilCreado: true } : m)));
     setSetupMascota(null);
@@ -235,8 +271,36 @@ export default function MatchScreen() {
     );
   }
 
+  // Onboarding del usuario: sin perfil completo no hay swipe. Las preguntas
+  // solo aparecen acá, creando el perfil — no colgadas de "Mi perfil".
   if (perfilListo === false) {
-    return <MatchProfileSetup perfilActual={perfilMatch} onListo={() => setPerfilListo(true)} />;
+    return (
+      <MatchProfileSetup
+        perfilActual={perfilMatch}
+        onListo={async () => {
+          setPerfilListo(true);
+          try { setPerfilMatch(await fetchMiPerfilMatch()); } catch { /* no bloquea */ }
+        }}
+      />
+    );
+  }
+
+  // Onboarding de la mascota: se entra tocando "Crear perfil de X". Ocupa la
+  // pantalla entera (antes era una hoja inferior con todo junto).
+  if (setupMascota) {
+    return (
+      <PetMatchOnboarding
+        mascota={setupMascota}
+        onCancelar={() => setSetupMascota(null)}
+        onListo={(id) => {
+          marcarPerfilCreado(id);
+          // La mascota ya tiene perfil y foto: se recarga el pool para que
+          // entre al swipe sin salir y volver a la pantalla.
+          loadMisMascotas();
+          loadPerfiles(true);
+        }}
+      />
+    );
   }
 
   return (
@@ -257,6 +321,26 @@ export default function MatchScreen() {
           >
             <Ionicons name="menu" size={30} color="#0A0A0A" />
           </TouchableOpacity>
+
+          {/* Acceso al propio perfil, arriba a la izquierda como en las apps de
+              citas: se toca la foto y se ve la tarjeta tal cual la ve la gente.
+              Antes no había forma de mirarse: se completaba el setup a ciegas. */}
+          <TouchableOpacity
+            style={styles.miPerfilBtn}
+            onPress={() => setMiTarjetaVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Ver mi perfil como lo ven los demás"
+          >
+            {perfilMatch?.fotoPerfilUrl
+              ? <Image source={{ uri: perfilMatch.fotoPerfilUrl }} style={styles.miPerfilFoto} />
+              : (
+                <View style={[styles.miPerfilFoto, styles.miPerfilFotoVacia]}>
+                  <Ionicons name="person" size={16} color="#6B6B6B" />
+                </View>
+              )}
+            <Text style={styles.miPerfilTxt}>Mi perfil</Text>
+          </TouchableOpacity>
+
           <View style={styles.headerCenter} />
           <TouchableOpacity
             style={styles.filtersBtn}
@@ -269,8 +353,16 @@ export default function MatchScreen() {
         </View>
         <View style={styles.headerDivider} />
 
-        {/* El perfil de Match de las otras mascotas propias se crea al
-            activarlas desde Home — acá no se muestra nada del usuario. */}
+        {/* Con más de una mascota se puede elegir cuál swipea. Los likes y los
+            perfiles ya vistos son por mascota, así que cambiar acá recarga la
+            pila de perfiles (ver elegirMascota). */}
+        <SelectorMascota
+          mascotas={misMascotas}
+          valor={mascotaActivaMatch?.id}
+          onCambiar={elegirMascota}
+          deshabilitado={cambiandoMascota}
+          style={{ marginTop: 10 }}
+        />
 
         <View style={styles.body}>
           {activaSinPerfil ? (
@@ -376,12 +468,8 @@ export default function MatchScreen() {
         onClose={() => setDetailPerfil(null)}
       />
 
-      <PetMatchProfileModal
-        visible={!!setupMascota}
-        mascota={setupMascota}
-        onClose={() => setSetupMascota(null)}
-        onCreado={marcarPerfilCreado}
-      />
+      {/* El perfil de la mascota ya no se crea en una hoja inferior: ahora es
+          el onboarding a pantalla completa de más arriba (PetMatchOnboarding). */}
 
       <MatchCelebrationOverlay
         visible={!!matchOverlay}
@@ -397,6 +485,11 @@ export default function MatchScreen() {
           });
         }}
         onKeepExploring={() => setMatchOverlay(null)}
+      />
+
+      <MiTarjetaMatchModal
+        visible={miTarjetaVisible}
+        onClose={() => setMiTarjetaVisible(false)}
       />
 
       <HamburgerDrawer
@@ -426,6 +519,20 @@ const styles = StyleSheet.create({
   },
   filtersText: { fontSize: 14, fontWeight: '700', color: '#2C2C2C' },
   headerDivider: { height: 1, backgroundColor: 'rgba(0,0,0,0.06)', marginHorizontal: 20 },
+
+  // Acceso al propio perfil, pegado al menú (arriba a la izquierda)
+  miPerfilBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 12,
+    paddingRight: 10, paddingVertical: 4, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.75)',
+  },
+  miPerfilFoto: {
+    width: 28, height: 28, borderRadius: 14, backgroundColor: '#EFEFEF',
+    borderWidth: 1.5, borderColor: '#2DBD72',
+  },
+  miPerfilFotoVacia: { alignItems: 'center', justifyContent: 'center' },
+  miPerfilTxt: { fontSize: 12, fontWeight: '700', color: '#2C2C2C' },
+
   body: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden', paddingVertical: 6,

@@ -52,9 +52,10 @@ export default function MatchProfileCard({ perfil, cardHeight, cardWidth, onPres
             <Text style={styles.ownerInitial}>{nombre[0]}</Text>
           </View>
         )}
-        <View style={styles.petAvatarWrap}>
-          <Image source={resolveMascotaVisual(mascota)} style={styles.petAvatar} />
-        </View>
+        {/* Acá iba un círculo chico con la ilustración de la mascota, pegado
+            abajo del avatar del dueño. Se sacó: la foto grande de la tarjeta ya
+            es la mascota, así que repetía lo mismo y encima tapaba parte de la
+            foto de perfil. */}
       </View>
 
       <View style={styles.infoOverlay}>
@@ -149,16 +150,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#C8F0D8', alignItems: 'center', justifyContent: 'center',
   },
   ownerInitial: { fontSize: 26, fontWeight: '800', color: '#27AE60' },
-  petAvatarWrap: { position: 'absolute', bottom: -12, right: -12 },
-  petAvatar: {
-    width: 38, height: 38, borderRadius: 19,
-    borderWidth: 2, borderColor: '#FFFFFF',
-  },
-  petAvatarFallback: {
-    width: 38, height: 38, borderRadius: 19,
-    borderWidth: 2, borderColor: '#FFFFFF',
-    backgroundColor: '#F5C842', alignItems: 'center', justifyContent: 'center',
-  },
   infoOverlay: {
     position: 'absolute',
     left: 0,

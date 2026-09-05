@@ -88,7 +88,17 @@ export function resolveMascotaVisual(mascota = {}) {
   const asset = mascota.imagenAsset ?? mascota.imagen_asset ?? null;
   const { especie, raza } = mascota;
 
-  if (fotoUrl) return { uri: fotoUrl };
+  /*
+    Preferencia por mascota (Mascota.MostrarFoto, migración 032): con la foto
+    cargada la app dejaba de mostrar el avatar del Closet en todos lados, y la
+    foto no se puede borrar porque Match la exige. O sea, cargarla para Match
+    apagaba el Closet en el resto de la app.
+
+    `!== false` y no `=== true`: los objetos que NO traen el campo —los perfiles
+    de Match, que arma mapPerfil— siguen mostrando la foto real como hasta
+    ahora, que es justo lo que esa sección necesita.
+  */
+  if (fotoUrl && mascota.mostrarFoto !== false) return { uri: fotoUrl };
 
   const propia = PET_IMAGES[asset];
   if (propia && propia !== FALLBACK) return propia;

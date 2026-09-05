@@ -21,6 +21,9 @@ import {
 } from '../../services/petsApi';
 import { sanitizarDecimal } from '../../utils/sanitizar';
 import { pesoValido as esPesoValido, textoRangoPeso } from '../../constants/pesoPorEspecie';
+import { resolveMascotaVisual } from '../../constants/petImages';
+import { parseFechaLocal, toISODateLocal } from '../../utils/fechaLocal';
+import FechaPicker from '../../components/FechaPicker';
 import { alerta } from '../../utils/dialogo';
 
 const P = {
@@ -34,6 +37,30 @@ function Chip({ label, activo, onPress }) {
     <TouchableOpacity style={[e.chip, activo && e.chipActivo]} onPress={onPress}
       accessibilityRole="radio" accessibilityState={{ selected: activo }}>
       <Text style={[e.chipTxt, activo && e.chipTxtActivo]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+/** Una de las dos opciones de "¿qué mostramos en la app?": foto o avatar. */
+function OpcionVisual({ activo, onPress, titulo, fuente, icono, deshabilitado }) {
+  return (
+    <TouchableOpacity
+      style={[e.visualOpcion, activo && e.visualOpcionOn, deshabilitado && { opacity: 0.45 }]}
+      onPress={deshabilitado ? undefined : onPress}
+      disabled={deshabilitado}
+      accessibilityRole="radio"
+      accessibilityState={{ selected: activo, disabled: !!deshabilitado }}
+      accessibilityLabel={`Mostrar ${titulo}`}
+    >
+      {fuente
+        ? <Image source={fuente} style={e.visualImg} resizeMode="cover" />
+        : (
+          <View style={[e.visualImg, e.visualImgVacia]}>
+            <Ionicons name={icono} size={26} color={P.textSoft} />
+          </View>
+        )}
+      <Text style={[e.visualTxt, activo && e.visualTxtOn]}>{titulo}</Text>
+      {activo && <Ionicons name="checkmark-circle" size={18} color={P.brandText} />}
     </TouchableOpacity>
   );
 }
@@ -72,6 +99,17 @@ export default function EditarMascotaScreen() {
   const [microchip, setMicrochip] = useState(original?.microchip ?? '');
   const [descripcion, setDescripcion] = useState(original?.descripcion ?? '');
   const [visibleEnMatch, setVisibleEnMatch] = useState(original?.visibleEnMatch ?? true);
+  // Foto real vs avatar del Closet en el resto de la app (migración 032)
+  const [mostrarFoto, setMostrarFoto] = useState(original?.mostrarFoto ?? true);
+  const [fechaNacimiento, setFechaNacimiento] = useState(parseFechaLocal(original?.fechaNacimiento));
+  const [showFecha, setShowFecha] = useState(false);
+
+  // El avatar tal cual lo resolvería la app si la preferencia fuera "avatar":
+  // se fuerza mostrarFoto:false para que no devuelva la foto.
+  const avatarSource = useMemo(
+    () => resolveMascotaVisual({ ...(original ?? {}), mostrarFoto: false }),
+    [original],
+  );
 
   // Galería de fotos (portada + adicionales) para Match
   const [fotos, setFotos] = useState([]);
@@ -118,9 +156,14 @@ export default function EditarMascotaScreen() {
       castrado !== original.castrado ||
       microchip !== (original.microchip ?? '') ||
       descripcion !== (original.descripcion ?? '') ||
-      visibleEnMatch !== (original.visibleEnMatch ?? true)
+      visibleEnMatch !== (original.visibleEnMatch ?? true) ||
+      mostrarFoto !== (original.mostrarFoto ?? true) ||
+      // Se comparan las fechas en ISO y no por identidad de Date: parseFechaLocal
+      // devuelve un objeto nuevo y siempre daría "cambió".
+      (fechaNacimiento ? toISODateLocal(fechaNacimiento) : null) !== (original.fechaNacimiento ?? null)
     );
-  }, [original, nombre, raza, sexo, peso, tamano, senas, castrado, microchip, descripcion, visibleEnMatch]);
+  }, [original, nombre, raza, sexo, peso, tamano, senas, castrado, microchip, descripcion,
+    visibleEnMatch, mostrarFoto, fechaNacimiento]);
 
   // Catálogo de razas de Supabase filtrado por la especie de la mascota
   useEffect(() => {
@@ -167,6 +210,8 @@ export default function EditarMascotaScreen() {
         microchip: microchip || null,
         descripcion: descripcion.trim() || null,
         visibleEnMatch,
+        mostrarFoto,
+        fechaNacimiento: fechaNacimiento ? toISODateLocal(fechaNacimiento) : null,
       });
       navigation.goBack();
     } catch {
@@ -226,6 +271,20 @@ export default function EditarMascotaScreen() {
         </Seccion>
 
         <Seccion titulo="Fechas y datos" abierta={abierta === 1} onToggle={() => setAbierta(abierta === 1 ? -1 : 1)}>
+          {/* La sección se llamaba "Fechas y datos" pero no tenía ninguna
+              fecha: la de nacimiento solo se podía cambiar entrando a la Ficha
+              Médica, que es un rodeo para algo que se edita desde acá. */}
+          <Text style={e.label}>¿Cuándo nació?</Text>
+          <TouchableOpacity style={e.select} onPress={() => setShowFecha(true)}
+            accessibilityRole="button" accessibilityLabel="Elegir fecha de nacimiento">
+            <Text style={[e.selectTxt, !fechaNacimiento && { color: P.textSoft }]}>
+              {fechaNacimiento
+                ? fechaNacimiento.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
+                : 'Sin fecha registrada'}
+            </Text>
+            <Ionicons name="calendar-outline" size={18} color={P.textSoft} />
+          </TouchableOpacity>
+
           <Text style={e.label}>Peso (kg) *</Text>
           <TextInput style={e.input} value={peso}
             onChangeText={(v) => setPeso(sanitizarDecimal(v))}
@@ -289,6 +348,42 @@ export default function EditarMascotaScreen() {
               </TouchableOpacity>
             )}
           </View>
+
+          {/*
+            Elegir qué se ve en el resto de la app.
+
+            Hasta ahora la foto ganaba siempre: apenas cargabas una, el avatar
+            que armaste en el Closet desaparecía del Home, la Ficha Médica y
+            Mis Mascotas. Y la foto no se puede sacar, porque Match la exige —
+            así que cargarla para Match apagaba el Closet en todos lados.
+
+            Esto NO afecta a Match: ahí siempre se muestra la foto real.
+          */}
+          <View style={e.divisorSeccion} />
+          <Text style={e.label}>¿Qué mostramos en la app?</Text>
+          <Text style={e.fotosApoyo}>
+            En Match siempre se ve la foto real; esto cambia el Home, la ficha y Mis Mascotas.
+          </Text>
+          <View style={e.visualRow}>
+            <OpcionVisual
+              activo={mostrarFoto}
+              onPress={() => setMostrarFoto(true)}
+              titulo="Su foto"
+              fuente={original?.fotoUrl ? { uri: original.fotoUrl } : null}
+              icono="camera-outline"
+              deshabilitado={!original?.fotoUrl}
+            />
+            <OpcionVisual
+              activo={!mostrarFoto}
+              onPress={() => setMostrarFoto(false)}
+              titulo="Su avatar"
+              fuente={avatarSource}
+              icono="color-palette-outline"
+            />
+          </View>
+          {!original?.fotoUrl && (
+            <Text style={e.fotosApoyo}>Todavía no hay foto real: agregá una arriba para poder elegirla.</Text>
+          )}
         </Seccion>
 
         <Seccion titulo="Perfil social" abierta={abierta === 3} onToggle={() => setAbierta(abierta === 3 ? -1 : 3)}>
@@ -304,6 +399,18 @@ export default function EditarMascotaScreen() {
               color={visibleEnMatch ? P.brandText : P.textSoft} />
           </TouchableOpacity>
         </Seccion>
+
+        {/* sinFuturo: una fecha de nacimiento posterior a hoy daría una edad
+            negativa (el "-1 años y 9 meses" que aparecía en el alta). */}
+        <FechaPicker
+          visible={showFecha}
+          titulo="¿Cuándo nació?"
+          valor={fechaNacimiento ?? new Date()}
+          aniosAtras={30}
+          sinFuturo
+          onConfirmar={(d) => { setFechaNacimiento(d); setShowFecha(false); }}
+          onCancelar={() => setShowFecha(false)}
+        />
 
         {/* Bottom sheet de razas */}
         <Modal visible={razaSheet} transparent animationType="slide" onRequestClose={() => setRazaSheet(false)}>
@@ -384,6 +491,19 @@ const e = StyleSheet.create({
   pieAccionEliminar: { fontSize: 15, fontWeight: '700', color: P.sosRedText },
 
   fotosApoyo: { fontSize: 13, color: P.textSoft, marginBottom: 12, lineHeight: 18 },
+
+  // Elección foto real / avatar del Closet
+  divisorSeccion: { height: 1, backgroundColor: P.divider, marginVertical: 16 },
+  visualRow: { flexDirection: 'row', gap: 12 },
+  visualOpcion: {
+    flex: 1, alignItems: 'center', gap: 6, paddingVertical: 14, borderRadius: 16,
+    backgroundColor: P.neutral, borderWidth: 2, borderColor: 'transparent',
+  },
+  visualOpcionOn: { borderColor: P.brandText, backgroundColor: '#FFFFFF' },
+  visualImg: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#FFFFFF' },
+  visualImgVacia: { alignItems: 'center', justifyContent: 'center' },
+  visualTxt: { fontSize: 13, color: P.textSoft, fontWeight: '600' },
+  visualTxtOn: { color: P.brandText, fontWeight: '700' },
   fotosGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   fotoItem: { width: 92, height: 92, borderRadius: 12, overflow: 'hidden' },
   fotoImg: { width: '100%', height: '100%' },

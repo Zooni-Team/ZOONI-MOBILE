@@ -637,7 +637,11 @@ const styles = StyleSheet.create({
   gridRow: {
     gap: 12,
     marginBottom: 12,
-    justifyContent: 'flex-start',
+    // Centrado y no 'flex-start': la última fila casi nunca viene completa (con
+    // 4 looks queda una sola tarjeta) y alineada a la izquierda se veía como un
+    // hueco al costado en vez de parte de la grilla. Las filas llenas no
+    // cambian: justifyContent solo reparte el espacio que sobra.
+    justifyContent: 'center',
   },
 
   // ── Thumbnail ──

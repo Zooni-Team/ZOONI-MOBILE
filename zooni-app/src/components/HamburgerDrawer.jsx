@@ -46,7 +46,10 @@ const MENU_ITEMS = [
   { key: 'ficha_medica',  label: 'Ficha Médica',              icono: 'medkit-outline',              ruta: 'FichaMedica' },
   { key: 'calendario',    label: 'Calendario',                icono: 'today-outline',               ruta: 'Calendario' },
   { key: 'eventos',       label: 'Eventos',                   icono: 'sparkles-outline',            ruta: 'Eventos' },
-  { key: 'chatbot',       label: 'ChatBot',                   icono: 'chatbubble-ellipses-outline', ruta: 'ChatBot' },
+  // La pantalla se llama ZooniVet en todos lados (título, saludo, pie): decirle
+  // "ChatBot" acá era el único lugar donde aparecía con otro nombre. La `ruta`
+  // sigue siendo 'ChatBot' porque así está registrada en App.jsx.
+  { key: 'chatbot',       label: 'ZooniVet',                  icono: 'chatbubble-ellipses-outline', ruta: 'ChatBot' },
   { key: 'closet',        label: 'Closet',                    icono: 'shirt-outline',               ruta: 'Closet' },
   { key: 'perfil',        label: 'Perfil',                    icono: 'person-outline',              ruta: 'Perfil' },
   { key: 'configuracion', label: 'Configuración',             icono: 'settings-outline',            ruta: 'Configuracion' },

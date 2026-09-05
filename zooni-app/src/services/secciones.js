@@ -21,7 +21,9 @@ export const TODAS_LAS_SECCIONES = [
   { key: 'ficha_medica',  label: 'Ficha Médica',              icono: 'medkit-outline',              ruta: 'FichaMedica' },
   { key: 'calendario',    label: 'Calendario',                icono: 'today-outline',               ruta: 'Calendario' },
   { key: 'eventos',       label: 'Eventos',                   icono: 'sparkles-outline',            ruta: 'Eventos' },
-  { key: 'chatbot',       label: 'ChatBot',                   icono: 'chatbubble-ellipses-outline', ruta: 'ChatBot' },
+  // Mismo nombre que usa la pantalla (ZooniVet). La `ruta` sigue siendo
+  // 'ChatBot' porque así está registrada en App.jsx.
+  { key: 'chatbot',       label: 'ZooniVet',                  icono: 'chatbubble-ellipses-outline', ruta: 'ChatBot' },
   { key: 'closet',        label: 'Closet',                    icono: 'shirt-outline',               ruta: 'Closet' },
   { key: 'perfil',        label: 'Perfil',                    icono: 'person-outline',              ruta: 'Perfil' },
   { key: 'configuracion', label: 'Configuración',             icono: 'settings-outline',            ruta: 'Configuracion' },

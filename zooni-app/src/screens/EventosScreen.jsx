@@ -33,6 +33,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import { fetchHome, fetchEventos } from '../services/api';
 import HamburgerDrawer from '../components/HamburgerDrawer';
+import SelectorMascota from '../components/SelectorMascota';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
 import { fetchMisMascotas } from '../services/petsApi';
 import { haySesion } from '../config/session';
@@ -673,26 +674,12 @@ export default function EventosScreen() {
             Sin fondo detrás de la tira: las pastillas van sueltas sobre el fondo
             de la pantalla. Son opacas, así que se leen igual cuando la lista
             pasa por atrás al desplazarse. */}
-        {mascotas.length > 1 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}
-            style={styles.petTabs} contentContainerStyle={styles.petTabsContent}>
-            {mascotas.map((mx) => (
-              <TouchableOpacity
-                key={mx.id}
-                style={[styles.petTab, mascotaSel === mx.id && styles.petTabOn]}
-                onPress={() => setMascotaSel(mx.id)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: mascotaSel === mx.id }}
-                accessibilityLabel={`Agregar los eventos al calendario de ${mx.nombre}`}
-              >
-                <Text style={[styles.petTabTxt, mascotaSel === mx.id && styles.petTabTxtOn]}
-                  numberOfLines={1}>
-                  {mx.nombre}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
+        <SelectorMascota
+          mascotas={mascotas}
+          valor={mascotaSel}
+          onCambiar={setMascotaSel}
+          style={{ marginBottom: 10 }}
+        />
 
         {/* ── CONTENIDO PRINCIPAL ── */}
         {loading ? (
@@ -802,25 +789,6 @@ const styles = StyleSheet.create({
     color: '#6B6B6B',
     textAlign: 'center',
   },
-
-  // ── Selector de mascota ───────────────────────────────────
-  petTabs: { flexGrow: 0, marginBottom: 10 },
-  petTabsContent: { paddingHorizontal: 16, gap: 8, alignItems: 'center' },
-  petTab: {
-    paddingHorizontal: 16, height: 34, borderRadius: 17, justifyContent: 'center',
-    backgroundColor: '#F2F5F3', borderWidth: 1.5, borderColor: 'transparent',
-    // flexShrink: 0 — sin esto las pastillas se encogen dentro del ScrollView
-    // horizontal hasta quedarse solo con el padding, y como el Text va con
-    // numberOfLines={1} (overflow oculto) el nombre desaparecía: se veían
-    // bloques vacíos, con el ancho de cada uno proporcional al largo del
-    // nombre que tendría que estar mostrando.
-    flexShrink: 0,
-  },
-  // Seleccionada en verde lleno: se distingue de un vistazo cuál recibe el
-  // evento, que es justamente lo que hay que tener claro antes de agregarlo.
-  petTabOn: { backgroundColor: '#2DBD72', borderColor: '#2DBD72' },
-  petTabTxt: { fontSize: 13, color: '#6B6B6B', fontWeight: '600', maxWidth: 140 },
-  petTabTxtOn: { color: '#FFFFFF', fontWeight: '700' },
 
   // ── ScrollView ────────────────────────────────────────────
   scrollContent: {

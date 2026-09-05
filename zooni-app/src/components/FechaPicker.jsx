@@ -15,6 +15,14 @@
  *   visible, titulo, valor (Date), onConfirmar(Date), onCancelar
  *   aniosAtras   — cuántos años hacia atrás ofrece la lista (default 20)
  *   aniosAdelante— cuántos hacia adelante (default 0; Tratamientos usa 5)
+ *   sinFuturo    — no deja elegir una fecha posterior a HOY (default false)
+ *
+ * Sobre `sinFuturo`: con `aniosAdelante = 0` la lista de años ya terminaba en el
+ * actual, pero DENTRO del año en curso se podía elegir cualquier mes y día — se
+ * cargaba "5 de diciembre de 2026" como fecha de nacimiento y la mascota
+ * quedaba con "-1 años y 9 meses". Con esto, el mes se corta en el mes actual y
+ * el día en el de hoy, y el tope se mueve solo: mañana el máximo va a ser
+ * mañana, sin tocar nada.
  */
 
 import { useEffect, useState } from 'react';
@@ -36,10 +44,14 @@ function toClave(d) {
 
 export default function FechaPicker({
   visible, titulo, valor, onConfirmar, onCancelar,
-  aniosAtras = 20, aniosAdelante = 0,
+  aniosAtras = 20, aniosAdelante = 0, sinFuturo = false,
 }) {
   const hoy = new Date();
   const hoyAnio = hoy.getFullYear();
+  const hoyMes  = hoy.getMonth() + 1;
+  const hoyDia  = hoy.getDate();
+  // Con `sinFuturo` no tiene sentido ofrecer años hacia adelante.
+  const adelante = sinFuturo ? 0 : aniosAdelante;
 
   const inicial = valor ?? hoy;
   const [dia,  setDia]  = useState(inicial.getDate());
@@ -75,26 +87,43 @@ export default function FechaPicker({
 
   const diasEnMes = new Date(anio, mes, 0).getDate();
 
-  // Si se pasa de un mes largo a uno corto (31 de marzo → febrero), el día
-  // elegido dejaría de existir y ninguna opción quedaría marcada.
-  useEffect(() => {
-    if (dia > diasEnMes) setDia(diasEnMes);
-  }, [dia, diasEnMes]);
+  // Topes del día de hoy: solo recortan el mes/día en curso, así que el límite
+  // se corre solo con el paso de los días.
+  const enAnioTope = sinFuturo && anio === hoyAnio;
+  const enMesTope  = enAnioTope && mes === hoyMes;
+  const mesMaximo  = enAnioTope ? hoyMes : 12;
+  const diaMaximo  = enMesTope ? hoyDia : diasEnMes;
 
-  const opcionesDia = Array.from({ length: diasEnMes }, (_, i) => ({
+  // Si se pasa de un mes largo a uno corto (31 de marzo → febrero), el día
+  // elegido dejaría de existir y ninguna opción quedaría marcada. Lo mismo si
+  // se vuelve al año actual teniendo elegido un mes/día que ya sería futuro.
+  useEffect(() => {
+    if (dia > diaMaximo) setDia(diaMaximo);
+  }, [dia, diaMaximo]);
+
+  useEffect(() => {
+    if (mes > mesMaximo) setMes(mesMaximo);
+  }, [mes, mesMaximo]);
+
+  const opcionesDia = Array.from({ length: diaMaximo }, (_, i) => ({
     valor: i + 1, texto: String(i + 1).padStart(2, '0'),
   }));
-  const opcionesMes = MESES.map((m, i) => ({ valor: i + 1, texto: m }));
+  const opcionesMes = MESES.slice(0, mesMaximo).map((m, i) => ({ valor: i + 1, texto: m }));
   // Del más reciente al más viejo: lo habitual es elegir una fecha cercana
   const opcionesAnio = Array.from(
-    { length: aniosAtras + aniosAdelante + 1 },
+    { length: aniosAtras + adelante + 1 },
     (_, i) => {
-      const a = hoyAnio + aniosAdelante - i;
+      const a = hoyAnio + adelante - i;
       return { valor: a, texto: String(a) };
     },
   );
 
-  const confirmar = () => onConfirmar(new Date(anio, mes - 1, Math.min(dia, diasEnMes)));
+  const confirmar = () => {
+    // Última red: aunque el estado se recorta arriba, esto garantiza que jamás
+    // salga de acá una fecha futura cuando el llamador pidió `sinFuturo`.
+    const d = new Date(anio, mes - 1, Math.min(dia, diasEnMes));
+    onConfirmar(sinFuturo && d > hoy ? hoy : d);
+  };
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancelar}>

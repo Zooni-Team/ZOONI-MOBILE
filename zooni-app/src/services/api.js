@@ -72,6 +72,9 @@ function mapMascota(m) {
     raza: m.Raza,
     fotoUrl: m.Foto ?? null,
     imagen_asset: m.ImagenAsset ?? 'perro_default',
+    // Preferencia foto vs avatar del Closet (migración 032). Sin la columna
+    // se asume true: la foto manda, igual que antes.
+    mostrarFoto: m.MostrarFoto ?? true,
     peso: m.Peso != null ? Number(m.Peso) : null,
     fechaNacimiento: m.FechaNacimiento,
     edadAnios: edad.anios,
@@ -253,6 +256,7 @@ function mapNotificacion(n, mascotasPorId) {
           raza: m.Raza,
           fotoUrl: m.Foto ?? null,
           imagenAsset: m.ImagenAsset ?? null,
+          mostrarFoto: m.MostrarFoto ?? true,
         }
       : null,
   };

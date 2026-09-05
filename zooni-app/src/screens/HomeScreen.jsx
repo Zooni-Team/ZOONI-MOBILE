@@ -17,6 +17,7 @@ import NavButton from '../components/NavButton';
 import DraggableList from '../components/DraggableList';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
 import { resolveMascotaVisual } from '../constants/petImages';
+import { actualizarMascota } from '../services/petsApi';
 import { useTheme } from '../config/theme';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -64,6 +65,9 @@ export default function HomeScreen() {
   const petSwapX = useRef(new Animated.Value(0)).current;
   const petSwapOpacity = useRef(new Animated.Value(1)).current;
   const cambiandoMascota = useRef(false);
+  // Giro al alternar entre la foto y el avatar (-1..1 → -90°..90°)
+  const giroImagen = useRef(new Animated.Value(0)).current;
+  const girandoImagen = useRef(false);
 
   // silencioso: refresca los datos sin volver a mostrar los skeletons
   // (lo usa el pull-to-refresh, que ya muestra su propio spinner).
@@ -117,16 +121,24 @@ export default function HomeScreen() {
     if (reduceMotion) { petFloatY.setValue(0); return; }
     // Solo iniciar la animación flotante después de que termine la carga inicial
     if (!loading) {
+      /*
+        Flotación suave: 5 px de recorrido y 3,4 s por tramo.
+
+        Antes eran 10 px cada 2 s, un vaivén bastante marcado que llamaba la
+        atención sobre sí mismo en vez de dar la sensación de que la mascota
+        "respira". Con la mitad de recorrido y casi el doble de tiempo se nota
+        el movimiento pero no distrae.
+      */
       const bob = Animated.loop(
         Animated.sequence([
           Animated.timing(petFloatY, {
-            toValue: 10,
-            duration: 2000,
+            toValue: 5,
+            duration: 3400,
             useNativeDriver: true,
           }),
           Animated.timing(petFloatY, {
             toValue: 0,
-            duration: 2000,
+            duration: 3400,
             useNativeDriver: true,
           }),
         ]),
@@ -195,6 +207,53 @@ export default function HomeScreen() {
       // Si no se pudo persistir, recargar para volver al estado real
       loadData(true);
     }
+  };
+
+  /*
+    Alternar entre la foto real y el avatar del Closet.
+
+    Solo tiene sentido si la mascota TIENE foto: sin foto siempre se ve el
+    avatar y el botón no aparece.
+  */
+  const puedeAlternarImagen = !!mascota?.fotoUrl;
+  const mostrandoFoto = puedeAlternarImagen && mascota.mostrarFoto !== false;
+
+  const alternarImagen = () => {
+    if (!puedeAlternarImagen || girandoImagen.current) return;
+    const nuevo = !mostrandoFoto;
+    const idMascota = mascota.id;
+
+    // Optimista: la imagen cambia sin esperar a la red; si el guardado falla se
+    // recarga para no dejar la pantalla mostrando algo que no se guardó.
+    const aplicar = async () => {
+      setHomeData((d) => (d ? {
+        ...d,
+        mascotaActiva: { ...d.mascotaActiva, mostrarFoto: nuevo },
+        mascotas: (d.mascotas ?? []).map((m) => (m.id === idMascota ? { ...m, mostrarFoto: nuevo } : m)),
+      } : d));
+      try {
+        await actualizarMascota(idMascota, { mostrarFoto: nuevo });
+      } catch {
+        loadData(true);
+      }
+    };
+
+    if (reduceMotion) { aplicar(); return; }
+
+    /*
+      Giro tipo carta: la imagen rota sobre su eje vertical hasta quedar de
+      canto (90°), ahí —invisible— se cambia la fuente, y vuelve desde el otro
+      lado (-90° → 0°). Se hace en dos tramos y no en uno de 180° para que la
+      imagen no termine espejada.
+    */
+    girandoImagen.current = true;
+    Animated.timing(giroImagen, { toValue: 1, duration: 190, useNativeDriver: true })
+      .start(() => {
+        aplicar();
+        giroImagen.setValue(-1);
+        Animated.timing(giroImagen, { toValue: 0, duration: 190, useNativeDriver: true })
+          .start(() => { girandoImagen.current = false; });
+      });
   };
 
   const cambiarMascota = (direccion) => {
@@ -315,13 +374,73 @@ export default function HomeScreen() {
             {loading ? (
               <SkeletonLoader width={PET_IMAGE_SIZE} height={PET_IMAGE_SIZE} borderRadius={20} />
             ) : (
-              <PetIllustration
-                // Foto real subida si tiene, si no el look/avatar aplicado en
-                // Closet — antes esto solo miraba la foto y por eso el avatar
-                // nunca se veía acá aunque sí en Ficha Médica.
-                source={resolveMascotaVisual(mascota ?? {})}
-                label={mascota ? `Ilustración de ${mascota.nombre}` : 'Mascota'}
-              />
+              /*
+                Se toca la imagen para alternar entre la foto real y el avatar
+                del Closet. La preferencia también está en Editar mascota, pero
+                enterrada en Configuración → Mis Mascotas → Editar → Fotos: acá
+                está donde de verdad mirás a la mascota, que es donde uno quiere
+                cambiar cómo se ve.
+              */
+              <View>
+                {/* La rotación va acá y no en el wrap de afuera: si envolviera
+                    todo, los puntitos girarían junto con la imagen. */}
+                <Animated.View
+                  style={{
+                    transform: [
+                      { perspective: 900 },
+                      {
+                        rotateY: giroImagen.interpolate({
+                          inputRange: [-1, 0, 1],
+                          outputRange: ['-90deg', '0deg', '90deg'],
+                        }),
+                      },
+                    ],
+                  }}
+                >
+                  <TouchableOpacity
+                    activeOpacity={puedeAlternarImagen ? 0.85 : 1}
+                    onPress={puedeAlternarImagen ? alternarImagen : undefined}
+                    disabled={!puedeAlternarImagen}
+                    accessibilityRole={puedeAlternarImagen ? 'button' : 'image'}
+                    accessibilityLabel={puedeAlternarImagen
+                      ? (mostrandoFoto
+                        ? `Ver el avatar de ${mascota.nombre} en vez de su foto`
+                        : `Ver la foto de ${mascota.nombre} en vez de su avatar`)
+                      : (mascota ? `Imagen de ${mascota.nombre}` : 'Mascota')}
+                  >
+                    <PetIllustration
+                      // Foto real subida si tiene y así lo eligió el usuario; si no,
+                      // el look/avatar aplicado en Closet (ver resolveMascotaVisual).
+                      source={resolveMascotaVisual(mascota ?? {})}
+                      esFoto={mostrandoFoto}
+                      label={mascota ? `Imagen de ${mascota.nombre}` : 'Mascota'}
+                    />
+                  </TouchableOpacity>
+                </Animated.View>
+
+                {/*
+                  Alternar foto/avatar.
+
+                  Fue primero una pastilla suelta (caía entre el nombre y la
+                  imagen, porque petImageWrap es absolute) y después un botón
+                  amarillo grande en la esquina, que competía con la foto.
+                  Ahora es discreto y va afuera, debajo: dos puntos que marcan
+                  cuál de las dos imágenes estás viendo, como los carruseles de
+                  la propia app.
+                */}
+                {puedeAlternarImagen && (
+                  <TouchableOpacity style={styles.alternarPuntos} onPress={alternarImagen}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: mostrandoFoto }}
+                    accessibilityLabel={mostrandoFoto
+                      ? `Estás viendo la foto de ${mascota.nombre}. Tocá para ver su avatar.`
+                      : `Estás viendo el avatar de ${mascota.nombre}. Tocá para ver su foto.`}
+                    hitSlop={{ top: 12, bottom: 12, left: 20, right: 20 }}>
+                    <View style={[styles.punto, mostrandoFoto && styles.puntoOn]} />
+                    <View style={[styles.punto, !mostrandoFoto && styles.puntoOn]} />
+                  </TouchableOpacity>
+                )}
+              </View>
             )}
           </Animated.View>
 
@@ -455,8 +574,26 @@ export default function HomeScreen() {
   );
 }
 
-/** Sombra que sigue la silueta del PNG (no un cuadrado del contenedor). */
-function PetIllustration({ source, label }) {
+/**
+ * Sombra que sigue la silueta del PNG (no un cuadrado del contenedor).
+ *
+ * `esFoto` cambia el tratamiento: una foto real es rectangular y opaca, así que
+ * va recortada en redondo y con marco blanco — sin eso quedaba un rectángulo
+ * pegado sobre el fondo, muy distinto del resto del Home. Los avatares del
+ * Closet son PNG transparentes y siguen yendo tal cual, con `contain`.
+ */
+function PetIllustration({ source, label, esFoto }) {
+  if (esFoto) {
+    return (
+      <Image
+        source={source}
+        style={[styles.petImage, styles.petFoto]}
+        resizeMode="cover"
+        accessibilityLabel={label}
+      />
+    );
+  }
+
   if (Platform.OS === 'web') {
     return (
       <Image
@@ -536,7 +673,14 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     height: HERO_HEIGHT,
   },
-  petNameWrap: { marginTop: 8, marginBottom: 12, alignItems: 'center', zIndex: 3, paddingHorizontal: 20 },
+  /*
+    El nombre va cerca de la imagen y no arriba de todo del hero.
+
+    La imagen es `position: absolute` anclada al pie del hero (que tiene alto
+    fijo), así que el nombre no la arrastra: para acercarlos hay que empujar el
+    nombre hacia abajo con marginTop. Con 8 quedaban ~60 px de aire en el medio.
+  */
+  petNameWrap: { marginTop: 34, marginBottom: 6, alignItems: 'center', zIndex: 3, paddingHorizontal: 20 },
   petName: {
     fontSize: 40,
     fontWeight: '800',
@@ -547,6 +691,44 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 5,
   },
+  /*
+    Foto real: cuadrada y sin marco.
+
+    Estuvo un rato como círculo con borde blanco grueso y quedaba genérica —
+    el avatar de cualquier app— además de recortar mucho de la foto. Cuadrada
+    con las esquinas redondeadas es el mismo lenguaje que las tarjetas del
+    resto de Zooni (whiteCard, cards de Ficha Médica), y la sombra verde es la
+    misma familia que la del hero.
+  */
+  petFoto: {
+    borderRadius: 26,
+    /*
+      SIN backgroundColor. Estaba en blanco y, como el estilo se aplica al mismo
+      <Image>, ese blanco se veía a través de las zonas transparentes: el avatar
+      quedaba con un cuadrado claro detrás. La foto es opaca y no lo necesita.
+
+      La sombra también va solo acá: en web se convierte en box-shadow, que es
+      RECTANGULAR. Sobre una foto opaca con esquinas redondeadas queda bien;
+      sobre el PNG transparente del avatar dibujaría justamente el cuadrado que
+      se quería evitar (por eso el avatar usa drop-shadow, que sigue el alfa).
+    */
+    shadowColor: '#1a7a45',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  // Alternar foto/avatar: dos puntitos debajo de la imagen
+  alternarPuntos: {
+    flexDirection: 'row', gap: 6, alignSelf: 'center',
+    marginTop: 12, paddingVertical: 4,
+  },
+  punto: {
+    width: 7, height: 7, borderRadius: 3.5,
+    backgroundColor: 'rgba(255,255,255,0.75)',
+  },
+  puntoOn: { backgroundColor: '#2DBD72' },
+
   petImageContainer: {
     width: PET_IMAGE_SIZE,
     height: PET_IMAGE_SIZE,

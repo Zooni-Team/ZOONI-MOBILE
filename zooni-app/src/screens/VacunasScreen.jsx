@@ -231,6 +231,9 @@ function CardSugerido({ sugerido, index, onMarcar }) {
     <Animated.View style={[s.cardSugerido, { transform: [{ translateY }], opacity }]}>
       <View style={s.cardSugeridoLeft}>
         <Text style={s.sugeridoNombre}>{sugerido.nombre}</Text>
+        {/* "1 de 3", "Refuerzo": ubica la vacuna dentro del plan. Sin esto,
+            tres dosis de la misma vacuna se leían como tres vacunas sueltas. */}
+        {!!sugerido.dosis && <Text style={s.sugeridoDosis}>{sugerido.dosis}</Text>}
       </View>
       <View style={s.cardSugeridoRight}>
         <Text style={[s.sugeridoEstado, { color: estado.color }]}>{estado.texto}</Text>
@@ -799,6 +802,7 @@ const s = StyleSheet.create({
   cardSugeridoLeft:  { flex: 1, minWidth: 0, paddingRight: 8 },
   cardSugeridoRight: { maxWidth: '45%', alignItems: 'flex-end', justifyContent: 'center', gap: 4 },
   sugeridoNombre: { fontSize: 14, fontWeight: '700', color: '#2C2C2C' },
+  sugeridoDosis:  { fontSize: 11, color: '#177046', fontWeight: '700', marginTop: 2 },
   sugeridoEstado: { fontSize: 12, textAlign: 'right' },
   sugeridoFrec:   { fontSize: 12, color: '#6B6B6B', textAlign: 'right' },
 

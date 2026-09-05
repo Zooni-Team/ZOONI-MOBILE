@@ -37,7 +37,7 @@ import { parseFechaLocal, toISODateLocal } from '../utils/fechaLocal';
 import { resolveMascotaVisual } from '../constants/petImages';
 import SkeletonLoader from '../components/SkeletonLoader';
 import HamburgerDrawer from '../components/HamburgerDrawer';
-import SelectorMascota from '../components/SelectorMascota';
+import { useMisMascotas } from '../hooks/useMisMascotas';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { haySesion } from '../config/session';
 import { MASCOTA_VACIA } from '../constants/mascotaVacia';
@@ -139,8 +139,27 @@ export default function FichaMedicaScreen() {
   const [historialPeso,     setHistorialPeso]     = useState(null); // null = no cargado aún
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
   const { usuario, mascotaActiva: mascotaActivaDemo } = useUsuarioActivo();
+  const { mascotas } = useMisMascotas();
 
   const pesoInputRef = useRef(null);
+
+  // ── Cambio de mascota (mismas flechas que el hero del Home) ───────────────
+  // Si la ficha se abrió sin petId, se elige sola la mascota activa: sin esto
+  // las flechas no tendrían desde dónde arrancar.
+  useEffect(() => {
+    if (petId != null || !mascotas.length) return;
+    setPetId((mascotas.find((mx) => mx.esActiva) ?? mascotas[0]).id);
+  }, [petId, mascotas]);
+
+  /** Alterna a la mascota anterior/siguiente, en círculo. */
+  const cambiarMascota = (direccion) => {
+    if (mascotas.length < 2) return;
+    const i = mascotas.findIndex((mx) => mx.id === petId);
+    // Si la actual no está en la lista (recién archivada, por ejemplo), se
+    // arranca desde el principio en vez de quedarse sin hacer nada.
+    const desde = i === -1 ? 0 : i;
+    setPetId(mascotas[(desde + direccion + mascotas.length) % mascotas.length].id);
+  };
 
   // ── Carga ─────────────────────────────────────────────────────────────────
   // Timeout de 3 segundos: si el backend no responde, mostrar la vista demo
@@ -359,8 +378,6 @@ export default function FichaMedicaScreen() {
           </TouchableOpacity>
         </View>
 
-        <SelectorMascota valor={petId} onCambiar={setPetId} style={{ marginBottom: 4 }} />
-
         <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}
           showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
           refreshControl={
@@ -379,6 +396,31 @@ export default function FichaMedicaScreen() {
               <SkeletonLoader width={110} height={110} borderRadius={20} />
             ) : (
               <PetIllustration source={petImg} label={`Ilustración de ${m.nombre}`} />
+            )}
+
+            {/* Flechas para alternar entre mascotas, igual que en el Home.
+                Solo con más de una: con una sola no hay a dónde ir. */}
+            {!loading && mascotas.length > 1 && (
+              <>
+                <TouchableOpacity
+                  style={[s.petArrow, s.petArrowLeft]}
+                  onPress={() => cambiarMascota(-1)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Mascota anterior"
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="chevron-back" size={24} color="#2C2C2C" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.petArrow, s.petArrowRight]}
+                  onPress={() => cambiarMascota(1)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Mascota siguiente"
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="chevron-forward" size={24} color="#2C2C2C" />
+                </TouchableOpacity>
+              </>
             )}
           </View>
 
@@ -470,7 +512,7 @@ export default function FichaMedicaScreen() {
             editando={false} />
 
           <FechaPicker visible={editandoFecha} titulo="Fecha de nacimiento"
-            valor={fechaBorrador} aniosAtras={30}
+            valor={fechaBorrador} aniosAtras={30} sinFuturo
             onConfirmar={confirmarFecha} onCancelar={() => setEditandoFecha(false)} />
 
           <OpcionPicker
@@ -543,6 +585,19 @@ const s = StyleSheet.create({
     zIndex: 2,
   },
   heroImg:      { width: 110, height: 110 },
+
+  // Flechas del selector de mascota, a la altura de la ilustración (110 px de
+  // alto): 55 de centro menos 20 de media flecha = 35 desde abajo.
+  petArrow: {
+    position: 'absolute', bottom: 35,
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    alignItems: 'center', justifyContent: 'center', zIndex: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15, shadowRadius: 6, elevation: 4,
+  },
+  petArrowLeft:  { left: 18 },
+  petArrowRight: { right: 18 },
 
   whiteCard: { backgroundColor: '#FFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 40, marginTop: 16 },
 

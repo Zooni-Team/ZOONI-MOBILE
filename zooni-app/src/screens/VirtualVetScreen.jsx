@@ -34,6 +34,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { resolveMascotaVisual } from '../constants/petImages';
+import HamburgerDrawer from '../components/HamburgerDrawer';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import {
   construirContextoMascota,
@@ -168,6 +169,7 @@ export default function VirtualVetScreen() {
   const [input, setInput] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [selectorAbierto, setSelectorAbierto] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const listRef = useRef(null);
   const abortRef = useRef(null);
@@ -283,9 +285,14 @@ export default function VirtualVetScreen() {
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={C.bgTop} />
       {/* Header */}
+      {/* Menú lateral en vez de la flecha de volver: ZooniVet es una sección
+          propia a la que se entra desde el drawer, no un paso dentro de otro
+          flujo. Con la flecha, entrar desde el menú y volver te dejaba en
+          cualquier pantalla, según de dónde vinieras. */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={12}>
-          <Ionicons name="chevron-back" size={26} color={C.text} />
+        <TouchableOpacity style={styles.headerBtn} onPress={() => setDrawerOpen(true)}
+          accessibilityLabel="Abrir menú" hitSlop={12}>
+          <Ionicons name="menu" size={28} color={C.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>ZooniVet</Text>
         <View style={styles.headerBtn} />
@@ -425,6 +432,16 @@ export default function VirtualVetScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* activeRoute 'ChatBot' — es la `ruta` con la que el drawer registra a
+          ZooniVet (ver HamburgerDrawer), así que el ítem queda resaltado. */}
+      <HamburgerDrawer
+        visible={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        usuario={usuario}
+        mascotaActiva={mascotaSel}
+        activeRoute="ChatBot"
+      />
     </SafeAreaView>
   );
 }
