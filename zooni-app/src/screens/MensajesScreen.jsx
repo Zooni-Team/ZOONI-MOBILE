@@ -26,6 +26,8 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { fetchServicios } from '../api/comunidad';
 import { fetchMisConversacionesMatch, fetchMisUltimosMensajesServicios } from '../services/chatStore';
 import MatchInfoModal from '../components/chat/MatchInfoModal';
+import HamburgerDrawer from '../components/HamburgerDrawer';
+import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { tiempoRelativoCorto } from '../utils/tiempoRelativo';
 
 const ICONOS_SERVICIO = { veterinaria: 'medkit-outline', paseador: 'walk-outline', petshop: 'bag-outline', peluqueria: 'cut-outline' };
@@ -36,6 +38,8 @@ const COLORES_SERVICIO = { veterinaria: '#E63946', paseador: '#F5A623', petshop:
 
 export default function MensajesScreen() {
   const navigation = useNavigation();
+  const { usuario, mascotaActiva } = useUsuarioActivo();
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [tab, setTab] = useState('Personas');
   const [conversaciones, setConversaciones] = useState([]);
   const [servicios, setServicios] = useState([]);
@@ -84,13 +88,18 @@ export default function MensajesScreen() {
     <SafeAreaView style={st.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
+      {/* Menú lateral en vez de la flecha de volver: Mensajes es una sección
+          propia a la que se llega desde el drawer, no un paso dentro de otro
+          flujo. Con la flecha, entrar desde el menú y volver te dejaba en
+          cualquier pantalla, según de dónde vinieras. */}
       <View style={st.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} accessibilityLabel="Volver"
+        <TouchableOpacity onPress={() => setDrawerOpen(true)} accessibilityLabel="Abrir menú"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="arrow-back" size={24} color="#2C2C2C" />
+          <Ionicons name="menu" size={28} color="#0A0A0A" />
         </TouchableOpacity>
         <Text style={st.titulo}>Mensajes</Text>
-        <View style={{ width: 24 }} />
+        {/* Mantiene el título centrado compensando el ancho del ícono. */}
+        <View style={{ width: 28 }} />
       </View>
 
       <View style={st.tabs}>
@@ -171,6 +180,14 @@ export default function MensajesScreen() {
         matchId={infoMatch?.chatId}
         onClose={() => setInfoMatch(null)}
         onAbrirChat={() => infoMatch && abrirChatPersona(infoMatch)}
+      />
+
+      <HamburgerDrawer
+        visible={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        usuario={usuario}
+        mascotaActiva={mascotaActiva}
+        activeRoute="Mensajes"
       />
     </SafeAreaView>
   );

@@ -23,6 +23,7 @@ import { getCategoriaInfo } from '../constants/categoriasConsejos';
 import { generarConsejos } from '../constants/consejosData';
 import { fetchMascota } from '../services/fichaMedicaApi';
 import PetHero from '../components/PetHero';
+import SelectorMascota from '../components/SelectorMascota';
 
 // Mascota de respaldo si no hay petId o falla la carga: los consejos generales
 // de perro son un punto de partida razonable.
@@ -134,7 +135,9 @@ function Chip({ label, activo, onPress, acento, fondo, isAll }) {
 export default function ConsejosScreen() {
   const navigation = useNavigation();
   const route      = useRoute();
-  const petId      = route.params?.petId;
+  // Estado y no constante: el selector de arriba cambia de mascota sin salir
+  // de la pantalla (el efecto de carga depende de petId y recarga solo).
+  const [petId, setPetId] = useState(route.params?.petId || null);
 
   const [mascota,         setMascota]         = useState(null);
   const [consejos,        setConsejos]        = useState([]);
@@ -194,6 +197,8 @@ export default function ConsejosScreen() {
             <Ionicons name="arrow-back" size={24} color="#2C2C2C" />
           </TouchableOpacity>
         </View>
+
+        <SelectorMascota valor={petId} onCambiar={setPetId} style={{ marginBottom: 6 }} />
 
         <ScrollView style={st.scroll} contentContainerStyle={st.scrollContent}
           showsVerticalScrollIndicator={false}>

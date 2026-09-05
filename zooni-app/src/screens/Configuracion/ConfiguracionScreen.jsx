@@ -157,10 +157,16 @@ export default function ConfiguracionScreen() {
           <Text style={s.logoutTxt}>Cerrar sesión</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={s.deleteLink} onPress={ir('ConfigEliminarCuenta')}
-          accessibilityRole="button" accessibilityLabel="Eliminar mi cuenta">
-          <Text style={s.deleteTxt}>Eliminar mi cuenta</Text>
-        </TouchableOpacity>
+        {/*
+          Acá había un enlace directo a "Eliminar mi cuenta", suelto debajo de
+          "Cerrar sesión". Se sacó de la vista principal: es la acción más
+          destructiva de la app —y sin vuelta atrás— como para ofrecerla a un
+          toque de distancia, justo al lado de un botón que se usa seguido.
+
+          La pantalla sigue existiendo y se llega desde Legal y Términos
+          (LegalScreen), que es donde corresponde y donde el usuario que
+          realmente la busca la va a encontrar.
+        */}
 
         {/* Pie */}
         <Pressable onLongPress={copiarDiagnostico} delayLongPress={600}>
@@ -201,8 +207,6 @@ const s = StyleSheet.create({
   },
   logoutTxt: { fontSize: 16, fontWeight: '700', color: T.sosRedText },
 
-  deleteLink: { alignItems: 'center', marginTop: 16, minHeight: 44, justifyContent: 'center' },
-  deleteTxt:  { fontSize: 14, color: T.textSoftMint, textDecorationLine: 'underline' },
 
   version: { fontSize: 12, color: T.textSoftMint, textAlign: 'center', marginTop: 24 },
 });

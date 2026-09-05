@@ -35,6 +35,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { toISODateLocal } from '../utils/fechaLocal';
 import PetHero from '../components/PetHero';
+import SelectorMascota from '../components/SelectorMascota';
 import { subirImagenPublica } from '../utils/imagenStorage';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { haySesion } from '../config/session';
@@ -152,7 +153,9 @@ function CardConsulta({ consulta, index, onEliminar }) {
 export default function ConsultasScreen() {
   const navigation = useNavigation();
   const route      = useRoute();
-  const petId      = route.params?.petId;
+  // Estado y no constante: el selector de arriba cambia de mascota sin salir
+  // de la pantalla (`cargar` depende de idMascota y recarga solo).
+  const [petId, setPetId] = useState(route.params?.petId || null);
   const { mascotaActiva: mascotaActivaDemo } = useUsuarioActivo();
   const idMascota = petId ?? mascotaActivaDemo?.id;
 
@@ -392,6 +395,8 @@ export default function ConsultasScreen() {
           </TouchableOpacity>
           <View style={{ flex: 1 }} />
         </View>
+
+        <SelectorMascota valor={petId} onCambiar={setPetId} style={{ marginBottom: 6 }} />
 
         <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}
           showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"

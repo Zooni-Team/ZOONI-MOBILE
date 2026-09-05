@@ -37,6 +37,7 @@ import { parseFechaLocal, toISODateLocal } from '../utils/fechaLocal';
 import { resolveMascotaVisual } from '../constants/petImages';
 import SkeletonLoader from '../components/SkeletonLoader';
 import HamburgerDrawer from '../components/HamburgerDrawer';
+import SelectorMascota from '../components/SelectorMascota';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { haySesion } from '../config/session';
 import { MASCOTA_VACIA } from '../constants/mascotaVacia';
@@ -113,7 +114,11 @@ function BotonNav({ icono, iconoColor, texto, onPress }) {
 export default function FichaMedicaScreen() {
   const navigation = useNavigation();
   const route      = useRoute();
-  const petId      = route.params?.petId ?? route.params?.mascotaId;
+  // Estado y no constante: el selector de arriba cambia de mascota sin salir
+  // de la ficha (`cargarMascota` depende de petId y recarga sola). Los botones
+  // de sección le pasan este mismo petId, así que Vacunas, Tratamientos y
+  // Consultas se abren con la mascota que se está mirando.
+  const [petId, setPetId] = useState(route.params?.petId || route.params?.mascotaId || null);
 
   const [mascota,        setMascota]        = useState(null);
   const [loading,        setLoading]        = useState(true);
@@ -353,6 +358,8 @@ export default function FichaMedicaScreen() {
             <Ionicons name="menu" size={30} color="#0A0A0A" />
           </TouchableOpacity>
         </View>
+
+        <SelectorMascota valor={petId} onCambiar={setPetId} style={{ marginBottom: 4 }} />
 
         <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}
           showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"

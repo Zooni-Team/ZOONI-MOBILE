@@ -20,6 +20,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { resolveAvatarImage } from '../constants/avatarImages';
 import { fetchAvatares, aplicarAvatar } from '../services/api';
 import HamburgerDrawer from '../components/HamburgerDrawer';
+import SelectorMascota from '../components/SelectorMascota';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 
@@ -154,7 +155,9 @@ function AvatarThumbnail({ avatar, mascota, isSelected, isActual, onPress, entry
 export default function ClosetScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const petId = route.params?.petId;
+  // Estado y no constante: el selector de arriba permite vestir a otra mascota
+  // sin salir del closet (el efecto de carga depende de petId y recarga solo).
+  const [petId, setPetId] = useState(route.params?.petId || null);
 
   const [mascota, setMascota] = useState(null);
   const [avatares, setAvatares] = useState([]);
@@ -293,6 +296,8 @@ export default function ClosetScreen() {
           </TouchableOpacity>
         </View>
         <View style={styles.headerDivider} />
+
+        <SelectorMascota valor={petId} onCambiar={setPetId} style={{ marginTop: 8 }} />
 
         <ScrollView
           contentContainerStyle={styles.scroll}

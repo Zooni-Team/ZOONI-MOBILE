@@ -32,6 +32,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { parseFechaLocal } from '../utils/fechaLocal';
 import PetHero from '../components/PetHero';
+import SelectorMascota from '../components/SelectorMascota';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { haySesion } from '../config/session';
 import { MASCOTA_VACIA } from '../constants/mascotaVacia';
@@ -289,7 +290,9 @@ const DEMO_SUGERIDAS = [
 export default function VacunasScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const petId = route.params?.petId;
+  // Estado y no constante: con más de una mascota el selector de arriba la
+  // cambia sin salir de la pantalla (`cargar` depende de idMascota y recarga).
+  const [petId, setPetId] = useState(route.params?.petId || null);
 
   const { mascotaActiva: mascotaActivaDemo } = useUsuarioActivo();
 
@@ -559,6 +562,8 @@ export default function VacunasScreen() {
             <Ionicons name="arrow-back" size={26} color="#2C2C2C" />
           </TouchableOpacity>
         </View>
+
+        <SelectorMascota valor={petId} onCambiar={setPetId} style={{ marginBottom: 6 }} />
 
         <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}
           showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
