@@ -47,7 +47,7 @@ import {
   eliminarEventoCalendario,
 } from '../services/calendarioStore';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const TIPOS = ['Vacuna', 'Turno Veterinario', 'Desparasitación', 'Peluquería', 'Paseo', 'Medicación', 'Control', 'Otro'];
 
@@ -657,7 +657,13 @@ export default function CalendarioScreen() {
           <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={cerrarModal}>
             <TouchableOpacity activeOpacity={1}>
               <Animated.View style={[s.modalCard, { transform: [{ scale: modalScale }], opacity: modalOpacity }]}>
-                <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                {/* flexShrink: 1 y no flex: 1 — así el ScrollView mide lo que
+                    mide el formulario y la tarjeta crece con él; solo se encoge
+                    (y recién ahí desplaza) si no entra en la pantalla. Con el
+                    alto por defecto se quedaba corto y recortaba justo la fila
+                    de "¿Para qué mascota?". */}
+                <ScrollView style={s.modalScroll} contentContainerStyle={s.modalScrollContent}
+                  showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
                   <Text style={s.modalTitulo}>{tituloModal}</Text>
 
@@ -884,75 +890,101 @@ const s = StyleSheet.create({
 
   // Modal
   overlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.50)', justifyContent: 'center', alignItems: 'center' },
+  /*
+    El alto de todo lo de acá abajo está ajustado para que el formulario ENTRE
+    COMPLETO sin scrollear: el usuario tiene que ver de una todos los campos que
+    hay que completar. Antes el modal se abría ya desplazado —el título "Nuevo
+    evento" quedaba fuera de vista— y había que arrastrar para descubrir que
+    faltaba elegir mascota.
+
+    Lo que más ocupaba eran los emojis: a 40 px entraban 7 por fila y se comían
+    dos filas. A 28 px entran los 10 en una sola.
+    El ScrollView sigue estando como red de seguridad para pantallas muy bajas,
+    pero en un teléfono normal ya no tiene nada que desplazar.
+  */
   modalCard: {
     backgroundColor: '#FFF', borderRadius: 20,
     width: Math.min(SCREEN_WIDTH * 0.90, 380),
-    paddingHorizontal: 22, paddingTop: 24, paddingBottom: 20,
+    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16,
     shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 10,
-    maxHeight: '90%',
+    // Alto máximo en PÍXELES, no en '%'. El porcentaje se resolvía contra un
+    // padre de alto automático (el wrapper que capta el tap), o sea contra
+    // nada: Yoga lo descartaba y la tarjeta terminaba recortando el final del
+    // formulario — se veía el rótulo "¿Para qué mascota?" pero no las mascotas.
+    maxHeight: SCREEN_HEIGHT * 0.92,
   },
-  modalTitulo: { fontSize: 18, fontWeight: '700', color: '#2DBD72', textAlign: 'center', marginBottom: 20 },
+  // El scroll queda solo como red de seguridad para pantallas muy bajas.
+  modalScroll: { flexGrow: 0, flexShrink: 1 },
+  modalScrollContent: { flexGrow: 1 },
+  modalTitulo: { fontSize: 18, fontWeight: '700', color: '#2DBD72', textAlign: 'center', marginBottom: 14 },
 
   input: {
     borderWidth: 1.5, borderColor: '#DDDDDD', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
     fontSize: 14, color: '#2C2C2C', backgroundColor: '#FFF',
-    marginBottom: 12,
+    marginBottom: 11,
   },
   inputError: { borderColor: '#E63946' },
-  inputMulti: { height: 80, textAlignVertical: 'top' },
+  inputMulti: { height: 66, textAlignVertical: 'top' },
   inputFecha: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     borderWidth: 1.5, borderColor: '#DDDDDD', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
-    marginBottom: 12, backgroundColor: '#FFF',
+    marginBottom: 11, backgroundColor: '#FFF',
   },
   inputFechaTxt: { flex: 1, fontSize: 14, color: '#2C2C2C' },
-  errorTxt: { fontSize: 11, color: '#E63946', marginTop: -8, marginBottom: 8, marginLeft: 4 },
+  errorTxt: { fontSize: 11, color: '#E63946', marginTop: -7, marginBottom: 7, marginLeft: 4 },
 
-  pickerLabel: { fontSize: 13, color: '#6B6B6B', marginBottom: 8 },
-  emojiRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  pickerLabel: { fontSize: 12.5, color: '#6B6B6B', marginBottom: 7 },
+  emojiRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 11 },
   emojiChip: {
-    width: 40, height: 40, borderRadius: 20,
+    // 30 px con 4 de separación: 10*30 + 9*4 = 336 sobre 339 útiles, así que
+    // los 10 emojis entran en UNA fila. Es lo que más alto ocupaba: a 40 px
+    // entraban 7 por fila y se comía dos filas enteras.
+    width: 30, height: 30, borderRadius: 15,
     borderWidth: 1.5, borderColor: '#DDDDDD',
     alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF',
   },
   emojiChipOn: { borderColor: '#2DBD72', backgroundColor: '#F0FFF6' },
-  emojiChipTxt: { fontSize: 18 },
-  colorRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  emojiChipTxt: { fontSize: 15, lineHeight: 19 },
+  colorRow: { flexDirection: 'row', gap: 10, marginBottom: 13 },
   colorSwatch: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: 'transparent' },
   colorSwatchOn: { borderColor: '#2C2C2C' },
 
   // Pie fijo del modal, siempre visible sin scrollear
   modalPie: {
     flexDirection: 'row', gap: 10, alignItems: 'center',
-    paddingTop: 14, marginTop: 4,
+    paddingTop: 12, marginTop: 2,
     borderTopWidth: 1, borderTopColor: '#F0F0F0',
   },
   btnGuardar: {
-    flex: 1, height: 48, borderRadius: 30,
+    flex: 1, height: 46, borderRadius: 30,
     backgroundColor: '#2DBD72', alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
   },
   btnGuardarTxt: { fontSize: 15, fontWeight: '700', color: '#FFF' },
   btnCancelar: {
-    paddingHorizontal: 22, height: 48, borderRadius: 30, backgroundColor: '#EFEFEF',
+    paddingHorizontal: 22, height: 46, borderRadius: 30, backgroundColor: '#EFEFEF',
     alignItems: 'center', justifyContent: 'center',
   },
   btnCancelarTxt: { fontSize: 15, fontWeight: '700', color: '#6B6B6B' },
 
   // Selector de mascota (pestañas de la pantalla y chips del modal)
   petTabs: { flexGrow: 0, marginBottom: 6 },
-  petTabsContent: { paddingHorizontal: 20, gap: 8 },
+  petTabsContent: { paddingHorizontal: 20, gap: 8, alignItems: 'center' },
   petTab: {
     paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.75)', borderWidth: 1.5, borderColor: 'transparent',
+    // flexShrink: 0 — dentro de un ScrollView horizontal las pastillas se
+    // encogen hasta dejar solo el padding y el nombre (numberOfLines={1}, con
+    // overflow oculto) se recorta a nada: quedan bloques vacíos.
+    flexShrink: 0,
   },
   petTabOn: { backgroundColor: '#FFFFFF', borderColor: '#2DBD72' },
   petTabTxt: { fontSize: 13, color: '#6B6B6B', fontWeight: '600', maxWidth: 130 },
   petTabTxtOn: { color: '#2DBD72', fontWeight: '700' },
 
-  petPickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 6 },
+  petPickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
   petPick: {
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18,
     backgroundColor: '#F5F5F5', borderWidth: 1.5, borderColor: 'transparent',

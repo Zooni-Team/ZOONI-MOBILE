@@ -475,8 +475,23 @@ export default function EventosScreen() {
 
   /**
    * cargarDatos — obtiene el perfil del usuario y los eventos de su ciudad.
-   * Si no hay ciudad, carga todos los eventos.
-   * Si el backend falla o no devuelve eventos, usa EVENTOS_DEMO como fallback.
+   *
+   * El filtro por ciudad es EXACTO (`.eq('ciudad', ...)`), y la ubicación que
+   * carga el usuario nunca coincide letra por letra con la del evento: los
+   * eventos dicen "Buenos Aires" y los usuarios escriben "CABA, Buenos Aires",
+   * "Almagro, Caba", "Caballito, Capital federal"… Con ese filtro la consulta
+   * devolvía 0 filas para casi todos y la pantalla caía a EVENTOS_DEMO.
+   *
+   * Eso era lo que rompía la relación con el Calendario: los eventos de demo
+   * llevan ids 1..4 que CHOCAN con los ids reales de la tabla `eventos`, así
+   * que un evento de demo se veía como "✓ Agregado al calendario" solo porque
+   * el usuario tenía guardado el evento REAL con ese mismo id, y agregar los
+   * de demo que no existen en la base (3 y 4) fallaba contra la foreign key.
+   *
+   * Ahora: si el filtro por ciudad no trae nada, se reintenta SIN filtro (los
+   * eventos son pocos y de alcance nacional). Los datos de demo quedan solo
+   * para la vista previa sin sesión — con sesión iniciada nunca se muestran
+   * eventos inventados, igual que en CalendarioScreen y FichaMedicaScreen.
    */
   async function cargarDatos(silencioso = false) {
     if (!silencioso) setLoading(true);
@@ -502,13 +517,23 @@ export default function EventosScreen() {
       try {
         const data = await fetchEventos(ciudadUsuario);
         eventosData = data.eventos ?? [];
+        // Sin resultados por ciudad, mostrar todos antes que no mostrar nada:
+        // es preferible un evento de otra ciudad —que además dice dónde es— a
+        // una pantalla vacía o, peor, a eventos inventados.
+        if (eventosData.length === 0 && ciudadUsuario) {
+          const todos = await fetchEventos(null);
+          eventosData = todos.eventos ?? [];
+        }
       } catch {
-        // Backend no disponible — usar datos de demo
+        // Backend no disponible
         eventosData = [];
       }
 
-      // Fallback a datos de demo si el backend no devuelve nada
-      const eventosFinales = eventosData.length > 0 ? eventosData : EVENTOS_DEMO;
+      // Los eventos de demo son solo para la vista previa sin login: sus ids no
+      // existen en la base y no se pueden agregar a un calendario real.
+      const eventosFinales = eventosData.length > 0
+        ? eventosData
+        : (haySesion() ? [] : EVENTOS_DEMO);
 
       setEventos(eventosFinales);
       // La mascota elegida manda; en el primer render todavía no está resuelta
@@ -524,8 +549,9 @@ export default function EventosScreen() {
         return;
       }
 
-      // En caso de error total, mostrar demo igual
-      setEventos(EVENTOS_DEMO);
+      // Con sesión, antes una lista vacía que eventos inventados que después no
+      // se pueden agregar al calendario (ver el comentario de cargarDatos).
+      setEventos(haySesion() ? [] : EVENTOS_DEMO);
       await sincronizarAgregados(undefined);
     } finally {
       setLoading(false);
@@ -642,7 +668,11 @@ export default function EventosScreen() {
         </View>
 
         {/* Selector de mascota: cada una tiene su propio calendario, así que hay
-            que poder elegir a cuál va el evento. Con una sola no se muestra. */}
+            que poder elegir a cuál va el evento. Con una sola no se muestra.
+
+            Sin fondo detrás de la tira: las pastillas van sueltas sobre el fondo
+            de la pantalla. Son opacas, así que se leen igual cuando la lista
+            pasa por atrás al desplazarse. */}
         {mascotas.length > 1 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}
             style={styles.petTabs} contentContainerStyle={styles.petTabsContent}>
@@ -651,6 +681,8 @@ export default function EventosScreen() {
                 key={mx.id}
                 style={[styles.petTab, mascotaSel === mx.id && styles.petTabOn]}
                 onPress={() => setMascotaSel(mx.id)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: mascotaSel === mx.id }}
                 accessibilityLabel={`Agregar los eventos al calendario de ${mx.nombre}`}
               >
                 <Text style={[styles.petTabTxt, mascotaSel === mx.id && styles.petTabTxtOn]}
@@ -771,16 +803,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // ── Selector de mascota (mismo lenguaje visual que CalendarioScreen) ──
+  // ── Selector de mascota ───────────────────────────────────
   petTabs: { flexGrow: 0, marginBottom: 10 },
-  petTabsContent: { paddingHorizontal: 20, gap: 8 },
+  petTabsContent: { paddingHorizontal: 16, gap: 8, alignItems: 'center' },
   petTab: {
-    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.75)', borderWidth: 1.5, borderColor: 'transparent',
+    paddingHorizontal: 16, height: 34, borderRadius: 17, justifyContent: 'center',
+    backgroundColor: '#F2F5F3', borderWidth: 1.5, borderColor: 'transparent',
+    // flexShrink: 0 — sin esto las pastillas se encogen dentro del ScrollView
+    // horizontal hasta quedarse solo con el padding, y como el Text va con
+    // numberOfLines={1} (overflow oculto) el nombre desaparecía: se veían
+    // bloques vacíos, con el ancho de cada uno proporcional al largo del
+    // nombre que tendría que estar mostrando.
+    flexShrink: 0,
   },
-  petTabOn: { backgroundColor: '#FFFFFF', borderColor: '#2DBD72' },
-  petTabTxt: { fontSize: 13, color: '#6B6B6B', fontWeight: '600', maxWidth: 130 },
-  petTabTxtOn: { color: '#2DBD72', fontWeight: '700' },
+  // Seleccionada en verde lleno: se distingue de un vistazo cuál recibe el
+  // evento, que es justamente lo que hay que tener claro antes de agregarlo.
+  petTabOn: { backgroundColor: '#2DBD72', borderColor: '#2DBD72' },
+  petTabTxt: { fontSize: 13, color: '#6B6B6B', fontWeight: '600', maxWidth: 140 },
+  petTabTxtOn: { color: '#FFFFFF', fontWeight: '700' },
 
   // ── ScrollView ────────────────────────────────────────────
   scrollContent: {

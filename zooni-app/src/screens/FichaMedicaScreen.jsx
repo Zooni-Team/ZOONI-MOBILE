@@ -295,11 +295,12 @@ export default function FichaMedicaScreen() {
       // baje una URL remota. Si falla, el PDF sale igual pero sin foto.
       const fotoDataUri = await imagenADataUri(petImg);
 
+      // El plan sugerido (vac.sugeridas) NO va al PDF: es una recomendación
+      // genérica de la app, no un dato del animal. Vive en la pantalla Vacunas.
       const datos = {
         mascota: mascota ?? m,
         usuario,                              // titular responsable del documento
         vacunas: vac.aplicadas ?? [],
-        vacunasSugeridas: vac.sugeridas ?? [],
         tratamientos: trat.aplicados ?? [],
         consultas: consultas ?? [],
       };

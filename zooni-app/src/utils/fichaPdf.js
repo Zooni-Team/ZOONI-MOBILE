@@ -108,15 +108,16 @@ export const AVISO_LEGAL = [
  * @param {object} datos.mascota      { nombre, especie, raza, peso, fecha_nacimiento }
  * @param {object} [datos.usuario]    { nombre, apellido } — titular responsable
  * @param {Array}  datos.vacunas      aplicadas (fetchVacunas().aplicadas)
- * @param {Array}  [datos.vacunasSugeridas]  plan sugerido (fetchVacunas().sugeridas)
  * @param {Array}  datos.tratamientos aplicados (fetchTratamientos().aplicados)
  * @param {Array}  datos.consultas    fetchConsultas()
+ *
+ * El plan de vacunación sugerido NO entra al documento: ver el comentario más
+ * abajo, donde estaba esa sección.
  */
 export function construirSecciones({
   mascota = {},
   usuario = null,
   vacunas = [],
-  vacunasSugeridas = [],
   tratamientos = [],
   consultas = [],
 }) {
@@ -159,24 +160,15 @@ export function construirSecciones({
     })),
   };
 
-  const secPlan = {
-    titulo: 'Plan de vacunación sugerido',
-    vacio: 'No hay un plan sugerido para esta especie.',
-    // El plan es orientativo y depende de la especie/edad: se aclara acá mismo
-    // para que nadie lo lea como "vacunas que el animal tiene".
-    nota: 'Calendario orientativo según especie y edad. No refleja aplicaciones reales salvo donde se indica.',
-    items: vacunasSugeridas.map((s) => ({
-      titulo: s.nombre || 'Sin nombre',
-      chip: s.applied ? 'Aplicada' : 'Pendiente',
-      lineas: [
-        ['Estado', s.applied ? 'Aplicada' : 'Pendiente de aplicación'],
-        ['Frecuencia', s.frecuencia_descripcion || 'No especificada'],
-        ['Próximo refuerzo', s.proximo_refuerzo
-          ? `${formatFecha(s.proximo_refuerzo)}${estadoVencimiento(s.proximo_refuerzo) ? ` (${estadoVencimiento(s.proximo_refuerzo)})` : ''}`
-          : 'Sin fecha registrada'],
-      ],
-    })),
-  };
+  /*
+    Acá iba una sección "Plan de vacunación sugerido" con el calendario
+    orientativo por especie y edad. Se sacó a pedido: no son datos del animal
+    —son una recomendación genérica que la app calcula— y en un documento que se
+    le muestra a un veterinario mezclaba lo que la mascota TIENE con lo que
+    todavía no. Ocupaba además la mayor parte del PDF.
+
+    El plan sigue estando en la pantalla de Vacunas, que es donde tiene sentido.
+  */
 
   const secTratamientos = {
     titulo: 'Tratamientos',
@@ -232,7 +224,7 @@ export function construirSecciones({
     identificacion: [...identificacion, ...titular],
     resumen,
     pendientes,
-    secciones: [secVacunas, secPlan, secTratamientos, secConsultas],
+    secciones: [secVacunas, secTratamientos, secConsultas],
     totalRegistros: vacunas.length + tratamientos.length + consultas.length,
   };
 }
@@ -307,9 +299,36 @@ export function construirDocPdf(JsPdfCtor, datos, fotoDataUri = null) {
     const cy = ALTO_HEADER / 2;
     doc.setFillColor(255, 255, 255);
     doc.circle(cx, cy, D / 2 + 1.4, 'F');
+
+    /*
+      Recorte circular de la foto. El orden de estas tres llamadas NO es
+      opcional: es lo que hacía que el PDF saliera con la primera página EN
+      BLANCO y sin el título de "Vacunas aplicadas".
+
+      Antes era `doc.circle(cx, cy, D / 2).clip()`, que emite el trazo, lo
+      PINTA con el operador `S` —que además termina el trazo— y recién después
+      el operador de recorte `W`. Según el spec de PDF, `W` va entre la
+      construcción del trazo y el operador que lo pinta; puesto después queda
+      sin trazo al que aplicarse. El resultado es un recorte degenerado: los
+      visores se comportan distinto y varios ocultan TODO lo que se dibuja
+      después en esa página. De ahí la página 1 vacía, que encima parecía una
+      hoja de más.
+
+      La forma correcta: construir el trazo sin pintarlo (style `null`),
+      recortar con `clip()` y cerrar el trazo con `discardPath()` (operador
+      `n`, "terminar sin pintar"). El stream queda `... c  W  n  q`.
+    */
     doc.saveGraphicsState();
-    doc.circle(cx, cy, D / 2).clip();
-    doc.addImage(fotoDataUri, M, cy - D / 2, D, D, undefined, 'FAST');
+    doc.circle(cx, cy, D / 2, null);
+    doc.clip();
+    doc.discardPath();
+    // Una foto corrupta no puede tumbar la ficha entera: sin ella el documento
+    // sale igual, solo que sin la imagen de la mascota.
+    try {
+      doc.addImage(fotoDataUri, M, cy - D / 2, D, D, undefined, 'FAST');
+    } catch {
+      /* se ignora a propósito: el resto del PDF vale igual */
+    }
     doc.restoreGraphicsState();
     xTexto = M + D + 9;
   }
@@ -482,31 +501,47 @@ export function construirDocPdf(JsPdfCtor, datos, fotoDataUri = null) {
   });
 
   // ── Aviso legal ────────────────────────────────────────────────────────────
-  const lineasAviso = AVISO_LEGAL.flatMap((p) => [...doc.splitTextToSize(p, UTIL - 10), '']);
-  asegurarEspacio(12 + lineasAviso.length * 3.6);
+  /*
+    El alto se mide sobre las líneas REALES. Antes se metía un '' al final de
+    cada párrafo y esa línea vacía se contaba como una línea entera de alto:
+    el recuadro reservaba 44 mm cuando el texto ocupa 6 líneas. Con 32 mm
+    libres al pie, esos milímetros de más eran lo que empujaba el aviso —y por
+    lo tanto una hoja entera— a una página nueva casi vacía.
+
+    Ahora la separación entre párrafos es un espacio chico (GAP), no una línea
+    completa, y la caja se dimensiona con lo que de verdad se dibuja.
+  */
+  const LH = 3.1;   // interlínea
+  const GAP = 1.6;  // separación entre párrafos
+  doc.setFont(undefined, 'normal');
+  doc.setFontSize(7);
+  const parrafosAviso = AVISO_LEGAL.map((p) => doc.splitTextToSize(p, UTIL - 10));
+  const altoTexto = parrafosAviso.reduce((acc, l) => acc + l.length * LH, 0)
+    + (parrafosAviso.length - 1) * GAP;
+  const altoCaja = 9.5 + altoTexto + 2.5;
+
+  asegurarEspacio(altoCaja + 4);
   y += 4;
 
-  // El alto se calcula antes de dibujar: el recuadro va primero (si no, el
-  // relleno tapa el texto) y el texto encima.
+  // El recuadro va primero (si no, el relleno tapa el texto) y el texto encima.
   const yCaja = y;
-  const altoCaja = 9 + lineasAviso.length * 3.6;
   doc.setDrawColor(...LINEA);
   doc.setLineWidth(0.6);
   doc.setFillColor(247, 252, 249);
   doc.rect(M, yCaja, UTIL, altoCaja, 'FD');
 
   doc.setFont(undefined, 'bold');
-  doc.setFontSize(8.5);
+  doc.setFontSize(8);
   doc.setTextColor(...VERDE_OSC);
-  doc.text('AVISO IMPORTANTE', M + 5, yCaja + 6);
+  doc.text('AVISO IMPORTANTE', M + 5, yCaja + 5.5);
 
-  let yTexto = yCaja + 11;
+  let yTexto = yCaja + 9.5;
   doc.setFont(undefined, 'normal');
-  doc.setFontSize(7.4);
+  doc.setFontSize(7);
   doc.setTextColor(...SUAVE);
-  lineasAviso.forEach((l) => {
-    if (l) doc.text(l, M + 5, yTexto);
-    yTexto += 3.6;
+  parrafosAviso.forEach((lineas, i) => {
+    lineas.forEach((l) => { doc.text(l, M + 5, yTexto); yTexto += LH; });
+    if (i < parrafosAviso.length - 1) yTexto += GAP;
   });
   y = yCaja + altoCaja + 4;
 
