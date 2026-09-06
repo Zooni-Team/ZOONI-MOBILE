@@ -154,6 +154,38 @@ async function mailYaRegistrado(mail) {
   return (data?.length ?? 0) > 0;
 }
 
+/**
+ * Chequeo de disponibilidad para el PASO 3 del registro (mail y @usuario).
+ *
+ * El registro real ocurre recién en el paso 4, cuando ya cargaste país,
+ * provincia y teléfono. Si el mail estaba tomado, el error saltaba ahí: tres
+ * pantallas después de haberlo escrito, y encima había que volver atrás. Con
+ * esto el aviso aparece en la misma pantalla donde se escribe.
+ *
+ * No reemplaza la validación del registro: entre el paso 3 y el 4 alguien más
+ * puede quedarse con ese mail. Es para avisar temprano en el caso normal; la
+ * garantía sigue siendo el índice único del servidor.
+ *
+ * Ante un error de red devuelve todo libre a propósito: no tiene sentido
+ * bloquear el registro por no haber podido consultar.
+ *
+ * @returns {Promise<{mailTomado: boolean, usuarioTomado: boolean}>}
+ */
+export async function verificarDisponibilidad({ email, nombreUsuario }) {
+  const mail = (email ?? '').trim().toLowerCase();
+  const usuario = (nombreUsuario ?? '').trim().replace(/^@/, '');
+
+  const [mailTomado, usuarioTomado] = await Promise.all([
+    mail ? mailYaRegistrado(mail) : Promise.resolve(false),
+    usuario
+      ? supabase.from('User').select('Id_User').ilike('NombreUsuario', usuario).maybeSingle()
+        .then(({ data }) => !!data, () => false)
+      : Promise.resolve(false),
+  ]);
+
+  return { mailTomado, usuarioTomado };
+}
+
 // ─────────────────────────────────────────────
 // REGISTRO
 // ─────────────────────────────────────────────

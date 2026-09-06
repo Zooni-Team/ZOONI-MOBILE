@@ -5,6 +5,7 @@
 
 import { useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -21,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { resolveMascotaBasicoImage } from '../constants/registroImages';
+import { verificarDisponibilidad } from '../services/authApi';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_MIN = 7;
@@ -39,6 +41,8 @@ export default function RegisterStep3Screen() {
   const [verPassword, setVerPassword] = useState(false);
   const [verConfirmar, setVerConfirmar] = useState(false);
   const [errores, setErrores] = useState({});
+  // Consultando si el mail / @usuario están libres, antes de pasar al paso 4
+  const [verificando, setVerificando] = useState(false);
   const [focus, setFocus] = useState(null);
 
   const petImg = resolveMascotaBasicoImage(datosPrevios.especie, datosPrevios.razaNombre);
@@ -68,12 +72,41 @@ export default function RegisterStep3Screen() {
     && confirmarValido
   ), [nombre, apellido, usuarioValido, mailValido, passwordValida, confirmarValido]);
 
-  const handleContinuar = () => {
+  /*
+    Antes de avanzar se comprueba que el mail y el @usuario estén libres.
+
+    El registro real ocurre en el paso 4 (después de país, provincia y
+    teléfono). Si el mail ya estaba en uso, el error saltaba recién ahí — y
+    encima con Alert.alert, que en web NO muestra nada: el botón dejaba de
+    cargar, no pasaba nada y no había forma de saber por qué. Ahora el aviso
+    aparece debajo del campo, en la pantalla donde se escribió.
+  */
+  const handleContinuar = async () => {
     const errs = {};
     if (!nombre.trim()) errs.nombre = 'Ingresá tu nombre';
     if (!apellido.trim()) errs.apellido = 'Ingresá tu apellido';
     setErrores(errs);
-    if (Object.keys(errs).length > 0 || !puedeAvanzar) return;
+    if (Object.keys(errs).length > 0 || !puedeAvanzar || verificando) return;
+
+    setVerificando(true);
+    try {
+      const { mailTomado, usuarioTomado } = await verificarDisponibilidad({
+        email: mail.trim(),
+        nombreUsuario: usuarioLimpio,
+      });
+      if (mailTomado || usuarioTomado) {
+        setErrores({
+          mail: mailTomado ? 'Ya existe una cuenta con este mail. Probá iniciar sesión.' : null,
+          usuario: usuarioTomado ? 'Ese nombre de usuario ya está tomado, elegí otro.' : null,
+        });
+        return;
+      }
+    } catch {
+      // Sin conexión no se bloquea el registro: el servidor tiene la última
+      // palabra con su índice único.
+    } finally {
+      setVerificando(false);
+    }
 
     navigation.navigate('RegisterStep4', {
       ...datosPrevios,
@@ -133,18 +166,28 @@ export default function RegisterStep3Screen() {
             <View style={[s.inputRow, focus === 'usuario' && s.inputFocus, mostrarErrorUsuario && s.inputError]}>
               <Text style={s.arroba}>@</Text>
               <TextInput style={s.inputPass} placeholder="nombre de usuario" placeholderTextColor="#AAAAAA"
-                value={usuario} onChangeText={(v) => setUsuario(v.replace(/[^a-zA-Z0-9._@-]/g, ''))}
+                value={usuario}
+                onChangeText={(v) => {
+                  setUsuario(v.replace(/[^a-zA-Z0-9._@-]/g, ''));
+                  if (errores.usuario) setErrores((p) => ({ ...p, usuario: null }));
+                }}
                 autoCapitalize="none" autoCorrect={false} maxLength={31}
                 onFocus={() => setFocus('usuario')} onBlur={() => setFocus(null)} returnKeyType="next" />
             </View>
             {mostrarErrorUsuario && <Text style={s.errorTxt}>Usá 3 a 30 letras, números, punto, guion o guion bajo</Text>}
+            {/* "Ya está tomado" viene del servidor, no del formato */}
+            {!!errores.usuario && <Text style={s.errorTxt}>{errores.usuario}</Text>}
 
             <TextInput style={[s.input, focus === 'mail' && s.inputFocus, mostrarErrorMail && s.inputError]}
               placeholder="Mail" placeholderTextColor="#AAAAAA"
-              value={mail} onChangeText={setMail}
+              value={mail}
+              // Al corregir el mail se borra el "ya existe una cuenta": si no,
+              // el cartel quedaba pegado aunque ya hubiera escrito otro.
+              onChangeText={(v) => { setMail(v); if (errores.mail) setErrores((p) => ({ ...p, mail: null })); }}
               keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
               onFocus={() => setFocus('mail')} onBlur={() => setFocus(null)} returnKeyType="next" />
             {mostrarErrorMail && <Text style={s.errorTxt}>Ingresá un email válido</Text>}
+            {!!errores.mail && <Text style={s.errorTxt}>{errores.mail}</Text>}
 
             <View style={[s.inputRow, focus === 'password' && s.inputFocus, mostrarErrorPassword && s.inputError]}>
               <TextInput style={s.inputPass} placeholder="Contraseña" placeholderTextColor="#AAAAAA"
@@ -177,12 +220,16 @@ export default function RegisterStep3Screen() {
         </ScrollView>
 
         <TouchableOpacity
-          style={[s.btnContinuar, !puedeAvanzar && s.btnContinuarOff]}
+          style={[s.btnContinuar, (!puedeAvanzar || verificando) && s.btnContinuarOff]}
           onPress={handleContinuar}
-          disabled={!puedeAvanzar}
+          disabled={!puedeAvanzar || verificando}
           activeOpacity={0.85}
         >
-          <Text style={s.btnContinuarTxt}>Continuar</Text>
+          {/* La comprobación va contra la base: sin indicador, el botón parecía
+              trabado durante ese momento. */}
+          {verificando
+            ? <ActivityIndicator size="small" color="#FFFFFF" />
+            : <Text style={s.btnContinuarTxt}>Continuar</Text>}
         </TouchableOpacity>
       </KeyboardAvoidingView>
     </SafeAreaView>

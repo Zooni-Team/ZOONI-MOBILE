@@ -30,6 +30,49 @@ function esMismoDia(a, b) {
     && a.getDate() === b.getDate();
 }
 
+/** ¿Los dos valores caen el mismo día calendario? (para agrupar el chat) */
+export function mismoDia(a, b) {
+  const da = aFecha(a);
+  const db = aFecha(b);
+  if (!da || !db) return false;
+  return esMismoDia(da, db);
+}
+
+const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+/**
+ * Etiqueta del separador de día del chat, como en WhatsApp:
+ *   hoy              → "Hoy"
+ *   ayer             → "Ayer"
+ *   esta semana      → "martes"
+ *   este año         → "12 de agosto"
+ *   otro año         → "12 de agosto de 2025"
+ *
+ * La fecha vive en el separador y NO en cada burbuja: dentro de un mismo día
+ * repetir el día en cada mensaje es ruido, y alcanza con la hora.
+ */
+export function etiquetaDia(valor, ahora = new Date()) {
+  const d = aFecha(valor);
+  if (!d) return '';
+
+  if (esMismoDia(d, ahora)) return 'Hoy';
+
+  const ayer = new Date(ahora);
+  ayer.setDate(ayer.getDate() - 1);
+  if (esMismoDia(d, ayer)) return 'Ayer';
+
+  // Días recientes por nombre; se compara por día calendario y no por
+  // milisegundos, para que a las 00:30 el de anteayer no diga "hace 1 día".
+  const soloDia = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate());
+  const diasAtras = Math.round((soloDia(ahora) - soloDia(d)) / DIA);
+  if (diasAtras > 0 && diasAtras < 7) return DIAS_SEMANA[d.getDay()];
+
+  const base = `${d.getDate()} de ${MESES[d.getMonth()]}`;
+  return d.getFullYear() === ahora.getFullYear() ? base : `${base} de ${d.getFullYear()}`;
+}
+
 /**
  * Texto largo para el detalle de un mensaje.
  *   < 1 min  → "recién"

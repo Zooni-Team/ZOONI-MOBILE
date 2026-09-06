@@ -9,7 +9,6 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -27,6 +26,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { registro } from '../services/authApi';
+import { alerta } from '../utils/dialogo';
 import { PAISES } from '../constants/registroAssets';
 import { resolveMascotaBasicoImage } from '../constants/registroImages';
 
@@ -151,14 +151,25 @@ export default function RegisterStep4Screen() {
         routes: [{ name: 'Login', params: { registroExitoso: true } }],
       });
     } catch (err) {
+      /*
+        `alerta()` y no Alert.alert: en react-native-web Alert.alert es un
+        NO-OP. Este bloque existía y estaba bien pensado, pero en el navegador
+        no mostraba absolutamente nada: el botón dejaba de cargar y el registro
+        se quedaba trabado sin decir por qué. Era exactamente el síntoma del
+        mail repetido.
+
+        El mail y el @usuario ya se verifican en el paso 3; esto queda como red
+        de seguridad para la carrera (que alguien registre ese mail entre un
+        paso y el otro) y para el resto de los errores.
+      */
       if (err?.message === 'email_existente') {
-        Alert.alert('Email en uso', 'Ya existe una cuenta con ese email.');
+        alerta('Ese mail ya está en uso', 'Ya existe una cuenta con ese mail. Volvé atrás y usá otro, o iniciá sesión.');
       } else if (err?.message === 'usuario_existente') {
-        Alert.alert('Usuario en uso', 'Ese nombre de usuario ya está tomado. Volvé atrás y elegí otro.');
+        alerta('Ese usuario ya está tomado', 'Volvé atrás y elegí otro nombre de usuario.');
       } else if (err?.message === 'password_corta') {
-        Alert.alert('Contraseña inválida', 'La contraseña debe tener al menos 7 caracteres.');
+        alerta('Contraseña inválida', 'La contraseña debe tener al menos 7 caracteres.');
       } else {
-        Alert.alert('Error', 'No se pudo crear la cuenta. Revisá tu internet e intentá de nuevo.');
+        alerta('No se pudo crear la cuenta', 'Revisá tu internet e intentá de nuevo.');
       }
     } finally {
       setCargando(false);

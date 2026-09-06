@@ -9,7 +9,7 @@
  * del otro lado sin depender de una suscripción en tiempo real.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Image,
   KeyboardAvoidingView,
@@ -28,7 +28,7 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 
 import { enviarMensaje, getMensajes, marcarLeidosMatch } from '../services/chatStore';
 import MatchInfoModal from '../components/chat/MatchInfoModal';
-import { tiempoRelativo } from '../utils/tiempoRelativo';
+import { etiquetaDia, horaCorta, mismoDia } from '../utils/tiempoRelativo';
 
 const POLL_MS = 4000;
 
@@ -167,19 +167,36 @@ export default function ChatScreen() {
               </Text>
             </View>
           ) : (
-            mensajes.map((m) => (
-              <View key={m.id} style={[s.burbujaWrap, m.autor === 'yo' ? s.burbujaWrapYo : s.burbujaWrapOtro]}>
-                <View style={[s.burbuja, m.autor === 'yo' ? s.burbujaYo : s.burbujaOtro]}>
-                  <Text style={[s.burbujaTxt, m.autor === 'yo' && s.burbujaTxtYo]}>{m.texto}</Text>
-                </View>
-                {/* "hace 5 minutos" en vez de una hora suelta: en un chat lo que
-                    importa es hace cuánto se dijo, no a qué hora exacta. */}
-                <View style={s.metaFila}>
-                  <Text style={s.hora}>{tiempoRelativo(m.fecha, ahora)}</Text>
-                  {m.autor === 'yo' && !esServicio && <TildesEstado leido={m.leido} />}
-                </View>
-              </View>
-            ))
+            /*
+              Formato WhatsApp: la fecha vive en un separador entre días y cada
+              burbuja lleva SOLO la hora.
+
+              Antes cada mensaje mostraba tiempo relativo ("hace 3 horas",
+              "11/8 · 13:29"), así que dos mensajes seguidos podían decir cosas
+              con formatos distintos y no se entendía a qué hora se dijo nada.
+            */
+            mensajes.map((m, i) => {
+              const anterior = i > 0 ? mensajes[i - 1] : null;
+              const abreDia = !anterior || !mismoDia(anterior.fecha, m.fecha);
+              return (
+                <Fragment key={m.id}>
+                  {abreDia && (
+                    <View style={s.separadorDia}>
+                      <Text style={s.separadorDiaTxt}>{etiquetaDia(m.fecha, ahora)}</Text>
+                    </View>
+                  )}
+                  <View style={[s.burbujaWrap, m.autor === 'yo' ? s.burbujaWrapYo : s.burbujaWrapOtro]}>
+                    <View style={[s.burbuja, m.autor === 'yo' ? s.burbujaYo : s.burbujaOtro]}>
+                      <Text style={[s.burbujaTxt, m.autor === 'yo' && s.burbujaTxtYo]}>{m.texto}</Text>
+                    </View>
+                    <View style={s.metaFila}>
+                      <Text style={s.hora}>{horaCorta(m.fecha)}</Text>
+                      {m.autor === 'yo' && !esServicio && <TildesEstado leido={m.leido} />}
+                    </View>
+                  </View>
+                </Fragment>
+              );
+            })
           )}
         </ScrollView>
 
@@ -258,6 +275,17 @@ const s = StyleSheet.create({
   burbujaTxtYo: { color: '#FFFFFF' },
   metaFila: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3, marginHorizontal: 4 },
   hora:     { fontSize: 10, color: '#6B6B6B' },
+
+  // Separador de día, centrado entre los mensajes (Hoy / Ayer / martes / 12 de agosto)
+  separadorDia: {
+    alignSelf: 'center', marginVertical: 14,
+    paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  separadorDiaTxt: {
+    fontSize: 11, fontWeight: '700', color: '#5A6B60',
+    textTransform: 'uppercase', letterSpacing: 0.5,
+  },
   tildes:   { flexDirection: 'row', alignItems: 'center' },
 
   inputRow: {

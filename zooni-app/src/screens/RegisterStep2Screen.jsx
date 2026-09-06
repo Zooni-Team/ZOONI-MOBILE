@@ -12,7 +12,6 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -29,6 +28,9 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 
 import { fetchRazas } from '../services/authApi';
+// alerta() y no Alert.alert: en react-native-web Alert.alert es un NO-OP y
+// estos avisos no se veían (mismo problema que trababa el registro sin explicar).
+import { alerta } from '../utils/dialogo';
 import { resolveCajaImage } from '../constants/registroImages';
 import { calcularEdad } from '../utils/calcularEdad';
 import { toISODateLocal } from '../utils/fechaLocal';
@@ -75,7 +77,7 @@ export default function RegisterStep2Screen() {
         if (!cancelado) setRazas(lista.length ? lista : [{ id: null, nombre: 'Sin raza definida' }]);
       } catch {
         if (!cancelado) {
-          Alert.alert('Error', 'No se pudieron cargar las razas. Revisá tu conexión.');
+          alerta('Error', 'No se pudieron cargar las razas. Revisá tu conexión.');
           setRazas([{ id: null, nombre: 'Sin raza definida' }]);
         }
       } finally {
@@ -89,7 +91,7 @@ export default function RegisterStep2Screen() {
     try {
       const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permiso.granted) {
-        Alert.alert('Sin permiso', 'Habilitá el acceso a la galería desde la configuración del dispositivo.');
+        alerta('Sin permiso', 'Habilitá el acceso a la galería desde la configuración del dispositivo.');
         return;
       }
       const res = await ImagePicker.launchImageLibraryAsync({
@@ -98,7 +100,7 @@ export default function RegisterStep2Screen() {
       });
       if (!res.canceled && res.assets?.[0]?.uri) setFotoUri(res.assets[0].uri);
     } catch {
-      Alert.alert('Error', 'No se pudo abrir la galería.');
+      alerta('Error', 'No se pudo abrir la galería.');
     }
   };
 
@@ -106,13 +108,13 @@ export default function RegisterStep2Screen() {
     try {
       const permiso = await ImagePicker.requestCameraPermissionsAsync();
       if (!permiso.granted) {
-        Alert.alert('Sin permiso', 'Habilitá el acceso a la cámara desde la configuración del dispositivo.');
+        alerta('Sin permiso', 'Habilitá el acceso a la cámara desde la configuración del dispositivo.');
         return;
       }
       const res = await ImagePicker.launchCameraAsync({ quality: 0.7 });
       if (!res.canceled && res.assets?.[0]?.uri) setFotoUri(res.assets[0].uri);
     } catch {
-      Alert.alert('Error', 'No se pudo abrir la cámara.');
+      alerta('Error', 'No se pudo abrir la cámara.');
     }
   };
 
