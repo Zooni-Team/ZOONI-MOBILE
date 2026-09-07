@@ -12,10 +12,8 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Dimensions,
   Image,
   ImageBackground,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -24,7 +22,6 @@ import {
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -33,17 +30,17 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import AppDialog from '../components/AppDialog';
+// El editor de perfil es compartido con "Así te ven" de Match: mismo
+// formulario y misma API desde los dos lados.
+import EditarPerfilModal, { AModal, FocusInput } from '../components/perfil/EditarPerfilModal';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
 import {
   fetchMiPerfil,
   fetchMisPublicaciones,
-  actualizarMiPerfil,
   actualizarMiFotoPerfil,
   crearPublicacion,
   eliminarPublicacion,
 } from '../services/perfilApi';
-
-const { height: SH } = Dimensions.get('window');
 
 function formatFecha(iso) {
   if (!iso) return '';
@@ -86,60 +83,6 @@ function Toast({ visible, mensaje }) {
   );
 }
 
-// ─── MODAL ANIMADO ────────────────────────────────────────────────────────────
-
-function AModal({ visible, onClose, children }) {
-  const sc = useRef(new Animated.Value(0.92)).current;
-  const op = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (visible) { sc.setValue(0.92); op.setValue(0); }
-    Animated.parallel([
-      Animated.timing(sc, { toValue: visible ? 1 : 0.92, duration: visible ? 220 : 160, useNativeDriver: true }),
-      Animated.timing(op, { toValue: visible ? 1 : 0,    duration: visible ? 220 : 160, useNativeDriver: true }),
-    ]).start();
-  }, [visible, sc, op]);
-
-  return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-        style={s.modalKAV}
-      >
-        {/* Overlay: solo cierra al tocar FUERA del card */}
-        <Pressable style={s.overlay} onPress={onClose}>
-          <Pressable style={s.modalCardWrap} onPress={() => {}}>
-            <Animated.View style={[s.modalCard, { transform: [{ scale: sc }], opacity: op }]}>
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                bounces={false}
-                style={{ flexShrink: 1 }}
-              >
-                {children}
-              </ScrollView>
-            </Animated.View>
-          </Pressable>
-        </Pressable>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-}
-
-// ─── INPUT con borde que cambia en focus ──────────────────────────────────────
-
-function FocusInput({ style, multiline, ...props }) {
-  const [foc, setFoc] = useState(false);
-  return (
-    <TextInput
-      {...props}
-      multiline={multiline}
-      style={[s.input, multiline && s.inputMulti, foc && s.inputFocus, style]}
-      onFocus={() => setFoc(true)}
-      onBlur={() => setFoc(false)}
-    />
-  );
-}
-
 // ─── SCREEN ───────────────────────────────────────────────────────────────────
 
 export default function PerfilScreen() {
@@ -159,14 +102,6 @@ export default function PerfilScreen() {
   const [modalPublicar, setModalPublicar] = useState(false);
   const [pubAbierta,    setPubAbierta]    = useState(null); // publicación en el visor
   const [confirmarBorrar, setConfirmarBorrar] = useState(null);
-
-  // Form editar
-  const [fNombre,   setFNombre]   = useState('');
-  const [fApellido, setFApellido] = useState('');
-  const [fBio,      setFBio]      = useState('');
-  const [fUbicacion,setFUbicacion]= useState('');
-  const [fErrUser,  setFErrUser]  = useState('');
-  const [guardando, setGuardando] = useState(false);
 
   // Form publicar
   const [fImagen,   setFImagen]   = useState(null);
@@ -217,12 +152,6 @@ export default function PerfilScreen() {
   const po = (sc) => Animated.timing(sc, { toValue: 1,    duration: 150, useNativeDriver: true }).start();
 
   // ── Abrir modales ────────────────────────────────────────────────────────
-  function abrirEditar() {
-    setFNombre(perfil?.nombre ?? ''); setFApellido(perfil?.apellido ?? '');
-    setFBio(perfil?.bio ?? '');
-    setFUbicacion(perfil?.ubicacion ?? ''); setFErrUser('');
-    setModalEditar(true);
-  }
   function abrirPublicar() {
     setFImagen(null); setFDesc(''); setImgErr(false);
     setModalPublicar(true);
@@ -237,23 +166,6 @@ export default function PerfilScreen() {
       { text: 'Seguir editando', style: 'cancel' },
       { text: 'Sí, cancelar', style: 'destructive', onPress: () => setModalPublicar(false) },
     ]);
-  }
-
-  // ── Guardar perfil (el @usuario se cambia desde Configuración) ────────────
-  async function guardarPerfil() {
-    if (!fNombre.trim()) { setFErrUser('El nombre es requerido'); return; }
-    setFErrUser(''); setGuardando(true);
-    try {
-      const actualizado = await actualizarMiPerfil({
-        nombre: fNombre.trim(), apellido: fApellido.trim(),
-        bio: fBio.trim(), ubicacion: fUbicacion.trim(),
-      });
-      setPerfil((prev) => ({ ...prev, ...actualizado }));
-      setModalEditar(false);
-      mostrarToast('Perfil actualizado correctamente');
-    } catch {
-      mostrarToast('No se pudo actualizar el perfil');
-    } finally { setGuardando(false); }
   }
 
   // ── Cambiar foto ─────────────────────────────────────────────────────────
@@ -416,7 +328,7 @@ export default function PerfilScreen() {
           {/* ── Botones ── */}
           <Animated.View style={{ transform:[{scale:scEditar}] }}>
             <Pressable style={s.btnEditar}
-              onPressIn={()=>pi(scEditar)} onPressOut={()=>po(scEditar)} onPress={abrirEditar}>
+              onPressIn={()=>pi(scEditar)} onPressOut={()=>po(scEditar)} onPress={()=>setModalEditar(true)}>
               <Text style={s.btnEditarTxt}>Editar perfil</Text>
             </Pressable>
           </Animated.View>
@@ -524,45 +436,20 @@ export default function PerfilScreen() {
       </ScrollView>
       </ImageBackground>
 
-      {/* ══ MODAL EDITAR PERFIL ══════════════════════════════════════════ */}
-      <AModal visible={modalEditar} onClose={()=>setModalEditar(false)}>
-          <Text style={s.modalTitulo}>Editar perfil</Text>
-
-          <FocusInput placeholder="Nombre" placeholderTextColor="#AAAAAA"
-            value={fNombre} onChangeText={v => { setFNombre(v); setFErrUser(''); }}
-            style={[{marginBottom: fErrUser ? 4 : 12}, !!fErrUser && s.inputErr]} />
-          {!!fErrUser && <Text style={s.errTxt}>{fErrUser}</Text>}
-          <FocusInput placeholder="Apellido" placeholderTextColor="#AAAAAA"
-            value={fApellido} onChangeText={setFApellido} style={{marginBottom:12}} />
-
-          {/* El @usuario se cambia desde Configuración (con bloqueo de 30 días) */}
-          <TouchableOpacity style={s.usuarioRow}
-            onPress={() => { setModalEditar(false); navigation.navigate('ConfigCuenta'); }}
-            accessibilityRole="button" accessibilityLabel="Cambiar nombre de usuario en Configuración">
-            <View>
-              <Text style={s.usuarioRowLbl}>Nombre de usuario</Text>
-              <Text style={s.usuarioRowVal}>{p.nombreUsuario ? `@${p.nombreUsuario}` : 'Sin usuario'}</Text>
-            </View>
-            <View style={s.usuarioRowRight}>
-              <Text style={s.usuarioRowCfg}>Cambiar</Text>
-              <Ionicons name="chevron-forward" size={16} color="#8A8A8A" />
-            </View>
-          </TouchableOpacity>
-
-          <FocusInput placeholder="Contá algo sobre vos y tu mascota..." placeholderTextColor="#AAAAAA"
-            value={fBio} onChangeText={setFBio}
-            multiline numberOfLines={3} maxLength={150} textAlignVertical="top"
-            style={{marginBottom:12}} />
-          <FocusInput placeholder="País o ciudad (ej: Argentina)" placeholderTextColor="#AAAAAA"
-            value={fUbicacion} onChangeText={setFUbicacion} style={{marginBottom:20}} />
-
-          <TouchableOpacity style={s.btnGuardar} onPress={guardarPerfil} disabled={guardando}>
-            {guardando ? <ActivityIndicator size="small" color="#FFF"/> : <Text style={s.btnGuardarTxt}>Guardar</Text>}
-          </TouchableOpacity>
-          <TouchableOpacity style={s.btnCancelar} onPress={()=>setModalEditar(false)}>
-            <Text style={s.btnCancelarTxt}>Cancelar</Text>
-          </TouchableOpacity>
-      </AModal>
+      {/* ══ MODAL EDITAR PERFIL (compartido con Match) ═══════════════════ */}
+      <EditarPerfilModal
+        visible={modalEditar}
+        perfil={perfil}
+        onCerrar={() => setModalEditar(false)}
+        onGuardado={(actualizado, motivo) => {
+          setPerfil((prev) => ({ ...prev, ...actualizado }));
+          setModalEditar(false);
+          // Si se guardó de camino a Configuración, el toast quedaría festejando
+          // en una pantalla que el usuario ya no está mirando.
+          if (motivo !== 'navegacion') mostrarToast('Perfil actualizado correctamente');
+        }}
+        onError={mostrarToast}
+      />
 
       {/* ══ MODAL NUEVA PUBLICACIÓN ═════════════════════════════════════ */}
       <AModal visible={modalPublicar} onClose={cerrarPublicar}>
@@ -759,30 +646,8 @@ const s = StyleSheet.create({
   empty:       { alignItems:'center', marginTop:40, gap:12 },
   emptyTxt:    { fontSize:15, color:'#6B6B6B', textAlign:'center' },
 
-  // Modal
-  modalKAV:    { flex:1 },
-  overlay:     { flex:1, backgroundColor:'rgba(0,0,0,0.50)', justifyContent:'center', alignItems:'center', paddingHorizontal:20 },
-  modalCardWrap: { width:'100%', maxHeight: SH * 0.75 },
-  modalCard:   { backgroundColor:'#FFF', borderRadius:20, width:'100%',
-                 paddingHorizontal:22, paddingTop:24, paddingBottom:20,
-                 shadowColor:'#000', shadowOffset:{width:0,height:8}, shadowOpacity:0.18, shadowRadius:20, elevation:10 },
+  // Modal (el card animado y los inputs viven en EditarPerfilModal)
   modalTitulo: { fontSize:18, fontWeight:'700', color:'#2DBD72', textAlign:'center', marginBottom:20 },
-
-  // Inputs
-  usuarioRow:    { flexDirection:'row', alignItems:'center', justifyContent:'space-between',
-                   borderWidth:1.5, borderColor:'#EEE', borderRadius:10, backgroundColor:'#FAFAFA',
-                   paddingHorizontal:14, paddingVertical:10, marginBottom:12 },
-  usuarioRowLbl: { fontSize:12, color:'#8A8A8A' },
-  usuarioRowVal: { fontSize:15, fontWeight:'700', color:'#2C2C2C', marginTop:2 },
-  usuarioRowRight:{ flexDirection:'row', alignItems:'center', gap:4 },
-  usuarioRowCfg: { fontSize:13, fontWeight:'700', color:'#177046' },
-
-  input:       { borderWidth:1.5, borderColor:'#DDDDDD', borderRadius:10,
-                 paddingHorizontal:14, paddingVertical:12,
-                 fontSize:14, color:'#2C2C2C', backgroundColor:'#FFF', marginBottom:12 },
-  inputMulti:  { height:80, textAlignVertical:'top' },
-  inputFocus:  { borderColor:'#2DBD72' },
-  inputErr:    { borderColor:'#E63946' },
   errTxt:      { fontSize:11, color:'#E63946', marginBottom:8, marginLeft:4 },
 
   // Selector imagen publicación

@@ -18,6 +18,9 @@ import MatchProfileDetailModal from '../components/match/MatchProfileDetailModal
 import MatchProfileSetup from '../components/match/MatchProfileSetup';
 import MiTarjetaMatchModal from '../components/match/MiTarjetaMatchModal';
 import PetMatchOnboarding from '../components/match/PetMatchOnboarding';
+// El mismo editor que usa la pantalla Perfil: editar desde acá y desde allá
+// escribe en el mismo lugar, así no hay dos versiones de los mismos datos.
+import EditarPerfilModal from '../components/perfil/EditarPerfilModal';
 import {
   fetchMatchPerfiles, postMatchLike, postMatchSkip,
   fetchMiPerfilMatch, perfilMatchCompleto, actualizarMiUbicacionMatch,
@@ -54,6 +57,7 @@ export default function MatchScreen() {
   const [perfilListo, setPerfilListo] = useState(null);
   const [perfilMatch, setPerfilMatch] = useState(null); // datos ya cargados (foto, fecha…)
   const [miTarjetaVisible, setMiTarjetaVisible] = useState(false); // "Así te ven"
+  const [editarPerfilVisible, setEditarPerfilVisible] = useState(false);
 
   // Perfil de Match POR MASCOTA: detecta cuáles activas no lo tienen todavía
   const [misMascotas, setMisMascotas] = useState([]);
@@ -487,9 +491,30 @@ export default function MatchScreen() {
         onKeepExploring={() => setMatchOverlay(null)}
       />
 
+      {/*
+        Los dos modales se turnan en vez de superponerse: en iOS abrir uno
+        arriba del otro deja el de abajo sin poder cerrarse, y en web quedan
+        dos scrims apilados. Al guardar (o cancelar) se vuelve a la tarjeta,
+        que se recarga sola al abrirse y muestra el cambio recién hecho.
+      */}
       <MiTarjetaMatchModal
         visible={miTarjetaVisible}
         onClose={() => setMiTarjetaVisible(false)}
+        onEditarPerfil={() => { setMiTarjetaVisible(false); setEditarPerfilVisible(true); }}
+      />
+
+      <EditarPerfilModal
+        visible={editarPerfilVisible}
+        onCerrar={(motivo) => {
+          setEditarPerfilVisible(false);
+          // Si se fue a Configuración no reabrimos nada: taparía esa pantalla.
+          if (motivo !== 'navegacion') setMiTarjetaVisible(true);
+        }}
+        onGuardado={(_, motivo) => {
+          setEditarPerfilVisible(false);
+          if (motivo !== 'navegacion') setMiTarjetaVisible(true);
+        }}
+        onError={(msg) => alerta('No se pudo guardar', msg)}
       />
 
       <HamburgerDrawer

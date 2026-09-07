@@ -13,9 +13,14 @@ import { resolveMascotaVisual } from '../../constants/petImages';
 export default function MatchProfileCard({ perfil, cardHeight, cardWidth, onPress }) {
   const { nombre, edad, barrio, ciudad, foto_perfil_url, mascota, intereses } = perfil;
 
-  const tags = [mascota.raza, ...intereses];
-  const visibleTags = tags.slice(0, 3);
-  const extraCount = tags.length - visibleTags.length;
+  /*
+    La raza salía como un chip más, mezclada con los intereses, y el nombre de
+    la mascota no aparecía en ningún lado: la tarjeta mostraba la foto de un
+    perro sin decir cómo se llama. Ahora van juntos en su propia fila (igual que
+    el bloque "Mascota" del detalle) y los chips quedan solo para los intereses.
+  */
+  const visibleTags = intereses.slice(0, 3);
+  const extraCount = intereses.length - visibleTags.length;
 
   // Carrusel: todas las fotos reales (portada + galería). Si una mascota vieja
   // no tiene ninguna, cae en su ilustración por especie/raza — nunca ajena.
@@ -63,24 +68,44 @@ export default function MatchProfileCard({ perfil, cardHeight, cardWidth, onPres
           <Text style={styles.nameText} numberOfLines={1}>
             {nombre}, {edad}
           </Text>
+          {/* La mascota va pegada al nombre del dueño, antes de la ubicación:
+              son los dos datos de quién es este perfil.
+              !! y no un `&&` pelado: con los dos vacíos quedaría un string
+              suelto fuera de un <Text> y React Native tira error. */}
+          {!!(mascota.nombre || mascota.raza) && (
+            <View style={styles.petRow}>
+              <View style={styles.petIconWrap}>
+                <Ionicons name={especieIcono(mascota.especie)} size={16} color="#27AE60" />
+              </View>
+              <View style={styles.petTextBlock}>
+                {!!mascota.nombre && (
+                  <Text style={styles.petName} numberOfLines={1}>{mascota.nombre}</Text>
+                )}
+                {!!mascota.raza && (
+                  <Text style={styles.petBreed} numberOfLines={1}>{mascota.raza}</Text>
+                )}
+              </View>
+            </View>
+          )}
+
           <Text style={styles.locationText} numberOfLines={1}>
             📍 {barrio}, {ciudad}
           </Text>
-          <View style={styles.tagsRow}>
-            {visibleTags.map((tag, index) => (
-              <View key={tag} style={styles.tag}>
-                {index === 0 && (
-                  <Ionicons name={especieIcono(mascota.especie)} size={12} color="#FFFFFF" style={styles.tagIcon} />
-                )}
-                <Text style={styles.tagText} numberOfLines={1}>{tag}</Text>
-              </View>
-            ))}
-            {extraCount > 0 && (
-              <View style={styles.tag}>
-                <Text style={styles.tagText}>+{extraCount}</Text>
-              </View>
-            )}
-          </View>
+
+          {visibleTags.length > 0 && (
+            <View style={styles.tagsRow}>
+              {visibleTags.map((tag) => (
+                <View key={tag} style={styles.tag}>
+                  <Text style={styles.tagText} numberOfLines={1}>{tag}</Text>
+                </View>
+              ))}
+              {extraCount > 0 && (
+                <View style={styles.tag}>
+                  <Text style={styles.tagText}>+{extraCount}</Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
       </View>
     </>
@@ -163,7 +188,26 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   nameText: { fontSize: 20, fontWeight: '800', color: '#FFFFFF' },
-  locationText: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+  // 6 y no 2: ya no va pegada al nombre sino debajo de la pastilla de la
+  // mascota, que necesita aire propio.
+  locationText: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 6 },
+  // Nombre + raza de la mascota, sobre la foto: pastilla clara para que se lea
+  // igual con fotos oscuras o claras detrás.
+  petRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    alignSelf: 'flex-start', maxWidth: '100%',
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 20, paddingLeft: 4, paddingRight: 12, paddingVertical: 4,
+    marginTop: 6,
+  },
+  petIconWrap: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: '#E4F9EC', alignItems: 'center', justifyContent: 'center',
+  },
+  petTextBlock: { flexShrink: 1 },
+  petName: { fontSize: 14, fontWeight: '800', color: '#27AE60' },
+  petBreed: { fontSize: 12, fontWeight: '600', color: '#2C2C2C' },
+
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   tag: {
     flexDirection: 'row',
@@ -172,6 +216,5 @@ const styles = StyleSheet.create({
     borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3,
     maxWidth: '48%',
   },
-  tagIcon: { marginRight: 4 },
   tagText: { fontSize: 11, fontWeight: '700', color: '#FFFFFF' },
 });

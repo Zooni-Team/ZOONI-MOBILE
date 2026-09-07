@@ -9,8 +9,12 @@
  * Antes no había forma de ver el propio perfil: se completaba el setup a ciegas
  * y no se sabía qué foto ni qué intereses estaba mostrando la app.
  *
- * Es SOLO para mirar. Las preguntas del perfil viven en la creación
- * (MatchProfileSetup y PetMatchOnboarding), no colgadas de este botón.
+ * Desde acá se puede editar el perfil con `onEditarPerfil`: abre el MISMO
+ * editor que el botón "Editar perfil" de la pantalla Perfil
+ * (components/perfil/EditarPerfilModal), así que lo que se cambia acá es lo
+ * que se ve allá y al revés. Lo que NO se toca desde acá es el cuestionario de
+ * Match (fecha, género, intereses): esas preguntas viven en la creación del
+ * perfil (MatchProfileSetup y PetMatchOnboarding).
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -23,7 +27,7 @@ import { Ionicons } from '@expo/vector-icons';
 import MatchProfileCard from './MatchProfileCard';
 import { fetchMiTarjetaMatch } from '../../services/matchApi';
 
-export default function MiTarjetaMatchModal({ visible, onClose }) {
+export default function MiTarjetaMatchModal({ visible, onClose, onEditarPerfil }) {
   const { width, height } = useWindowDimensions();
   const [tarjeta, setTarjeta] = useState(null);
   const [cargando, setCargando] = useState(true);
@@ -123,11 +127,18 @@ export default function MiTarjetaMatchModal({ visible, onClose }) {
           </ScrollView>
 
           {/*
-            Acá había un "Editar mi perfil" que reabría el cuestionario. Se
-            sacó: las preguntas van en la creación del perfil, no colgadas de
-            este botón. Esta pantalla es solo para MIRAR cómo te ven.
+            "Editar perfil" abre el editor de la pantalla Perfil, no el
+            cuestionario de Match: acá se corrigen nombre, bio y zona, que es
+            justo lo que se ve en la tarjeta de arriba.
           */}
           <View style={s.pie}>
+            {onEditarPerfil ? (
+              <TouchableOpacity style={s.btnEditar} onPress={onEditarPerfil}
+                accessibilityRole="button" accessibilityLabel="Editar mi perfil">
+                <Ionicons name="create-outline" size={18} color="#177046" />
+                <Text style={s.btnEditarTxt}>Editar perfil</Text>
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity style={s.btnPrincipal} onPress={onClose}
               accessibilityRole="button" accessibilityLabel="Cerrar la vista previa">
               <Text style={s.btnPrincipalTxt}>Listo</Text>
@@ -179,7 +190,13 @@ const s = StyleSheet.create({
   filaLabel: { fontSize: 11, color: '#9A9A9A', textTransform: 'uppercase', letterSpacing: 0.5 },
   filaValor: { fontSize: 14, color: '#2C2C2C', fontWeight: '600', marginTop: 1 },
 
-  pie: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 14 },
+  pie: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 14, gap: 10 },
+  btnEditar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    height: 48, borderRadius: 25, backgroundColor: '#FFFFFF',
+    borderWidth: 1.5, borderColor: '#2DBD72',
+  },
+  btnEditarTxt: { fontSize: 15, fontWeight: '700', color: '#177046' },
   btnPrincipal: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     height: 50, borderRadius: 25, backgroundColor: '#2DBD72',
