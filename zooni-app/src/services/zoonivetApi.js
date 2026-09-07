@@ -304,6 +304,27 @@ export function filtrarSalida(textoCrudo) {
 // ─── LLAMADA A GROQ ──────────────────────────────────────────────────────────
 
 async function llamarGroq(model, messages, signal) {
+  const cuerpo = {
+    model,
+    messages,
+    temperature: 0.4,
+    max_tokens: 500,
+    top_p: 0.9,
+    stream: false,
+  };
+
+  /*
+    Los gpt-oss "razonan" antes de contestar y ese razonamiento se descuenta de
+    max_tokens: en una pregunta común se iban 257 de los 500 en pensar, y una
+    respuesta un poco más larga salía cortada a mitad de oración. Acá no hace
+    falta que razone: las cuentas (edades, días, tendencia de peso) ya vienen
+    resueltas en el bloque de contexto, solo tiene que redactar.
+
+    Va condicionado porque es un parámetro de modelos de razonamiento: si
+    alguien apunta GROQ_MODEL a un llama, mandárselo devuelve 400.
+  */
+  if (/gpt-oss/i.test(model)) cuerpo.reasoning_effort = 'low';
+
   const res = await fetch(GROQ_CHAT_URL, {
     method: 'POST',
     signal,
@@ -311,14 +332,7 @@ async function llamarGroq(model, messages, signal) {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${GROQ_API_KEY}`,
     },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: 0.4,
-      max_tokens: 500,
-      top_p: 0.9,
-      stream: false,
-    }),
+    body: JSON.stringify(cuerpo),
   });
   return res;
 }
@@ -367,7 +381,12 @@ export async function preguntarZooniVet({ ctx, usuario, historial = [], mensaje,
 
   if (!res.ok) {
     const err = new Error(`Groq respondió ${res.status}`);
-    err.code = res.status === 429 ? 'RATE_LIMIT' : 'GROQ_ERROR';
+    // 401/403 es siempre la key (inválida, revocada o mal copiada en el .env),
+    // nunca algo que el usuario pueda resolver reintentando: merece su propio
+    // código para que la pantalla no diga "probá de nuevo" al pedo.
+    if (res.status === 401 || res.status === 403) err.code = 'API_KEY_INVALIDA';
+    else if (res.status === 429) err.code = 'RATE_LIMIT';
+    else err.code = 'GROQ_ERROR';
     err.status = res.status;
     throw err;
   }

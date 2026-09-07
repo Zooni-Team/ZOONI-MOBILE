@@ -17,8 +17,23 @@
  * llamada allá y borrar la key del .env del cliente.
  */
 
+/*
+  Se limpia lo que venga del .env antes de usarlo.
+
+  Una key pegada con un tab en el medio (pasa al copiarla de una consola que la
+  corta en dos líneas) llegaba tal cual al header Authorization y Groq devolvía
+  401 — con el mensaje genérico "No pude responderte", que no daba ninguna
+  pista de que el problema era el .env. Las keys de Groq nunca tienen espacios
+  ni comillas, así que sacarlos no puede romper una key válida.
+*/
+function limpiarKey(valor) {
+  if (typeof valor !== 'string') return null;
+  const limpia = valor.replace(/\s+/g, '').replace(/^['"]|['"]$/g, '');
+  return limpia.length ? limpia : null;
+}
+
 export const GROQ_API_KEY =
-  process.env.EXPO_PUBLIC_GROQ_API_KEY ?? process.env.GROQ_API_KEY ?? null;
+  limpiarKey(process.env.EXPO_PUBLIC_GROQ_API_KEY) ?? limpiarKey(process.env.GROQ_API_KEY) ?? null;
 
 // El identificador del modelo va en env para poder cambiarlo ante una
 // deprecación de Groq sin publicar una versión nueva de la app.
