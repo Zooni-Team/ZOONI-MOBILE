@@ -199,7 +199,7 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
         <View style={s.topBar}>
           <TouchableOpacity onPress={atras} disabled={!puedeVolver}
             style={[s.backBtn, !puedeVolver && { opacity: 0 }]}
-            accessibilityLabel={paso > 0 ? 'Paso anterior' : 'Cerrar'}
+            accessibilityLabel={paso > 0 ? 'Paso anterior' : 'Volver a la pantalla anterior'}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="chevron-back" size={26} color="#2C2C2C" />
           </TouchableOpacity>

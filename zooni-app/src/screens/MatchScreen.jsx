@@ -281,6 +281,17 @@ export default function MatchScreen() {
     return (
       <MatchProfileSetup
         perfilActual={perfilMatch}
+        /*
+          Sin esto la flecha del primer paso se dibujaba invisible y Match
+          quedaba sin salida: el setup reemplaza a la pantalla entera, así que
+          el que entraba y no quería completarlo tenía que cerrar la app.
+          En el paso 1 vuelve a la pantalla anterior; en los demás, al paso
+          previo (eso ya lo maneja el propio setup).
+        */
+        onCancelar={() => {
+          if (navigation.canGoBack()) navigation.goBack();
+          else navigation.navigate('Home');
+        }}
         onListo={async () => {
           setPerfilListo(true);
           try { setPerfilMatch(await fetchMiPerfilMatch()); } catch { /* no bloquea */ }
