@@ -256,10 +256,15 @@ export default function HomeScreen() {
       });
   };
 
-  const cambiarMascota = (direccion) => {
-    if (mascotas.length < 2 || !mascota || cambiandoMascota.current) return;
-    const i = mascotas.findIndex((m) => m.id === mascota.id);
-    const siguiente = mascotas[(i + direccion + mascotas.length) % mascotas.length];
+  /** Posición de la mascota que se está mostrando dentro de la lista. */
+  const idxMascota = mascota ? mascotas.findIndex((m) => m.id === mascota.id) : -1;
+
+  /**
+   * Pasa a mostrar `siguiente`. `direccion` es solo para la animación: marca
+   * por qué lado sale la que estaba y por cuál entra la nueva.
+   */
+  const irAMascota = (siguiente, direccion) => {
+    if (!siguiente || !mascota || siguiente.id === mascota.id || cambiandoMascota.current) return;
 
     // Sin animación (accesibilidad "reducir movimiento"): swap directo.
     if (reduceMotion) {
@@ -286,6 +291,21 @@ export default function HomeScreen() {
       ]).start(() => { cambiandoMascota.current = false; });
       persistirMascota(siguiente);
     });
+  };
+
+  /** Flechas de los costados: una mascota para adelante o para atrás, en círculo. */
+  const cambiarMascota = (direccion) => {
+    if (mascotas.length < 2) return;
+    // Si la activa no apareciera en la lista (idx -1), se arranca por la primera
+    // en vez de dejar las flechas sin hacer nada.
+    const desde = idxMascota < 0 ? 0 : idxMascota;
+    irAMascota(mascotas[(desde + direccion + mascotas.length) % mascotas.length], direccion);
+  };
+
+  /** Puntitos: salto directo a una mascota, entrando por el lado que corresponde. */
+  const saltarAMascota = (destino) => {
+    if (mascotas.length < 2 || destino === idxMascota) return;
+    irAMascota(mascotas[destino], destino > idxMascota ? 1 : -1);
   };
 
   return (
@@ -422,27 +442,57 @@ export default function HomeScreen() {
                   Alternar foto/avatar.
 
                   Fue primero una pastilla suelta (caía entre el nombre y la
-                  imagen, porque petImageWrap es absolute) y después un botón
-                  amarillo grande en la esquina, que competía con la foto.
-                  Ahora es discreto y va afuera, debajo: dos puntos que marcan
-                  cuál de las dos imágenes estás viendo, como los carruseles de
-                  la propia app.
+                  imagen, porque petImageWrap es absolute), después un botón
+                  amarillo grande en la esquina que competía con la foto, y
+                  después dos puntitos debajo. Los puntitos se leían como el
+                  carrusel de mascotas —que es lo que ahora ocupa ese lugar—:
+                  con dos mascotas cargadas había dos puntos por un motivo y
+                  dos por otro, sin forma de distinguirlos. Ahora es un botón
+                  chico sobre la esquina de la imagen y el ícono muestra lo que
+                  vas a ver si lo tocás.
                 */}
                 {puedeAlternarImagen && (
-                  <TouchableOpacity style={styles.alternarPuntos} onPress={alternarImagen}
+                  <TouchableOpacity style={styles.btnAlternarImagen} onPress={alternarImagen}
                     accessibilityRole="button"
                     accessibilityState={{ selected: mostrandoFoto }}
                     accessibilityLabel={mostrandoFoto
                       ? `Estás viendo la foto de ${mascota.nombre}. Tocá para ver su avatar.`
                       : `Estás viendo el avatar de ${mascota.nombre}. Tocá para ver su foto.`}
-                    hitSlop={{ top: 12, bottom: 12, left: 20, right: 20 }}>
-                    <View style={[styles.punto, mostrandoFoto && styles.puntoOn]} />
-                    <View style={[styles.punto, !mostrandoFoto && styles.puntoOn]} />
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <Text style={styles.btnAlternarImagenTxt}>
+                      {mostrandoFoto ? 'Ver avatar' : 'Ver foto'}
+                    </Text>
                   </TouchableOpacity>
                 )}
               </View>
             )}
           </Animated.View>
+
+          {/*
+            Puntitos del carrusel: uno por mascota cargada, marcando en cuál
+            estás. Se puede tocar uno para saltar directo a esa mascota.
+
+            Van acá afuera y no dentro del bloque animado de la imagen: ese
+            bloque se desliza y se desvanece al cambiar de mascota, y el
+            indicador tiene que quedarse quieto para que se vea de dónde a
+            dónde saltaste.
+          */}
+          {!loading && mascotas.length > 1 && (
+            <View style={styles.puntosMascotas}>
+              {mascotas.map((m, i) => (
+                <TouchableOpacity
+                  key={m.id}
+                  onPress={() => saltarAMascota(i)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: i === idxMascota }}
+                  accessibilityLabel={`Ver a ${m.nombre}`}
+                  hitSlop={{ top: 12, bottom: 12, left: 6, right: 6 }}
+                >
+                  <View style={[styles.punto, i === idxMascota && styles.puntoOn]} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
           {/* Flechas para alternar entre mascotas (solo si hay más de una) */}
           {!loading && mascotas.length > 1 && (
@@ -718,10 +768,44 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 8,
   },
-  // Alternar foto/avatar: dos puntitos debajo de la imagen
-  alternarPuntos: {
-    flexDirection: 'row', gap: 6, alignSelf: 'center',
-    marginTop: 12, paddingVertical: 4,
+  // Alternar foto/avatar: botón chico sobre la esquina inferior de la imagen.
+  /*
+    Sin sombra, sin verde de marca y sin negrita: es una etiqueta de servicio
+    sobre la mascota, no un botón de acción. Tiene que poder ignorarse hasta
+    que la buscás — la foto es lo que importa en esta zona.
+  */
+  btnAlternarImagen: {
+    position: 'absolute',
+    right: 6,
+    bottom: 16,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 11,
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    alignItems: 'center', justifyContent: 'center',
+    zIndex: 5,
+  },
+  btnAlternarImagenTxt: {
+    fontSize: 10.5, fontWeight: '600', color: '#5A6660', letterSpacing: 0.2,
+  },
+
+  /*
+    Puntitos del carrusel de mascotas.
+
+    `bottom: -48` es exactamente donde estaban los puntitos de foto/avatar
+    cuando colgaban de petImageWrap (que ahora termina en -21): quedan 12px
+    debajo del borde de la imagen, que es donde el ojo ya los busca.
+  */
+  puntosMascotas: {
+    position: 'absolute',
+    bottom: -48,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 4,
+    zIndex: 3,
   },
   punto: {
     width: 7, height: 7, borderRadius: 3.5,
@@ -752,9 +836,16 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 8,
   },
+  /*
+    `bottom: -21` y no -48: los puntitos vivían ADENTRO de este bloque, debajo
+    de la imagen, y sumaban 27px (12 de separación + 15 de la fila). Al sacarlos
+    afuera —para que no se deslicen al cambiar de mascota— el bloque perdió esos
+    27px y la imagen se fue 27px para abajo. Se compensan acá, así la mascota
+    queda exactamente donde estaba y los puntitos entran justo debajo.
+  */
   petImageWrap: {
     position: 'absolute',
-    bottom: -48,
+    bottom: -21,
     left: 0,
     right: 0,
     alignItems: 'center',
