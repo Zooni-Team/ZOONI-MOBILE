@@ -152,7 +152,7 @@ function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, avisar, o
     const ok = await confirmar(
       `¿Finalizar el paseo de ${paseo.mascota.nombre}?`,
       corto
-        ? `Llevás ${minutos} min de los ${paseo.duracionMin} pactados. ¿Seguro que terminaste?`
+        ? `Llevás ${minutos} minutos de los ${paseo.duracionMin} pactados. ¿Seguro que terminaste?`
         : 'Le avisamos al dueño que ya está de vuelta.',
       { textoOk: 'Finalizar' },
     );
@@ -225,7 +225,7 @@ function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, avisar, o
           <View style={{ flex: 1 }}>
             <Text style={s.mascota}>{paseo.mascota.nombre}</Text>
             <Text style={s.mascotaSub} numberOfLines={1}>
-              {paseo.duracionMin} min pactados · {formatoPlata(paseo.precio)}
+              {paseo.duracionMin} minutos pactados · {formatoPlata(paseo.precio)}
             </Text>
           </View>
           <TouchableOpacity style={s.chat} onPress={() => abrirChat(paseo)} accessibilityLabel="Chat con el dueño">
@@ -249,7 +249,7 @@ function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, avisar, o
           <View style={[s.barraFill, { width: `${progreso * 100}%` }, progreso >= 1 && { backgroundColor: C.amarillo }]} />
         </View>
         <Text style={s.barraTxt}>
-          {progreso >= 1 ? '¡Cumpliste el tiempo pactado! 🎉' : `Faltan ${Math.ceil((paseo.duracionMin * 60 - segundos) / 60)} min`}
+          {progreso >= 1 ? '¡Cumpliste el tiempo pactado! 🎉' : `Faltan ${Math.ceil((paseo.duracionMin * 60 - segundos) / 60)} minutos`}
         </Text>
 
         <View style={s.acciones}>

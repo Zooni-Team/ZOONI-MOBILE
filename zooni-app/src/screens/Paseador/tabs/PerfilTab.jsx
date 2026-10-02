@@ -82,7 +82,7 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
 
   const guardar = async () => {
     if (!(Number(form.precio30) > 0) || !(Number(form.precio60) > 0)) {
-      avisar('Poné un precio para cada duración', 'alert-circle');
+      avisar('Es necesario un precio para 30 y para 60 minutos', 'alert-circle');
       return;
     }
     const cambios = {
@@ -156,7 +156,7 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
           <View key={x.dur} style={[s.servicio, i > 0 && s.servicioBorde]}>
             <View style={s.servicioIcono}><Ionicons name="walk" size={20} color={C.teal} /></View>
             <View style={{ flex: 1 }}>
-              <Text style={s.servicioTitulo}>Paseo de {x.dur} min</Text>
+              <Text style={s.servicioTitulo}>Paseo de {x.dur} minutos</Text>
               <Text style={s.servicioSub}>Hasta {perfil.maxPerros} {perfil.maxPerros === 1 ? 'perro' : 'perros'} por salida</Text>
             </View>
             <Text style={s.servicioPrecio}>{formatoPlata(x.precio)}</Text>
@@ -208,7 +208,7 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
               <View style={s.sheetHandle} />
               <Text style={s.sheetTitulo}>Editar servicios</Text>
               <View style={{ flexDirection: 'row', gap: 10 }}>
-                {[['precio30', '30 min'], ['precio60', '60 min']].map(([k, label]) => (
+                {[['precio30', '30 minutos'], ['precio60', '60 minutos']].map(([k, label]) => (
                   <View key={k} style={s.precioBox}>
                     <Text style={s.precioLabel}>{label}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>

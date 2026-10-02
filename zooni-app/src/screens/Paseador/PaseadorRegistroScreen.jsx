@@ -13,7 +13,7 @@
  * Al terminar entra directo a la app (el paseador viene a trabajar).
  */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
@@ -55,6 +55,7 @@ export default function PaseadorRegistroScreen() {
   const [errores, setErrores] = useState({});
   const [errorGeneral, setErrorGeneral] = useState(null);
   const [cargando, setCargando] = useState(false);
+  const scrollRef = useRef(null);
 
   const [usuario, setUsuario] = useState({
     nombre: '', apellido: '', email: '', telefono: '', password: '', password2: '',
@@ -69,11 +70,11 @@ export default function PaseadorRegistroScreen() {
 
   const validarPaso1 = async () => {
     const e = {};
-    if (usuario.nombre.trim().length < 2) e.nombre = 'Ingresá tu nombre';
-    if (usuario.apellido.trim().length < 2) e.apellido = 'Ingresá tu apellido';
-    if (!EMAIL_REGEX.test(usuario.email.trim())) e.email = 'Ingresá un email válido';
-    if (usuario.telefono.length < 8) e.telefono = 'Lo necesitan los dueños para coordinar';
-    if (usuario.password.length < 7) e.password = 'Mínimo 7 caracteres';
+    if (usuario.nombre.trim().length < 2) e.nombre = 'El nombre es obligatorio';
+    if (usuario.apellido.trim().length < 2) e.apellido = 'El apellido es obligatorio';
+    if (!EMAIL_REGEX.test(usuario.email.trim())) e.email = 'Es necesario un email válido';
+    if (usuario.telefono.length < 8) e.telefono = 'El teléfono es obligatorio (mínimo 8 números)';
+    if (usuario.password.length < 7) e.password = 'La contraseña necesita al menos 7 caracteres';
     else if (usuario.password !== usuario.password2) e.password2 = 'Las contraseñas no coinciden';
     if (!e.email) {
       const { mailTomado } = await verificarDisponibilidad({ email: usuario.email });
@@ -85,10 +86,10 @@ export default function PaseadorRegistroScreen() {
 
   const validarPaso2 = () => {
     const e = {};
-    if (perfil.lat == null) e.zona = 'Marcá en el mapa dónde paseás';
-    if (!(Number(perfil.precio30) > 0)) e.precio30 = 'Poné un precio';
-    if (!(Number(perfil.precio60) > 0)) e.precio60 = 'Poné un precio';
-    if (!perfil.tamanos.length) e.tamanos = 'Elegí al menos un tamaño';
+    if (perfil.lat == null) e.zona = 'Es necesario marcar tu zona en el mapa';
+    if (!(Number(perfil.precio30) > 0)) e.precio30 = 'Es necesario el precio del paseo de 30 minutos';
+    if (!(Number(perfil.precio60) > 0)) e.precio60 = 'Es necesario el precio del paseo de 60 minutos';
+    if (!perfil.tamanos.length) e.tamanos = 'Es necesario elegir al menos un tamaño de perro';
     setErrores(e);
     return Object.keys(e).length === 0;
   };
@@ -98,10 +99,20 @@ export default function PaseadorRegistroScreen() {
     if (paso === 1) {
       setCargando(true);
       const ok = await validarPaso1().finally(() => setCargando(false));
-      if (ok) setPaso(2);
+      if (ok) {
+        setPaso(2);
+        scrollRef.current?.scrollTo({ y: 0, animated: false });
+      } else {
+        scrollRef.current?.scrollTo({ y: 0, animated: true });
+      }
       return;
     }
-    if (!validarPaso2()) return;
+    if (!validarPaso2()) {
+      // El error de la zona está arriba (mapa): subir. Los de precios/tamaños
+      // quedan cerca, pero el resumen junto al botón los dice igual.
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+      return;
+    }
 
     const datosPerfil = {
       ...perfil,
@@ -126,13 +137,13 @@ export default function PaseadorRegistroScreen() {
         setPaso(1);
         setErrores({ email: 'Ya hay una cuenta con este mail.' });
       } else if (msg === 'migracion_pendiente') {
-        setErrorGeneral('Falta preparar la base de datos (migración 035). Avisale al equipo.');
+        setErrorGeneral('No se pudo guardar tu perfil: la base de datos no tiene las tablas de paseadores. Es necesario correr las migraciones 035 y 036 en Supabase.');
       } else if (msg === 'no_es_paseador') {
         setErrorGeneral('Esta cuenta todavía no tiene el rol de paseador. Iniciá sesión desde "Registrarse como Proveedor".');
       } else if (msg === 'credenciales') {
-        setErrorGeneral('Tu sesión venció. Volvé a iniciar sesión.');
+        setErrorGeneral('Es necesario volver a iniciar sesión: tu contraseña no coincide.');
       } else {
-        setErrorGeneral('No se pudo crear tu perfil. Revisá tu conexión e intentá de nuevo.');
+        setErrorGeneral(`No se pudo crear tu perfil (${err?.message ?? 'error desconocido'}). Es necesario tener conexión a internet para registrarte.`);
       }
     } finally {
       setCargando(false);
@@ -170,7 +181,7 @@ export default function PaseadorRegistroScreen() {
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView ref={scrollRef} contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {paso === 1 ? (
             <View style={s.card}>
               <View style={s.fila}>
@@ -235,25 +246,25 @@ export default function PaseadorRegistroScreen() {
               <Text style={s.label}>Tus precios</Text>
               <View style={s.fila}>
                 <View style={[s.precio, errores.precio30 && s.inputError]}>
-                  <Text style={s.precioDur}>30 min</Text>
+                  <Text style={s.precioDur}>30 minutos</Text>
                   <View style={s.precioInputRow}>
                     <Text style={s.precioSigno}>$</Text>
                     <TextInput style={s.precioInput} value={perfil.precio30} keyboardType="number-pad"
-                      onChangeText={(v) => setP('precio30', sanitizarDigitos(v, 7))} placeholder="5000" placeholderTextColor={C.gris} />
+                      onChangeText={(v) => setP('precio30', sanitizarDigitos(v, 7))} placeholder="Precio" placeholderTextColor="#C8C8C8" />
                   </View>
                 </View>
                 <View style={[s.precio, errores.precio60 && s.inputError]}>
-                  <Text style={s.precioDur}>60 min</Text>
+                  <Text style={s.precioDur}>60 minutos</Text>
                   <View style={s.precioInputRow}>
                     <Text style={s.precioSigno}>$</Text>
                     <TextInput style={s.precioInput} value={perfil.precio60} keyboardType="number-pad"
-                      onChangeText={(v) => setP('precio60', sanitizarDigitos(v, 7))} placeholder="9000" placeholderTextColor={C.gris} />
+                      onChangeText={(v) => setP('precio60', sanitizarDigitos(v, 7))} placeholder="Precio" placeholderTextColor="#C8C8C8" />
                   </View>
                 </View>
               </View>
-              {(errores.precio30 || errores.precio60) && <Text style={s.errorCampo}>Poné un precio para cada duración</Text>}
+              {(errores.precio30 || errores.precio60) && <Text style={s.errorCampo}>Es necesario un precio para 30 y para 60 minutos</Text>}
               {Number(perfil.precio30) > 0 && (
-                <Text style={s.ayuda}>Por un paseo de 30 min vas a cobrar {formatoPlata(perfil.precio30)}.</Text>
+                <Text style={s.ayuda}>Por un paseo de 30 minutos vas a cobrar {formatoPlata(perfil.precio30)}.</Text>
               )}
 
               <Text style={[s.label, { marginTop: 16 }]}>Perros por paseo (máximo)</Text>
@@ -297,6 +308,14 @@ export default function PaseadorRegistroScreen() {
             </View>
           )}
 
+          {Object.values(errores).some(Boolean) && (
+            <View style={s.resumen}>
+              <Text style={s.resumenTitulo}>Para continuar es necesario:</Text>
+              {Object.values(errores).filter(Boolean).map((m) => (
+                <Text key={m} style={s.resumenItem}>• {m}</Text>
+              ))}
+            </View>
+          )}
           {errorGeneral && <Text style={s.errorGeneral}>{errorGeneral}</Text>}
 
           <PillButton
@@ -364,4 +383,10 @@ const s = StyleSheet.create({
   chipDetalle: { fontSize: 11, color: C.texto2, marginTop: 2 },
 
   errorGeneral: { fontSize: 13, color: C.rojo, textAlign: 'center', marginTop: 14 },
+  resumen: {
+    marginTop: 16, padding: 14, borderRadius: 14, backgroundColor: '#FDECEE',
+    borderWidth: 1, borderColor: '#F5B7BD',
+  },
+  resumenTitulo: { fontSize: 13, fontWeight: '800', color: C.rojo, marginBottom: 4 },
+  resumenItem: { fontSize: 13, color: C.texto, marginTop: 2 },
 });

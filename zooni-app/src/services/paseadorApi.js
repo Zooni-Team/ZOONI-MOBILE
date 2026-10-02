@@ -349,8 +349,17 @@ export async function completarPerfilPaseador(perfil) {
   });
   if (error) {
     if (String(error.message ?? '').includes('no_es_paseador')) throw new Error('no_es_paseador');
-    if (esEsquemaFaltante(error)) throw new Error('migracion_pendiente');
-    throw error;
+    if (!esEsquemaFaltante(error)) throw error;
+    // La 036 todavía no se corrió: el rol ya existe en UserRole, así que se
+    // guarda el perfil directo en la tabla (la 035 la deja escribible).
+    const f = perfilParaRpc(perfil);
+    const { error: errDirecto } = await supabase.from('paseador_perfil').upsert({
+      id_user: getCurrentUserId(), bio: f.bio, zona: f.zona, lat: f.lat, lng: f.lng,
+      radio_km: f.radioKm, precio_30: f.precio30, precio_60: f.precio60,
+      max_perros: f.maxPerros, tamanos: f.tamanos, experiencia_anios: f.experienciaAnios,
+      horarios: f.horarios,
+    });
+    if (errDirecto) throw esEsquemaFaltante(errDirecto) ? new Error('migracion_pendiente') : errDirecto;
   }
   await setModo(MODO_PASEADOR);
 }
@@ -729,7 +738,7 @@ export async function finalizarPaseo(paseo, distancia) {
     SegundosAcumulados: segundos, DistanciaMetros: metros,
   });
   notificarDueno(paseo, `${paseo.mascota.nombre} ya volvió a casa 🏠`,
-    `Paseo de ${Math.round(segundos / 60)} min · ${formatoDistancia(metros)}. ¡Dejale una reseña al paseador!`);
+    `Paseo de ${Math.round(segundos / 60)} minutos · ${formatoDistancia(metros)}. ¡Dejale una reseña al paseador!`);
   return { ...paseo, ...cambios };
 }
 

@@ -26,8 +26,8 @@ const POLL_MS = 4000;
 
 const RAPIDAS = {
   pendiente: ['¡Hola! ¿Me contás un poco más?', '¿Tiene alguna alergia?', '¿Dónde lo paso a buscar?'],
-  aceptado: ['Estoy llegando 🚶', 'Llego en 10 min', 'Ya estoy en la puerta'],
-  en_curso: ['Ya salimos 🐾', 'Todo bien, está feliz 😊', 'Volvemos en 10 min'],
+  aceptado: ['Estoy llegando 🚶', 'Llego en 10 minutos', 'Ya estoy en la puerta'],
+  en_curso: ['Ya salimos 🐾', 'Todo bien, está feliz 😊', 'Volvemos en 10 minutos'],
 };
 
 const ESTADO_TXT = {

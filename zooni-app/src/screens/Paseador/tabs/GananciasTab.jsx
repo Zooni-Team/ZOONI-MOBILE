@@ -220,7 +220,7 @@ export default function GananciasTab() {
             <View style={{ flex: 1 }}>
               <Text style={s.filaNombre}>{item.mascota.nombre}</Text>
               <Text style={s.filaSub}>
-                {d.getDate()}/{d.getMonth() + 1} · {Math.round((item.segundosAcumulados || item.duracionMin * 60) / 60)} min · {formatoDistancia(item.distanciaMetros)}
+                {d.getDate()}/{d.getMonth() + 1} · {Math.round((item.segundosAcumulados || item.duracionMin * 60) / 60)} minutos · {formatoDistancia(item.distanciaMetros)}
               </Text>
             </View>
             <Text style={s.filaPrecio}>{formatoPlata(item.precio)}</Text>

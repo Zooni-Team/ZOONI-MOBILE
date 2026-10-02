@@ -34,7 +34,7 @@ export default function PaseoCard({ paseo, onChat, mostrarNotas = true, compacto
           </Text>
           <View style={s.horaRow}>
             <Ionicons name="time-outline" size={14} color={C.teal} />
-            <Text style={s.hora}>{cuandoDe(paseo.fecha)} · {paseo.duracionMin} min</Text>
+            <Text style={s.hora}>{cuandoDe(paseo.fecha)} · {paseo.duracionMin} minutos</Text>
           </View>
         </View>
         <View style={s.precioCol}>
