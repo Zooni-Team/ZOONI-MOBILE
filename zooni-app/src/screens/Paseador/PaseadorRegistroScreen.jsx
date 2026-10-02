@@ -133,17 +133,20 @@ export default function PaseadorRegistroScreen() {
       navigation.reset({ index: 0, routes: [{ name: 'PaseadorApp', params: { bienvenida: true } }] });
     } catch (err) {
       const msg = err?.message;
+      // El detalle real de Supabase queda en la consola y en pantalla
+      console.error('[Registro paseador]', msg, err?.detalle ?? err);
+      const detalle = err?.detalle ? `\n\nDetalle: ${err.detalle}` : '';
       if (msg === 'email_existente') {
         setPaso(1);
         setErrores({ email: 'Ya hay una cuenta con este mail.' });
       } else if (msg === 'migracion_pendiente') {
-        setErrorGeneral('No se pudo guardar tu perfil: la base de datos no tiene las tablas de paseadores. Es necesario correr las migraciones 035 y 036 en Supabase.');
+        setErrorGeneral(`No se pudo guardar tu perfil: a la base de datos le falta algo de Zooni Paseadores. Es necesario correr las migraciones 035 y 036 en el SQL Editor de Supabase.${detalle}`);
       } else if (msg === 'no_es_paseador') {
         setErrorGeneral('Esta cuenta todavía no tiene el rol de paseador. Iniciá sesión desde "Registrarse como Proveedor".');
       } else if (msg === 'credenciales') {
         setErrorGeneral('Es necesario volver a iniciar sesión: tu contraseña no coincide.');
       } else {
-        setErrorGeneral(`No se pudo crear tu perfil (${err?.message ?? 'error desconocido'}). Es necesario tener conexión a internet para registrarte.`);
+        setErrorGeneral(`La base de datos rechazó el registro.${detalle || `\n\nDetalle: ${err?.message ?? 'error desconocido'}`}`);
       }
     } finally {
       setCargando(false);
@@ -215,7 +218,7 @@ export default function PaseadorRegistroScreen() {
               </Campo>
               <Campo label="Repetí la contraseña" error={errores.password2}>
                 <TextInput style={[s.input, errores.password2 && s.inputError]} value={usuario.password2}
-                  onChangeText={(v) => setU('password2', v)} placeholderTextColor={C.gris}
+                  onChangeText={(v) => setU('password2', v)} placeholder="Repetila" placeholderTextColor={C.gris}
                   secureTextEntry autoCapitalize="none" />
               </Campo>
             </View>
@@ -331,7 +334,7 @@ export default function PaseadorRegistroScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.fondo },
+  safe: { flex: 1, backgroundColor: C.fondo, overflow: 'hidden' },
   top: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: C.menta, paddingHorizontal: 12, paddingVertical: 12,
@@ -382,7 +385,10 @@ const s = StyleSheet.create({
   chipTxtOn: { color: '#FFFFFF' },
   chipDetalle: { fontSize: 11, color: C.texto2, marginTop: 2 },
 
-  errorGeneral: { fontSize: 13, color: C.rojo, textAlign: 'center', marginTop: 14 },
+  errorGeneral: {
+    fontSize: 13, color: C.rojo, marginTop: 14, padding: 12, borderRadius: 12,
+    backgroundColor: '#FDECEE', borderWidth: 1, borderColor: '#F5B7BD',
+  },
   resumen: {
     marginTop: 16, padding: 14, borderRadius: 14, backgroundColor: '#FDECEE',
     borderWidth: 1, borderColor: '#F5B7BD',

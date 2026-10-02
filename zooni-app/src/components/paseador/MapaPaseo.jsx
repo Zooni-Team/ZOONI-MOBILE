@@ -45,7 +45,7 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%;background:#E8F5EC}
   var map=L.map('map',{zoomControl:false,attributionControl:true}).setView([${CENTRO_DEFAULT.lat},${CENTRO_DEFAULT.lng}],15);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
   var iconYo=L.divIcon({className:'',html:'<div class="yo"><div class="pulso"></div><div class="punto"></div></div>',iconSize:[44,44],iconAnchor:[22,22]});
-  var iconCasa=L.divIcon({className:'',html:'<div class="casa">🏠</div>',iconSize:[36,36],iconAnchor:[18,18]});
+  var iconCasa=L.divIcon({className:'',html:'<div class="casa"><svg viewBox="0 0 24 24" width="18" height="18" fill="#fff"><path d="M12 3 2 11.5h3V21h5.5v-5.5h3V21H19v-9.5h3z"/></svg></div>',iconSize:[36,36],iconAnchor:[18,18]});
   var yo=null,casa=null,linea=null,primera=true;
 
   function set(d){

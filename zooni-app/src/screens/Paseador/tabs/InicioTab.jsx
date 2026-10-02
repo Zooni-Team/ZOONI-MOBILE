@@ -174,7 +174,7 @@ export default function InicioTab({
               style={{ flex: 1 }}
             />
           </PaseoCard>
-          <Text style={s.tip}>Iniciá el paseo cuando tengas a {proximo.mascota.nombre} con la correa puesta 🐾</Text>
+          <Text style={s.tip}>Iniciá el paseo cuando tengas a {proximo.mascota.nombre} con la correa puesta.</Text>
         </View>
       ) : (
         <Card>

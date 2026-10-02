@@ -54,7 +54,7 @@ export default function SolicitudesTab({
       if (ok) {
         avisar(`¡Aceptaste el paseo de ${paseo.mascota.nombre}! Quedó en tu agenda.`);
       } else {
-        avisar('Otro paseador la tomó antes 😕', 'alert-circle');
+        avisar('Otro paseador la tomó antes', 'alert-circle');
       }
       await Promise.all([recargarSolicitudes(), cargarAgenda()]);
     } catch {

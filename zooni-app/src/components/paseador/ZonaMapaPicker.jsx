@@ -43,7 +43,7 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%;background:#E8F5EC}
 (function(){
   var map=L.map('map',{zoomControl:false}).setView([${BASE_DEFAULT.lat},${BASE_DEFAULT.lng}],14);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
-  var icon=L.divIcon({className:'',html:'<div class="centro">🐾</div>',iconSize:[40,40],iconAnchor:[20,20]});
+  var icon=L.divIcon({className:'',html:'<div class="centro"><svg viewBox="0 0 24 24" width="20" height="20" fill="#fff"><circle cx="5" cy="9.5" r="2.2"/><circle cx="9" cy="5.5" r="2.2"/><circle cx="15" cy="5.5" r="2.2"/><circle cx="19" cy="9.5" r="2.2"/><path d="M12 10.5c-3 0-6.5 4.6-6.5 7.3 0 1.8 1.4 2.7 3 2.7 1.4 0 2.3-.8 3.5-.8s2.1.8 3.5.8c1.6 0 3-.9 3-2.7 0-2.7-3.5-7.3-6.5-7.3z"/></svg></div>',iconSize:[40,40],iconAnchor:[20,20]});
   var circulo=null, centro=null, radio=3000;
 
   function avisar(){
@@ -214,7 +214,7 @@ export default function ZonaMapaPicker({ valor, onCambio, baseTexto }) {
           <Text style={s.sinMapaTxt}>Buscá tu barrio arriba: el mapa está disponible en la versión web.</Text>
         </View>
       )}
-      <Text style={s.ayuda}>Arrastrá el círculo 🐾 o tocá el mapa para mover tu zona.</Text>
+      <Text style={s.ayuda}>Arrastrá el círculo verde o tocá el mapa para mover tu zona.</Text>
 
       <View style={s.zonaRow}>
         <Ionicons name="location" size={16} color={C.teal} />

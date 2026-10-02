@@ -40,6 +40,19 @@ function esEsquemaFaltante(error) {
     || /does not exist|schema cache|sin configurar/i.test(msg);
 }
 
+/**
+ * Error con código para la pantalla + el mensaje real de Supabase en
+ * `detalle`, para mostrar QUÉ falló en vez de un texto genérico.
+ */
+function errorApp(codigo, original) {
+  const e = new Error(codigo);
+  e.detalle = original
+    ? [original.message, original.details, original.hint, original.code && `código ${original.code}`]
+      .filter(Boolean).join(' · ')
+    : null;
+  return e;
+}
+
 /** Si el error es de esquema → activa demo y devuelve true. Si es otro, lo tira. */
 function caerADemo(error) {
   if (esEsquemaFaltante(error)) {
@@ -317,8 +330,7 @@ export async function registrarPaseador({ usuario, perfil }) {
   if (error) {
     const msg = String(error.message ?? '');
     if (msg.includes('email_existente') || error.code === '23505') throw new Error('email_existente');
-    if (esEsquemaFaltante(error)) throw new Error('migracion_pendiente');
-    throw error;
+    throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
   }
   await entrarComoPaseador(data.id);
   return data;
@@ -331,8 +343,7 @@ export async function activarPaseador({ email, hash, perfil }) {
   });
   if (error) {
     if (String(error.message ?? '').includes('credenciales')) throw new Error('credenciales');
-    if (esEsquemaFaltante(error)) throw new Error('migracion_pendiente');
-    throw error;
+    throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
   }
   await entrarComoPaseador(data.id);
   return data;
@@ -349,7 +360,7 @@ export async function completarPerfilPaseador(perfil) {
   });
   if (error) {
     if (String(error.message ?? '').includes('no_es_paseador')) throw new Error('no_es_paseador');
-    if (!esEsquemaFaltante(error)) throw error;
+    if (!esEsquemaFaltante(error)) throw errorApp('error_base', error);
     // La 036 todavía no se corrió: el rol ya existe en UserRole, así que se
     // guarda el perfil directo en la tabla (la 035 la deja escribible).
     const f = perfilParaRpc(perfil);
@@ -359,7 +370,7 @@ export async function completarPerfilPaseador(perfil) {
       max_perros: f.maxPerros, tamanos: f.tamanos, experiencia_anios: f.experienciaAnios,
       horarios: f.horarios,
     });
-    if (errDirecto) throw esEsquemaFaltante(errDirecto) ? new Error('migracion_pendiente') : errDirecto;
+    if (errDirecto) throw errorApp(esEsquemaFaltante(errDirecto) ? 'migracion_pendiente' : 'error_base', errDirecto);
   }
   await setModo(MODO_PASEADOR);
 }

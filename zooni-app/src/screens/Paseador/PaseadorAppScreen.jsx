@@ -118,7 +118,7 @@ export default function PaseadorAppScreen() {
   useEffect(() => {
     if (!route.params?.bienvenida) return;
     navigation.setParams({ bienvenida: undefined });
-    avisar('¡Listo! Ya sos paseador de Zooni 🐾');
+    avisar('¡Listo! Ya sos paseador de Zooni', 'paw');
   }, [route.params?.bienvenida, navigation, avisar]);
 
   // ── Render ────────────────────────────────────────────────────────────────

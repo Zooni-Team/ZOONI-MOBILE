@@ -49,8 +49,8 @@ import { alerta } from '../utils/dialogo';
 
 // Ícono de cada tipo de línea de emergencia (emergency_lines.kind)
 const ICONO_LINEA = {
-  intoxicaciones: 'flask',
-  zoonosis: 'shield-checkmark',
+  intoxicaciones: 'warning',
+  zoonosis: 'paw',
   national_emergency: 'medkit',
 };
 
@@ -387,7 +387,10 @@ export default function SosScreen() {
 
         {/* Líneas de emergencia (emergency_lines, con fallback local) */}
         <View style={st.cardLineas}>
-          <Text style={st.lineasTitulo}>📞 Líneas de Emergencia</Text>
+          <View style={st.lineasTituloFila}>
+            <Ionicons name="call" size={18} color="#FFF" />
+            <Text style={st.lineasTitulo}>Líneas de Emergencia</Text>
+          </View>
           <Text style={st.lineasSubtitulo}>Para orientarte mientras vas a una veterinaria con guardia</Text>
 
           {lineas.map((linea) => (
@@ -521,6 +524,7 @@ export default function SosScreen() {
 // ─── ESTILOS ─────────────────────────────────────────────────────────────────
 
 const st = StyleSheet.create({
+  lineasTituloFila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   filtrosLabel: { fontSize: 12, fontWeight: '700', color: '#6B6B6B', marginTop: 14, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
   chipsFila: { gap: 8, paddingBottom: 10, paddingRight: 8 },
   chip: {

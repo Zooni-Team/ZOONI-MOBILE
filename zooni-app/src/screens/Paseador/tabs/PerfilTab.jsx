@@ -184,7 +184,7 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
           </Card>
         ))
       ) : (
-        <Card><Text style={s.sinResenas}>Todavía no tenés reseñas. Llegan cuando los dueños califican tus paseos ⭐</Text></Card>
+        <Card><Text style={s.sinResenas}>Todavía no tenés reseñas. Llegan cuando los dueños califican tus paseos.</Text></Card>
       )}
 
       {/* ── Configuración ──────────────────────────────────────────── */}

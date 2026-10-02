@@ -249,7 +249,7 @@ function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, avisar, o
           <View style={[s.barraFill, { width: `${progreso * 100}%` }, progreso >= 1 && { backgroundColor: C.amarillo }]} />
         </View>
         <Text style={s.barraTxt}>
-          {progreso >= 1 ? '¡Cumpliste el tiempo pactado! 🎉' : `Faltan ${Math.ceil((paseo.duracionMin * 60 - segundos) / 60)} minutos`}
+          {progreso >= 1 ? '¡Cumpliste el tiempo pactado!' : `Faltan ${Math.ceil((paseo.duracionMin * 60 - segundos) / 60)} minutos`}
         </Text>
 
         <View style={s.acciones}>
@@ -277,7 +277,7 @@ function Resumen({ paseo, onCerrar, irA }) {
     <ScrollView contentContainerStyle={s.scroll}>
       <View style={s.resumenTop}>
         <Avatar fuente={paseo.mascota.visual} nombre={paseo.mascota.nombre} size={88} borde />
-        <Text style={s.resumenTitulo}>¡{paseo.mascota.nombre} ya volvió a casa! 🏠</Text>
+        <Text style={s.resumenTitulo}>¡{paseo.mascota.nombre} ya volvió a casa!</Text>
         <Text style={s.resumenSub}>Le avisamos a {paseo.dueno.nombre}.</Text>
       </View>
       <Card>

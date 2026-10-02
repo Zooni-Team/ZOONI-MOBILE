@@ -54,7 +54,7 @@ export default function PaseadorHeader({ perfil, subtitulo, mostrarEstado = true
     <View style={s.header}>
       <Avatar uri={perfil?.foto} nombre={nombre} size={46} borde />
       <View style={s.textos}>
-        <Text style={s.hola} numberOfLines={1}>Hola, {primerNombre} 👋</Text>
+        <Text style={s.hola} numberOfLines={1}>Hola, {primerNombre}</Text>
         {mostrarEstado && perfil ? (
           <Chip
             texto={perfil.disponible ? 'Disponible' : 'No disponible'}
