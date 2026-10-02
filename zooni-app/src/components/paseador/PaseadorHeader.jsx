@@ -1,8 +1,9 @@
 /**
  * PaseadorHeader.jsx — AppBar de Zooni Paseadores
  *
- * Único quiebre de patrón con la app de dueños: alineado a la izquierda
- * (avatar + nombre + estado de trabajo) en vez de un título centrado. La
+ * Hamburguesa a la izquierda (igual que la app de dueños), y después lo único
+ * que cambia: alineado a la izquierda (avatar + nombre o sección + estado de
+ * trabajo) en vez de un título centrado. La
  * campana con badge ámbar queda a la derecha, igual que en Zooni.
  */
 
@@ -19,7 +20,7 @@ import {
 } from '../../services/paseadorApi';
 import { tiempoRelativoCorto } from '../../utils/tiempoRelativo';
 
-export default function PaseadorHeader({ perfil, subtitulo, mostrarEstado = true }) {
+export default function PaseadorHeader({ perfil, subtitulo, mostrarEstado = true, titulo, onMenu, onChatsSinLeer }) {
   const navigation = useNavigation();
   const [notifs, setNotifs] = useState([]);
   const [chatsSinLeer, setChatsSinLeer] = useState(0);
@@ -30,6 +31,7 @@ export default function PaseadorHeader({ perfil, subtitulo, mostrarEstado = true
       const [n, c] = await Promise.all([fetchNotificacionesPaseador(), contarNoLeidosPaseo('paseador')]);
       setNotifs(n);
       setChatsSinLeer(c);
+      onChatsSinLeer?.(c);
     } catch {
       // sin red: los íconos quedan sin badge
     }
@@ -59,9 +61,15 @@ export default function PaseadorHeader({ perfil, subtitulo, mostrarEstado = true
 
   return (
     <View style={s.header}>
-      <Avatar uri={perfil?.foto} nombre={nombre} size={46} borde />
+      {onMenu ? (
+        <TouchableOpacity onPress={onMenu} style={s.menu} accessibilityLabel="Abrir menú"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Ionicons name="menu" size={28} color="#0A0A0A" />
+        </TouchableOpacity>
+      ) : null}
+      <Avatar uri={perfil?.foto} nombre={nombre} size={42} borde />
       <View style={s.textos}>
-        <Text style={s.hola} numberOfLines={1}>Hola, {primerNombre}</Text>
+        <Text style={s.hola} numberOfLines={1}>{titulo ?? `Hola, ${primerNombre}`}</Text>
         {mostrarEstado && perfil ? (
           <Chip
             texto={perfil.disponible ? 'Disponible' : 'No disponible'}
@@ -123,11 +131,12 @@ export default function PaseadorHeader({ perfil, subtitulo, mostrarEstado = true
 const s = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 20, paddingTop: 12, paddingBottom: 14,
+    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 14,
     backgroundColor: C.card,
     borderBottomWidth: 1, borderBottomColor: C.borde,
   },
   textos: { flex: 1 },
+  menu: { width: 36, height: 44, justifyContent: 'center' },
   hola: { fontSize: 18, fontWeight: '800', color: C.texto },
   sub: { fontSize: 13, color: C.texto2, marginTop: 2 },
   campana: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

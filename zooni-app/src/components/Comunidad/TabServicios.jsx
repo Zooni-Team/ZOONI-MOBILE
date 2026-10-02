@@ -37,6 +37,8 @@ export default function TabServicios({ bbox, onSeleccionar, paseadores = [], onS
   // Con el mapa muy alejado no se consulta al proveedor gratuito (barrería medio
   // país). Conviene decirlo en vez de mostrar "no hay servicios", que es falso.
   const demasiadoLejos = bbox && !areaBuscable(bbox);
+  // Con paseadores de Zooni arriba, "No hay servicios en esta área" sobra
+  const hayPaseadoresZooni = (filtro === 'todos' || filtro === 'paseador') && paseadores.length > 0;
 
   return (
     <View style={{ flex: 1 }}>
@@ -51,8 +53,9 @@ export default function TabServicios({ bbox, onSeleccionar, paseadores = [], onS
       {(filtro === 'todos' || filtro === 'paseador') && paseadores.length > 0 && (
         <View style={styles.zooniBox}>
           <Text style={styles.zooniTitulo}>Paseadores de Zooni · se contratan desde la app</Text>
-          {paseadores.slice(0, 5).map((p) => (
-            <TouchableOpacity key={`pz-${p.id}`} style={styles.item} onPress={() => onSeleccionarPaseador?.(p)}>
+          {paseadores.slice(0, 5).map((p, i, arr) => (
+            <TouchableOpacity key={`pz-${p.id}`}
+              style={[styles.item, i === arr.length - 1 && { borderBottomWidth: 0 }]} onPress={() => onSeleccionarPaseador?.(p)}>
               <View style={[styles.iconCircle, { backgroundColor: '#2DBD72' }]}>
                 <Ionicons name="paw" size={16} color="#FFF" />
               </View>
@@ -106,7 +109,7 @@ export default function TabServicios({ bbox, onSeleccionar, paseadores = [], onS
               <ActivityIndicator size="small" color="#2DBD72" />
               <Text style={styles.vacio}>Buscando lugares en esta zona…</Text>
             </View>
-          ) : (
+          ) : hayPaseadoresZooni ? null : (
             <Text style={styles.vacio}>
               {demasiadoLejos
                 ? 'Acercá el mapa para ver las veterinarias y pet shops de la zona.'
@@ -121,7 +124,7 @@ export default function TabServicios({ bbox, onSeleccionar, paseadores = [], onS
 }
 
 const styles = StyleSheet.create({
-  zooniBox: { paddingHorizontal: 4, paddingBottom: 6, marginBottom: 6, borderBottomWidth: 1, borderBottomColor: '#EFEFEF' },
+  zooniBox: { paddingHorizontal: 4, marginBottom: 4 },
   zooniTitulo: { fontSize: 12, fontWeight: '800', color: '#2DBD72', marginBottom: 4, marginLeft: 10 },
   chips:       { flexDirection: 'row', paddingVertical: 8, maxHeight: 50 },
   chip:        { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#F5F5F5', marginRight: 8 },

@@ -87,16 +87,13 @@ export default function PopupPaseador({ paseador, onClose }) {
         <Ionicons name="walk" size={18} color="#2C2C2C" />
         <Text style={st.btnTxt}>Contratar paseo</Text>
       </TouchableOpacity>
-      {!paseador.disponible && (
-        <Text style={st.nota}>Ahora no está recibiendo pedidos, pero le llega tu solicitud para cuando se conecte.</Text>
-      )}
     </Animated.View>
   );
 }
 
 const st = StyleSheet.create({
   popup: {
-    position: 'absolute', left: 14, right: 14, bottom: 230, backgroundColor: '#FFF', borderRadius: 20, padding: 16,
+    position: 'absolute', left: 12, right: 12, bottom: 12, backgroundColor: '#FFF', borderRadius: 20, padding: 16,
     shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 14, elevation: 10,
     zIndex: 200,
   },
@@ -120,5 +117,4 @@ const st = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 3,
   },
   btnTxt: { fontSize: 16, fontWeight: '800', color: '#2C2C2C' },
-  nota: { fontSize: 12, color: '#6B6B6B', textAlign: 'center', marginTop: 8 },
 });

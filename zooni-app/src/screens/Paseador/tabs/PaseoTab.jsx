@@ -51,7 +51,7 @@ export default function PaseoTab(props) {
 // PASEO EN CURSO
 // ─────────────────────────────────────────────────────────────────────────────
 
-function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, avisar, onFinalizado }) {
+function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, abrirMenu, avisar, onFinalizado }) {
   const [posicion, setPosicion] = useState(null);
   const [ruta, setRuta] = useState([]);
   const [distancia, setDistancia] = useState(paseo.distanciaMetros ?? 0);
@@ -195,6 +195,10 @@ function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, avisar, o
 
       {/* Arriba: estado en vivo + controles del mapa */}
       <View style={s.topBar} pointerEvents="box-none">
+        {/* Sin header en pantalla completa: el menú flota sobre el mapa */}
+        <TouchableOpacity style={[s.mapBtn, { marginRight: 10 }]} onPress={abrirMenu} accessibilityLabel="Abrir menú">
+          <Ionicons name="menu" size={24} color="#0A0A0A" />
+        </TouchableOpacity>
         <View style={[s.vivo, !corriendo && { backgroundColor: '#F1F1F1' }]}>
           <View style={[s.vivoPunto, !corriendo && { backgroundColor: C.gris }]} />
           <Text style={s.vivoTxt}>{corriendo ? 'En vivo · el dueño ve tu recorrido' : 'Paseo en pausa'}</Text>
@@ -331,11 +335,11 @@ const s = StyleSheet.create({
 
   topBar: {
     position: 'absolute', top: 14, left: 14, right: 14,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
+    flexDirection: 'row', alignItems: 'flex-start',
   },
   vivo: {
     flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF',
-    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, flexShrink: 1, marginRight: 10, ...sombra,
+    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, flexShrink: 1, flex: 1, marginRight: 10, marginTop: 4, ...sombra,
   },
   vivoPunto: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.rojo },
   vivoTxt: { fontSize: 12, fontWeight: '800', color: C.texto, flexShrink: 1 },
@@ -344,7 +348,7 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', ...sombra,
   },
   gps: {
-    position: 'absolute', top: 70, left: 14, right: 74, flexDirection: 'row', alignItems: 'center', gap: 6,
+    position: 'absolute', top: 70, left: 70, right: 74, flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: '#FFF6E5', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8,
   },
   gpsTxt: { flex: 1, fontSize: 12, color: C.texto, fontWeight: '600' },

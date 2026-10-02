@@ -31,14 +31,29 @@
  * IP. Por eso acá hay: caché por área, un tope de superficie consultable, un
  * timeout corto y varios servidores espejo. Nunca lanza error hacia arriba.
  */
+import { Platform } from 'react-native';
 
 // Espejos públicos, en orden. Si el primero está saturado (429/504) se prueba
 // el siguiente: son instancias distintas de la misma base de datos.
-const ENDPOINTS = [
+const ENDPOINTS_TODOS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
   'https://overpass.private.coffee/api/interpreter',
 ];
+
+/*
+  En el navegador overpass-api.de rechaza los pedidos (406 sin cabecera CORS):
+  cada búsqueda llenaba la consola de errores rojos antes de caer al espejo
+  que sí responde. En web va último; en nativo (sin CORS) sigue primero.
+*/
+const ENDPOINTS = Platform.OS === 'web'
+  ? [...ENDPOINTS_TODOS.slice(1), ENDPOINTS_TODOS[0]]
+  : ENDPOINTS_TODOS;
+
+// Servidores que fallaron por algo que no se arregla reintentando (CORS, 403,
+// 406): se saltean el resto de la sesión en vez de volver a pegarles en cada
+// movimiento del mapa. Si fallan todos, se vuelve a probar con la lista entera.
+const endpointsDescartados = new Set();
 
 // Etiqueta de OSM por cada filtro de la pestaña Servicios. Las claves coinciden
 // con `tipo` en la tabla `servicios` para que todo hable el mismo idioma (los
@@ -182,7 +197,8 @@ function armarConsulta(bbox, tipo) {
 async function consultarOverpass(consulta, signal) {
   let ultimoError = null;
 
-  for (const endpoint of ENDPOINTS) {
+  const candidatos = ENDPOINTS.filter((e) => !endpointsDescartados.has(e));
+  for (const endpoint of (candidatos.length ? candidatos : ENDPOINTS)) {
     // Timeout propio: sin esto, un espejo colgado deja la pestaña esperando
     // para siempre en vez de pasar al siguiente.
     const abortador = new AbortController();
@@ -195,16 +211,18 @@ async function consultarOverpass(consulta, signal) {
       const res = await fetch(endpoint, {
         method: 'POST',
         signal: abortador.signal,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': USER_AGENT,
-        },
+        // En web, User-Agent no se puede fijar y sólo agregaría un preflight
+        // CORS: se manda únicamente el Content-Type de un formulario común.
+        headers: Platform.OS === 'web'
+          ? { 'Content-Type': 'application/x-www-form-urlencoded' }
+          : { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT },
         body: `data=${encodeURIComponent(consulta)}`,
       });
       if (!res.ok) {
         // 429 = demasiadas consultas, 504 = espejo saturado. Los dos se
         // resuelven probando otro servidor.
         ultimoError = new Error(`Overpass ${res.status}`);
+        if ([403, 405, 406].includes(res.status)) endpointsDescartados.add(endpoint);
         continue;
       }
       // Overpass a veces contesta 200 con un cuerpo XML de error ("runtime
@@ -214,6 +232,8 @@ async function consultarOverpass(consulta, signal) {
     } catch (e) {
       // Si canceló quien llama, no tiene sentido seguir probando espejos.
       if (signal?.aborted) throw e;
+      // TypeError = error de red/CORS: ese servidor no le responde a la app
+      if (e instanceof TypeError) endpointsDescartados.add(endpoint);
       ultimoError = e;
     } finally {
       clearTimeout(temporizador);

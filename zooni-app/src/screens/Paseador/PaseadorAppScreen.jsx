@@ -3,8 +3,8 @@
  *
  * Inicio · Solicitudes · Paseo · Ganancias · Perfil
  *
- * No hay @react-navigation/bottom-tabs en el proyecto: los tabs son estado de
- * esta pantalla y el bottom nav es propio (PaseadorTabBar). Chat y
+ * Las secciones son estado de esta pantalla y se eligen desde el menú
+ * hamburguesa (PaseadorDrawer), igual que en la app de dueños. Chat y
  * Disponibilidad sí son pantallas del stack (se abren encima).
  *
  * Acá vive el estado que comparten los tabs: perfil, solicitudes pendientes
@@ -20,12 +20,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 
 import PaseadorHeader from '../../components/paseador/PaseadorHeader';
-import PaseadorTabBar from '../../components/paseador/PaseadorTabBar';
+import PaseadorDrawer, { SECCIONES_PASEADOR } from '../../components/paseador/PaseadorDrawer';
 import { C, PillButton, Vacio } from '../../components/paseador/PaseadorUI';
 import {
   fetchPaseoEnCurso, fetchPerfilPaseador, fetchRolesCuenta, fetchSolicitudes, iniciarPaseo,
+  setDisponible,
 } from '../../services/paseadorApi';
-import { clearCurrentUserId } from '../../config/session';
+import { clearCurrentUserId, setModo, MODO_DUENO } from '../../config/session';
 
 import InicioTab from './tabs/InicioTab';
 import SolicitudesTab from './tabs/SolicitudesTab';
@@ -47,6 +48,9 @@ export default function PaseadorAppScreen() {
   const [paseoActivo, setPaseoActivo] = useState(null);
   const [toast, setToast] = useState(null);
   const [avisoPermisos, setAvisoPermisos] = useState(false);
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const [chatsSinLeer, setChatsSinLeer] = useState(0);
+  const [esDueno, setEsDueno] = useState(false);
   const toastAnim = useRef(new Animated.Value(0)).current;
 
   // Perfil recién guardado en el registro (llega por params). Si la base no
@@ -107,6 +111,11 @@ export default function PaseadorAppScreen() {
     await Promise.all([recargarPerfil(), recargarSolicitudes(), recargarPaseo()]);
     setCargando(false);
   }, [recargarPerfil, recargarSolicitudes, recargarPaseo]);
+
+  // ¿La cuenta también es de dueño? (para ofrecer "Cambiar a modo dueño")
+  useEffect(() => {
+    fetchRolesCuenta().then((r) => setEsDueno(!!r?.esDueno)).catch(() => {});
+  }, []);
 
   // Al volver de Chat / Disponibilidad, refrescar
   useFocusEffect(useCallback(() => { recargarTodo(); }, [recargarTodo]));
@@ -184,11 +193,27 @@ export default function PaseadorAppScreen() {
 
   const abrirChat = (paseo) => navigation.navigate('PaseadorChat', { paseoId: paseo.id });
 
+  const modoDueno = async () => {
+    await setModo(MODO_DUENO);
+    navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+  };
+
+  const salir = async () => {
+    // Al salir deja de figurar disponible: nadie le asigna paseos con la app cerrada
+    await setDisponible(false).catch(() => {});
+    await clearCurrentUserId();
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+  };
+
+  // Dirigidas a mí: siempre. Abiertas: sólo si estoy disponible
+  const pendientes = perfil?.disponible ? solicitudes.length : solicitudes.filter((x) => !x.abierta).length;
+  const abrirMenu = () => setMenuAbierto(true);
+
   const ctx = {
     perfil, setPerfil, recargarPerfil,
     solicitudes, recargarSolicitudes,
     paseoActivo, setPaseoActivo, recargarPaseo,
-    empezarPaseo, abrirChat,
+    empezarPaseo, abrirChat, abrirMenu,
     irA: setTab, avisar, navigation,
   };
 
@@ -198,7 +223,15 @@ export default function PaseadorAppScreen() {
   return (
     <SafeAreaView style={s.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      {!pantallaCompleta && <PaseadorHeader perfil={perfil} />}
+      {!pantallaCompleta && (
+        <PaseadorHeader
+          perfil={perfil}
+          onMenu={abrirMenu}
+          onChatsSinLeer={setChatsSinLeer}
+          // En Inicio saluda; en el resto dice en qué sección estás
+          titulo={tab === 'inicio' ? undefined : SECCIONES_PASEADOR.find((x) => x.key === tab)?.label}
+        />
+      )}
       {avisoPermisos && !pantallaCompleta && (
         <View style={s.aviso}>
           <Ionicons name="warning" size={18} color={C.ambar} />
@@ -230,12 +263,19 @@ export default function PaseadorAppScreen() {
         )}
       </View>
 
-      <PaseadorTabBar
+      <PaseadorDrawer
+        visible={menuAbierto}
+        onClose={() => setMenuAbierto(false)}
+        perfil={perfil}
         activo={tab}
-        onCambiar={setTab}
-        // Las dirigidas a mí cuentan siempre; las abiertas, sólo si estoy disponible
-        pendientes={perfil?.disponible ? solicitudes.length : solicitudes.filter((x) => !x.abierta).length}
+        onElegir={setTab}
+        pendientes={pendientes}
         enCurso={!!paseoActivo}
+        chatsSinLeer={chatsSinLeer}
+        onChats={() => navigation.navigate('PaseadorChats')}
+        onHorarios={() => navigation.navigate('PaseadorDisponibilidad')}
+        onModoDueno={esDueno ? modoDueno : null}
+        onSalir={salir}
       />
     </SafeAreaView>
   );
