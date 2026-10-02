@@ -11,20 +11,27 @@ import {
   FlatList, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 import { Avatar, C, Chip, sombra } from './PaseadorUI';
-import { fetchNotificacionesPaseador, marcarNotificacionesLeidas } from '../../services/paseadorApi';
+import {
+  contarNoLeidosPaseo, fetchNotificacionesPaseador, marcarNotificacionesLeidas,
+} from '../../services/paseadorApi';
 import { tiempoRelativoCorto } from '../../utils/tiempoRelativo';
 
 export default function PaseadorHeader({ perfil, subtitulo, mostrarEstado = true }) {
+  const navigation = useNavigation();
   const [notifs, setNotifs] = useState([]);
+  const [chatsSinLeer, setChatsSinLeer] = useState(0);
   const [abierto, setAbierto] = useState(false);
 
   const cargar = useCallback(async () => {
     try {
-      setNotifs(await fetchNotificacionesPaseador());
+      const [n, c] = await Promise.all([fetchNotificacionesPaseador(), contarNoLeidosPaseo('paseador')]);
+      setNotifs(n);
+      setChatsSinLeer(c);
     } catch {
-      // sin red: la campana queda sin badge
+      // sin red: los íconos quedan sin badge
     }
   }, []);
 
@@ -67,6 +74,16 @@ export default function PaseadorHeader({ perfil, subtitulo, mostrarEstado = true
           <Text style={s.sub}>{subtitulo}</Text>
         ) : null}
       </View>
+
+      <TouchableOpacity onPress={() => navigation.navigate('PaseadorChats')} style={s.campana}
+        accessibilityLabel={`Chats${chatsSinLeer ? `, ${chatsSinLeer} sin leer` : ''}`}>
+        <Ionicons name="chatbubbles-outline" size={25} color={C.texto} />
+        {chatsSinLeer > 0 && (
+          <View style={s.badge}>
+            <Text style={s.badgeTxt}>{chatsSinLeer > 9 ? '9+' : chatsSinLeer}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
 
       <TouchableOpacity onPress={abrir} style={s.campana} accessibilityLabel={`Notificaciones${noLeidas ? `, ${noLeidas} sin leer` : ''}`}>
         <Ionicons name="notifications-outline" size={26} color={C.texto} />

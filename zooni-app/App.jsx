@@ -59,6 +59,9 @@ import PaseadorAppScreen        from './src/screens/Paseador/PaseadorAppScreen';
 import PaseadorChatScreen       from './src/screens/Paseador/PaseadorChatScreen';
 import PaseadorDisponibilidadScreen from './src/screens/Paseador/PaseadorDisponibilidadScreen';
 import ElegirModoScreen         from './src/screens/ElegirModoScreen';
+import SolicitarPaseoScreen     from './src/screens/SolicitarPaseoScreen';
+import MisPaseosScreen          from './src/screens/MisPaseosScreen';
+import PaseadorChatsScreen      from './src/screens/Paseador/PaseadorChatsScreen';
 import { fetchRolesCuenta }     from './src/services/paseadorApi';
 
 const Stack = createNativeStackNavigator();
@@ -204,6 +207,10 @@ function RootNavigator({ initialRoute, initialParams }) {
           <Stack.Screen name="PaseadorApp"            component={PaseadorAppScreen} />
           <Stack.Screen name="PaseadorChat"           component={PaseadorChatScreen} />
           <Stack.Screen name="PaseadorDisponibilidad" component={PaseadorDisponibilidadScreen} />
+          <Stack.Screen name="PaseadorChats"          component={PaseadorChatsScreen} />
+          {/* Lado dueño de los paseos */}
+          <Stack.Screen name="SolicitarPaseo"         component={SolicitarPaseoScreen} />
+          <Stack.Screen name="MisPaseos"              component={MisPaseosScreen} />
         </Stack.Navigator>
       </NavigationContainer>
   );

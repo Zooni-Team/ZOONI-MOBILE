@@ -3,6 +3,7 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView, Activit
 import { Ionicons } from '@expo/vector-icons';
 import { fetchServicios } from '../../api/comunidad';
 import { areaBuscable } from '../../services/lugaresApi';
+import { formatoPlata } from '../../services/paseadorApi';
 
 const FILTROS = [
   { v: 'todos', l: 'Todos' }, { v: 'veterinaria', l: 'Veterinaria' },
@@ -12,7 +13,7 @@ const FILTROS = [
 const ICONOS  = { veterinaria: 'medkit-outline', paseador: 'walk-outline', petshop: 'bag-outline', peluqueria: 'cut-outline' };
 const COLORES = { veterinaria: '#E63946', paseador: '#F5A623', petshop: '#F5C842', peluqueria: '#9B59B6' };
 
-export default function TabServicios({ bbox, onSeleccionar }) {
+export default function TabServicios({ bbox, onSeleccionar, paseadores = [], onSeleccionarPaseador }) {
   const [lista,  setLista]  = useState([]);
   const [filtro, setFiltro] = useState('todos');
   // Buscar en OpenStreetMap tarda bastante más que leer la tabla de Supabase:
@@ -46,6 +47,27 @@ export default function TabServicios({ bbox, onSeleccionar }) {
           </TouchableOpacity>
         ))}
       </ScrollView>
+      {/* Paseadores registrados en Zooni: se pueden contratar desde la app */}
+      {(filtro === 'todos' || filtro === 'paseador') && paseadores.length > 0 && (
+        <View style={styles.zooniBox}>
+          <Text style={styles.zooniTitulo}>Paseadores de Zooni · se contratan desde la app</Text>
+          {paseadores.slice(0, 5).map((p) => (
+            <TouchableOpacity key={`pz-${p.id}`} style={styles.item} onPress={() => onSeleccionarPaseador?.(p)}>
+              <View style={[styles.iconCircle, { backgroundColor: '#2DBD72' }]}>
+                <Ionicons name="paw" size={16} color="#FFF" />
+              </View>
+              <View style={styles.info}>
+                <Text style={styles.nombre} numberOfLines={1}>{p.nombreCompleto}</Text>
+                <Text style={styles.dir} numberOfLines={1}>
+                  {p.zona} · {p.radioKm} km · desde {formatoPlata(p.precio30)}
+                  {p.rating != null ? ` · ★ ${p.rating.toFixed(1).replace('.', ',')}` : ''}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#2DBD72" />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
       <FlatList
         data={lista}
         keyExtractor={s => String(s.id)}
@@ -99,6 +121,8 @@ export default function TabServicios({ bbox, onSeleccionar }) {
 }
 
 const styles = StyleSheet.create({
+  zooniBox: { paddingHorizontal: 4, paddingBottom: 6, marginBottom: 6, borderBottomWidth: 1, borderBottomColor: '#EFEFEF' },
+  zooniTitulo: { fontSize: 12, fontWeight: '800', color: '#2DBD72', marginBottom: 4, marginLeft: 10 },
   chips:       { flexDirection: 'row', paddingVertical: 8, maxHeight: 50 },
   chip:        { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#F5F5F5', marginRight: 8 },
   chipOn:      { backgroundColor: '#2DBD72' },

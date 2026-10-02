@@ -3,6 +3,8 @@
  *
  * Dos pestañas:
  *   - Personas: mis chats de Match (services/chatStore.js → tabla Mensaje/idMatch)
+ *   - Paseadores: chats con los paseadores de Zooni que contraté (un hilo por
+ *     paseo, tabla paseo_mensajes — ver components/paseador/ChatsPaseoLista)
  *   - Servicios: veterinarias, paseadores, petshops y peluquerías de Comunidad
  *     (api/comunidad → tabla servicios), con la conversación que ya tenga
  *     cada uno si le escribí antes.
@@ -26,6 +28,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { fetchServicios } from '../api/comunidad';
 import { fetchMisConversacionesMatch, fetchMisUltimosMensajesServicios } from '../services/chatStore';
 import MatchInfoModal from '../components/chat/MatchInfoModal';
+import ChatsPaseoLista from '../components/paseador/ChatsPaseoLista';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { tiempoRelativoCorto } from '../utils/tiempoRelativo';
@@ -103,14 +106,17 @@ export default function MensajesScreen() {
       </View>
 
       <View style={st.tabs}>
-        {['Personas', 'Servicios'].map((t) => (
+        {['Personas', 'Paseadores', 'Servicios'].map((t) => (
           <TouchableOpacity key={t} style={[st.tabBtn, tab === t && st.tabBtnOn]} onPress={() => setTab(t)}>
             <Text style={[st.tabTxt, tab === t && st.tabTxtOn]}>{t}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {loading ? (
+      {tab === 'Paseadores' ? (
+        <ChatsPaseoLista rol="dueno"
+          vacioTexto={'Todavía no hablaste con paseadores.\nPedí un paseo desde Comunidad y coordinalo por acá.'} />
+      ) : loading ? (
         <ActivityIndicator color="#2DBD72" style={{ marginTop: 30 }} />
       ) : tab === 'Personas' ? (
         <FlatList

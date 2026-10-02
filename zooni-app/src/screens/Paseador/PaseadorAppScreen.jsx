@@ -113,8 +113,9 @@ export default function PaseadorAppScreen() {
 
   // Polling de solicitudes sólo mientras está Disponible
   useEffect(() => {
-    if (!perfil?.disponible) return undefined;
-    const t = setInterval(recargarSolicitudes, POLL_SOLICITUDES_MS);
+    // Siempre se consulta (las solicitudes dirigidas a mí llegan aunque no esté
+    // disponible); estando disponible, más seguido
+    const t = setInterval(recargarSolicitudes, perfil?.disponible ? POLL_SOLICITUDES_MS : POLL_SOLICITUDES_MS * 3);
     return () => clearInterval(t);
   }, [perfil?.disponible, recargarSolicitudes]);
 
@@ -232,7 +233,8 @@ export default function PaseadorAppScreen() {
       <PaseadorTabBar
         activo={tab}
         onCambiar={setTab}
-        pendientes={perfil?.disponible ? solicitudes.length : 0}
+        // Las dirigidas a mí cuentan siempre; las abiertas, sólo si estoy disponible
+        pendientes={perfil?.disponible ? solicitudes.length : solicitudes.filter((x) => !x.abierta).length}
         enCurso={!!paseoActivo}
       />
     </SafeAreaView>

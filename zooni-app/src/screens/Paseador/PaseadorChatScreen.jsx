@@ -1,7 +1,9 @@
 /**
  * PaseadorChatScreen.jsx — Chat paseador ↔ dueño de un paseo
  *
- * Se abre desde una solicitud, la agenda o el paseo activo (no es un tab).
+ * Se abre desde una solicitud, la agenda o el paseo activo (no es un tab), y
+ * también del lado dueño (Mis paseos / Mensajes): la pantalla detecta quién
+ * soy en ese paseo y muestra al OTRO en el header.
  * Mismas burbujas que el chat de Zooni: verde menta medio para el paseador
  * (derecha), blancas para el dueño (izquierda). Respuestas rápidas arriba del
  * input porque el paseador escribe con una mano y la correa en la otra.
@@ -17,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 
 import { Avatar, C } from '../../components/paseador/PaseadorUI';
+import { getCurrentUserId } from '../../config/session';
 import {
   cuandoDe, enviarMensajePaseo, fetchPaseo, getMensajesPaseo, marcarLeidosPaseo,
 } from '../../services/paseadorApi';
@@ -82,7 +85,15 @@ export default function PaseadorChatScreen() {
     }
   };
 
-  const rapidas = paseo ? (RAPIDAS[paseo.estado] ?? []) : [];
+  // ¿Soy el dueño de este paseo? Entonces el "otro" es el paseador
+  const soyDueno = !!paseo && paseo.idDueno === getCurrentUserId();
+  const otro = paseo
+    ? (soyDueno
+      ? { nombre: paseo.paseador?.nombre ?? 'Paseador', foto: paseo.paseador?.foto ?? null }
+      : { nombre: paseo.dueno.nombre, foto: paseo.dueno.foto })
+    : null;
+  // Las respuestas rápidas son para el paseador (escribe con la correa en la mano)
+  const rapidas = paseo && !soyDueno ? (RAPIDAS[paseo.estado] ?? []) : [];
   const cerrado = paseo && ['rechazado', 'cancelado'].includes(paseo.estado);
 
   return (
@@ -95,9 +106,11 @@ export default function PaseadorChatScreen() {
         </TouchableOpacity>
         {paseo ? (
           <>
-            <Avatar fuente={paseo.mascota.visual} nombre={paseo.mascota.nombre} size={42} borde />
+            {soyDueno
+              ? <Avatar uri={otro.foto} nombre={otro.nombre} size={42} borde />
+              : <Avatar fuente={paseo.mascota.visual} nombre={paseo.mascota.nombre} size={42} borde />}
             <View style={{ flex: 1 }}>
-              <Text style={s.titulo} numberOfLines={1}>{paseo.dueno.nombre}</Text>
+              <Text style={s.titulo} numberOfLines={1}>{otro.nombre}</Text>
               <Text style={s.sub} numberOfLines={1}>
                 {paseo.mascota.nombre} · {ESTADO_TXT[paseo.estado] ?? ''} · {cuandoDe(paseo.fecha)}
               </Text>
@@ -117,7 +130,7 @@ export default function PaseadorChatScreen() {
             <View style={s.vacio}>
               <Ionicons name="chatbubbles-outline" size={36} color={C.teal} />
               <Text style={s.vacioTxt}>
-                Coordiná con {paseo?.dueno.nombre ?? 'el dueño'} los detalles del paseo.
+                Coordiná con {otro?.nombre ?? (soyDueno ? 'el paseador' : 'el dueño')} los detalles del paseo.
               </Text>
             </View>
           )}
@@ -155,7 +168,7 @@ export default function PaseadorChatScreen() {
                 style={s.input}
                 value={texto}
                 onChangeText={setTexto}
-                placeholder="Escribile al dueño…"
+                placeholder={soyDueno ? 'Escribile al paseador…' : 'Escribile al dueño…'}
                 placeholderTextColor={C.gris}
                 multiline
                 maxLength={1000}

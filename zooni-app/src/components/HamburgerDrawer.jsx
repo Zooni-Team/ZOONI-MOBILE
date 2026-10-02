@@ -42,6 +42,7 @@ const MENU_ITEMS = [
   { key: 'comunidad',     label: 'Comunidad',                 icono: 'people-outline',              ruta: 'Comunidad' },
   { key: 'match',         label: 'Match',                     icono: 'paw-outline',                 ruta: 'Match' },
   { key: 'mensajes',      label: 'Mensajes',                  icono: 'chatbubbles-outline',         ruta: 'Mensajes' },
+  { key: 'mis_paseos',    label: 'Mis paseos',                icono: 'walk-outline',                ruta: 'MisPaseos' },
   { key: 'planificador',  label: 'Planificador de Servicios', icono: 'calendar-outline',            ruta: 'Planificador' },
   { key: 'ficha_medica',  label: 'Ficha Médica',              icono: 'medkit-outline',              ruta: 'FichaMedica' },
   { key: 'calendario',    label: 'Calendario',                icono: 'today-outline',               ruta: 'Calendario' },

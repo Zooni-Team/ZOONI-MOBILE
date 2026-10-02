@@ -112,7 +112,9 @@ export default function SolicitudesTab({
   };
 
   const disponible = !!perfil?.disponible;
-  const datos = vista === 'nuevas' ? (disponible ? solicitudes : []) : agenda;
+  // Las que un dueño me mandó a MÍ se ven siempre; las abiertas, sólo disponible
+  const visibles = disponible ? solicitudes : solicitudes.filter((x) => !x.abierta);
+  const datos = vista === 'nuevas' ? visibles : agenda;
 
   const renderNueva = ({ item }) => (
     <PaseoCard paseo={item} onChat={() => abrirChat(item)}>
@@ -146,7 +148,7 @@ export default function SolicitudesTab({
     <View style={{ flex: 1 }}>
       <View style={s.segmento}>
         {[
-          { key: 'nuevas', label: 'Nuevas', n: disponible ? solicitudes.length : 0 },
+          { key: 'nuevas', label: 'Nuevas', n: visibles.length },
           { key: 'agenda', label: 'Agenda', n: agenda.length },
         ].map((op) => {
           const on = vista === op.key;
@@ -167,7 +169,7 @@ export default function SolicitudesTab({
       {vista === 'nuevas' && !disponible && (
         <View style={s.aviso}>
           <Ionicons name="pause-circle" size={22} color={C.texto2} />
-          <Text style={s.avisoTxt}>Estás como no disponible: no te llegan solicitudes nuevas.</Text>
+          <Text style={s.avisoTxt}>Estás como no disponible: sólo ves los pedidos que te mandaron a vos.</Text>
           <TouchableOpacity onPress={activar} style={s.avisoBtn}>
             <Text style={s.avisoBtnTxt}>Activar</Text>
           </TouchableOpacity>

@@ -82,6 +82,8 @@ export default function InicioTab({
   const kmHoy = hoy.reduce((acc, p) => acc + (p.distanciaMetros ?? 0), 0);
   const proximo = agenda[0] ?? null;
   const disponible = !!perfil?.disponible;
+  // Dirigidas a mí: siempre. Abiertas: sólo si estoy disponible
+  const nuevas = disponible ? solicitudes : solicitudes.filter((x) => !x.abierta);
 
   return (
     <ScrollView
@@ -137,13 +139,13 @@ export default function InicioTab({
       </Card>
 
       {/* ── Solicitudes nuevas ─────────────────────────────────────── */}
-      {disponible && solicitudes.length > 0 && (
+      {nuevas.length > 0 && (
         <TouchableOpacity style={s.nuevas} onPress={() => irA('solicitudes')} activeOpacity={0.9}>
           <View style={s.nuevasBadge}>
-            <Text style={s.nuevasNum}>{solicitudes.length}</Text>
+            <Text style={s.nuevasNum}>{nuevas.length}</Text>
           </View>
           <Text style={s.nuevasTxt}>
-            {solicitudes.length === 1 ? 'Tenés una solicitud nueva' : `Tenés ${solicitudes.length} solicitudes nuevas`}
+            {nuevas.length === 1 ? 'Tenés una solicitud nueva' : `Tenés ${nuevas.length} solicitudes nuevas`}
           </Text>
           <Ionicons name="chevron-forward" size={22} color={C.texto} />
         </TouchableOpacity>

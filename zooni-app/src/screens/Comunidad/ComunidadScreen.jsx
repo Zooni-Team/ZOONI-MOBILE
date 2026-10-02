@@ -11,12 +11,14 @@ import TabSolicitudes   from '../../components/Comunidad/TabSolicitudes';
 import BuscadorUsuarios from '../../components/Comunidad/BuscadorUsuarios';
 import FormularioCartel from '../../components/Comunidad/FormularioCartel';
 import PopupServicio    from '../../components/Comunidad/PopupServicio';
+import PopupPaseador    from '../../components/Comunidad/PopupPaseador';
 import PopupCartel      from '../../components/Comunidad/PopupCartel';
 import HamburgerDrawer  from '../../components/HamburgerDrawer';
 import { useUsuarioActivo } from '../../hooks/useUsuarioActivo';
 
 import { fetchMapaData, actualizarUbicacion } from '../../api/comunidad';
 import { getCurrentUserId } from '../../config/session';
+import { fetchPaseadoresZona } from '../../services/paseadorApi';
 
 const TABS    = ['Amigos', 'Servicios', 'Solicitudes', 'Buscar'];
 
@@ -54,7 +56,8 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
     veterinaria:mk('🏥','#E63946'),paseador:mk('🦮','#F5A623'),
     petshop:mk('🛍️','#F5C842'),peluqueria:mk('✂️','#9B59B6'),
     perdida:mk('🔴','#E63946'),aviso:mk('📌','#6B6B6B'),
-    amigo:mk('👤','#2DBD72'),temporal:mk('📍','#2DBD72')
+    amigo:mk('👤','#2DBD72'),temporal:mk('📍','#2DBD72'),
+    zooniWalker:mk('<svg viewBox="0 0 24 24" width="18" height="18" fill="#fff"><circle cx="5" cy="9.5" r="2.2"/><circle cx="9" cy="5.5" r="2.2"/><circle cx="15" cy="5.5" r="2.2"/><circle cx="19" cy="9.5" r="2.2"/><path d="M12 10.5c-3 0-6.5 4.6-6.5 7.3 0 1.8 1.4 2.7 3 2.7 1.4 0 2.3-.8 3.5-.8s2.1.8 3.5.8c1.6 0 3-.9 3-2.7 0-2.7-3.5-7.3-6.5-7.3z"/></svg>','#2DBD72')
   };
 
   // Notifica al padre (React)
@@ -80,6 +83,15 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
       var m=L.marker([x.lat,x.lng],{icon:x.tipo==='perdida'?ICONS.perdida:ICONS.aviso}).addTo(map)
               .on('click',function(){notify({type:'cartel',data:x})});
       dynLayers.push(m);
+    });
+    // Paseadores registrados en Zooni: su zona de atención como círculo
+    (d.paseadores||[]).forEach(function(x){
+      var abrir=function(){notify({type:'paseador',data:x})};
+      var c=L.circle([x.lat,x.lng],{radius:x.radioKm*1000,color:'#2DBD72',weight:2,
+        fillColor:'#2DBD72',fillOpacity:x.disponible?.12:.05,dashArray:x.disponible?null:'6 6'})
+        .addTo(map).on('click',abrir);
+      var m=L.marker([x.lat,x.lng],{icon:ICONS.zooniWalker,zIndexOffset:500}).addTo(map).on('click',abrir);
+      dynLayers.push(c);dynLayers.push(m);
     });
     (d.amigos||[]).forEach(function(x){
       if(x.lat&&x.lng){var m=L.marker([x.lat,x.lng],{icon:ICONS.amigo}).addTo(map);dynLayers.push(m)}
@@ -144,7 +156,7 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
 
 // ─── Pantalla principal ──────────────────────────────────────────────────────
 export default function ComunidadScreen() {
-  const [mapaData,   setMapaData]   = useState({ servicios: [], carteles: [], amigos: [] });
+  const [mapaData,   setMapaData]   = useState({ servicios: [], carteles: [], amigos: [], paseadores: [] });
   const [bbox,       setBbox]       = useState(null);
   const [tab,        setTab]        = useState('Amigos');
   const [sheetH,     setSheetH]     = useState('half');
@@ -152,6 +164,7 @@ export default function ComunidadScreen() {
   const [markerTemp, setMarkerTemp] = useState(null);
   const [formulario, setFormulario] = useState(false);
   const [popServ,    setPopServ]    = useState(null);
+  const [popPaseador, setPopPaseador] = useState(null);
   const [popCart,    setPopCart]    = useState(null);
   const [modalAmigo, setModalAmigo] = useState(false);
   const [toast,      setToast]      = useState(null);
@@ -194,7 +207,10 @@ export default function ComunidadScreen() {
           setUserPos({ lat: msg.lat, lng: msg.lng });
           break;
         case 'servicio':
-          setPopServ(msg.data); setPopCart(null);
+          setPopServ(msg.data); setPopCart(null); setPopPaseador(null);
+          break;
+        case 'paseador':
+          setPopPaseador(msg.data); setPopServ(null); setPopCart(null);
           break;
         case 'cartel':
           setPopCart(msg.data); setPopServ(null);
@@ -212,7 +228,13 @@ export default function ComunidadScreen() {
   // ── Carga de datos ─────────────────────────────────────────────────────────
   const cargarMapa = useCallback(async (b) => {
     if (!b) return;
-    try { const data = await fetchMapaData(b); setMapaData(data); } catch {}
+    try {
+      const [data, paseadores] = await Promise.all([
+        fetchMapaData(b),
+        fetchPaseadoresZona(b).catch(() => []),
+      ]);
+      setMapaData({ ...data, paseadores });
+    } catch {}
   }, []);
   const cargarMapaRef = useRef(cargarMapa);
   useEffect(() => { cargarMapaRef.current = cargarMapa; }, [cargarMapa]);
@@ -332,6 +354,7 @@ export default function ComunidadScreen() {
 
         {/* Popups */}
         {popServ && <PopupServicio servicio={popServ} onClose={() => setPopServ(null)} />}
+        {popPaseador && <PopupPaseador paseador={popPaseador} onClose={() => setPopPaseador(null)} />}
         {popCart && (
           <PopupCartel cartel={popCart} userId={getCurrentUserId()}
             onClose={() => setPopCart(null)}
@@ -367,7 +390,9 @@ export default function ComunidadScreen() {
                 if (a.lat == null || a.lng == null) { mostrarToast('📍 Este amigo todavía no compartió su ubicación'); return; }
                 flyTo(a.lat, a.lng); setSheetH('half');
               }} />}
-              {tab === 'Servicios'   && <TabServicios bbox={bbox} onSeleccionar={s => { setPopServ(s); flyTo(s.lat, s.lng); setSheetH('half'); }} />}
+              {tab === 'Servicios'   && <TabServicios bbox={bbox} paseadores={mapaData.paseadores}
+                onSeleccionarPaseador={p => { setPopPaseador(p); setPopServ(null); flyTo(p.lat, p.lng); setSheetH('half'); }}
+                onSeleccionar={s => { setPopServ(s); setPopPaseador(null); flyTo(s.lat, s.lng); setSheetH('half'); }} />}
               {tab === 'Solicitudes' && <TabSolicitudes onRespuesta={() => { mostrarToast('✅ ¡Ahora son amigos!'); if (bbox) cargarMapa(bbox); }} />}
               {tab === 'Buscar'      && <BuscadorUsuarios onSolicitudEnviada={n => mostrarToast(`✅ Solicitud enviada a ${n}`)} />}
             </View>

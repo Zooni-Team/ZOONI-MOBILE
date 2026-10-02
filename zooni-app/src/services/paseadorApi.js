@@ -519,8 +519,10 @@ async function enriquecer(rows) {
   const porMascota = Object.fromEntries((mascotas ?? []).map((m) => [m.Id_Mascota, m]));
 
   const idsDueno = [...new Set(rows.map((r) => r.Id_Dueno ?? porMascota[r.Id_Mascota]?.Id_User).filter(Boolean))];
-  const { data: duenos } = idsDueno.length
-    ? await supabase.from('User').select('Id_User, Nombre, Apellido, FotoPerfil, Telefono').in('Id_User', idsDueno)
+  const idsWalker = rows.map((r) => r.Id_Walker).filter(Boolean);
+  const idsUsuarios = [...new Set([...idsDueno, ...idsWalker])];
+  const { data: duenos } = idsUsuarios.length
+    ? await supabase.from('User').select('Id_User, Nombre, Apellido, FotoPerfil, Telefono').in('Id_User', idsUsuarios)
     : { data: [] };
   const porDueno = Object.fromEntries((duenos ?? []).map((u) => [u.Id_User, u]));
 
@@ -566,6 +568,11 @@ async function enriquecer(rows) {
         foto: u.FotoPerfil ?? null,
         telefono: u.Telefono ?? null,
       },
+      paseador: r.Id_Walker ? {
+        id: r.Id_Walker,
+        nombre: `${porDueno[r.Id_Walker]?.Nombre ?? ''} ${porDueno[r.Id_Walker]?.Apellido ?? ''}`.trim() || 'Paseador',
+        foto: porDueno[r.Id_Walker]?.FotoPerfil ?? null,
+      } : null,
     };
   });
 }
@@ -643,15 +650,19 @@ export async function fetchRecorrido(idPaseo) {
 // ─────────────────────────────────────────────
 
 /** Avisa al dueño (tabla Notificacion de la app de dueños). Nunca rompe el flujo. */
-async function notificarDueno(paseo, titulo, mensaje) {
-  if (modoDemo || !paseo?.idDueno) return;
+async function notificar(idUser, titulo, mensaje) {
+  if (modoDemo || !idUser) return;
   try {
     await supabase.from('Notificacion').insert({
-      Id_User: paseo.idDueno, Titulo: titulo, Mensaje: mensaje, Tipo: 'paseo', Leido: false,
+      Id_User: idUser, Titulo: titulo, Mensaje: mensaje, Tipo: 'paseo', Leido: false,
     });
   } catch {
     // La notificación es un extra: el cambio de estado ya quedó guardado.
   }
+}
+
+function notificarDueno(paseo, titulo, mensaje) {
+  return notificar(paseo?.idDueno, titulo, mensaje);
 }
 
 function demoUpdate(id, cambios) {
@@ -840,8 +851,12 @@ export async function enviarMensajePaseo(paseo, texto) {
     id_paseo: paseo.id, id_user: getCurrentUserId(), texto: limpio, fecha: new Date().toISOString(),
   });
   if (error) throw error;
-  notificarDueno(paseo, `Mensaje del paseador de ${paseo.mascota.nombre}`,
-    limpio.length > 80 ? `${limpio.slice(0, 80)}…` : limpio);
+  const resumen = limpio.length > 80 ? `${limpio.slice(0, 80)}…` : limpio;
+  if (getCurrentUserId() === paseo.idDueno) {
+    notificar(paseo.idWalker, `Mensaje del dueño de ${paseo.mascota.nombre}`, resumen);
+  } else {
+    notificarDueno(paseo, `Mensaje del paseador de ${paseo.mascota.nombre}`, resumen);
+  }
   return getMensajesPaseo(paseo.id);
 }
 
@@ -874,4 +889,208 @@ export async function marcarNotificacionesLeidas() {
   }
   await supabase.from('Notificacion').update({ Leido: true })
     .eq('Id_User', getCurrentUserId()).eq('Leido', false);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// LADO DUEÑO: encontrar paseadores, pedir paseos, seguirlos y calificarlos
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Paseadores registrados en Zooni con zona cargada (los que dibujan su círculo
+ * en Comunidad). Con bbox, sólo los que tienen el centro en el área visible
+ * más un margen (el círculo puede asomar aunque el centro esté afuera).
+ * Nunca se incluye a uno mismo.
+ */
+export async function fetchPaseadoresZona(bbox) {
+  let q = supabase.from('paseador_perfil').select('*').not('lat', 'is', null);
+  if (bbox) {
+    const m = 0.05; // ~5 km de margen
+    q = q.gte('lat', bbox.lat_min - m).lte('lat', bbox.lat_max + m)
+      .gte('lng', bbox.lng_min - m).lte('lng', bbox.lng_max + m);
+  }
+  const { data, error } = await q.limit(100);
+  if (error) return []; // sin la 035: Comunidad sigue como antes
+  const yo = getCurrentUserId();
+  const filas = (data ?? []).filter((r) => r.id_user !== yo);
+  if (!filas.length) return [];
+
+  const ids = filas.map((r) => r.id_user);
+  const [{ data: usuarios }, { data: calificados }] = await Promise.all([
+    supabase.from('User').select('Id_User, Nombre, Apellido, FotoPerfil').in('Id_User', ids),
+    supabase.from('Paseo').select('Id_Walker, Rating').in('Id_Walker', ids).eq('Estado', 'finalizado'),
+  ]);
+  const porUser = Object.fromEntries((usuarios ?? []).map((u) => [u.Id_User, u]));
+  const stats = {};
+  (calificados ?? []).forEach((pz) => {
+    if (!stats[pz.Id_Walker]) stats[pz.Id_Walker] = { paseos: 0, suma: 0, votos: 0 };
+    const st = stats[pz.Id_Walker];
+    st.paseos += 1;
+    if (pz.Rating != null) { st.suma += pz.Rating; st.votos += 1; }
+  });
+
+  return filas.map((r) => {
+    const u = porUser[r.id_user] ?? {};
+    const st = stats[r.id_user] ?? { paseos: 0, suma: 0, votos: 0 };
+    return {
+      ...mapPerfil(r, u),
+      id: r.id_user,
+      nombreCompleto: `${u.Nombre ?? ''} ${u.Apellido ?? ''}`.trim() || 'Paseador',
+      paseos: st.paseos,
+      rating: st.votos ? st.suma / st.votos : null,
+      votos: st.votos,
+    };
+  });
+}
+
+export async function fetchPaseadorPublico(idUser) {
+  const { data: row } = await supabase.from('paseador_perfil').select('*').eq('id_user', idUser).maybeSingle();
+  if (!row) return null;
+  const lista = await fetchPaseadoresZona(null);
+  return lista.find((x) => x.id === idUser)
+    ?? { ...mapPerfil(row, {}), id: idUser, nombreCompleto: 'Paseador', paseos: 0, rating: null, votos: 0 };
+}
+
+/**
+ * El dueño le pide un paseo a un paseador puntual. Queda 'pendiente' y le
+ * llega en Solicitudes ("Para vos"). Devuelve el id del paseo.
+ */
+export async function crearSolicitudPaseo({
+  paseador, mascota, fecha, duracionMin, direccion, lat, lng, notas,
+}) {
+  const precio = duracionMin === 60 ? paseador.precio60 : paseador.precio30;
+  const { data, error } = await supabase.from('Paseo').insert({
+    Id_Mascota: mascota.id,
+    Id_Dueno: getCurrentUserId(),
+    Id_Walker: paseador.id,
+    FechaProgramada: fecha.toISOString(),
+    DuracionMin: duracionMin,
+    Precio: precio,
+    Direccion: direccion?.trim() || null,
+    Lat: lat ?? null,
+    Lng: lng ?? null,
+    Notas: notas?.trim() || null,
+    Estado: 'pendiente',
+  }).select('Id_Paseo').single();
+  if (error) throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
+
+  notificar(paseador.id, 'Tenés una solicitud nueva',
+    `${mascota.nombre} · ${cuandoDe(fecha.toISOString())} · ${duracionMin} minutos · ${formatoPlata(precio)}`);
+  return data.Id_Paseo;
+}
+
+/** Paseos que pedí como dueño (todos los estados), del más nuevo al más viejo. */
+export async function fetchMisPaseosDueno() {
+  const { data, error } = await supabase.from('Paseo').select(COLUMNAS_PASEO)
+    .eq('Id_Dueno', getCurrentUserId())
+    .order('CreadoEn', { ascending: false })
+    .limit(50);
+  if (error) throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
+  return enriquecer(data ?? []);
+}
+
+/** El dueño cancela su pedido (pendiente o aceptado) y le avisa al paseador. */
+export async function cancelarPaseoDueno(paseo) {
+  const { error } = await supabase.from('Paseo').update({ Estado: 'cancelado' })
+    .eq('Id_Paseo', paseo.id).in('Estado', ['pendiente', 'aceptado']);
+  if (error) throw error;
+  notificar(paseo.idWalker, 'Paseo cancelado por el dueño',
+    `${paseo.mascota.nombre} · ${cuandoDe(paseo.fecha)}`);
+}
+
+/** Calificación del dueño al terminar (alimenta las reseñas del paseador). */
+export async function calificarPaseo(paseo, rating, resena) {
+  const { error } = await supabase.from('Paseo')
+    .update({ Rating: rating, Resena: resena?.trim() || null })
+    .eq('Id_Paseo', paseo.id).eq('Estado', 'finalizado');
+  if (error) throw error;
+  notificar(paseo.idWalker, `Te calificaron con ${rating} ${rating === 1 ? 'estrella' : 'estrellas'}`,
+    resena?.trim() ? `"${resena.trim().slice(0, 80)}"` : `Paseo con ${paseo.mascota.nombre}`);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// INBOX DE CHATS (paseador y dueño)
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Una conversación por paseo, con el último mensaje y cuántos no leí.
+ * rol 'paseador' → paseos donde soy el paseador (incluye solicitudes que me
+ * llegaron); rol 'dueno' → paseos que pedí. Primero las que tienen mensajes
+ * más recientes; después las activas sin mensajes todavía.
+ */
+export async function fetchConversacionesPaseo(rol = 'paseador') {
+  const yo = getCurrentUserId();
+  let paseos;
+  if (modoDemo && rol === 'paseador') {
+    paseos = demoPaseos((p) => p.idWalker === 'yo' && ['aceptado', 'en_curso', 'finalizado'].includes(p.estado));
+  } else {
+    const columna = rol === 'paseador' ? 'Id_Walker' : 'Id_Dueno';
+    const { data, error } = await supabase.from('Paseo').select(COLUMNAS_PASEO)
+      .eq(columna, yo)
+      .in('Estado', ['pendiente', 'aceptado', 'en_curso', 'finalizado'])
+      .order('CreadoEn', { ascending: false })
+      .limit(40);
+    if (error) {
+      if (rol === 'paseador' && caerADemo(error)) return fetchConversacionesPaseo(rol);
+      return [];
+    }
+    paseos = await enriquecer(data ?? []);
+  }
+  if (!paseos.length) return [];
+
+  let mensajes = [];
+  if (modoDemo) {
+    paseos.forEach((p) => (getDemo().mensajes[p.id] ?? []).forEach((m) => mensajes.push({
+      id_paseo: p.id, id_user: m.idUser === 'yo' ? yo : m.idUser, texto: m.texto, fecha: m.fecha, leido: true,
+    })));
+  } else {
+    const { data } = await supabase.from('paseo_mensajes')
+      .select('id_paseo, id_user, texto, fecha, leido')
+      .in('id_paseo', paseos.map((p) => p.id))
+      .order('fecha', { ascending: false })
+      .limit(500);
+    mensajes = data ?? [];
+  }
+
+  const porPaseo = {};
+  mensajes.forEach((m) => {
+    if (!porPaseo[m.id_paseo]) porPaseo[m.id_paseo] = { ultimo: null, noLeidos: 0 };
+    const c = porPaseo[m.id_paseo];
+    if (!c.ultimo || new Date(m.fecha) > new Date(c.ultimo.fecha)) c.ultimo = m;
+    if (m.id_user !== yo && !m.leido) c.noLeidos += 1;
+  });
+
+  return paseos
+    .map((p) => {
+      const c = porPaseo[p.id];
+      return {
+        paseo: p,
+        ultimoMensaje: c?.ultimo?.texto ?? null,
+        ultimoEsMio: c?.ultimo ? c.ultimo.id_user === yo : false,
+        fecha: c?.ultimo?.fecha ?? p.creadoEn,
+        noLeidos: c?.noLeidos ?? 0,
+      };
+    })
+    // Sin mensajes y ya terminado: no hace falta en el inbox
+    .filter((c) => c.ultimoMensaje || ['pendiente', 'aceptado', 'en_curso'].includes(c.paseo.estado))
+    .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+}
+
+/** Total de mensajes sin leer en mis chats de paseo (para badges). */
+export async function contarNoLeidosPaseo(rol = 'paseador') {
+  const convs = await fetchConversacionesPaseo(rol).catch(() => []);
+  return convs.reduce((acc, c) => acc + c.noLeidos, 0);
+}
+
+/** Dirección legible de unas coordenadas (para "Usar mi ubicación"). */
+export async function direccionDe(lat, lng) {
+  try {
+    const url = `${NOMINATIM}/reverse?format=json&zoom=18&accept-language=es&lat=${lat}&lon=${lng}`;
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    const a = (await res.json())?.address ?? {};
+    const calle = [a.road, a.house_number].filter(Boolean).join(' ');
+    const barrio = a.suburb || a.neighbourhood || a.city_district || a.city;
+    return [calle, barrio].filter(Boolean).join(', ') || null;
+  } catch {
+    return null;
+  }
 }
