@@ -23,7 +23,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { C, PillButton, sombra } from '../../components/paseador/PaseadorUI';
 import {
-  activarPaseador, completarPerfilPaseador, formatoPlata, registrarPaseador,
+  HORARIOS_DEFAULT, activarPaseador, completarPerfilPaseador, formatoPlata, registrarPaseador,
 } from '../../services/paseadorApi';
 import ZonaMapaPicker from '../../components/paseador/ZonaMapaPicker';
 import { verificarDisponibilidad } from '../../services/authApi';
@@ -77,7 +77,11 @@ export default function PaseadorRegistroScreen() {
     if (usuario.password.length < 7) e.password = 'La contraseña necesita al menos 7 caracteres';
     else if (usuario.password !== usuario.password2) e.password2 = 'Las contraseñas no coinciden';
     if (!e.email) {
-      const { mailTomado } = await verificarDisponibilidad({ email: usuario.email });
+      // Máximo 3 s: si la red tarda, se sigue (el servidor igual rechaza mails repetidos)
+      const { mailTomado } = await Promise.race([
+        verificarDisponibilidad({ email: usuario.email }).catch(() => ({ mailTomado: false })),
+        new Promise((resolve) => setTimeout(() => resolve({ mailTomado: false }), 3000)),
+      ]);
       if (mailTomado) e.email = 'Ya hay una cuenta con este mail. Iniciá sesión y activá el perfil de paseador.';
     }
     setErrores(e);
@@ -130,7 +134,22 @@ export default function PaseadorRegistroScreen() {
       } else {
         await registrarPaseador({ usuario, perfil: datosPerfil });
       }
-      navigation.reset({ index: 0, routes: [{ name: 'PaseadorApp', params: { bienvenida: true } }] });
+      // El perfil viaja a la home: si la base no lo deja leer, se usa esta copia
+      const perfilLocal = {
+        idUser: null,
+        nombre: usuario.nombre.trim() || activar?.nombre || '',
+        apellido: usuario.apellido.trim(),
+        foto: null,
+        ...datosPerfil,
+        zonas: [],
+        disponible: false,
+        horarios: HORARIOS_DEFAULT(),
+        verificado: false,
+      };
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'PaseadorApp', params: { bienvenida: true, desdeRegistro: true, perfilLocal } }],
+      });
     } catch (err) {
       const msg = err?.message;
       // El detalle real de Supabase queda en la consola y en pantalla

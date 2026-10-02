@@ -46,13 +46,32 @@ export default function PaseadorAppScreen() {
   const [solicitudes, setSolicitudes] = useState([]);
   const [paseoActivo, setPaseoActivo] = useState(null);
   const [toast, setToast] = useState(null);
+  const [avisoPermisos, setAvisoPermisos] = useState(false);
   const toastAnim = useRef(new Animated.Value(0)).current;
+
+  // Perfil recién guardado en el registro (llega por params). Si la base no
+  // deja leerlo, la app trabaja con esta copia en vez de mandar de nuevo al
+  // formulario (eso era el bucle de "Empezar a pasear no hace nada").
+  const perfilLocalRef = useRef(route.params?.perfilLocal ?? null);
+  const desdeRegistro = !!route.params?.desdeRegistro;
 
   // ── Cargas ────────────────────────────────────────────────────────────────
   const recargarPerfil = useCallback(async () => {
     try {
-      const p = await fetchPerfilPaseador();
-      if (!p) {
+      let p = null;
+      try {
+        p = await fetchPerfilPaseador();
+      } catch (err) {
+        console.error('[PaseadorApp] no se pudo leer el perfil', err);
+      }
+      if (!p && perfilLocalRef.current) {
+        // Recién registrado pero la base no devuelve el perfil: permisos/RLS
+        // de paseador_perfil (se arregla con la migración 038)
+        setAvisoPermisos(true);
+        setPerfil((actual) => actual ?? perfilLocalRef.current);
+        return perfilLocalRef.current;
+      }
+      if (!p && !desdeRegistro) {
         // Tiene el rol pero no el perfil → a completarlo, no a un callejón sin salida
         const roles = await fetchRolesCuenta().catch(() => null);
         if (roles?.esPaseador) {
@@ -66,7 +85,7 @@ export default function PaseadorAppScreen() {
     } catch {
       return null;
     }
-  }, [navigation]);
+  }, [navigation, desdeRegistro]);
 
   const recargarSolicitudes = useCallback(async () => {
     try {
@@ -179,6 +198,15 @@ export default function PaseadorAppScreen() {
     <SafeAreaView style={s.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       {!pantallaCompleta && <PaseadorHeader perfil={perfil} />}
+      {avisoPermisos && !pantallaCompleta && (
+        <View style={s.aviso}>
+          <Ionicons name="warning" size={18} color={C.ambar} />
+          <Text style={s.avisoTxt}>
+            Tu perfil se guardó, pero la base de datos no deja leerlo. Es necesario correr la
+            migración 038 en Supabase para que tus cambios se guarden.
+          </Text>
+        </View>
+      )}
 
       <View style={{ flex: 1 }}>
         {tab === 'inicio' && <InicioTab {...ctx} />}
@@ -222,4 +250,9 @@ const s = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 6,
   },
   toastTxt: { flex: 1, fontSize: 14, fontWeight: '700', color: C.texto },
+  aviso: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF6E5',
+    paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F5DDB0',
+  },
+  avisoTxt: { flex: 1, fontSize: 12, fontWeight: '600', color: C.texto, lineHeight: 17 },
 });
