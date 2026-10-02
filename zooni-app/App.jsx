@@ -58,19 +58,44 @@ import PaseadorRegistroScreen   from './src/screens/Paseador/PaseadorRegistroScr
 import PaseadorAppScreen        from './src/screens/Paseador/PaseadorAppScreen';
 import PaseadorChatScreen       from './src/screens/Paseador/PaseadorChatScreen';
 import PaseadorDisponibilidadScreen from './src/screens/Paseador/PaseadorDisponibilidadScreen';
+import ElegirModoScreen         from './src/screens/ElegirModoScreen';
+import { fetchRolesCuenta }     from './src/services/paseadorApi';
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
   const [initialRoute, setInitialRoute] = useState(null);
+  const [initialParams, setInitialParams] = useState(undefined);
 
-  // Si hay una sesión guardada (login previo), entrar directo a Home —o a
-  // Zooni Paseadores si la última vez se usó en modo paseador—; si no, Login.
+  // Con sesión guardada:
+  //   · cuenta dueño + paseador → pantalla "¿Cómo querés entrar hoy?"
+  //   · sólo paseador           → Zooni Paseadores
+  //   · sólo dueño              → Home
+  // Si los roles no se pueden consultar (sin red, o tardan más de 4 s), se usa
+  // el último modo guardado para no dejar a nadie trabado en el arranque.
+  // Sin sesión → Login.
   useEffect(() => {
     (async () => {
       const [userId, modo] = await Promise.all([loadStoredUserId(), loadStoredModo()]);
-      if (!userId) setInitialRoute('Login');
-      else setInitialRoute(modo === MODO_PASEADOR ? 'PaseadorApp' : 'Home');
+      if (!userId) {
+        setInitialRoute('Login');
+        return;
+      }
+      const roles = await Promise.race([
+        fetchRolesCuenta(userId).catch(() => null),
+        new Promise((resolve) => setTimeout(() => resolve(null), 4000)),
+      ]);
+      if (roles?.esDueno && roles?.esPaseador) {
+        setInitialParams({ tienePerfil: roles.tienePerfil });
+        setInitialRoute('ElegirModo');
+      } else if (roles?.esPaseador) {
+        setInitialRoute(roles.tienePerfil ? 'PaseadorApp' : 'PaseadorRegistro');
+        if (!roles.tienePerfil) setInitialParams({ completar: true });
+      } else if (roles) {
+        setInitialRoute('Home');
+      } else {
+        setInitialRoute(modo === MODO_PASEADOR ? 'PaseadorApp' : 'Home');
+      }
     })();
   }, []);
 
@@ -108,7 +133,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
-        <RootNavigator initialRoute={initialRoute} />
+        <RootNavigator initialRoute={initialRoute} initialParams={initialParams} />
       </ThemeProvider>
     </GestureHandlerRootView>
   );
@@ -116,7 +141,9 @@ export default function App() {
 
 // Navegador raíz: dentro del ThemeProvider para leer "reducir movimiento" y
 // desactivar las transiciones entre pantallas en toda la app cuando está activo.
-function RootNavigator({ initialRoute }) {
+function RootNavigator({ initialRoute, initialParams }) {
+  // Los params iniciales sólo van a la pantalla con la que arranca la app
+  const p = (name) => (name === initialRoute ? initialParams : undefined);
   const { reduceMotion } = useTheme();
   return (
     <NavigationContainer>
@@ -169,10 +196,11 @@ function RootNavigator({ initialRoute }) {
           <Stack.Screen name="EditarMascota"        component={EditarMascotaScreen} />
           <Stack.Screen name="EliminarMascota"      component={EliminarMascotaScreen} />
           <Stack.Screen name="Notificaciones" component={PlaceholderScreen} />
+          <Stack.Screen name="ElegirModo"             component={ElegirModoScreen} initialParams={p('ElegirModo')} />
           {/* Zooni Paseadores (proveedores) */}
           <Stack.Screen name="ProveedorTipo"          component={ProveedorTipoScreen} />
           <Stack.Screen name="PaseadorLogin"          component={PaseadorLoginScreen} />
-          <Stack.Screen name="PaseadorRegistro"       component={PaseadorRegistroScreen} />
+          <Stack.Screen name="PaseadorRegistro"       component={PaseadorRegistroScreen} initialParams={p('PaseadorRegistro')} />
           <Stack.Screen name="PaseadorApp"            component={PaseadorAppScreen} />
           <Stack.Screen name="PaseadorChat"           component={PaseadorChatScreen} />
           <Stack.Screen name="PaseadorDisponibilidad" component={PaseadorDisponibilidadScreen} />

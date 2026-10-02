@@ -82,8 +82,8 @@ const s = StyleSheet.create({
   submarca: { fontSize: 14, fontWeight: '700', color: C.teal, textAlign: 'center', marginTop: -2 },
   ilustracion: { width: '100%', height: 120, marginVertical: 16 },
 
-  titulo: { fontSize: 22, fontWeight: '800', color: C.texto },
-  subtitulo: { fontSize: 14, color: C.texto2, marginTop: 4, marginBottom: 18 },
+  titulo: { fontSize: 22, fontWeight: '800', color: C.texto, textAlign: 'center' },
+  subtitulo: { fontSize: 14, color: C.texto2, marginTop: 4, marginBottom: 18, textAlign: 'center' },
 
   opcion: {
     flexDirection: 'row', alignItems: 'center', gap: 14,

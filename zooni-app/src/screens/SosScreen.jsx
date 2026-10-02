@@ -45,6 +45,14 @@ import {
   urlBuscarEnMaps,
   urlComoLlegar,
 } from '../services/sosApi';
+import { alerta } from '../utils/dialogo';
+
+// Ícono de cada tipo de línea de emergencia (emergency_lines.kind)
+const ICONO_LINEA = {
+  intoxicaciones: 'flask',
+  zoonosis: 'shield-checkmark',
+  national_emergency: 'medkit',
+};
 
 // Abre el marcador del teléfono con el número listo para llamar.
 function llamar(numero, { clinicId = null, lineId = null } = {}) {
@@ -164,6 +172,80 @@ function VetCard({ vet }) {
   );
 }
 
+// ─── ORDEN Y FILTROS ──────────────────────────────────────────────────────────
+
+// "Recomendado" es el orden de urgencia de siempre (abiertas → cercanas →
+// mejor valoradas). El resto ordena por un solo criterio; tocarlo de nuevo
+// invierte el sentido.
+const ORDENES = [
+  { key: 'recomendado', label: 'Recomendado', icono: 'sparkles-outline' },
+  { key: 'cercania',    label: 'Cercanía',    icono: 'navigate-outline' },
+  { key: 'rating',      label: 'Rating',      icono: 'star-outline' },
+  { key: 'resenas',     label: 'Más reseñas', icono: 'chatbubbles-outline' },
+  { key: 'nombre',      label: 'Nombre',      icono: 'text-outline' },
+];
+
+const FILTROS_FIJOS = [
+  { key: 'abiertas',  label: 'Abiertas ahora',  icono: 'time-outline',   test: (v) => textoHorario(v).abierta === true },
+  { key: '24h',       label: '24 hs',           icono: 'moon-outline',   test: (v) => v.is24h },
+  { key: 'urgencias', label: 'Urgencias',       icono: 'pulse',          test: (v) => v.urgencias },
+  { key: 'rating4',   label: '4★ o más',        icono: 'star',           test: (v) => (v.ratingAvg ?? 0) >= 4 },
+  { key: 'cerca3',    label: 'A menos de 3 km', icono: 'locate-outline', test: (v) => v.distanciaM != null && v.distanciaM <= 3000, requiereUbicacion: true },
+];
+
+const SERVICIO_LABEL = {
+  internacion: 'Internación', cirugia: 'Cirugía', radiologia: 'Radiología', domicilio: 'A domicilio',
+};
+const etiquetaServicio = (k) => SERVICIO_LABEL[k] ?? (k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, ' '));
+
+// Comparadores en su sentido "natural": cercanía = más cerca primero,
+// rating/reseñas = más alto primero, nombre = A→Z. Las que no tienen el dato
+// (sin distancia, sin rating) van siempre al final.
+function alFinal(x, y) {
+  if (x == null && y == null) return 0;
+  if (x == null) return 1;
+  if (y == null) return -1;
+  return null;
+}
+
+function comparar(orden, a, b) {
+  switch (orden) {
+    case 'cercania':
+      return alFinal(a.distanciaM, b.distanciaM) ?? a.distanciaM - b.distanciaM;
+    case 'rating':
+      return alFinal(a.ratingAvg, b.ratingAvg)
+        ?? ((b.ratingAvg - a.ratingAvg) || (b.ratingCount ?? 0) - (a.ratingCount ?? 0));
+    case 'resenas':
+      return (b.ratingCount ?? 0) - (a.ratingCount ?? 0);
+    case 'nombre':
+      return a.nombre.localeCompare(b.nombre, 'es');
+    default: {
+      const abiertaA = textoHorario(a).abierta === true;
+      const abiertaB = textoHorario(b).abierta === true;
+      if (abiertaA !== abiertaB) return abiertaA ? -1 : 1;
+      const d = alFinal(a.distanciaM, b.distanciaM);
+      if (d === null && a.distanciaM !== b.distanciaM) return a.distanciaM - b.distanciaM;
+      if (d) return d;
+      return (b.ratingAvg ?? 0) - (a.ratingAvg ?? 0);
+    }
+  }
+}
+
+function ChipFiltro({ label, icono, activo, onPress }) {
+  return (
+    <TouchableOpacity
+      style={[st.chip, activo && st.chipOn]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: activo }}
+      accessibilityLabel={label}
+    >
+      {icono ? <Ionicons name={icono} size={14} color={activo ? '#FFF' : '#2C2C2C'} /> : null}
+      <Text style={[st.chipTxt, activo && st.chipTxtOn]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
 // ─── SCREEN ───────────────────────────────────────────────────────────────────
 
 export default function SosScreen() {
@@ -175,6 +257,10 @@ export default function SosScreen() {
   const [cargando, setCargando]     = useState(true);
   const [refrescando, setRefrescando] = useState(false);
   const [usandoDemo, setUsandoDemo] = useState(false);
+  const [orden, setOrden]           = useState('recomendado');
+  const [invertido, setInvertido]   = useState(false);
+  const [filtros, setFiltros]       = useState([]); // keys de FILTROS_FIJOS y 'srv:<servicio>'
+  const [pidiendoUbicacion, setPidiendoUbicacion] = useState(false);
 
   const cargar = useCallback(async () => {
     // La ubicación se pide en paralelo y NO se espera para mostrar la lista:
@@ -200,6 +286,13 @@ export default function SosScreen() {
     setRefrescando(false);
   }, [cargar]);
 
+  // Servicios que existen en los datos (no se ofrece un filtro que siempre vacía la lista)
+  const serviciosDisponibles = useMemo(() => {
+    const set = new Set();
+    vets.forEach((v) => (v.servicios ?? []).forEach((x) => set.add(x)));
+    return [...set].sort((a, b) => etiquetaServicio(a).localeCompare(etiquetaServicio(b), 'es'));
+  }, [vets]);
+
   const vetsFiltrados = useMemo(() => {
     const q = normalizar(busqueda.trim());
     const conDistancia = vets.map((v) => ({
@@ -207,25 +300,63 @@ export default function SosScreen() {
       distanciaM: coords ? distanciaM(coords.lat, coords.lng, v.lat, v.lng) : null,
     }));
 
-    const filtrados = !q
-      ? conDistancia
-      : conDistancia.filter((v) =>
-          [v.nombre, v.direccion, v.barrio, ...(v.especialidades ?? [])]
-            .some((campo) => normalizar(campo).includes(q))
-        );
-
-    // Orden de urgencia: primero las que están abiertas, después por cercanía
-    // (si sabemos dónde estamos) y por último las mejor valoradas.
-    return [...filtrados].sort((a, b) => {
-      const abiertaA = textoHorario(a).abierta === true;
-      const abiertaB = textoHorario(b).abierta === true;
-      if (abiertaA !== abiertaB) return abiertaA ? -1 : 1;
-      if (a.distanciaM != null && b.distanciaM != null) return a.distanciaM - b.distanciaM;
-      if (a.distanciaM != null) return -1;
-      if (b.distanciaM != null) return 1;
-      return (b.ratingAvg ?? 0) - (a.ratingAvg ?? 0);
+    const filtrados = conDistancia.filter((v) => {
+      if (q && ![v.nombre, v.direccion, v.barrio, ...(v.especialidades ?? [])]
+        .some((campo) => normalizar(campo).includes(q))) return false;
+      // Los filtros se combinan: tiene que cumplir TODOS los activos
+      return filtros.every((f) => {
+        if (f.startsWith('srv:')) return (v.servicios ?? []).includes(f.slice(4));
+        return FILTROS_FIJOS.find((x) => x.key === f)?.test(v) ?? true;
+      });
     });
-  }, [busqueda, vets, coords]);
+
+    const ordenados = [...filtrados].sort((a, b) => comparar(orden, a, b));
+    // "Recomendado" no se invierte: es un orden de urgencia, no un criterio
+    return invertido && orden !== 'recomendado' ? ordenados.reverse() : ordenados;
+  }, [busqueda, vets, coords, orden, invertido, filtros]);
+
+  // Ordenar o filtrar por cercanía sin ubicación: se pide en el momento (el
+  // permiso pudo haberse rechazado o demorado al abrir la pantalla)
+  const pedirUbicacion = useCallback(async () => {
+    setPidiendoUbicacion(true);
+    const c = await obtenerCoordenadas();
+    setPidiendoUbicacion(false);
+    if (c) setCoords(c);
+    else alerta('No pudimos ver tu ubicación', 'Activá el permiso de ubicación para ordenar por cercanía.');
+    return c;
+  }, []);
+
+  const elegirOrden = async (key) => {
+    if (key === orden) {
+      if (key !== 'recomendado') setInvertido((x) => !x); // tocar el activo invierte
+      return;
+    }
+    if (key === 'cercania' && !coords && !(await pedirUbicacion())) return;
+    setOrden(key);
+    setInvertido(false);
+  };
+
+  const toggleFiltro = async (key, requiereUbicacion) => {
+    const activo = filtros.includes(key);
+    if (!activo && requiereUbicacion && !coords && !(await pedirUbicacion())) return;
+    setFiltros((fs) => (activo ? fs.filter((f) => f !== key) : [...fs, key]));
+  };
+
+  const limpiar = () => {
+    setFiltros([]);
+    setOrden('recomendado');
+    setInvertido(false);
+    setBusqueda('');
+  };
+
+  const hayFiltros = filtros.length > 0 || orden !== 'recomendado' || busqueda.trim().length > 0;
+  const textoSentido = {
+    recomendado: coords ? 'Abiertas y más cercanas primero' : 'Abiertas primero',
+    cercania: invertido ? 'Más lejanas primero' : 'Más cercanas primero',
+    rating: invertido ? 'Peor valoradas primero' : 'Mejor valoradas primero',
+    resenas: invertido ? 'Menos reseñas primero' : 'Más reseñas primero',
+    nombre: invertido ? 'De la Z a la A' : 'De la A a la Z',
+  }[orden];
 
   return (
     <SafeAreaView style={st.safeArea}>
@@ -257,16 +388,18 @@ export default function SosScreen() {
         {/* Líneas de emergencia (emergency_lines, con fallback local) */}
         <View style={st.cardLineas}>
           <Text style={st.lineasTitulo}>📞 Líneas de Emergencia</Text>
-          <Text style={st.lineasSubtitulo}>Veterinarias de emergencia 24hs</Text>
+          <Text style={st.lineasSubtitulo}>Para orientarte mientras vas a una veterinaria con guardia</Text>
 
           {lineas.map((linea) => (
             <TouchableOpacity key={`${linea.kind}-${linea.telefono}`} style={st.lineaBtn}
               onPress={() => llamar(linea.telefono, { lineId: linea.id })}
               accessibilityRole="button"
               accessibilityLabel={`Llamar a ${linea.label}, ${linea.telefono}`}>
-              <Ionicons name={linea.kind === 'national_emergency' ? 'medkit' : 'call'}
-                size={18} color="#E63946" />
-              <Text style={st.lineaBtnTxt}>{linea.label}: {linea.telefono}</Text>
+              <Ionicons name={ICONO_LINEA[linea.kind] ?? 'call'} size={18} color="#E63946" />
+              <View style={st.lineaTextos}>
+                <Text style={st.lineaBtnTxt}>{linea.label}: {linea.telefono}</Text>
+                {linea.horario ? <Text style={st.lineaHorario}>{linea.horario}</Text> : null}
+              </View>
             </TouchableOpacity>
           ))}
         </View>
@@ -289,11 +422,58 @@ export default function SosScreen() {
           )}
         </View>
 
+        {/* Ordenar */}
+        <Text style={st.filtrosLabel}>Ordenar por</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          contentContainerStyle={st.chipsFila} keyboardShouldPersistTaps="handled">
+          {ORDENES.map((o) => {
+            const activo = orden === o.key;
+            const conFlecha = activo && o.key !== 'recomendado';
+            return (
+              <TouchableOpacity key={o.key}
+                style={[st.chip, activo && st.chipOn]}
+                onPress={() => elegirOrden(o.key)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activo }}
+                accessibilityLabel={`Ordenar por ${o.label}${conFlecha ? '. Tocá de nuevo para invertir' : ''}`}>
+                {pidiendoUbicacion && o.key === 'cercania'
+                  ? <ActivityIndicator size="small" color={activo ? '#FFF' : '#E63946'} />
+                  : <Ionicons name={o.icono} size={14} color={activo ? '#FFF' : '#2C2C2C'} />}
+                <Text style={[st.chipTxt, activo && st.chipTxtOn]}>{o.label}</Text>
+                {conFlecha && <Ionicons name={invertido ? 'arrow-up' : 'arrow-down'} size={13} color="#FFF" />}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Filtros (se combinan entre sí) */}
+        <Text style={st.filtrosLabel}>Filtrar</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          contentContainerStyle={st.chipsFila} keyboardShouldPersistTaps="handled">
+          {FILTROS_FIJOS.map((f) => (
+            <ChipFiltro key={f.key} label={f.label} icono={f.icono}
+              activo={filtros.includes(f.key)}
+              onPress={() => toggleFiltro(f.key, f.requiereUbicacion)} />
+          ))}
+          {serviciosDisponibles.map((srv) => (
+            <ChipFiltro key={srv} label={etiquetaServicio(srv)}
+              activo={filtros.includes(`srv:${srv}`)}
+              onPress={() => toggleFiltro(`srv:${srv}`)} />
+          ))}
+        </ScrollView>
+
         {/* Lista de veterinarias */}
         <View style={st.seccionFila}>
-          <Text style={st.seccionTitulo}>Veterinarias Disponibles</Text>
-          {coords && <Text style={st.seccionSub}>Más cercanas primero</Text>}
+          <Text style={st.seccionTitulo}>
+            Veterinarias{!cargando ? <Text style={st.seccionCuenta}> ({vetsFiltrados.length})</Text> : null}
+          </Text>
+          {hayFiltros ? (
+            <TouchableOpacity onPress={limpiar} hitSlop={8} accessibilityLabel="Limpiar búsqueda, filtros y orden">
+              <Text style={st.limpiarTxt}>Limpiar</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
+        <Text style={st.seccionSentido}>{textoSentido}</Text>
 
         {usandoDemo && !cargando && (
           <View style={st.avisoDemo}>
@@ -314,8 +494,15 @@ export default function SosScreen() {
           <View style={st.emptyBox}>
             <Ionicons name="search-outline" size={32} color="#9B9B9B" />
             <Text style={st.emptyTxt}>
-              No encontramos veterinarias para "{busqueda.trim()}"
+              {busqueda.trim()
+                ? `No encontramos veterinarias para "${busqueda.trim()}"`
+                : 'Ninguna veterinaria cumple todos los filtros'}
             </Text>
+            {hayFiltros && (
+              <TouchableOpacity onPress={limpiar} style={st.emptyBtn} accessibilityRole="button">
+                <Text style={st.emptyBtnTxt}>Limpiar filtros</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -334,6 +521,20 @@ export default function SosScreen() {
 // ─── ESTILOS ─────────────────────────────────────────────────────────────────
 
 const st = StyleSheet.create({
+  filtrosLabel: { fontSize: 12, fontWeight: '700', color: '#6B6B6B', marginTop: 14, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
+  chipsFila: { gap: 8, paddingBottom: 10, paddingRight: 8 },
+  chip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, height: 38, paddingHorizontal: 14,
+    borderRadius: 19, backgroundColor: '#FFF', borderWidth: 1.5, borderColor: '#F3C9CD',
+  },
+  chipOn: { backgroundColor: '#E63946', borderColor: '#E63946' },
+  chipTxt: { fontSize: 13, fontWeight: '700', color: '#2C2C2C' },
+  chipTxtOn: { color: '#FFF' },
+  seccionCuenta: { fontSize: 15, fontWeight: '600', color: '#6B6B6B' },
+  seccionSentido: { fontSize: 12, color: '#6B6B6B', marginTop: -6, marginBottom: 10 },
+  limpiarTxt: { fontSize: 14, fontWeight: '700', color: '#E63946' },
+  emptyBtn: { marginTop: 12, borderRadius: 20, borderWidth: 1.5, borderColor: '#E63946', paddingHorizontal: 16, paddingVertical: 8 },
+  emptyBtnTxt: { fontSize: 14, fontWeight: '700', color: '#E63946' },
   safeArea: { flex: 1, backgroundColor: '#F7F7F7' },
 
   header: {
@@ -360,9 +561,11 @@ const st = StyleSheet.create({
   lineasSubtitulo: { fontSize: 13, color: '#FFE0E3', textAlign: 'center', marginTop: 4, marginBottom: 14 },
   lineaBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: '#FFF', borderRadius: 24, paddingVertical: 12, marginBottom: 10,
+    backgroundColor: '#FFF', borderRadius: 24, paddingVertical: 10, paddingHorizontal: 16, marginBottom: 10,
   },
-  lineaBtnTxt: { fontSize: 15, fontWeight: '700', color: '#E63946' },
+  lineaBtnTxt: { fontSize: 15, fontWeight: '700', color: '#E63946', textAlign: 'center' },
+  lineaTextos: { alignItems: 'center', flexShrink: 1 },
+  lineaHorario: { fontSize: 12, color: '#6B6B6B', marginTop: 1 },
 
   searchBox: {
     flexDirection: 'row', alignItems: 'center', gap: 8,

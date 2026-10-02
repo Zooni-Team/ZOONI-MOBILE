@@ -6,6 +6,10 @@
  *
  * Con route.params.activar ({ email, hash, nombre }) viene de una cuenta de
  * dueño existente: se saltea el paso 1 y sólo se suma el perfil de paseador.
+ * Con route.params.completar la cuenta YA tiene el rol de paseador pero no su
+ * perfil (ej. rol asignado a mano): también se saltea el paso 1.
+ *
+ * La zona se elige arrastrando un círculo en el mapa (ZonaMapaPicker).
  * Al terminar entra directo a la app (el paseador viene a trabajar).
  */
 
@@ -18,7 +22,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { C, PillButton, sombra } from '../../components/paseador/PaseadorUI';
-import { activarPaseador, formatoPlata, registrarPaseador } from '../../services/paseadorApi';
+import {
+  activarPaseador, completarPerfilPaseador, formatoPlata, registrarPaseador,
+} from '../../services/paseadorApi';
+import ZonaMapaPicker from '../../components/paseador/ZonaMapaPicker';
 import { verificarDisponibilidad } from '../../services/authApi';
 import { sanitizarDigitos } from '../../utils/sanitizar';
 
@@ -41,9 +48,10 @@ function Campo({ label, error, children }) {
 
 export default function PaseadorRegistroScreen() {
   const navigation = useNavigation();
-  const { activar } = useRoute().params ?? {};
+  const { activar, completar } = useRoute().params ?? {};
+  const sinPaso1 = !!(activar || completar);
 
-  const [paso, setPaso] = useState(activar ? 2 : 1);
+  const [paso, setPaso] = useState(sinPaso1 ? 2 : 1);
   const [errores, setErrores] = useState({});
   const [errorGeneral, setErrorGeneral] = useState(null);
   const [cargando, setCargando] = useState(false);
@@ -52,7 +60,7 @@ export default function PaseadorRegistroScreen() {
     nombre: '', apellido: '', email: '', telefono: '', password: '', password2: '',
   });
   const [perfil, setPerfil] = useState({
-    zona: '', precio30: '', precio60: '', maxPerros: 3,
+    zona: '', lat: null, lng: null, radioKm: 3, precio30: '', precio60: '', maxPerros: 3,
     tamanos: ['chico', 'mediano', 'grande'], experienciaAnios: '', bio: '',
   });
 
@@ -77,7 +85,7 @@ export default function PaseadorRegistroScreen() {
 
   const validarPaso2 = () => {
     const e = {};
-    if (perfil.zona.trim().length < 3) e.zona = 'Contanos en qué barrio paseás';
+    if (perfil.lat == null) e.zona = 'Marcá en el mapa dónde paseás';
     if (!(Number(perfil.precio30) > 0)) e.precio30 = 'Poné un precio';
     if (!(Number(perfil.precio60) > 0)) e.precio60 = 'Poné un precio';
     if (!perfil.tamanos.length) e.tamanos = 'Elegí al menos un tamaño';
@@ -100,10 +108,13 @@ export default function PaseadorRegistroScreen() {
       precio30: Number(perfil.precio30),
       precio60: Number(perfil.precio60),
       experienciaAnios: Number(perfil.experienciaAnios) || 0,
+      zona: perfil.zona.trim() || 'Mi zona',
     };
     setCargando(true);
     try {
-      if (activar) {
+      if (completar) {
+        await completarPerfilPaseador(datosPerfil);
+      } else if (activar) {
         await activarPaseador({ email: activar.email, hash: activar.hash, perfil: datosPerfil });
       } else {
         await registrarPaseador({ usuario, perfil: datosPerfil });
@@ -116,6 +127,8 @@ export default function PaseadorRegistroScreen() {
         setErrores({ email: 'Ya hay una cuenta con este mail.' });
       } else if (msg === 'migracion_pendiente') {
         setErrorGeneral('Falta preparar la base de datos (migración 035). Avisale al equipo.');
+      } else if (msg === 'no_es_paseador') {
+        setErrorGeneral('Esta cuenta todavía no tiene el rol de paseador. Iniciá sesión desde "Registrarse como Proveedor".');
       } else if (msg === 'credenciales') {
         setErrorGeneral('Tu sesión venció. Volvé a iniciar sesión.');
       } else {
@@ -127,7 +140,7 @@ export default function PaseadorRegistroScreen() {
   };
 
   const volver = () => {
-    if (paso === 2 && !activar) setPaso(1);
+    if (paso === 2 && !sinPaso1) setPaso(1);
     else navigation.goBack();
   };
 
@@ -137,8 +150,8 @@ export default function PaseadorRegistroScreen() {
       : [...perfil.tamanos, k]);
   };
 
-  const totalPasos = activar ? 1 : 2;
-  const pasoVisible = activar ? 1 : paso;
+  const totalPasos = sinPaso1 ? 1 : 2;
+  const pasoVisible = sinPaso1 ? 1 : paso;
 
   return (
     <SafeAreaView style={s.safe}>
@@ -202,12 +215,22 @@ export default function PaseadorRegistroScreen() {
                   ¡Genial{activar.nombre ? `, ${activar.nombre}` : ''}! Completá cómo trabajás y listo: vas a poder
                   cambiar entre dueño y paseador con la misma cuenta.
                 </Text>
+              ) : completar ? (
+                <Text style={s.intro}>
+                  Tu cuenta ya es de paseador. Completá cómo trabajás para empezar a recibir solicitudes.
+                </Text>
               ) : null}
 
-              <Campo label="¿En qué barrio paseás?" error={errores.zona}>
-                <TextInput style={[s.input, errores.zona && s.inputError]} value={perfil.zona}
-                  onChangeText={(v) => setP('zona', v.slice(0, 80))} placeholder="Ej: Caballito" placeholderTextColor={C.gris} />
-              </Campo>
+              <Text style={s.label}>¿Dónde paseás?</Text>
+              <ZonaMapaPicker
+                valor={{ lat: perfil.lat, lng: perfil.lng, radioKm: perfil.radioKm, zona: perfil.zona }}
+                onCambio={(z) => {
+                  setPerfil((p) => ({ ...p, lat: z.lat, lng: z.lng, radioKm: z.radioKm, zona: z.zona ?? '' }));
+                  setErrores((e) => ({ ...e, zona: null }));
+                }}
+              />
+              {errores.zona ? <Text style={s.errorCampo}>{errores.zona}</Text> : null}
+              <View style={{ height: 18 }} />
 
               <Text style={s.label}>Tus precios</Text>
               <View style={s.fila}>

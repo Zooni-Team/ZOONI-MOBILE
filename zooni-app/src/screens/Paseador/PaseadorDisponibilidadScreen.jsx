@@ -17,12 +17,11 @@ import { useNavigation } from '@react-navigation/native';
 
 import { C, Card, PillButton, Seccion } from '../../components/paseador/PaseadorUI';
 import HoraPicker from '../../components/HoraPicker';
+import ZonaMapaPicker from '../../components/paseador/ZonaMapaPicker';
 import {
   DIAS, actualizarPerfilPaseador, fetchPerfilPaseador,
 } from '../../services/paseadorApi';
 import { alerta } from '../../utils/dialogo';
-
-const RADIOS = [1, 2, 3, 5, 8, 10];
 
 function aDate(hhmm) {
   const [h, m] = (hhmm ?? '08:00').split(':').map(Number);
@@ -39,6 +38,7 @@ export default function PaseadorDisponibilidadScreen() {
   const [horarios, setHorarios] = useState({});
   const [radioKm, setRadioKm] = useState(3);
   const [zona, setZona] = useState('');
+  const [coords, setCoords] = useState({ lat: null, lng: null });
   const [zonas, setZonas] = useState([]);
   const [nuevaZona, setNuevaZona] = useState('');
   const [picker, setPicker] = useState(null); // { dia, campo }
@@ -49,6 +49,7 @@ export default function PaseadorDisponibilidadScreen() {
         setHorarios(p.horarios);
         setRadioKm(p.radioKm);
         setZona(p.zona);
+        setCoords({ lat: p.lat, lng: p.lng });
         setZonas(p.zonas ?? []);
       }
       setCargando(false);
@@ -71,13 +72,15 @@ export default function PaseadorDisponibilidadScreen() {
       alerta('Revisá los horarios', `El ${invalido.label.toLowerCase()} termina antes de empezar.`);
       return;
     }
-    if (zona.trim().length < 3) {
-      alerta('Falta tu zona principal', 'Contanos en qué barrio paseás.');
+    if (coords.lat == null) {
+      alerta('Falta tu zona', 'Marcá en el mapa dónde paseás.');
       return;
     }
     setGuardando(true);
     try {
-      await actualizarPerfilPaseador({ horarios, radioKm, zona: zona.trim(), zonas });
+      await actualizarPerfilPaseador({
+        horarios, radioKm, zona: zona.trim() || 'Mi zona', zonas, lat: coords.lat, lng: coords.lng,
+      });
       navigation.goBack();
     } catch {
       alerta('No se pudo guardar', 'Revisá tu conexión e intentá de nuevo.');
@@ -137,26 +140,21 @@ export default function PaseadorDisponibilidadScreen() {
             })}
           </Card>
 
-          <Seccion titulo="¿Hasta dónde te movés?" />
-          <View style={s.radios}>
-            {RADIOS.map((r) => {
-              const on = r === radioKm;
-              return (
-                <TouchableOpacity key={r} style={[s.radio, on && s.radioOn]} onPress={() => setRadioKm(r)}
-                  accessibilityRole="radio" accessibilityState={{ selected: on }}>
-                  <Text style={[s.radioTxt, on && s.radioTxtOn]}>{r} km</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <Seccion titulo="Zonas" />
+          <Seccion titulo="Zona de atención" />
           <Card>
-            <Text style={s.label}>Barrio principal</Text>
-            <TextInput style={s.input} value={zona} onChangeText={(v) => setZona(v.slice(0, 80))}
-              placeholder="Ej: Caballito" placeholderTextColor={C.gris} />
+            <ZonaMapaPicker
+              valor={{ ...coords, radioKm, zona }}
+              onCambio={(z) => {
+                setCoords({ lat: z.lat, lng: z.lng });
+                setRadioKm(z.radioKm);
+                setZona(z.zona ?? '');
+              }}
+            />
+          </Card>
 
-            <Text style={[s.label, { marginTop: 14 }]}>También paseo en</Text>
+          <Seccion titulo="Otros barrios" />
+          <Card>
+            <Text style={s.label}>También paseo en</Text>
             <View style={s.zonas}>
               {zonas.map((z) => (
                 <View key={z} style={s.zonaChip}>
@@ -215,14 +213,6 @@ const s = StyleSheet.create({
   guion: { color: C.texto2, fontWeight: '700' },
   libre: { fontSize: 14, color: C.gris, fontWeight: '600' },
 
-  radios: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  radio: {
-    paddingHorizontal: 18, height: 44, borderRadius: 22, justifyContent: 'center',
-    backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: C.menta,
-  },
-  radioOn: { backgroundColor: C.teal, borderColor: C.teal },
-  radioTxt: { fontSize: 15, fontWeight: '700', color: C.texto },
-  radioTxtOn: { color: '#FFFFFF', fontWeight: '800' },
 
   label: { fontSize: 13, fontWeight: '700', color: C.texto, marginBottom: 6 },
   input: {

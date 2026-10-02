@@ -119,7 +119,7 @@ function crearDemo() {
     perfil: {
       idUser: null, nombre: 'Paseador', apellido: 'Demo', foto: null,
       bio: 'Amo a los perros. Paseos tranquilos por plazas de Caballito.',
-      zona: 'Caballito', zonas: ['Almagro', 'Flores'], radioKm: 3,
+      zona: 'Caballito', zonas: ['Almagro', 'Flores'], lat: -34.6189, lng: -58.4380, radioKm: 3,
       precio30: 5000, precio60: 9000, maxPerros: 3, tamanos: ['chico', 'mediano', 'grande'],
       experienciaAnios: 2, disponible: true, horarios: HORARIOS_DEFAULT(), verificado: false,
     },
@@ -240,7 +240,8 @@ async function entrarComoPaseador(id) {
 /**
  * Login del paseador. A diferencia del login de dueños, NO guarda la sesión
  * hasta confirmar que la cuenta tiene perfil de paseador: si no lo tiene,
- * devuelve { necesitaActivar: true, email, hash } para ofrecer sumarlo.
+ * devuelve { necesitaActivar: true, email, hash } para ofrecer sumarlo. Si
+ * tiene el rol pero no el perfil, devuelve { necesitaCompletar: true }.
  * Lanza Error('credenciales') si mail/contraseña no coinciden.
  */
 export async function loginPaseador(email, password) {
@@ -260,7 +261,17 @@ export async function loginPaseador(email, password) {
     await entrarComoPaseador(usuario.id);
     return { usuario };
   }
-  if (!perfil) return { necesitaActivar: true, email: mail, hash, nombre: usuario.nombre };
+  if (!perfil) {
+    // ¿Ya tiene el rol de paseador (ej. asignado a mano) y sólo le falta el
+    // perfil? Entonces entra y lo completa, sin "activar" de nuevo.
+    const { data: rol } = await supabase.from('UserRole').select('Id_Role')
+      .eq('Id_User', usuario.id).eq('Id_Role', 2).maybeSingle();
+    if (rol) {
+      await setCurrentUserId(usuario.id);
+      return { necesitaCompletar: true };
+    }
+    return { necesitaActivar: true, email: mail, hash, nombre: usuario.nombre };
+  }
 
   await entrarComoPaseador(usuario.id);
   return { usuario };
@@ -270,6 +281,8 @@ function perfilParaRpc(perfil) {
   return {
     bio: perfil.bio?.trim() || null,
     zona: perfil.zona?.trim() || null,
+    lat: perfil.lat ?? null,
+    lng: perfil.lng ?? null,
     radioKm: perfil.radioKm ?? 3,
     precio30: perfil.precio30 ?? 0,
     precio60: perfil.precio60 ?? 0,
@@ -325,6 +338,83 @@ export async function activarPaseador({ email, hash, perfil }) {
   return data;
 }
 
+/**
+ * Cuenta con rol WALKER (UserRole 2) pero sin fila en paseador_perfil (ej. el
+ * rol se asignó a mano en la base): completa el perfil sin pedir contraseña.
+ * La RPC verifica en el servidor que el rol exista.
+ */
+export async function completarPerfilPaseador(perfil) {
+  const { error } = await supabase.rpc('completar_perfil_paseador', {
+    p_id_user: getCurrentUserId(), p_perfil: perfilParaRpc(perfil),
+  });
+  if (error) {
+    if (String(error.message ?? '').includes('no_es_paseador')) throw new Error('no_es_paseador');
+    if (esEsquemaFaltante(error)) throw new Error('migracion_pendiente');
+    throw error;
+  }
+  await setModo(MODO_PASEADOR);
+}
+
+// ─────────────────────────────────────────────
+// ROLES DE LA CUENTA (¿dueño, paseador o las dos?)
+// ─────────────────────────────────────────────
+
+/**
+ * Qué "apps" puede usar la cuenta logueada:
+ *   esDueno       → rol OWNER o tiene alguna mascota
+ *   esPaseador    → rol WALKER o tiene perfil de paseador
+ *   tienePerfil   → ya existe su fila en paseador_perfil (si es paseador
+ *                   por rol pero sin perfil, hay que completarlo)
+ * Devuelve null si no se pudo consultar (sin red): quien llama decide.
+ */
+export async function fetchRolesCuenta(id = getCurrentUserId()) {
+  if (id == null) return null;
+  const [roles, mascotas, perfil] = await Promise.all([
+    supabase.from('UserRole').select('Id_Role').eq('Id_User', id),
+    supabase.from('Mascota').select('Id_Mascota').eq('Id_User', id).limit(1),
+    supabase.from('paseador_perfil').select('id_user').eq('id_user', id).maybeSingle(),
+  ]);
+  if (roles.error && mascotas.error) return null;
+  const ids = new Set((roles.data ?? []).map((r) => r.Id_Role));
+  const tienePerfil = !perfil.error && !!perfil.data;
+  return {
+    esDueno: ids.has(1) || (mascotas.data?.length ?? 0) > 0,
+    esPaseador: ids.has(2) || tienePerfil,
+    tienePerfil,
+  };
+}
+
+// ─────────────────────────────────────────────
+// GEOCODIFICACIÓN (Nominatim / OpenStreetMap)
+// ─────────────────────────────────────────────
+// Para la zona de atención: buscar un barrio y ponerle nombre al punto donde
+// se suelta el círculo. Gratis y sin clave; si falla, la zona queda sin nombre
+// automático y el paseador la escribe.
+
+const NOMINATIM = 'https://nominatim.openstreetmap.org';
+
+export async function buscarLugar(texto) {
+  try {
+    const url = `${NOMINATIM}/search?format=json&limit=1&accept-language=es&countrycodes=ar&q=${encodeURIComponent(texto)}`;
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    const [lugar] = await res.json();
+    return lugar ? { lat: Number(lugar.lat), lng: Number(lugar.lon) } : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function barrioDe(lat, lng) {
+  try {
+    const url = `${NOMINATIM}/reverse?format=json&zoom=14&accept-language=es&lat=${lat}&lon=${lng}`;
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    const a = (await res.json())?.address ?? {};
+    return a.suburb || a.neighbourhood || a.quarter || a.city_district || a.town || a.city || null;
+  } catch {
+    return null;
+  }
+}
+
 // ─────────────────────────────────────────────
 // PERFIL
 // ─────────────────────────────────────────────
@@ -339,6 +429,8 @@ function mapPerfil(row, user) {
     bio: row.bio ?? '',
     zona: row.zona ?? '',
     zonas: row.zonas ?? [],
+    lat: row.lat != null ? Number(row.lat) : null,
+    lng: row.lng != null ? Number(row.lng) : null,
     radioKm: Number(row.radio_km ?? 3),
     precio30: Number(row.precio_30 ?? 0),
     precio60: Number(row.precio_60 ?? 0),
@@ -369,7 +461,7 @@ export async function fetchPerfilPaseador() {
 /** Actualiza campos del perfil (camelCase → columnas). */
 export async function actualizarPerfilPaseador(campos) {
   const columnas = {
-    bio: 'bio', zona: 'zona', zonas: 'zonas', radioKm: 'radio_km',
+    bio: 'bio', zona: 'zona', zonas: 'zonas', radioKm: 'radio_km', lat: 'lat', lng: 'lng',
     precio30: 'precio_30', precio60: 'precio_60', maxPerros: 'max_perros',
     tamanos: 'tamanos', experienciaAnios: 'experiencia_anios',
     disponible: 'disponible', horarios: 'horarios',

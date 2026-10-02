@@ -15,10 +15,13 @@ import { getCurrentUserId } from '../config/session';
 
 // ─── LÍNEAS DE EMERGENCIA ─────────────────────────────────────────────────────
 
-// Fallback local: si Supabase no responde, los botones C1/C2 marcan igual.
+// Fallback local: si Supabase no responde, los botones marcan igual.
+// Números reales y verificados (ver migración 037 con las fuentes). No hay en
+// Argentina una línea pública de urgencias veterinarias 24 hs: para eso están
+// las veterinarias con guardia de la lista de abajo.
 export const LINEAS_FALLBACK = [
-  { id: null, kind: 'zooni', label: 'Línea Zooni 24 hs', telefono: '0800-123-4567' },
-  { id: null, kind: 'national_emergency', label: 'Emergencias', telefono: '911' },
+  { id: null, kind: 'intoxicaciones', label: 'Intoxicaciones', telefono: '0800-333-0160', horario: 'Gratis · 24 hs' },
+  { id: null, kind: 'zoonosis', label: 'Zoonosis y rabia (Inst. Pasteur)', telefono: '011 4958-9900', horario: 'Todos los días 8 a 18 h · CABA' },
 ];
 
 export async function fetchLineasEmergencia(countryCode = 'AR') {
@@ -29,7 +32,9 @@ export async function fetchLineasEmergencia(countryCode = 'AR') {
     .eq('is_active', true)
     .order('priority', { ascending: true });
   if (error || !data?.length) return LINEAS_FALLBACK;
-  return data.map((l) => ({ id: l.id, kind: l.kind, label: l.label, telefono: l.phone }));
+  return data.map((l) => ({
+    id: l.id, kind: l.kind, label: l.label, telefono: l.phone, horario: l.schedule ?? null,
+  }));
 }
 
 // ─── VETERINARIAS ─────────────────────────────────────────────────────────────

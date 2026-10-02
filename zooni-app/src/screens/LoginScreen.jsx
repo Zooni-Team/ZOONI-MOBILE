@@ -29,6 +29,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { login } from '../services/authApi';
+import { fetchRolesCuenta } from '../services/paseadorApi';
+import { setModo, MODO_PASEADOR } from '../config/session';
 import { MASCOTAS_BIENVENIDA, GOOGLE_ICON, FACEBOOK_ICON, APPLE_ICON } from '../constants/registroImages';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -83,8 +85,20 @@ export default function LoginScreen() {
 
     setCargando(true);
     try {
-      await login(mail, password);
-      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+      const { usuario } = await login(mail, password);
+      // Si la cuenta también es de paseador, que elija con qué app entrar
+      const roles = await fetchRolesCuenta(usuario.id).catch(() => null);
+      if (roles?.esPaseador && roles?.esDueno) {
+        navigation.reset({ index: 0, routes: [{ name: 'ElegirModo', params: { tienePerfil: roles.tienePerfil } }] });
+      } else if (roles?.esPaseador) {
+        // Cuenta sólo de paseador que entró por el login de dueños
+        await setModo(MODO_PASEADOR);
+        navigation.reset({ index: 0, routes: roles.tienePerfil
+          ? [{ name: 'PaseadorApp' }]
+          : [{ name: 'PaseadorRegistro', params: { completar: true } }] });
+      } else {
+        navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+      }
     } catch (err) {
       if (err?.message === 'credenciales') {
         setErrorLogin('Email o contraseña incorrectos');

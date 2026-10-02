@@ -23,7 +23,7 @@ import PaseadorHeader from '../../components/paseador/PaseadorHeader';
 import PaseadorTabBar from '../../components/paseador/PaseadorTabBar';
 import { C, PillButton, Vacio } from '../../components/paseador/PaseadorUI';
 import {
-  fetchPaseoEnCurso, fetchPerfilPaseador, fetchSolicitudes, iniciarPaseo,
+  fetchPaseoEnCurso, fetchPerfilPaseador, fetchRolesCuenta, fetchSolicitudes, iniciarPaseo,
 } from '../../services/paseadorApi';
 import { clearCurrentUserId } from '../../config/session';
 
@@ -52,13 +52,21 @@ export default function PaseadorAppScreen() {
   const recargarPerfil = useCallback(async () => {
     try {
       const p = await fetchPerfilPaseador();
-      if (!p) setSinPerfil(true);
+      if (!p) {
+        // Tiene el rol pero no el perfil → a completarlo, no a un callejón sin salida
+        const roles = await fetchRolesCuenta().catch(() => null);
+        if (roles?.esPaseador) {
+          navigation.reset({ index: 0, routes: [{ name: 'PaseadorRegistro', params: { completar: true } }] });
+          return null;
+        }
+        setSinPerfil(true);
+      }
       setPerfil(p);
       return p;
     } catch {
       return null;
     }
-  }, []);
+  }, [navigation]);
 
   const recargarSolicitudes = useCallback(async () => {
     try {

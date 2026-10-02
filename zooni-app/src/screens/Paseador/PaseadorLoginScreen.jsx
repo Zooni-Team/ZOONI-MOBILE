@@ -38,6 +38,10 @@ export default function PaseadorLoginScreen() {
     setCargando(true);
     try {
       const res = await loginPaseador(mail, password);
+      if (res.necesitaCompletar) {
+        navigation.reset({ index: 0, routes: [{ name: 'PaseadorRegistro', params: { completar: true } }] });
+        return;
+      }
       if (res.necesitaActivar) {
         setActivar(res);
         return;
@@ -144,7 +148,7 @@ const s = StyleSheet.create({
   submarca: { fontSize: 15, fontWeight: '800', color: C.teal, letterSpacing: 0.5 },
   ilustracion: { width: '100%', height: 130, marginVertical: 18 },
 
-  titulo: { fontSize: 18, fontWeight: '700', color: C.texto, marginBottom: 16 },
+  titulo: { fontSize: 18, fontWeight: '700', color: C.texto, marginBottom: 16, textAlign: 'center' },
 
   input: {
     borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 10,

@@ -108,13 +108,15 @@ function SosCard({ onVerVets }) {
         <Text style={styles.sosTitle}>Esto puede ser urgente</Text>
       </View>
       <Text style={styles.sosBody}>
-        No pierdas tiempo: comunicate con un veterinario ahora mismo.
+        No pierdas tiempo: llevalo a una veterinaria con guardia ahora mismo.
       </Text>
-      <TouchableOpacity style={styles.sosBtn} onPress={() => Linking.openURL('tel:08001234567')}>
-        <Text style={styles.sosBtnText}>Llamar ahora: 0800-123-4567</Text>
-      </TouchableOpacity>
+      {/* Lo primero en una urgencia es una veterinaria con guardia. Zooni no
+          tiene línea telefónica propia (el 0800 que había acá era de relleno). */}
       <TouchableOpacity style={styles.sosBtn} onPress={onVerVets}>
         <Text style={styles.sosBtnText}>Ver veterinarias abiertas</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.sosBtn} onPress={() => Linking.openURL('tel:08003330160')}>
+        <Text style={styles.sosBtnText}>¿Comió algo tóxico? 0800-333-0160</Text>
       </TouchableOpacity>
     </View>
   );
