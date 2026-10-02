@@ -154,14 +154,18 @@ export default function PaseadorChatScreen() {
         ) : (
           <>
             {rapidas.length > 0 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.rapidas}
-                keyboardShouldPersistTaps="handled">
+              // En web un ScrollView horizontal sin alto fijo se estira y se come
+              // media pantalla: va dentro de una franja de alto fijo.
+              <View style={s.rapidasFranja}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.rapidasScroll}
+                contentContainerStyle={s.rapidas} keyboardShouldPersistTaps="handled">
                 {rapidas.map((r) => (
                   <TouchableOpacity key={r} style={s.rapida} onPress={() => enviar(r)} disabled={enviando}>
-                    <Text style={s.rapidaTxt}>{r}</Text>
+                    <Text style={s.rapidaTxt} numberOfLines={1}>{r}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
+              </View>
             )}
             <View style={s.inputRow}>
               <TextInput
@@ -215,9 +219,12 @@ const s = StyleSheet.create({
   burbujaTxt: { fontSize: 15, color: C.texto, lineHeight: 20 },
   hora: { fontSize: 10, color: C.texto2, alignSelf: 'flex-end', marginTop: 2 },
 
-  rapidas: { paddingHorizontal: 12, paddingVertical: 6, gap: 8 },
+  rapidasFranja: { height: 48, flexGrow: 0, flexShrink: 0 },
+  rapidasScroll: { flexGrow: 0 },
+  rapidas: { paddingHorizontal: 12, alignItems: 'center', gap: 8, height: 48 },
   rapida: {
-    borderWidth: 1.5, borderColor: C.teal, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
+    height: 36, justifyContent: 'center', alignSelf: 'center',
+    borderWidth: 1.5, borderColor: C.teal, borderRadius: 18, paddingHorizontal: 14,
     backgroundColor: '#FFFFFF',
   },
   rapidaTxt: { fontSize: 13, fontWeight: '700', color: C.teal },

@@ -10,22 +10,29 @@
  * perfil (ej. rol asignado a mano): también se saltea el paso 1.
  *
  * La zona se elige arrastrando un círculo en el mapa (ZonaMapaPicker).
+ * La FOTO DE LA CARA es obligatoria (es lo primero que ve un dueño antes de
+ * dejarle su mascota): en cuenta nueva va en el paso 1; si la cuenta ya
+ * existe y no tiene foto, se pide arriba del paso 2.
  * Al terminar entra directo a la app (el paseador viene a trabajar).
  */
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet,
+  Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { C, PillButton, sombra } from '../../components/paseador/PaseadorUI';
 import {
-  HORARIOS_DEFAULT, activarPaseador, completarPerfilPaseador, formatoPlata, registrarPaseador,
+  HORARIOS_DEFAULT, activarPaseador, completarPerfilPaseador, fetchMiFotoPerfil, formatoPlata,
+  registrarPaseador,
 } from '../../services/paseadorApi';
 import ZonaMapaPicker from '../../components/paseador/ZonaMapaPicker';
+import { actualizarMiFotoPerfil } from '../../services/perfilApi';
+import { alerta } from '../../utils/dialogo';
 import { verificarDisponibilidad } from '../../services/authApi';
 import { sanitizarDigitos } from '../../utils/sanitizar';
 
@@ -46,6 +53,50 @@ function Campo({ label, error, children }) {
   );
 }
 
+/** Campo "Foto de tu cara": círculo con la vista previa + cámara / galería. */
+function CampoFoto({ uri, error, onElegir }) {
+  const elegir = async (camara) => {
+    const permiso = camara
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permiso.granted) {
+      alerta('Sin permiso', `Habilitá el acceso a la ${camara ? 'cámara' : 'galería'} desde la configuración del dispositivo.`);
+      return;
+    }
+    const opciones = { quality: 0.7, allowsEditing: true, aspect: [1, 1] };
+    const res = camara
+      ? await ImagePicker.launchCameraAsync({ ...opciones, cameraType: ImagePicker.CameraType.front })
+      : await ImagePicker.launchImageLibraryAsync({ ...opciones, mediaTypes: ImagePicker.MediaTypeOptions.Images });
+    if (!res.canceled && res.assets?.[0]?.uri) onElegir(res.assets[0].uri);
+  };
+
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <Text style={s.label}>Foto de tu cara</Text>
+      <View style={s.fotoFila}>
+        <TouchableOpacity onPress={() => elegir(false)} accessibilityLabel="Elegir foto"
+          style={[s.fotoCirculo, error && { borderColor: C.rojo }]}>
+          {uri
+            ? <Image source={{ uri }} style={s.fotoImg} />
+            : <Ionicons name="person" size={38} color={C.gris} />}
+        </TouchableOpacity>
+        <View style={{ flex: 1, gap: 8 }}>
+          <TouchableOpacity style={s.fotoBtn} onPress={() => elegir(true)}>
+            <Ionicons name="camera" size={16} color={C.teal} />
+            <Text style={s.fotoBtnTxt}>Sacar foto</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.fotoBtn} onPress={() => elegir(false)}>
+            <Ionicons name="images" size={16} color={C.teal} />
+            <Text style={s.fotoBtnTxt}>{uri ? 'Cambiar foto' : 'Elegir de la galería'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+      <Text style={s.ayuda}>Que se te vea bien la cara: es lo primero que ven los dueños antes de confiarte a su mascota.</Text>
+      {error ? <Text style={s.errorCampo}>{error}</Text> : null}
+    </View>
+  );
+}
+
 export default function PaseadorRegistroScreen() {
   const navigation = useNavigation();
   const { activar, completar } = useRoute().params ?? {};
@@ -56,6 +107,17 @@ export default function PaseadorRegistroScreen() {
   const [errorGeneral, setErrorGeneral] = useState(null);
   const [cargando, setCargando] = useState(false);
   const scrollRef = useRef(null);
+  const [foto, setFoto] = useState(null);
+  // Foto que la cuenta YA tenía (dueño que activa / cuenta que completa): no se vuelve a pedir
+  const [fotoExistente, setFotoExistente] = useState(activar?.fotoPerfil ?? null);
+  // Si la cuenta se creó pero falló la subida de la foto, reintentar sólo la foto
+  const cuentaCreadaRef = useRef(false);
+
+  useEffect(() => {
+    if (completar) fetchMiFotoPerfil().then((f) => f && setFotoExistente(f)).catch(() => {});
+  }, [completar]);
+
+  const pideFotoEnPaso2 = sinPaso1 && !fotoExistente;
 
   const [usuario, setUsuario] = useState({
     nombre: '', apellido: '', email: '', telefono: '', password: '', password2: '',
@@ -70,6 +132,7 @@ export default function PaseadorRegistroScreen() {
 
   const validarPaso1 = async () => {
     const e = {};
+    if (!foto) e.foto = 'Es necesario una foto de tu cara';
     if (usuario.nombre.trim().length < 2) e.nombre = 'El nombre es obligatorio';
     if (usuario.apellido.trim().length < 2) e.apellido = 'El apellido es obligatorio';
     if (!EMAIL_REGEX.test(usuario.email.trim())) e.email = 'Es necesario un email válido';
@@ -90,6 +153,7 @@ export default function PaseadorRegistroScreen() {
 
   const validarPaso2 = () => {
     const e = {};
+    if (pideFotoEnPaso2 && !foto) e.foto = 'Es necesario una foto de tu cara';
     if (perfil.lat == null) e.zona = 'Es necesario marcar tu zona en el mapa';
     if (!(Number(perfil.precio30) > 0)) e.precio30 = 'Es necesario el precio del paseo de 30 minutos';
     if (!(Number(perfil.precio60) > 0)) e.precio60 = 'Es necesario el precio del paseo de 60 minutos';
@@ -127,19 +191,35 @@ export default function PaseadorRegistroScreen() {
     };
     setCargando(true);
     try {
-      if (completar) {
-        await completarPerfilPaseador(datosPerfil);
-      } else if (activar) {
-        await activarPaseador({ email: activar.email, hash: activar.hash, perfil: datosPerfil });
-      } else {
-        await registrarPaseador({ usuario, perfil: datosPerfil });
+      if (!cuentaCreadaRef.current) {
+        if (completar) {
+          await completarPerfilPaseador(datosPerfil);
+        } else if (activar) {
+          await activarPaseador({ email: activar.email, hash: activar.hash, perfil: datosPerfil });
+        } else {
+          await registrarPaseador({ usuario, perfil: datosPerfil });
+        }
+        cuentaCreadaRef.current = true;
+      }
+
+      // La foto se sube con la sesión ya iniciada (va a "User".FotoPerfil,
+      // la misma que usa el perfil de dueño)
+      let fotoUrl = fotoExistente;
+      if (foto) {
+        try {
+          fotoUrl = await actualizarMiFotoPerfil(foto);
+        } catch (errFoto) {
+          console.error('[Registro paseador] foto', errFoto);
+          setErrorGeneral('Tu cuenta quedó creada, pero no se pudo subir la foto. Es necesario subirla para continuar: tocá el botón de nuevo.');
+          return;
+        }
       }
       // El perfil viaja a la home: si la base no lo deja leer, se usa esta copia
       const perfilLocal = {
         idUser: null,
         nombre: usuario.nombre.trim() || activar?.nombre || '',
         apellido: usuario.apellido.trim(),
-        foto: null,
+        foto: fotoUrl ?? null,
         ...datosPerfil,
         zonas: [],
         disponible: false,
@@ -206,6 +286,8 @@ export default function PaseadorRegistroScreen() {
         <ScrollView ref={scrollRef} contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {paso === 1 ? (
             <View style={s.card}>
+              <CampoFoto uri={foto} error={errores.foto}
+                onElegir={(u) => { setFoto(u); setErrores((e) => ({ ...e, foto: null })); }} />
               <View style={s.fila}>
                 <View style={{ flex: 1 }}>
                   <Campo label="Nombre" error={errores.nombre}>
@@ -243,6 +325,10 @@ export default function PaseadorRegistroScreen() {
             </View>
           ) : (
             <View style={s.card}>
+              {pideFotoEnPaso2 && (
+                <CampoFoto uri={foto} error={errores.foto}
+                  onElegir={(u) => { setFoto(u); setErrores((e) => ({ ...e, foto: null })); }} />
+              )}
               {activar ? (
                 <Text style={s.intro}>
                   ¡Genial{activar.nombre ? `, ${activar.nombre}` : ''}! Completá cómo trabajás y listo: vas a poder
@@ -404,6 +490,17 @@ const s = StyleSheet.create({
   chipTxtOn: { color: '#FFFFFF' },
   chipDetalle: { fontSize: 11, color: C.texto2, marginTop: 2 },
 
+  fotoFila: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  fotoCirculo: {
+    width: 92, height: 92, borderRadius: 46, borderWidth: 2.5, borderColor: C.teal, borderStyle: 'dashed',
+    alignItems: 'center', justifyContent: 'center', backgroundColor: C.fondo, overflow: 'hidden',
+  },
+  fotoImg: { width: '100%', height: '100%' },
+  fotoBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 14,
+    borderRadius: 20, borderWidth: 1.5, borderColor: C.teal, alignSelf: 'flex-start',
+  },
+  fotoBtnTxt: { fontSize: 13, fontWeight: '800', color: C.teal },
   errorGeneral: {
     fontSize: 13, color: C.rojo, marginTop: 14, padding: 12, borderRadius: 12,
     backgroundColor: '#FDECEE', borderWidth: 1, borderColor: '#F5B7BD',

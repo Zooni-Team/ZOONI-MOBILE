@@ -283,7 +283,7 @@ export async function loginPaseador(email, password) {
       await setCurrentUserId(usuario.id);
       return { necesitaCompletar: true };
     }
-    return { necesitaActivar: true, email: mail, hash, nombre: usuario.nombre };
+    return { necesitaActivar: true, email: mail, hash, nombre: usuario.nombre, fotoPerfil: usuario.fotoPerfil ?? null };
   }
 
   await entrarComoPaseador(usuario.id);
@@ -373,6 +373,12 @@ export async function completarPerfilPaseador(perfil) {
     if (errDirecto) throw errorApp(esEsquemaFaltante(errDirecto) ? 'migracion_pendiente' : 'error_base', errDirecto);
   }
   await setModo(MODO_PASEADOR);
+}
+
+/** Foto de perfil que ya tiene la cuenta logueada (o null). */
+export async function fetchMiFotoPerfil() {
+  const { data } = await supabase.from('User').select('FotoPerfil').eq('Id_User', getCurrentUserId()).maybeSingle();
+  return data?.FotoPerfil ?? null;
 }
 
 // ─────────────────────────────────────────────
