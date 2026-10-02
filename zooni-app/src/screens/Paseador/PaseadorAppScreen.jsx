@@ -1,0 +1,217 @@
+/**
+ * PaseadorAppScreen.jsx — Contenedor de Zooni Paseadores (5 tabs)
+ *
+ * Inicio · Solicitudes · Paseo · Ganancias · Perfil
+ *
+ * No hay @react-navigation/bottom-tabs en el proyecto: los tabs son estado de
+ * esta pantalla y el bottom nav es propio (PaseadorTabBar). Chat y
+ * Disponibilidad sí son pantallas del stack (se abren encima).
+ *
+ * Acá vive el estado que comparten los tabs: perfil, solicitudes pendientes
+ * (para el badge) y el paseo en curso (para el punto rojo del tab Paseo).
+ * Mientras el paseador está Disponible, las solicitudes se refrescan solas.
+ */
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator, Animated, SafeAreaView, StatusBar, StyleSheet, Text, View,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+
+import PaseadorHeader from '../../components/paseador/PaseadorHeader';
+import PaseadorTabBar from '../../components/paseador/PaseadorTabBar';
+import { C, PillButton, Vacio } from '../../components/paseador/PaseadorUI';
+import {
+  fetchPaseoEnCurso, fetchPerfilPaseador, fetchSolicitudes, iniciarPaseo,
+} from '../../services/paseadorApi';
+import { clearCurrentUserId } from '../../config/session';
+
+import InicioTab from './tabs/InicioTab';
+import SolicitudesTab from './tabs/SolicitudesTab';
+import PaseoTab from './tabs/PaseoTab';
+import GananciasTab from './tabs/GananciasTab';
+import PerfilTab from './tabs/PerfilTab';
+
+const POLL_SOLICITUDES_MS = 20000;
+
+export default function PaseadorAppScreen() {
+  const navigation = useNavigation();
+  const route = useRoute();
+
+  const [tab, setTab] = useState(route.params?.tab ?? 'inicio');
+  const [perfil, setPerfil] = useState(null);
+  const [cargando, setCargando] = useState(true);
+  const [sinPerfil, setSinPerfil] = useState(false);
+  const [solicitudes, setSolicitudes] = useState([]);
+  const [paseoActivo, setPaseoActivo] = useState(null);
+  const [toast, setToast] = useState(null);
+  const toastAnim = useRef(new Animated.Value(0)).current;
+
+  // ── Cargas ────────────────────────────────────────────────────────────────
+  const recargarPerfil = useCallback(async () => {
+    try {
+      const p = await fetchPerfilPaseador();
+      if (!p) setSinPerfil(true);
+      setPerfil(p);
+      return p;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const recargarSolicitudes = useCallback(async () => {
+    try {
+      setSolicitudes(await fetchSolicitudes());
+    } catch {
+      // sin red: queda la lista anterior
+    }
+  }, []);
+
+  const recargarPaseo = useCallback(async () => {
+    try {
+      setPaseoActivo(await fetchPaseoEnCurso());
+    } catch {
+      // idem
+    }
+  }, []);
+
+  const recargarTodo = useCallback(async () => {
+    await Promise.all([recargarPerfil(), recargarSolicitudes(), recargarPaseo()]);
+    setCargando(false);
+  }, [recargarPerfil, recargarSolicitudes, recargarPaseo]);
+
+  // Al volver de Chat / Disponibilidad, refrescar
+  useFocusEffect(useCallback(() => { recargarTodo(); }, [recargarTodo]));
+
+  // Polling de solicitudes sólo mientras está Disponible
+  useEffect(() => {
+    if (!perfil?.disponible) return undefined;
+    const t = setInterval(recargarSolicitudes, POLL_SOLICITUDES_MS);
+    return () => clearInterval(t);
+  }, [perfil?.disponible, recargarSolicitudes]);
+
+  // Navegación externa a un tab (ej: desde el Chat → "Ver paseo")
+  useEffect(() => {
+    if (route.params?.tab) setTab(route.params.tab);
+  }, [route.params?.tab]);
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
+  const avisar = useCallback((texto, icono = 'checkmark-circle') => {
+    setToast({ texto, icono });
+    toastAnim.setValue(0);
+    Animated.sequence([
+      Animated.timing(toastAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
+      Animated.delay(2600),
+      Animated.timing(toastAnim, { toValue: 0, duration: 220, useNativeDriver: true }),
+    ]).start(() => setToast(null));
+  }, [toastAnim]);
+
+  useEffect(() => {
+    if (!route.params?.bienvenida) return;
+    navigation.setParams({ bienvenida: undefined });
+    avisar('¡Listo! Ya sos paseador de Zooni 🐾');
+  }, [route.params?.bienvenida, navigation, avisar]);
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  if (cargando) {
+    return (
+      <View style={s.centro}>
+        <ActivityIndicator size="large" color={C.teal} />
+      </View>
+    );
+  }
+
+  if (sinPerfil) {
+    // Sesión de una cuenta que no es (o dejó de ser) paseador
+    return (
+      <SafeAreaView style={[s.safe, s.centro]}>
+        <Vacio icono="alert-circle-outline" titulo="Esta cuenta no tiene perfil de paseador"
+          texto="Iniciá sesión de nuevo desde 'Registrarse como Proveedor'.">
+          <PillButton titulo="Volver al inicio" style={{ marginTop: 18, alignSelf: 'stretch' }}
+            onPress={async () => {
+              await clearCurrentUserId();
+              navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+            }} />
+        </Vacio>
+      </SafeAreaView>
+    );
+  }
+
+  // Arrancar un paseo aceptado: lo usan Inicio, Solicitudes (agenda) y Paseo
+  const empezarPaseo = async (paseo) => {
+    if (paseoActivo && paseoActivo.id !== paseo.id) {
+      avisar(`Primero finalizá el paseo de ${paseoActivo.mascota.nombre}`, 'alert-circle');
+      setTab('paseo');
+      return;
+    }
+    try {
+      const enCurso = await iniciarPaseo(paseo);
+      setPaseoActivo(enCurso);
+      setTab('paseo');
+    } catch {
+      avisar('No se pudo iniciar el paseo. Probá de nuevo.', 'alert-circle');
+    }
+  };
+
+  const abrirChat = (paseo) => navigation.navigate('PaseadorChat', { paseoId: paseo.id });
+
+  const ctx = {
+    perfil, setPerfil, recargarPerfil,
+    solicitudes, recargarSolicitudes,
+    paseoActivo, setPaseoActivo, recargarPaseo,
+    empezarPaseo, abrirChat,
+    irA: setTab, avisar, navigation,
+  };
+
+  // En el Paseo activo el mapa ocupa toda la pantalla: sin header
+  const pantallaCompleta = tab === 'paseo' && !!paseoActivo;
+
+  return (
+    <SafeAreaView style={s.safe}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      {!pantallaCompleta && <PaseadorHeader perfil={perfil} />}
+
+      <View style={{ flex: 1 }}>
+        {tab === 'inicio' && <InicioTab {...ctx} />}
+        {tab === 'solicitudes' && <SolicitudesTab {...ctx} />}
+        {tab === 'paseo' && <PaseoTab {...ctx} />}
+        {tab === 'ganancias' && <GananciasTab {...ctx} />}
+        {tab === 'perfil' && <PerfilTab {...ctx} />}
+
+        {toast && (
+          <Animated.View
+            pointerEvents="none"
+            style={[s.toast, {
+              opacity: toastAnim,
+              transform: [{ translateY: toastAnim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
+            }]}
+          >
+            <Ionicons name={toast.icono} size={20} color={C.teal} />
+            <Text style={s.toastTxt}>{toast.texto}</Text>
+          </Animated.View>
+        )}
+      </View>
+
+      <PaseadorTabBar
+        activo={tab}
+        onCambiar={setTab}
+        pendientes={perfil?.disponible ? solicitudes.length : 0}
+        enCurso={!!paseoActivo}
+      />
+    </SafeAreaView>
+  );
+}
+
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: C.fondo },
+  centro: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.fondo },
+  toast: {
+    position: 'absolute', left: 20, right: 20, bottom: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: C.card, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16,
+    borderWidth: 1.5, borderColor: C.menta,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 6,
+  },
+  toastTxt: { flex: 1, fontSize: 14, fontWeight: '700', color: C.texto },
+});

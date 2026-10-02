@@ -14,7 +14,7 @@
 
 import * as Crypto from 'expo-crypto';
 import { supabase } from '../lib/supabase';
-import { setCurrentUserId } from '../config/session';
+import { setCurrentUserId, setModo, MODO_DUENO } from '../config/session';
 import { toISODateLocal } from '../utils/fechaLocal';
 import { subirImagenPublica } from '../utils/imagenStorage';
 import { marcarPresencia } from './presenciaApi';
@@ -88,6 +88,9 @@ export async function login(email, password) {
   }
 
   await setCurrentUserId(usuario.id);
+  // Entró por el login de dueños: la app arranca en modo dueño aunque la
+  // cuenta también sea de paseador (eso se elige desde "Proveedor").
+  await setModo(MODO_DUENO);
 
   // Primer latido de presencia apenas entra: si no, hasta el próximo tick del
   // intervalo figuraría desconectado en Comunidad.

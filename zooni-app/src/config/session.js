@@ -101,13 +101,61 @@ export async function loadStoredUserId() {
 /** Borra la sesión (logout). Queda sin usuario: nadie hereda datos ajenos. */
 export async function clearCurrentUserId() {
   currentUserId = null;
+  modoActual = MODO_DUENO;
   try {
     if (Platform.OS === 'web') {
-      if (typeof localStorage !== 'undefined') localStorage.removeItem(STORAGE_KEY);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(MODO_KEY);
+      }
     } else {
       await SecureStore.deleteItemAsync(STORAGE_KEY);
+      await SecureStore.deleteItemAsync(MODO_KEY);
     }
   } catch {
     // noop
   }
+}
+
+// ─────────────────────────────────────────────
+// MODO DE LA APP (dueño / paseador)
+// ─────────────────────────────────────────────
+// Una misma cuenta puede ser dueño y paseador a la vez. El modo decide qué
+// "app" se abre al arrancar: la de dueños (Home) o Zooni Paseadores. Se guarda
+// aparte del id para que reabrir la app te deje donde estabas trabajando.
+
+const MODO_KEY = 'zooni_modo';
+export const MODO_DUENO = 'dueno';
+export const MODO_PASEADOR = 'paseador';
+
+let modoActual = MODO_DUENO;
+
+export function getModo() {
+  return modoActual;
+}
+
+export async function setModo(modo) {
+  modoActual = modo === MODO_PASEADOR ? MODO_PASEADOR : MODO_DUENO;
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof localStorage !== 'undefined') localStorage.setItem(MODO_KEY, modoActual);
+    } else {
+      await SecureStore.setItemAsync(MODO_KEY, modoActual);
+    }
+  } catch {
+    // Sin storage: el modo dura lo que dure la app abierta.
+  }
+}
+
+/** Lee el modo guardado al arrancar (por defecto, dueño). */
+export async function loadStoredModo() {
+  try {
+    const raw = Platform.OS === 'web'
+      ? (typeof localStorage !== 'undefined' ? localStorage.getItem(MODO_KEY) : null)
+      : await SecureStore.getItemAsync(MODO_KEY);
+    modoActual = raw === MODO_PASEADOR ? MODO_PASEADOR : MODO_DUENO;
+  } catch {
+    modoActual = MODO_DUENO;
+  }
+  return modoActual;
 }

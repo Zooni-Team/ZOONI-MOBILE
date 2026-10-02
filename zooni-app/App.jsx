@@ -8,7 +8,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, ActivityIndicator, AppState, StyleSheet } from 'react-native';
 
-import { loadStoredUserId, esperarSesion, haySesion } from './src/config/session';
+import { loadStoredUserId, loadStoredModo, esperarSesion, haySesion, MODO_PASEADOR } from './src/config/session';
 import { ThemeProvider, useTheme } from './src/config/theme';
 import { iniciarLatidoPresencia, marcarPresencia } from './src/services/presenciaApi';
 import HomeScreen        from './src/screens/HomeScreen';
@@ -52,18 +52,25 @@ import SesionesScreen           from './src/screens/Configuracion/SesionesScreen
 import AltaMascotaScreen        from './src/screens/Configuracion/AltaMascotaScreen';
 import EditarMascotaScreen      from './src/screens/Configuracion/EditarMascotaScreen';
 import EliminarMascotaScreen    from './src/screens/Configuracion/EliminarMascotaScreen';
+import ProveedorTipoScreen      from './src/screens/Paseador/ProveedorTipoScreen';
+import PaseadorLoginScreen      from './src/screens/Paseador/PaseadorLoginScreen';
+import PaseadorRegistroScreen   from './src/screens/Paseador/PaseadorRegistroScreen';
+import PaseadorAppScreen        from './src/screens/Paseador/PaseadorAppScreen';
+import PaseadorChatScreen       from './src/screens/Paseador/PaseadorChatScreen';
+import PaseadorDisponibilidadScreen from './src/screens/Paseador/PaseadorDisponibilidadScreen';
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
   const [initialRoute, setInitialRoute] = useState(null);
 
-  // Si hay una sesión guardada (login previo), entrar directo a Home;
-  // si no, mostrar el Login.
+  // Si hay una sesión guardada (login previo), entrar directo a Home —o a
+  // Zooni Paseadores si la última vez se usó en modo paseador—; si no, Login.
   useEffect(() => {
     (async () => {
-      const userId = await loadStoredUserId();
-      setInitialRoute(userId ? 'Home' : 'Login');
+      const [userId, modo] = await Promise.all([loadStoredUserId(), loadStoredModo()]);
+      if (!userId) setInitialRoute('Login');
+      else setInitialRoute(modo === MODO_PASEADOR ? 'PaseadorApp' : 'Home');
     })();
   }, []);
 
@@ -162,6 +169,13 @@ function RootNavigator({ initialRoute }) {
           <Stack.Screen name="EditarMascota"        component={EditarMascotaScreen} />
           <Stack.Screen name="EliminarMascota"      component={EliminarMascotaScreen} />
           <Stack.Screen name="Notificaciones" component={PlaceholderScreen} />
+          {/* Zooni Paseadores (proveedores) */}
+          <Stack.Screen name="ProveedorTipo"          component={ProveedorTipoScreen} />
+          <Stack.Screen name="PaseadorLogin"          component={PaseadorLoginScreen} />
+          <Stack.Screen name="PaseadorRegistro"       component={PaseadorRegistroScreen} />
+          <Stack.Screen name="PaseadorApp"            component={PaseadorAppScreen} />
+          <Stack.Screen name="PaseadorChat"           component={PaseadorChatScreen} />
+          <Stack.Screen name="PaseadorDisponibilidad" component={PaseadorDisponibilidadScreen} />
         </Stack.Navigator>
       </NavigationContainer>
   );

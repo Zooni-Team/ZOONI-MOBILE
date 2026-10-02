@@ -4,7 +4,8 @@
  * Fondo blanco y título "Zooni" marrón (#5C3D1E): paleta propia de este
  * flujo, distinta del verde menta del resto de la app.
  * Autentica contra Supabase (services/authApi.js) y guarda la sesión en
- * config/session.js. Social login y proveedor son placeholders.
+ * config/session.js. Social login es placeholder; "Registrarse como Proveedor"
+ * lleva a Zooni Paseadores (screens/Paseador/).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -171,7 +172,7 @@ export default function LoginScreen() {
           <View style={s.separador} />
 
           <Text style={s.proveedorPregunta}>¿Sos proveedor de servicios?</Text>
-          <TouchableOpacity style={s.btnProveedor} onPress={proximamente} activeOpacity={0.85}>
+          <TouchableOpacity style={s.btnProveedor} onPress={() => navigation.navigate('ProveedorTipo')} activeOpacity={0.85}>
             <Text style={s.btnProveedorTxt}>Registrarse como Proveedor</Text>
           </TouchableOpacity>
 
