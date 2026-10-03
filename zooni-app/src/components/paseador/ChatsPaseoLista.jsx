@@ -66,7 +66,9 @@ export default function ChatsPaseoLista({ rol = 'paseador', vacioTexto }) {
         const est = ESTADO[p.estado] ?? { txt: p.estado, color: C.texto2 };
         return (
           <TouchableOpacity style={st.item} activeOpacity={0.8}
-            onPress={() => navigation.navigate('PaseadorChat', { paseoId: p.id })}
+            // idsPaseos: todos los paseos con esta persona, para que el chat
+            // muestre el historial completo y no solo el del paseo actual.
+            onPress={() => navigation.navigate('PaseadorChat', { paseoId: p.id, idsPaseos: c.idsPaseos })}
             accessibilityLabel={`Chat con ${otro.nombre} por ${p.mascota.nombre}`}>
             {rol === 'dueno'
               ? <Avatar uri={otro.foto} nombre={otro.nombre} size={50} />

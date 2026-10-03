@@ -419,15 +419,68 @@ export async function fetchRolesCuenta(id = getCurrentUserId()) {
 
 const NOMINATIM = 'https://nominatim.openstreetmap.org';
 
-export async function buscarLugar(texto) {
+/*
+  Nominatim pide un User-Agent que identifique la aplicación; sin él responde
+  429 o directamente bloquea. (En el navegador no se puede fijar —es un
+  "forbidden header"— pero ahí va el del navegador, que le sirve igual.)
+*/
+const CABECERAS_NOMINATIM = {
+  Accept: 'application/json',
+  'User-Agent': 'ZooniApp/1.0 (app de mascotas; contacto en la app)',
+};
+
+/**
+ * Busca lugares y devuelve VARIAS opciones para que el usuario elija.
+ *
+ * El buscador viejo pedía `limit=1` con el país como único filtro y se quedaba
+ * con el primer resultado, sin mostrarlo. Con nombres de barrio repetidos en
+ * Argentina eso mandaba a cualquier lado, en silencio:
+ *
+ *     "Belgrano" → Estación de Trenes Manuel Belgrano, Candioti Norte, Santa Fe
+ *     "Nuñez"    → Nuñez, Güer Aike, Santa Cruz
+ *
+ * Son barrios de CABA y terminabas a 400 km. Acá se devuelven hasta 6
+ * resultados con su nombre completo ("Belgrano, Comuna 13, CABA" vs "…Santa
+ * Fe"), así la ambigüedad la resuelve quien sabe: el paseador.
+ *
+ * @param {string} texto
+ * @param {{cerca?: {lat, lng}}} [opciones] prioriza resultados cerca de un punto
+ * @returns {Promise<Array<{nombre, detalle, lat, lng}>>}
+ */
+export async function buscarLugares(texto, { cerca } = {}) {
+  const q = (texto ?? '').trim();
+  if (q.length < 3) return [];
   try {
-    const url = `${NOMINATIM}/search?format=json&limit=1&accept-language=es&countrycodes=ar&q=${encodeURIComponent(texto)}`;
-    const res = await fetch(url, { headers: { Accept: 'application/json' } });
-    const [lugar] = await res.json();
-    return lugar ? { lat: Number(lugar.lat), lng: Number(lugar.lon) } : null;
+    const params = new URLSearchParams({
+      format: 'json', limit: '6', addressdetails: '1',
+      'accept-language': 'es', countrycodes: 'ar', q,
+    });
+    // viewbox + bounded=0: no excluye nada, solo empuja hacia arriba lo cercano
+    if (cerca?.lat != null) {
+      const d = 0.6; // ~65 km
+      params.set('viewbox', `${cerca.lng - d},${cerca.lat + d},${cerca.lng + d},${cerca.lat - d}`);
+    }
+    const res = await fetch(`${NOMINATIM}/search?${params}`, { headers: CABECERAS_NOMINATIM });
+    if (!res.ok) return [];
+    const lista = await res.json();
+    return (lista ?? []).map((l) => {
+      const a = l.address ?? {};
+      const nombre = a.suburb || a.neighbourhood || a.quarter || a.city_district
+        || a.town || a.village || a.city || l.name || q;
+      // Lo que desambigua: partido/provincia. Sin esto, dos "Belgrano" se ven igual.
+      const detalle = [a.city_district, a.city || a.town, a.state]
+        .filter(Boolean).filter((v, i, arr) => arr.indexOf(v) === i).join(', ');
+      return { nombre, detalle, lat: Number(l.lat), lng: Number(l.lon) };
+    });
   } catch {
-    return null;
+    return [];
   }
+}
+
+/** Compatibilidad: el primer resultado de buscarLugares (solo coordenadas). */
+export async function buscarLugar(texto, opciones) {
+  const [primero] = await buscarLugares(texto, opciones);
+  return primero ? { lat: primero.lat, lng: primero.lng } : null;
 }
 
 export async function barrioDe(lat, lng) {
@@ -836,15 +889,29 @@ export async function fetchResenas() {
 // CHAT DEL PASEO
 // ─────────────────────────────────────────────
 
+/**
+ * Mensajes de una conversación.
+ *
+ * Acepta un id suelto o una LISTA de ids: como el inbox agrupa por persona, el
+ * chat tiene que mostrar todo lo hablado con ella, aunque haya sido repartido
+ * entre varios paseos. Antes cada paseo era un chat aparte y al empezar uno
+ * nuevo la conversación arrancaba vacía, con lo anterior en otra fila del inbox.
+ */
 export async function getMensajesPaseo(idPaseo) {
   const yo = getCurrentUserId();
+  const ids = (Array.isArray(idPaseo) ? idPaseo : [idPaseo]).filter((x) => x != null);
+  if (!ids.length) return [];
+
   if (modoDemo) {
-    return (getDemo().mensajes[idPaseo] ?? []).map((m) => ({
-      id: m.id, texto: m.texto, fecha: m.fecha, autor: m.idUser === 'yo' ? 'yo' : 'otro',
-    }));
+    return ids
+      .flatMap((id) => (getDemo().mensajes[id] ?? []))
+      .sort((a, b) => new Date(a.fecha) - new Date(b.fecha))
+      .map((m) => ({
+        id: m.id, texto: m.texto, fecha: m.fecha, autor: m.idUser === 'yo' ? 'yo' : 'otro',
+      }));
   }
   const { data, error } = await supabase.from('paseo_mensajes')
-    .select('*').eq('id_paseo', idPaseo).order('fecha', { ascending: true });
+    .select('*').in('id_paseo', ids).order('fecha', { ascending: true });
   if (error && caerADemo(error)) return getMensajesPaseo(idPaseo);
   return (data ?? []).map((m) => ({
     id: m.id, texto: m.texto, fecha: m.fecha, leido: m.leido, autor: m.id_user === yo ? 'yo' : 'otro',
@@ -873,10 +940,13 @@ export async function enviarMensajePaseo(paseo, texto) {
   return getMensajesPaseo(paseo.id);
 }
 
+/** Marca leídos los mensajes recibidos. Acepta un id o una lista (ver getMensajesPaseo). */
 export async function marcarLeidosPaseo(idPaseo) {
   if (modoDemo) return;
+  const ids = (Array.isArray(idPaseo) ? idPaseo : [idPaseo]).filter((x) => x != null);
+  if (!ids.length) return;
   await supabase.from('paseo_mensajes').update({ leido: true })
-    .eq('id_paseo', idPaseo).neq('id_user', getCurrentUserId()).eq('leido', false);
+    .in('id_paseo', ids).neq('id_user', getCurrentUserId()).eq('leido', false);
 }
 
 // ─────────────────────────────────────────────
@@ -1106,7 +1176,7 @@ export async function fetchConversacionesPaseo(rol = 'paseador') {
     if (m.id_user !== yo && !m.leido) c.noLeidos += 1;
   });
 
-  return paseos
+  const conversaciones = paseos
     .map((p) => {
       const c = porPaseo[p.id];
       return {
@@ -1118,8 +1188,56 @@ export async function fetchConversacionesPaseo(rol = 'paseador') {
       };
     })
     // Sin mensajes y ya terminado: no hace falta en el inbox
-    .filter((c) => c.ultimoMensaje || ['pendiente', 'aceptado', 'en_curso'].includes(c.paseo.estado))
-    .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    .filter((c) => c.ultimoMensaje || ['pendiente', 'aceptado', 'en_curso'].includes(c.paseo.estado));
+
+  return agruparPorPersona(conversaciones, rol);
+}
+
+/*
+  Una conversación POR PERSONA, no por paseo.
+
+  El inbox salía de la tabla Paseo, así que cada paseo abría su propia fila:
+  con el mismo dueño aparecían dos "perr perr", una por el paseo en curso y
+  otra por la solicitud anterior. En un chat uno espera una entrada por
+  persona, con todo el historial adentro.
+
+  De cada persona se conserva el paseo MÁS VIVO como representante (es el que
+  define el estado que se muestra y el que se abre al tocar), se suman los no
+  leídos de todos sus paseos y se toma el mensaje más reciente entre todos.
+  `idsPaseos` viaja al chat para poder mostrar el historial completo.
+*/
+const PRIORIDAD_ESTADO = { en_curso: 0, aceptado: 1, pendiente: 2, finalizado: 3 };
+
+function agruparPorPersona(conversaciones, rol) {
+  // El "otro" es el dueño si soy paseador, y el paseador si soy dueño.
+  const idOtro = (p) => (rol === 'paseador' ? p.idDueno : p.idWalker);
+
+  const porPersona = new Map();
+  for (const c of conversaciones) {
+    const clave = idOtro(c.paseo) ?? `paseo-${c.paseo.id}`; // sin contraparte: queda solo
+    const previa = porPersona.get(clave);
+    if (!previa) { porPersona.set(clave, { ...c, idsPaseos: [c.paseo.id] }); continue; }
+
+    previa.idsPaseos.push(c.paseo.id);
+    previa.noLeidos += c.noLeidos;
+
+    // El último mensaje es el más nuevo de TODOS los paseos con esa persona
+    if (c.ultimoMensaje && (!previa.ultimoMensaje || new Date(c.fecha) > new Date(previa.fecha))) {
+      previa.ultimoMensaje = c.ultimoMensaje;
+      previa.ultimoEsMio = c.ultimoEsMio;
+      previa.fecha = c.fecha;
+    }
+
+    // Representante: el paseo más "vivo"; a igual estado, el más reciente
+    const mejor = PRIORIDAD_ESTADO[c.paseo.estado] ?? 9;
+    const actual = PRIORIDAD_ESTADO[previa.paseo.estado] ?? 9;
+    if (mejor < actual
+      || (mejor === actual && new Date(c.paseo.creadoEn) > new Date(previa.paseo.creadoEn))) {
+      previa.paseo = c.paseo;
+    }
+  }
+
+  return [...porPersona.values()].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 }
 
 /** Total de mensajes sin leer en mis chats de paseo (para badges). */

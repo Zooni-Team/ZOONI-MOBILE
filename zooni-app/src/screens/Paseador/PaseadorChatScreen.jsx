@@ -44,7 +44,12 @@ const ESTADO_TXT = {
 
 export default function PaseadorChatScreen() {
   const navigation = useNavigation();
-  const { paseoId } = useRoute().params ?? {};
+  // idsPaseos llega desde el inbox (que agrupa por persona) con TODOS los
+  // paseos compartidos con ella. Entrando desde una solicitud o desde el paseo
+  // activo no viene, y entonces se usa solo este paseo.
+  const { paseoId, idsPaseos } = useRoute().params ?? {};
+  const idsConversacion = idsPaseos?.length ? idsPaseos : paseoId;
+  const claveConversacion = Array.isArray(idsConversacion) ? idsConversacion.join(',') : String(idsConversacion);
 
   const [paseo, setPaseo] = useState(null);
   const [mensajes, setMensajes] = useState([]);
@@ -58,12 +63,15 @@ export default function PaseadorChatScreen() {
 
   const cargar = useCallback(async () => {
     try {
-      setMensajes(await getMensajesPaseo(paseoId));
-      marcarLeidosPaseo(paseoId).catch(() => {});
+      setMensajes(await getMensajesPaseo(idsConversacion));
+      marcarLeidosPaseo(idsConversacion).catch(() => {});
     } catch {
       // sin red: queda lo anterior
     }
-  }, [paseoId]);
+    // Clave por contenido: idsPaseos viene de los params y cambia de identidad
+    // en cada render, así que como dependencia directa recrearía el callback
+    // (y reiniciaría el polling) a cada rato.
+  }, [claveConversacion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useFocusEffect(useCallback(() => {
     cargar();
@@ -77,7 +85,10 @@ export default function PaseadorChatScreen() {
     setEnviando(true);
     setTexto('');
     try {
-      setMensajes(await enviarMensajePaseo(paseo, limpio));
+      // `cargar()` y no el valor que devuelve enviarMensajePaseo: ese trae solo
+      // los mensajes de ESTE paseo, y acá la conversación puede abarcar varios.
+      await enviarMensajePaseo(paseo, limpio);
+      await cargar();
     } catch {
       setTexto(limpio); // que no se pierda lo escrito
     } finally {

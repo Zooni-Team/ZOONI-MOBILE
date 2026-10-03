@@ -1,16 +1,18 @@
 /**
  * MensajesScreen.jsx — Inbox de conversaciones
  *
- * Dos pestañas:
- *   - Personas: mis chats de Match (services/chatStore.js → tabla Mensaje/idMatch)
- *   - Paseadores: chats con los paseadores de Zooni que contraté (un hilo por
- *     paseo, tabla paseo_mensajes — ver components/paseador/ChatsPaseoLista)
- *   - Servicios: veterinarias, paseadores, petshops y peluquerías de Comunidad
- *     (api/comunidad → tabla servicios), con la conversación que ya tenga
- *     cada uno si le escribí antes.
+ * Tres pestañas sobre UNA sola lista:
+ *   - Todos (la que abre por defecto): todo junto, lo más reciente arriba.
+ *   - Amigos: los chats de Match (services/chatStore.js → tabla Mensaje/idMatch).
+ *   - Servicios: los paseadores de Zooni que contraté (tabla paseo_mensajes)
+ *     MÁS las veterinarias, pet shops y peluquerías de Comunidad (tabla
+ *     servicios), con la conversación que ya tenga cada uno.
+ *
+ * Los paseadores eran una pestaña propia; son un servicio más de los que
+ * ofrecemos, así que viven adentro de Servicios.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -27,8 +29,8 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import { fetchServicios } from '../api/comunidad';
 import { fetchMisConversacionesMatch, fetchMisUltimosMensajesServicios } from '../services/chatStore';
+import { fetchConversacionesPaseo } from '../services/paseadorApi';
 import MatchInfoModal from '../components/chat/MatchInfoModal';
-import ChatsPaseoLista from '../components/paseador/ChatsPaseoLista';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { tiempoRelativoCorto } from '../utils/tiempoRelativo';
@@ -43,21 +45,25 @@ export default function MensajesScreen() {
   const navigation = useNavigation();
   const { usuario, mascotaActiva } = useUsuarioActivo();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [tab, setTab] = useState('Personas');
+  const [tab, setTab] = useState('Todos');
   const [conversaciones, setConversaciones] = useState([]);
   const [servicios, setServicios] = useState([]);
+  const [paseadores, setPaseadores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [infoMatch, setInfoMatch] = useState(null); // conversación cuya ficha se abre
 
   const cargar = useCallback(async () => {
     setLoading(true);
     try {
-      const [convs, todosServicios, ultimosPorServicio] = await Promise.all([
+      const [convs, todosServicios, ultimosPorServicio, convsPaseo] = await Promise.all([
         fetchMisConversacionesMatch(),
         fetchServicios(),
         fetchMisUltimosMensajesServicios(),
+        // Los paseadores dejaron de ser una pestaña propia: son un servicio más.
+        fetchConversacionesPaseo('dueno').catch(() => []),
       ]);
       setConversaciones(convs);
+      setPaseadores(convsPaseo);
       setServicios(
         (todosServicios.servicios ?? [])
           .map((s) => ({ ...s, ...ultimosPorServicio.get(s.id) }))
@@ -87,6 +93,47 @@ export default function MensajesScreen() {
     });
   };
 
+  /*
+    Una sola lista para las tres pestañas.
+
+    Antes cada pestaña tenía su propia lista y su propio formato, y los
+    paseadores eran una pestaña aparte aunque sean un servicio más de los que
+    ofrecemos. Ahora "Todos" muestra todo junto —que es lo que uno quiere al
+    entrar: la conversación más reciente, sea con quien sea— y las otras dos
+    filtran. Cada ítem lleva su `tipo` y se dibuja distinto, pero el orden por
+    fecha es común.
+  */
+  const items = useMemo(() => {
+    const dePersonas = conversaciones.map((c) => ({
+      clave: `persona-${c.chatId}`, tipo: 'persona', fecha: c.fecha, datos: c,
+    }));
+    const dePaseadores = paseadores.map((c) => ({
+      clave: `paseador-${c.paseo.id}`, tipo: 'paseador', fecha: c.fecha, datos: c,
+    }));
+    const deServicios = servicios.map((s) => ({
+      clave: `servicio-${s.id}`, tipo: 'servicio', fecha: s.fecha ?? null, datos: s,
+    }));
+
+    const grupo = tab === 'Amigos' ? dePersonas
+      : tab === 'Servicios' ? [...dePaseadores, ...deServicios]
+        : [...dePersonas, ...dePaseadores, ...deServicios];
+
+    // Con mensajes primero y por fecha; los servicios sin conversación van al
+    // final, que es donde molestan menos y siguen estando para escribirles.
+    return grupo.sort((a, b) => {
+      if (a.fecha && !b.fecha) return -1;
+      if (!a.fecha && b.fecha) return 1;
+      if (a.fecha && b.fecha) return new Date(b.fecha) - new Date(a.fecha);
+      return 0;
+    });
+  }, [tab, conversaciones, paseadores, servicios]);
+
+  const textoVacio = tab === 'Amigos'
+    ? 'Todavía no tenés conversaciones.\n¡Hacé match en Match para empezar a chatear!'
+    : tab === 'Servicios'
+      ? 'Todavía no hablaste con ningún servicio.\nBuscá veterinarias, paseadores y pet shops en Comunidad.'
+      : 'Todavía no tenés conversaciones.\nHacé match o escribile a un servicio desde Comunidad.';
+
   return (
     <SafeAreaView style={st.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -106,80 +153,106 @@ export default function MensajesScreen() {
       </View>
 
       <View style={st.tabs}>
-        {['Personas', 'Paseadores', 'Servicios'].map((t) => (
+        {['Todos', 'Amigos', 'Servicios'].map((t) => (
           <TouchableOpacity key={t} style={[st.tabBtn, tab === t && st.tabBtnOn]} onPress={() => setTab(t)}>
             <Text style={[st.tabTxt, tab === t && st.tabTxtOn]}>{t}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {tab === 'Paseadores' ? (
-        <ChatsPaseoLista rol="dueno"
-          vacioTexto={'Todavía no hablaste con paseadores.\nPedí un paseo desde Comunidad y coordinalo por acá.'} />
-      ) : loading ? (
+      {loading ? (
         <ActivityIndicator color="#2DBD72" style={{ marginTop: 30 }} />
-      ) : tab === 'Personas' ? (
+      ) : (
         <FlatList
-          data={conversaciones}
-          keyExtractor={(c) => String(c.chatId)}
+          data={items}
+          keyExtractor={(i) => i.clave}
           contentContainerStyle={st.lista}
           ListEmptyComponent={
             <View style={st.vacio}>
               <Ionicons name="chatbubbles-outline" size={36} color="#CCCCCC" style={{ marginBottom: 8 }} />
-              <Text style={st.vacioTxt}>Todavía no tenés conversaciones.{'\n'}¡Hacé match en Match para empezar a chatear!</Text>
+              <Text style={st.vacioTxt}>{textoVacio}</Text>
             </View>
           }
-          renderItem={({ item: c }) => (
-            <TouchableOpacity style={st.item} onPress={() => abrirChatPersona(c)}>
-              {/* Tocar solo la foto abre la ficha de perfil (como Instagram);
-                  tocar el resto de la fila abre el chat. */}
-              <TouchableOpacity onPress={() => setInfoMatch(c)} activeOpacity={0.7}
-                accessibilityRole="button" accessibilityLabel={`Ver perfil de ${c.nombre}`}>
-                {c.fotoPerfilUrl ? (
-                  <Image source={{ uri: c.fotoPerfilUrl }} style={st.avatar} />
-                ) : (
-                  <View style={st.avatarFallback}><Text style={st.avatarLetra}>{c.nombre?.[0] ?? '?'}</Text></View>
-                )}
-              </TouchableOpacity>
-              <View style={st.info}>
-                <Text style={st.nombre} numberOfLines={1}>{c.nombre}</Text>
-                <View style={st.previewFila}>
-                  {c.ultimoEsMio && c.ultimoMensaje && (
-                    <Ionicons name={c.ultimoLeido ? 'checkmark-done' : 'checkmark'}
-                      size={14} color={c.ultimoLeido ? '#34B7F1' : '#9B9B9B'} />
-                  )}
-                  <Text style={st.preview} numberOfLines={1}>
-                    {c.ultimoMensaje ?? 'Todavía no hay mensajes'}
-                  </Text>
+          renderItem={({ item }) => {
+            // ── Match: persona con la que matcheaste ──
+            if (item.tipo === 'persona') {
+              const c = item.datos;
+              return (
+                <TouchableOpacity style={st.item} onPress={() => abrirChatPersona(c)}>
+                  {/* Tocar solo la foto abre la ficha de perfil (como Instagram);
+                      tocar el resto de la fila abre el chat. */}
+                  <TouchableOpacity onPress={() => setInfoMatch(c)} activeOpacity={0.7}
+                    accessibilityRole="button" accessibilityLabel={`Ver perfil de ${c.nombre}`}>
+                    {c.fotoPerfilUrl ? (
+                      <Image source={{ uri: c.fotoPerfilUrl }} style={st.avatar} />
+                    ) : (
+                      <View style={st.avatarFallback}><Text style={st.avatarLetra}>{c.nombre?.[0] ?? '?'}</Text></View>
+                    )}
+                  </TouchableOpacity>
+                  <View style={st.info}>
+                    <Text style={st.nombre} numberOfLines={1}>{c.nombre}</Text>
+                    <View style={st.previewFila}>
+                      {c.ultimoEsMio && c.ultimoMensaje && (
+                        <Ionicons name={c.ultimoLeido ? 'checkmark-done' : 'checkmark'}
+                          size={14} color={c.ultimoLeido ? '#34B7F1' : '#9B9B9B'} />
+                      )}
+                      <Text style={st.preview} numberOfLines={1}>
+                        {c.ultimoMensaje ?? 'Todavía no hay mensajes'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={st.derecha}>
+                    {c.fecha && <Text style={st.fecha}>{tiempoRelativoCorto(c.fecha)}</Text>}
+                    {c.noLeidos > 0 && <View style={st.badge}><Text style={st.badgeTxt}>{c.noLeidos}</Text></View>}
+                  </View>
+                </TouchableOpacity>
+              );
+            }
+
+            // ── Paseador: un hilo por paseo contratado ──
+            if (item.tipo === 'paseador') {
+              const c = item.datos;
+              const p = c.paseo;
+              return (
+                <TouchableOpacity style={st.item}
+                  onPress={() => navigation.navigate('PaseadorChat', { paseoId: p.id, idsPaseos: c.idsPaseos })}
+                  accessibilityLabel={`Chat con ${p.paseador?.nombre ?? 'el paseador'}`}>
+                  <View style={[st.iconCircle, { backgroundColor: COLORES_SERVICIO.paseador }]}>
+                    <Ionicons name="walk-outline" size={18} color="#FFF" />
+                  </View>
+                  <View style={st.info}>
+                    <Text style={st.nombre} numberOfLines={1}>{p.paseador?.nombre ?? 'Paseador'}</Text>
+                    <Text style={st.preview} numberOfLines={1}>
+                      {c.ultimoMensaje ?? `Paseo de ${p.mascota?.nombre ?? 'tu mascota'}`}
+                    </Text>
+                  </View>
+                  <View style={st.derecha}>
+                    {c.fecha && <Text style={st.fecha}>{tiempoRelativoCorto(c.fecha)}</Text>}
+                    {c.noLeidos > 0 && <View style={st.badge}><Text style={st.badgeTxt}>{c.noLeidos}</Text></View>}
+                  </View>
+                </TouchableOpacity>
+              );
+            }
+
+            // ── Servicio de Comunidad (veterinaria, pet shop, peluquería) ──
+            const s = item.datos;
+            return (
+              <TouchableOpacity style={st.item} onPress={() => abrirChatServicio(s)}>
+                <View style={[st.iconCircle, { backgroundColor: COLORES_SERVICIO[s.tipo] || '#888' }]}>
+                  <Ionicons name={ICONOS_SERVICIO[s.tipo] || 'storefront-outline'} size={18} color="#FFF" />
                 </View>
-              </View>
-              <View style={st.derecha}>
-                {c.fecha && <Text style={st.fecha}>{tiempoRelativoCorto(c.fecha)}</Text>}
-                {c.noLeidos > 0 && <View style={st.badge}><Text style={st.badgeTxt}>{c.noLeidos}</Text></View>}
-              </View>
-            </TouchableOpacity>
-          )}
-        />
-      ) : (
-        <FlatList
-          data={servicios}
-          keyExtractor={(s) => String(s.id)}
-          contentContainerStyle={st.lista}
-          ListEmptyComponent={<Text style={st.vacioTxt}>No hay servicios cargados todavía</Text>}
-          renderItem={({ item: s }) => (
-            <TouchableOpacity style={st.item} onPress={() => abrirChatServicio(s)}>
-              <View style={[st.iconCircle, { backgroundColor: COLORES_SERVICIO[s.tipo] || '#888' }]}>
-                <Ionicons name={ICONOS_SERVICIO[s.tipo] || 'storefront-outline'} size={18} color="#FFF" />
-              </View>
-              <View style={st.info}>
-                <Text style={st.nombre} numberOfLines={1}>{s.nombre}</Text>
-                <Text style={st.preview} numberOfLines={1}>{s.ultimoMensaje ?? 'Tocá para escribirle'}</Text>
-              </View>
-              {s.fecha && <Text style={st.fecha}>{tiempoRelativoCorto(s.fecha)}</Text>}
-            </TouchableOpacity>
-          )}
+                <View style={st.info}>
+                  <Text style={st.nombre} numberOfLines={1}>{s.nombre}</Text>
+                  <Text style={st.preview} numberOfLines={1}>{s.ultimoMensaje ?? 'Tocá para escribirle'}</Text>
+                </View>
+                {s.fecha && <Text style={st.fecha}>{tiempoRelativoCorto(s.fecha)}</Text>}
+              </TouchableOpacity>
+            );
+          }}
         />
       )}
+
+
 
       <MatchInfoModal
         visible={!!infoMatch}
