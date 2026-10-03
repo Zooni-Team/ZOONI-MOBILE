@@ -655,12 +655,19 @@ export async function fetchRecorrido(idPaseo) {
 // PASEOS (acciones)
 // ─────────────────────────────────────────────
 
-/** Avisa al dueño (tabla Notificacion de la app de dueños). Nunca rompe el flujo. */
-async function notificar(idUser, titulo, mensaje) {
+/**
+ * Avisa al dueño (tabla Notificacion de la app de dueños). Nunca rompe el flujo.
+ *
+ * `destino` queda guardado en DataExtra para que al tocar la notificación se
+ * pueda abrir la pantalla correcta. Sin esto había que adivinar por el título
+ * (ver destinoNotificacionPaseador, que sigue cubriendo las viejas).
+ */
+async function notificar(idUser, titulo, mensaje, destino = null) {
   if (modoDemo || !idUser) return;
   try {
     await supabase.from('Notificacion').insert({
       Id_User: idUser, Titulo: titulo, Mensaje: mensaje, Tipo: 'paseo', Leido: false,
+      DataExtra: destino ? { destino } : null,
     });
   } catch {
     // La notificación es un extra: el cambio de estado ya quedó guardado.
@@ -859,7 +866,7 @@ export async function enviarMensajePaseo(paseo, texto) {
   if (error) throw error;
   const resumen = limpio.length > 80 ? `${limpio.slice(0, 80)}…` : limpio;
   if (getCurrentUserId() === paseo.idDueno) {
-    notificar(paseo.idWalker, `Mensaje del dueño de ${paseo.mascota.nombre}`, resumen);
+    notificar(paseo.idWalker, `Mensaje del dueño de ${paseo.mascota.nombre}`, resumen, 'chats');
   } else {
     notificarDueno(paseo, `Mensaje del paseador de ${paseo.mascota.nombre}`, resumen);
   }
@@ -878,14 +885,47 @@ export async function marcarLeidosPaseo(idPaseo) {
 
 export async function fetchNotificacionesPaseador() {
   if (modoDemo) return getDemo().notificaciones;
+  // Tipo y DataExtra se traen para poder navegar al tocar la notificación,
+  // igual que en el panel del Home de dueños.
   const { data } = await supabase.from('Notificacion')
-    .select('Id, Titulo, Mensaje, Fecha, Leido')
+    .select('Id, Titulo, Mensaje, Fecha, Leido, Tipo, DataExtra')
     .eq('Id_User', getCurrentUserId())
     .order('Fecha', { ascending: false })
     .limit(20);
   return (data ?? []).map((n) => ({
     id: n.Id, titulo: n.Titulo, mensaje: n.Mensaje, fecha: n.Fecha, leido: n.Leido,
+    tipo: n.Tipo ?? null, dataExtra: n.DataExtra ?? null,
   }));
+}
+
+/**
+ * A dónde lleva una notificación del paseador al tocarla.
+ *
+ * Las notificaciones viejas se guardaron todas con Tipo 'paseo' y sin
+ * DataExtra, así que para esas hay que mirar el título. Las nuevas traen
+ * `DataExtra.destino` y entran por el primer caso.
+ *
+ * @returns {'chats'|'solicitudes'|'inicio'}
+ */
+export function destinoNotificacionPaseador(n) {
+  if (n?.dataExtra?.destino) return n.dataExtra.destino;
+  if (n?.tipo === 'mensaje') return 'chats';
+
+  const titulo = String(n?.titulo ?? '').toLowerCase();
+  if (titulo.includes('mensaje')) return 'chats';
+  if (titulo.includes('solicitud')) return 'solicitudes';
+  return 'inicio';
+}
+
+/** Marca UNA notificación como leída (al tocarla), sin tocar las demás. */
+export async function marcarNotificacionPaseadorLeida(id) {
+  if (modoDemo) {
+    const n = getDemo().notificaciones.find((x) => x.id === id);
+    if (n) n.leido = true;
+    return;
+  }
+  await supabase.from('Notificacion').update({ Leido: true })
+    .eq('Id', id).eq('Id_User', getCurrentUserId());
 }
 
 export async function marcarNotificacionesLeidas() {
@@ -980,7 +1020,8 @@ export async function crearSolicitudPaseo({
   if (error) throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
 
   notificar(paseador.id, 'Tenés una solicitud nueva',
-    `${mascota.nombre} · ${cuandoDe(fecha.toISOString())} · ${duracionMin} minutos · ${formatoPlata(precio)}`);
+    `${mascota.nombre} · ${cuandoDe(fecha.toISOString())} · ${duracionMin} minutos · ${formatoPlata(precio)}`,
+    'solicitudes');
   return data.Id_Paseo;
 }
 

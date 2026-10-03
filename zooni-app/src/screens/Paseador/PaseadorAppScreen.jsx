@@ -228,6 +228,9 @@ export default function PaseadorAppScreen() {
           perfil={perfil}
           onMenu={abrirMenu}
           onChatsSinLeer={setChatsSinLeer}
+          // Tocar una notificación abre la sección que corresponde (las
+          // secciones son pestañas de esta pantalla, no rutas del navegador).
+          onIrASeccion={(seccion) => setTab(seccion)}
           // En Inicio saluda; en el resto dice en qué sección estás
           titulo={tab === 'inicio' ? undefined : SECCIONES_PASEADOR.find((x) => x.key === tab)?.label}
         />

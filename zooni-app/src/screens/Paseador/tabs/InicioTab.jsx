@@ -15,6 +15,7 @@ import {
   Avatar, C, Card, PillButton, Seccion, Stat, SwitchGrande, Vacio,
 } from '../../../components/paseador/PaseadorUI';
 import MapaPaseo from '../../../components/paseador/MapaPaseo';
+import MapaPaseoModal from '../../../components/paseador/MapaPaseoModal';
 import PaseoCard from '../../../components/paseador/PaseoCard';
 import {
   cuandoDe, enModoDemo, fetchMisPaseos, formatoDistancia, formatoPlata, formatoTimer,
@@ -34,6 +35,8 @@ export default function InicioTab({
   const [agenda, setAgenda] = useState([]);
   const [refrescando, setRefrescando] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  // Paseo cuyo mapa se está viendo en grande (null = cerrado)
+  const [mapaAmpliado, setMapaAmpliado] = useState(null);
   const [, setTick] = useState(0);
 
   const cargar = useCallback(async () => {
@@ -157,12 +160,31 @@ export default function InicioTab({
       {proximo ? (
         <View>
           {proximo.lat != null && (
+            /*
+              Tocar el mini mapa lo abre a pantalla completa. Antes era una
+              imagen muerta: con 150 px y sin zoom no se podía ver por dónde
+              llegar, y tocarlo no hacía nada.
+
+              El toque va en un contenedor que envuelve al mapa (y no dentro de
+              MapaPaseo) porque en web el mapa es un <iframe>: se come los
+              eventos, así que la capa que recibe el toque tiene que estar
+              ENCIMA — es lo que hace `s.miniMapaTapa`.
+            */
             <View style={s.miniMapa}>
               <MapaPaseo destino={{ lat: proximo.lat, lng: proximo.lng }}
                 centro={{ lat: proximo.lat, lng: proximo.lng }} interactivo={false} style={{ flex: 1 }} />
-              <View style={s.miniMapaChip}>
+              <TouchableOpacity
+                style={s.miniMapaTapa}
+                onPress={() => setMapaAmpliado(proximo)}
+                accessibilityRole="button"
+                accessibilityLabel={`Ver en el mapa dónde buscar a ${proximo.mascota.nombre}`}
+              />
+              <View style={s.miniMapaChip} pointerEvents="none">
                 <Ionicons name="location" size={13} color={C.teal} />
                 <Text style={s.miniMapaTxt} numberOfLines={1}>{proximo.direccion ?? 'Ubicación del paseo'}</Text>
+              </View>
+              <View style={s.miniMapaLupa} pointerEvents="none">
+                <Ionicons name="expand" size={15} color={C.texto} />
               </View>
             </View>
           )}
@@ -193,6 +215,14 @@ export default function InicioTab({
       {!!proximo && agenda.length > 1 && (
         <Text style={s.siguiente}>Después: {agenda[1].mascota.nombre} · {cuandoDe(agenda[1].fecha)}</Text>
       )}
+
+      <MapaPaseoModal
+        visible={!!mapaAmpliado}
+        onCerrar={() => setMapaAmpliado(null)}
+        destino={mapaAmpliado ? { lat: mapaAmpliado.lat, lng: mapaAmpliado.lng } : null}
+        direccion={mapaAmpliado?.direccion}
+        mascota={mapaAmpliado?.mascota?.nombre}
+      />
     </ScrollView>
   );
 }
@@ -241,6 +271,15 @@ const s = StyleSheet.create({
   nuevasTxt: { flex: 1, fontSize: 15, fontWeight: '800', color: C.texto },
 
   miniMapa: { height: 150, borderTopLeftRadius: 18, borderTopRightRadius: 18, overflow: 'hidden' },
+  // Capa transparente ENCIMA del mapa: en web el mapa es un iframe y se queda
+  // con los eventos, así que el toque tiene que recibirse acá arriba.
+  miniMapaTapa: { ...StyleSheet.absoluteFillObject },
+  miniMapaLupa: {
+    position: 'absolute', top: 10, right: 10,
+    width: 30, height: 30, borderRadius: 15,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+  },
   miniMapaChip: {
     position: 'absolute', left: 10, bottom: 10, right: 10, flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6,

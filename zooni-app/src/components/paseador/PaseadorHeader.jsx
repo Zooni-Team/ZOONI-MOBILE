@@ -16,11 +16,14 @@ import { useNavigation } from '@react-navigation/native';
 
 import { Avatar, C, Chip, sombra } from './PaseadorUI';
 import {
-  contarNoLeidosPaseo, fetchNotificacionesPaseador, marcarNotificacionesLeidas,
+  contarNoLeidosPaseo, destinoNotificacionPaseador, fetchNotificacionesPaseador,
+  marcarNotificacionesLeidas, marcarNotificacionPaseadorLeida,
 } from '../../services/paseadorApi';
 import { tiempoRelativoCorto } from '../../utils/tiempoRelativo';
 
-export default function PaseadorHeader({ perfil, subtitulo, mostrarEstado = true, titulo, onMenu, onChatsSinLeer }) {
+export default function PaseadorHeader({
+  perfil, subtitulo, mostrarEstado = true, titulo, onMenu, onChatsSinLeer, onIrASeccion,
+}) {
   const navigation = useNavigation();
   const [notifs, setNotifs] = useState([]);
   const [chatsSinLeer, setChatsSinLeer] = useState(0);
@@ -59,6 +62,25 @@ export default function PaseadorHeader({ perfil, subtitulo, mostrarEstado = true
     setNotifs((prev) => prev.map((n) => ({ ...n, leido: true })));
   };
 
+  /**
+   * Tocar una notificación la abre, igual que en el Home de dueños. Antes el
+   * panel era solo una lista para mirar: te avisaba de una solicitud nueva y
+   * después tenías que ir a buscarla a mano.
+   */
+  const tocar = async (item) => {
+    if (!item.leido) {
+      setNotifs((prev) => prev.map((n) => (n.id === item.id ? { ...n, leido: true } : n)));
+      marcarNotificacionPaseadorLeida(item.id).catch(() => {});
+    }
+    setAbierto(false);
+
+    const destino = destinoNotificacionPaseador(item);
+    if (destino === 'chats') navigation.navigate('PaseadorChats');
+    // Las secciones (solicitudes/inicio) son pestañas dentro de PaseadorApp, no
+    // rutas propias: las cambia la pantalla contenedora.
+    else onIrASeccion?.(destino);
+  };
+
   return (
     <View style={s.header}>
       {onMenu ? (
@@ -83,15 +105,10 @@ export default function PaseadorHeader({ perfil, subtitulo, mostrarEstado = true
         ) : null}
       </View>
 
-      <TouchableOpacity onPress={() => navigation.navigate('PaseadorChats')} style={s.campana}
-        accessibilityLabel={`Chats${chatsSinLeer ? `, ${chatsSinLeer} sin leer` : ''}`}>
-        <Ionicons name="chatbubbles-outline" size={25} color={C.texto} />
-        {chatsSinLeer > 0 && (
-          <View style={s.badge}>
-            <Text style={s.badgeTxt}>{chatsSinLeer > 9 ? '9+' : chatsSinLeer}</Text>
-          </View>
-        )}
-      </TouchableOpacity>
+      {/* El acceso a Chats vive SOLO en el menú (ya estaba ahí, con su badge).
+          Tenerlo también acá, pegado a la campana, hacía que dos íconos casi
+          iguales compitieran y se tocara el equivocado. Igual que en la app de
+          dueños, en el header queda únicamente la campana. */}
 
       <TouchableOpacity onPress={abrir} style={s.campana} accessibilityLabel={`Notificaciones${noLeidas ? `, ${noLeidas} sin leer` : ''}`}>
         <Ionicons name="notifications-outline" size={26} color={C.texto} />
@@ -111,14 +128,17 @@ export default function PaseadorHeader({ perfil, subtitulo, mostrarEstado = true
               keyExtractor={(n) => String(n.id)}
               ListEmptyComponent={<Text style={s.panelVacio}>No tenés notificaciones por ahora.</Text>}
               renderItem={({ item }) => (
-                <View style={s.notif}>
+                <TouchableOpacity style={s.notif} onPress={() => tocar(item)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.titulo}${item.leido ? '' : ', sin leer'}`}>
                   {!item.leido && <View style={s.punto} />}
                   <View style={{ flex: 1 }}>
                     <Text style={s.notifTitulo}>{item.titulo}</Text>
                     {item.mensaje ? <Text style={s.notifMsg}>{item.mensaje}</Text> : null}
                   </View>
                   <Text style={s.notifHora}>{tiempoRelativoCorto(item.fecha)}</Text>
-                </View>
+                  <Ionicons name="chevron-forward" size={16} color={C.gris} style={{ marginTop: 2 }} />
+                </TouchableOpacity>
               )}
             />
           </Pressable>
