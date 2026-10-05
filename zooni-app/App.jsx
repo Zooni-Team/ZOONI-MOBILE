@@ -8,7 +8,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, ActivityIndicator, AppState, StyleSheet } from 'react-native';
 
-import { loadStoredUserId, loadStoredModo, esperarSesion, haySesion, MODO_PASEADOR } from './src/config/session';
+import { loadStoredUserId, loadStoredModo, esperarSesion, haySesion, setModo, MODO_PASEADOR } from './src/config/session';
 import { ThemeProvider, useTheme } from './src/config/theme';
 import { iniciarLatidoPresencia, marcarPresencia } from './src/services/presenciaApi';
 import HomeScreen        from './src/screens/HomeScreen';
@@ -63,8 +63,51 @@ import SolicitarPaseoScreen     from './src/screens/SolicitarPaseoScreen';
 import MisPaseosScreen          from './src/screens/MisPaseosScreen';
 import PaseadorChatsScreen      from './src/screens/Paseador/PaseadorChatsScreen';
 import { fetchRolesCuenta }     from './src/services/paseadorApi';
+import { completarRetornoSocial, hayRetornoSocial } from './src/services/socialAuthApi';
 
 const Stack = createNativeStackNavigator();
+
+const rolesCon4s = (id) => Promise.race([
+  fetchRolesCuenta(id).catch(() => null),
+  new Promise((resolve) => setTimeout(() => resolve(null), 4000)),
+]);
+
+/**
+ * Vuelta de "Entrar con Google / Facebook / Apple" (services/socialAuthApi):
+ * decide la primera pantalla según si la cuenta existe y para qué entró
+ * (dueño o paseador). Devuelve [ruta, params].
+ */
+async function rutaTrasLoginSocial() {
+  const res = await completarRetornoSocial();
+  const loginDe = res.intencion === 'paseador' ? 'PaseadorLogin' : 'Login';
+  if (!res.usuario && !res.nuevo) return [loginDe, res.error ? { errorSocial: res.error } : undefined];
+
+  // Cuenta nueva → registro con nombre, mail y foto del proveedor ya cargados
+  if (res.nuevo) {
+    return res.intencion === 'paseador'
+      ? ['PaseadorRegistro', { social: res.perfil }]
+      : ['RegisterStep1', { social: res.perfil }];
+  }
+
+  // Cuenta existente: la sesión ya quedó iniciada
+  const roles = await rolesCon4s(res.usuario.id);
+  if (res.intencion === 'paseador') {
+    if (roles?.esPaseador) {
+      await setModo(MODO_PASEADOR);
+      return roles.tienePerfil ? ['PaseadorApp'] : ['PaseadorRegistro', { completar: true }];
+    }
+    // Dueño que quiere sumarse como paseador: sólo le falta el perfil
+    return ['PaseadorRegistro', {
+      activarSocial: { nombre: res.usuario.nombre, fotoPerfil: res.usuario.fotoPerfil ?? null },
+    }];
+  }
+  if (roles?.esDueno && roles?.esPaseador) return ['ElegirModo', { tienePerfil: roles.tienePerfil }];
+  if (roles?.esPaseador) {
+    await setModo(MODO_PASEADOR);
+    return roles.tienePerfil ? ['PaseadorApp'] : ['PaseadorRegistro', { completar: true }];
+  }
+  return ['Home'];
+}
 
 export default function App() {
   const [initialRoute, setInitialRoute] = useState(null);
@@ -80,14 +123,17 @@ export default function App() {
   useEffect(() => {
     (async () => {
       const [userId, modo] = await Promise.all([loadStoredUserId(), loadStoredModo()]);
+      if (hayRetornoSocial()) {
+        const [ruta, params] = await rutaTrasLoginSocial();
+        setInitialParams(params);
+        setInitialRoute(ruta);
+        return;
+      }
       if (!userId) {
         setInitialRoute('Login');
         return;
       }
-      const roles = await Promise.race([
-        fetchRolesCuenta(userId).catch(() => null),
-        new Promise((resolve) => setTimeout(() => resolve(null), 4000)),
-      ]);
+      const roles = await rolesCon4s(userId);
       if (roles?.esDueno && roles?.esPaseador) {
         setInitialParams({ tienePerfil: roles.tienePerfil });
         setInitialRoute('ElegirModo');
@@ -155,8 +201,8 @@ function RootNavigator({ initialRoute, initialParams }) {
         screenOptions={{ headerShown: false, animation: reduceMotion ? 'none' : 'default' }}
       >
           <Stack.Screen name="Home"          component={HomeScreen} />
-          <Stack.Screen name="Login"         component={LoginScreen} />
-          <Stack.Screen name="RegisterStep1" component={RegisterStep1Screen} />
+          <Stack.Screen name="Login"         component={LoginScreen} initialParams={p('Login')} />
+          <Stack.Screen name="RegisterStep1" component={RegisterStep1Screen} initialParams={p('RegisterStep1')} />
           <Stack.Screen name="RegisterStep2" component={RegisterStep2Screen} />
           <Stack.Screen name="RegisterStep3" component={RegisterStep3Screen} />
           <Stack.Screen name="RegisterStep4" component={RegisterStep4Screen} />
@@ -202,7 +248,7 @@ function RootNavigator({ initialRoute, initialParams }) {
           <Stack.Screen name="ElegirModo"             component={ElegirModoScreen} initialParams={p('ElegirModo')} />
           {/* Zooni Paseadores (proveedores) */}
           <Stack.Screen name="ProveedorTipo"          component={ProveedorTipoScreen} />
-          <Stack.Screen name="PaseadorLogin"          component={PaseadorLoginScreen} />
+          <Stack.Screen name="PaseadorLogin"          component={PaseadorLoginScreen} initialParams={p('PaseadorLogin')} />
           <Stack.Screen name="PaseadorRegistro"       component={PaseadorRegistroScreen} initialParams={p('PaseadorRegistro')} />
           <Stack.Screen name="PaseadorApp"            component={PaseadorAppScreen} />
           <Stack.Screen name="PaseadorChat"           component={PaseadorChatScreen} />

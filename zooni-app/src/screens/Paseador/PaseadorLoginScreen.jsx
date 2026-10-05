@@ -6,27 +6,37 @@
  * de un error se le ofrece sumar el perfil de paseador a su misma cuenta.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView,
   StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { C, PillButton, sombra } from '../../components/paseador/PaseadorUI';
 import { loginPaseador } from '../../services/paseadorApi';
+import { getUltimoMail, getUltimoMailWeb } from '../../config/session';
 import { MASCOTAS_BIENVENIDA } from '../../constants/registroImages';
+import BotonesSociales from '../../components/BotonesSociales';
+import { volverOLogin } from '../../utils/volverOLogin';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function PaseadorLoginScreen() {
   const navigation = useNavigation();
-  const [email, setEmail] = useState('');
+  const route = useRoute();
+  // Mail de la cuenta que acaba de cerrar sesión, ya escrito. En web se lee
+  // sincrónico para que el navegador no rellene un usuario guardado viejo.
+  const [email, setEmail] = useState(getUltimoMailWeb);
+  useEffect(() => {
+    getUltimoMail().then((m) => { if (m) setEmail((actual) => actual || m); });
+  }, []);
   const [password, setPassword] = useState('');
   const [verPassword, setVerPassword] = useState(false);
   const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState(null);
+  // Si volvió de Google / Facebook / Apple con un error, se muestra acá
+  const [error, setError] = useState(route.params?.errorSocial ?? null);
   const [activar, setActivar] = useState(null); // { email, hash, nombre }
 
   const ingresar = useCallback(async () => {
@@ -61,7 +71,7 @@ export default function PaseadorLoginScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={s.volver} accessibilityLabel="Volver">
+          <TouchableOpacity onPress={() => volverOLogin(navigation)} style={s.volver} accessibilityLabel="Volver">
             <Ionicons name="chevron-back" size={26} color={C.teal} />
           </TouchableOpacity>
 
@@ -111,6 +121,7 @@ export default function PaseadorLoginScreen() {
 
           <PillButton titulo="Ingresar" variante="teal" onPress={ingresar} cargando={cargando} />
           {error && <Text style={s.error}>{error}</Text>}
+          <BotonesSociales intencion="paseador" titulo="O entrá con" />
 
           {activar && (
             <View style={s.activar}>

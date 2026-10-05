@@ -1,6 +1,10 @@
 /**
  * RegisterStep1Screen.jsx — Registro Paso 1: nombre + tipo de mascota
  * (Login2/Login3 de Figma)
+ *
+ * Con route.params.social ({ email, nombre, apellido, foto, proveedor }) viene
+ * de "Continuar con Google / Facebook / Apple" y la cuenta todavía no existe:
+ * se pasa por todos los pasos y el 3 ya no pide mail ni contraseña.
  */
 
 import { useRef, useState } from 'react';
@@ -19,9 +23,11 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { ESPECIES } from '../constants/registroAssets';
+import { volverOLogin } from '../utils/volverOLogin';
+import BotonesSociales from '../components/BotonesSociales';
 
 function EspecieTile({ especie, seleccionada, onPress }) {
   const scale = useRef(new Animated.Value(1)).current;
@@ -55,6 +61,7 @@ function EspecieTile({ especie, seleccionada, onPress }) {
 
 export default function RegisterStep1Screen() {
   const navigation = useNavigation();
+  const { social } = useRoute().params ?? {};
 
   const [nombre, setNombre] = useState('');
   const [especie, setEspecie] = useState(null);
@@ -77,7 +84,7 @@ export default function RegisterStep1Screen() {
     setErrNombre(!nombreOk);
     if (!especie) shakeGrid();
     if (!nombreOk || !especie) return;
-    navigation.navigate('RegisterStep2', { nombre: nombre.trim(), especie });
+    navigation.navigate('RegisterStep2', { nombre: nombre.trim(), especie, social });
   };
 
   return (
@@ -89,10 +96,15 @@ export default function RegisterStep1Screen() {
 
           <Text style={s.zooni}>Zooni</Text>
           <Text style={s.registrate}>¡Registrate!</Text>
+          {social ? (
+            <Text style={s.social}>
+              ¡Hola{social.nombre ? `, ${social.nombre}` : ''}! Entraste con {social.proveedor}. Contanos sobre tu mascota para terminar.
+            </Text>
+          ) : null}
 
           <View style={s.card}>
             <View style={s.cardHeader}>
-              <TouchableOpacity onPress={() => navigation.goBack()} accessibilityLabel="Volver al login"
+              <TouchableOpacity onPress={() => volverOLogin(navigation)} accessibilityLabel="Volver al login"
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                 <Ionicons name="chevron-back" size={22} color="#2DBD72" />
               </TouchableOpacity>
@@ -122,6 +134,7 @@ export default function RegisterStep1Screen() {
               ))}
             </Animated.View>
           </View>
+          {!social && <BotonesSociales intencion="dueno" titulo="O registrate con" />}
         </ScrollView>
 
         <TouchableOpacity style={s.btnContinuar} onPress={handleContinuar} activeOpacity={0.85}>
@@ -138,6 +151,10 @@ const s = StyleSheet.create({
 
   zooni: { fontSize: 26, fontWeight: '800', color: '#5C3D1E', textAlign: 'center', marginTop: 16 },
   registrate: { fontSize: 15, color: '#6B6B6B', textAlign: 'center', marginBottom: 20 },
+  social: {
+    fontSize: 14, color: '#2C2C2C', textAlign: 'center', marginTop: -10, marginBottom: 16,
+    backgroundColor: '#FFFFFF', borderRadius: 14, padding: 12, fontWeight: '600',
+  },
 
   card: {
     backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, marginBottom: 20,

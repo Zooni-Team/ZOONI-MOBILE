@@ -21,6 +21,8 @@ import { getCurrentUserId, setCurrentUserId, setModo, MODO_PASEADOR } from '../c
 import { hashPassword } from './authApi';
 import { marcarPresencia } from './presenciaApi';
 import { resolveMascotaVisual } from '../constants/petImages';
+import { subirArchivoPublico } from '../utils/imagenStorage';
+import { rpcSocial } from './socialAuthApi';
 
 // ─────────────────────────────────────────────
 // MODO DEMO
@@ -124,6 +126,7 @@ function crearDemo() {
   return {
     duenos, mascotas, paseos,
     rechazados: new Set(),
+    pagos: [],
     mensajes: {
       3: [
         { id: 1, idUser: 901, texto: '¡Hola! Titán ya está listo, te espera en la puerta 🐶', fecha: new Date(Date.now() - 40 * 60 * 1000).toISOString() },
@@ -292,8 +295,8 @@ export function distanciaMetros(a, b) {
 // AUTENTICACIÓN DEL PASEADOR
 // ─────────────────────────────────────────────
 
-async function entrarComoPaseador(id) {
-  await setCurrentUserId(id);
+async function entrarComoPaseador(id, mail) {
+  await setCurrentUserId(id, mail);
   await setModo(MODO_PASEADOR);
   marcarPresencia(true);
 }
@@ -319,7 +322,7 @@ export async function loginPaseador(email, password) {
   if (errPerfil) {
     // Sin la 035 no hay forma de saber si es paseador: se entra en demo.
     caerADemo(errPerfil);
-    await entrarComoPaseador(usuario.id);
+    await entrarComoPaseador(usuario.id, mail);
     return { usuario };
   }
   if (!perfil) {
@@ -328,13 +331,13 @@ export async function loginPaseador(email, password) {
     const { data: rol } = await supabase.from('UserRole').select('Id_Role')
       .eq('Id_User', usuario.id).eq('Id_Role', 2).maybeSingle();
     if (rol) {
-      await setCurrentUserId(usuario.id);
+      await setCurrentUserId(usuario.id, mail);
       return { necesitaCompletar: true };
     }
     return { necesitaActivar: true, email: mail, hash, nombre: usuario.nombre, fotoPerfil: usuario.fotoPerfil ?? null };
   }
 
-  await entrarComoPaseador(usuario.id);
+  await entrarComoPaseador(usuario.id, mail);
   return { usuario };
 }
 
@@ -381,7 +384,49 @@ export async function registrarPaseador({ usuario, perfil }) {
     if (msg.includes('email_existente') || error.code === '23505') throw new Error('email_existente');
     throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
   }
-  await entrarComoPaseador(data.id);
+  await entrarComoPaseador(data.id, data.email ?? usuario.email);
+  return data;
+}
+
+/**
+ * Alta de paseador que vino de Google / Facebook / Apple: sin contraseña. El
+ * mail lo toma el servidor de la sesión del proveedor (043) y `fotoPerfil` es
+ * la foto del proveedor (si no eligió otra).
+ */
+export async function registrarPaseadorSocial({ usuario, perfil, fotoPerfil }) {
+  let data;
+  try {
+    data = await rpcSocial('registrar_paseador_social', {
+      p_usuario: {
+        nombre: usuario.nombre.trim(),
+        apellido: usuario.apellido.trim(),
+        telefono: usuario.telefono?.trim() || null,
+        genero: usuario.genero,
+        fechaNacimiento: usuario.fechaNacimiento,
+        fotoPerfil: fotoPerfil ?? null,
+      },
+      p_perfil: perfilParaRpc(perfil),
+    });
+  } catch (error) {
+    const msg = String(error.message ?? '');
+    if (msg.includes('email_existente')) throw new Error('email_existente');
+    if (error.message === 'sesion_social_vencida') throw error;
+    throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
+  }
+  await entrarComoPaseador(data.id, data.email);
+  return data;
+}
+
+/** Cuenta de dueño existente que entró con su proveedor y se suma como paseador. */
+export async function activarPaseadorSocial(perfil) {
+  let data;
+  try {
+    data = await rpcSocial('activar_paseador_social', { p_perfil: perfilParaRpc(perfil) });
+  } catch (error) {
+    if (error.message === 'sesion_social_vencida') throw error;
+    throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
+  }
+  await entrarComoPaseador(data.id, data.email);
   return data;
 }
 
@@ -394,7 +439,7 @@ export async function activarPaseador({ email, hash, perfil }) {
     if (String(error.message ?? '').includes('credenciales')) throw new Error('credenciales');
     throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
   }
-  await entrarComoPaseador(data.id);
+  await entrarComoPaseador(data.id, email);
   return data;
 }
 
@@ -913,6 +958,163 @@ export function inicioDePeriodo(periodo) {
 }
 
 /** Paseos finalizados del período, del más nuevo al más viejo. */
+// ─────────────────────────────────────────────
+// PAGOS: cuenta corriente del paseador con cada dueño (044)
+// ─────────────────────────────────────────────
+
+export const MEDIOS_PAGO = [
+  { key: 'efectivo', label: 'Efectivo', icono: 'cash-outline' },
+  { key: 'transferencia', label: 'Transferencia', icono: 'swap-horizontal-outline' },
+  { key: 'mercadopago', label: 'Mercado Pago', icono: 'phone-portrait-outline' },
+  { key: 'otro', label: 'Otro', icono: 'ellipsis-horizontal-circle-outline' },
+];
+export const medioDePago = (key) => MEDIOS_PAGO.find((m) => m.key === key) ?? null;
+
+function mapPago(r) {
+  return {
+    id: r.id, idDueno: r.id_dueno, monto: Number(r.monto), medio: r.medio,
+    fecha: r.fecha, nota: r.nota ?? '',
+  };
+}
+
+async function leerPagos() {
+  const { data, error } = await supabase.from('paseo_pagos').select('*')
+    .eq('id_walker', getCurrentUserId()).order('fecha', { ascending: true });
+  if (error) {
+    if (modoDemo) return getDemo().pagos;
+    throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
+  }
+  return (data ?? []).map(mapPago);
+}
+
+/**
+ * Cuentas corrientes: una por dueño con el que hiciste paseos o que te pagó.
+ *   cargos  = paseos finalizados (lo que te tiene que pagar)
+ *   pagos   = lo que anotaste que te pagó
+ *   saldo   = cargos - pagos (> 0 te debe, 0 al día, < 0 tiene saldo a favor)
+ * Los pagos se imputan a los paseos más viejos primero: cada paseo queda
+ * 'pagado', 'parcial' (con cuánto falta) o 'pendiente'.
+ * Ordenadas: primero los que más deben; después los que están al día.
+ */
+export async function fetchCuentasCorrientes() {
+  const [paseos, pagos] = await Promise.all([fetchMisPaseos(['finalizado']), leerPagos()]);
+
+  // Medio de pago que eligió el dueño en cada paseo (columna de la 044; si no
+  // está, la cuenta igual se arma sin ese dato)
+  const medios = {};
+  if (!modoDemo && paseos.length) {
+    const { data } = await supabase.from('Paseo').select('"Id_Paseo","MedioPago"')
+      .in('Id_Paseo', paseos.map((p) => p.id));
+    (data ?? []).forEach((r) => { medios[r.Id_Paseo] = r.MedioPago; });
+  }
+
+  const cuentas = new Map();
+  const cuentaDe = (idDueno, dueno) => {
+    const key = String(idDueno);
+    if (!cuentas.has(key)) {
+      cuentas.set(key, { idDueno, dueno: dueno ?? { id: idDueno, nombre: 'Dueño', foto: null }, paseos: [], pagos: [], mascotas: new Set() });
+    }
+    const c = cuentas.get(key);
+    if (dueno && c.dueno.nombre === 'Dueño') c.dueno = dueno;
+    return c;
+  };
+
+  paseos.forEach((p) => {
+    if (p.idDueno == null) return;
+    const c = cuentaDe(p.idDueno, p.dueno);
+    c.paseos.push({ ...p, medioPago: medios[p.id] ?? p.medioPago ?? null });
+    c.mascotas.add(p.mascota.nombre);
+  });
+  pagos.forEach((pg) => cuentaDe(pg.idDueno).pagos.push(pg));
+
+  const lista = [...cuentas.values()].map((c) => {
+    c.paseos.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+    c.pagos.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+    const totalCargos = c.paseos.reduce((a, p) => a + p.precio, 0);
+    const totalPagado = c.pagos.reduce((a, pg) => a + pg.monto, 0);
+
+    // Imputar los pagos a los paseos más viejos primero
+    let disponible = totalPagado;
+    const paseosEstado = c.paseos.map((p) => {
+      const cubierto = Math.min(p.precio, Math.max(0, disponible));
+      disponible -= cubierto;
+      const estado = cubierto >= p.precio ? 'pagado' : cubierto > 0 ? 'parcial' : 'pendiente';
+      return { ...p, cubierto, falta: p.precio - cubierto, estado };
+    });
+
+    const conMedio = [...paseosEstado].reverse().find((p) => p.medioPago);
+    const fechas = [...c.paseos.map((p) => p.fecha), ...c.pagos.map((pg) => pg.fecha)];
+    return {
+      idDueno: c.idDueno,
+      dueno: c.dueno,
+      mascotas: [...c.mascotas],
+      paseos: paseosEstado,
+      pagos: c.pagos,
+      totalCargos,
+      totalPagado,
+      saldo: Math.round((totalCargos - totalPagado) * 100) / 100,
+      pendientes: paseosEstado.filter((p) => p.estado !== 'pagado').length,
+      medioPreferido: conMedio?.medioPago ?? c.pagos[c.pagos.length - 1]?.medio ?? null,
+      ultimoPago: c.pagos[c.pagos.length - 1]?.fecha ?? null,
+      ultimoMovimiento: fechas.sort((a, b) => new Date(b) - new Date(a))[0] ?? null,
+    };
+  });
+
+  return lista.sort((a, b) => {
+    if ((a.saldo > 0) !== (b.saldo > 0)) return a.saldo > 0 ? -1 : 1;
+    if (a.saldo > 0) return b.saldo - a.saldo;
+    return new Date(b.ultimoMovimiento) - new Date(a.ultimoMovimiento);
+  });
+}
+
+function filaPago({ idDueno, monto, medio, fecha, nota }) {
+  return {
+    id_dueno: idDueno,
+    monto: Math.round(Number(monto) * 100) / 100,
+    medio,
+    fecha: (fecha instanceof Date ? fecha : new Date(fecha ?? Date.now())).toISOString(),
+    nota: nota?.trim() || null,
+  };
+}
+
+/** Anota un pago (total o parcial) de un dueño. Le avisa al dueño. */
+export async function registrarPago(pago) {
+  const fila = filaPago(pago);
+  if (modoDemo) {
+    getDemo().pagos.push(mapPago({ ...fila, id: Date.now() }));
+    return;
+  }
+  const { error } = await supabase.from('paseo_pagos').insert({ ...fila, id_walker: getCurrentUserId() });
+  if (error) throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
+  const medio = medioDePago(fila.medio);
+  notificar(fila.id_dueno, 'Tu paseador registró un pago',
+    `${formatoPlata(fila.monto)}${medio ? ` · ${medio.label}` : ''}. ¡Gracias!`);
+}
+
+/** Corrige un pago ya anotado (monto, medio, fecha o nota). */
+export async function editarPago(id, pago) {
+  const fila = filaPago(pago);
+  if (modoDemo) {
+    const i = getDemo().pagos.findIndex((x) => x.id === id);
+    if (i >= 0) getDemo().pagos[i] = mapPago({ ...fila, id });
+    return;
+  }
+  const { error } = await supabase.from('paseo_pagos')
+    .update({ ...fila, actualizado_en: new Date().toISOString() })
+    .eq('id', id).eq('id_walker', getCurrentUserId());
+  if (error) throw errorApp('error_base', error);
+}
+
+export async function borrarPago(id) {
+  if (modoDemo) {
+    getDemo().pagos = getDemo().pagos.filter((x) => x.id !== id);
+    return;
+  }
+  const { error } = await supabase.from('paseo_pagos').delete()
+    .eq('id', id).eq('id_walker', getCurrentUserId());
+  if (error) throw errorApp('error_base', error);
+}
+
 export async function fetchGanancias(periodo) {
   const desde = inicioDePeriodo(periodo);
   const lista = await fetchMisPaseos(['finalizado'], desde ? { desde } : {});
@@ -1126,6 +1328,47 @@ export async function fetchPaseadoresZona(bbox) {
   });
 }
 
+// Tope del radio de un paseador (CHECK paseador_radio_ok de la 035)
+const RADIO_MAX_KM = 30;
+
+function distanciaKm(a, b) {
+  const rad = (g) => (g * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat);
+  const dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(h));
+}
+
+/**
+ * Paseadores que hacen paseos EN TU ZONA: sólo los que tienen tu ubicación
+ * dentro de su círculo de atención (centro + radio). Los que pasean en otro
+ * lado no aparecen, aunque estén en la parte visible del mapa.
+ *
+ * `pos` es tu ubicación (GPS). Sin GPS se usa la última que guardó Comunidad
+ * (ubicaciones_usuarios); si tampoco hay, no se muestra ninguno.
+ */
+export async function fetchPaseadoresParaMi(pos) {
+  let yo = pos?.lat != null ? pos : null;
+  if (!yo) {
+    const { data } = await supabase.from('ubicaciones_usuarios')
+      .select('lat, lng').eq('usuario_id', getCurrentUserId()).maybeSingle();
+    if (data?.lat != null) yo = { lat: Number(data.lat), lng: Number(data.lng) };
+  }
+  if (!yo) return [];
+
+  // Un paseador te cubre sólo si su centro está a menos de su radio (máx.
+  // RADIO_MAX_KM): se buscan los de esa caja y se filtra por distancia real.
+  const dLat = RADIO_MAX_KM / 111;
+  const dLng = dLat / Math.cos((yo.lat * Math.PI) / 180);
+  const cerca = await fetchPaseadoresZona({
+    lat_min: yo.lat - dLat, lat_max: yo.lat + dLat, lng_min: yo.lng - dLng, lng_max: yo.lng + dLng,
+  });
+  return cerca
+    .map((p) => ({ ...p, distanciaKm: distanciaKm(yo, p) }))
+    .filter((p) => p.distanciaKm <= p.radioKm)
+    .sort((a, b) => a.distanciaKm - b.distanciaKm);
+}
+
 export async function fetchPaseadorPublico(idUser) {
   const { data: row } = await supabase.from('paseador_perfil').select('*').eq('id_user', idUser).maybeSingle();
   if (!row) return null;
@@ -1139,11 +1382,11 @@ export async function fetchPaseadorPublico(idUser) {
  * llega en Solicitudes ("Para vos"). Devuelve el id del paseo.
  */
 export async function crearSolicitudPaseo({
-  paseador, mascota, fecha, duracionMin, direccion, lat, lng, notas,
+  paseador, mascota, fecha, duracionMin, direccion, lat, lng, notas, medioPago,
 }) {
   const precio = precioPara(paseador, duracionMin);
   if (precio == null) throw new Error('servicio_inexistente');
-  const { data, error } = await supabase.from('Paseo').insert({
+  const fila = {
     Id_Mascota: mascota.id,
     Id_Dueno: getCurrentUserId(),
     Id_Walker: paseador.id,
@@ -1155,11 +1398,19 @@ export async function crearSolicitudPaseo({
     Lng: lng ?? null,
     Notas: notas?.trim() || null,
     Estado: 'pendiente',
-  }).select('Id_Paseo').single();
+    MedioPago: medioPago ?? null,
+  };
+  let { data, error } = await supabase.from('Paseo').insert(fila).select('Id_Paseo').single();
+  if (error && esEsquemaFaltante(error) && /MedioPago/i.test(String(error.message))) {
+    // Sin la 044: la solicitud sale igual, sin el medio de pago
+    const { MedioPago, ...sinMedio } = fila; // eslint-disable-line no-unused-vars
+    ({ data, error } = await supabase.from('Paseo').insert(sinMedio).select('Id_Paseo').single());
+  }
   if (error) throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
 
+  const medio = MEDIOS_PAGO.find((m) => m.key === medioPago);
   notificar(paseador.id, 'Tenés una solicitud nueva',
-    `${mascota.nombre} · ${cuandoDe(fecha.toISOString())} · ${duracionMin} minutos · ${formatoPlata(precio)}`,
+    `${mascota.nombre} · ${cuandoDe(fecha.toISOString())} · ${duracionMin} minutos · ${formatoPlata(precio)}${medio ? ` · paga con ${medio.label}` : ''}`,
     'solicitudes');
   return data.Id_Paseo;
 }
@@ -1183,14 +1434,155 @@ export async function cancelarPaseoDueno(paseo) {
     `${paseo.mascota.nombre} · ${cuandoDe(paseo.fecha)}`);
 }
 
-/** Calificación del dueño al terminar (alimenta las reseñas del paseador). */
-export async function calificarPaseo(paseo, rating, resena) {
-  const { error } = await supabase.from('Paseo')
-    .update({ Rating: rating, Resena: resena?.trim() || null })
-    .eq('Id_Paseo', paseo.id).eq('Estado', 'finalizado');
+// ─────────────────────────────────────────────
+// RESEÑAS (estilo Google Maps): estrellas + aspectos + preguntas + fotos/videos
+// ─────────────────────────────────────────────
+
+/** Aspectos que el dueño puede puntuar de 1 a 5 (opcionales). */
+export const ASPECTOS_RESENA = [
+  { key: 'puntualidad', label: 'Puntualidad' },
+  { key: 'trato', label: 'Trato con tu mascota' },
+  { key: 'comunicacion', label: 'Comunicación' },
+];
+
+/** Preguntas de sí / no (opcionales). `resumen` es como se muestra el % de "sí". */
+export const PREGUNTAS_RESENA = [
+  { key: 'fotos', pregunta: '¿Te mandó fotos o novedades durante el paseo?', resumen: 'manda novedades' },
+  { key: 'contenta', pregunta: '¿Tu mascota volvió tranquila y contenta?', resumen: 'mascotas contentas' },
+  { key: 'repetiria', pregunta: '¿Lo volverías a contratar?', resumen: 'lo volvería a contratar' },
+];
+
+export const MEDIA_RESENA_MAX = 6;
+
+/**
+ * Calificación del dueño al terminar. `media` son los archivos elegidos con
+ * el picker ([{ uri, mimeType }]): se suben al bucket "resenas" y se guardan
+ * sus URLs. Al paseador le llega una notificación que lo lleva a su Perfil.
+ *
+ * Devuelve { parcial: true } si la base no tiene la 042: se guardaron las
+ * estrellas y el texto, pero no aspectos, respuestas ni fotos.
+ */
+export async function calificarPaseo(paseo, {
+  rating, resena, aspectos = {}, respuestas = {}, media = [],
+}) {
+  const texto = resena?.trim() || null;
+  const subidos = [];
+  for (const m of media.slice(0, MEDIA_RESENA_MAX)) {
+    // eslint-disable-next-line no-await-in-loop
+    subidos.push(await subirArchivoPublico(m.uri, `paseo-${paseo.id}`, { bucket: 'resenas', mimeHint: m.mimeType }));
+  }
+
+  let parcial = false;
+  const { error } = await supabase.from('Paseo').update({
+    Rating: rating,
+    Resena: texto,
+    ResenaAspectos: Object.keys(aspectos).length ? aspectos : null,
+    ResenaRespuestas: Object.keys(respuestas).length ? respuestas : null,
+    ResenaMedia: subidos,
+    ResenaFecha: new Date().toISOString(),
+  }).eq('Id_Paseo', paseo.id).eq('Estado', 'finalizado');
+  if (error) {
+    if (!esEsquemaFaltante(error)) throw error;
+    // Sin la 042: lo básico igual se guarda
+    const { error: errBasico } = await supabase.from('Paseo')
+      .update({ Rating: rating, Resena: texto })
+      .eq('Id_Paseo', paseo.id).eq('Estado', 'finalizado');
+    if (errBasico) throw errBasico;
+    parcial = true;
+  }
+
+  const fotos = subidos.filter((x) => x.tipo === 'imagen').length;
+  const videos = subidos.length - fotos;
+  const adjuntos = [
+    fotos ? `${fotos} ${fotos === 1 ? 'foto' : 'fotos'}` : null,
+    videos ? `${videos} ${videos === 1 ? 'video' : 'videos'}` : null,
+  ].filter(Boolean).join(' y ');
+  notificar(
+    paseo.idWalker,
+    `Nueva reseña: ${rating} ${rating === 1 ? 'estrella' : 'estrellas'}`,
+    [texto ? `"${texto.slice(0, 80)}"` : `Paseo con ${paseo.mascota.nombre}`, adjuntos ? `con ${adjuntos}` : null]
+      .filter(Boolean).join(' · '),
+    'perfil',
+  );
+  return { parcial };
+}
+
+const COLUMNAS_RESENA = '"Id_Paseo","Id_Mascota","Id_Dueno","FechaProgramada","DuracionMin","Rating","Resena","ResenaAspectos","ResenaRespuestas","ResenaMedia","ResenaFecha"';
+
+/**
+ * Todas las reseñas de un paseador, con el resumen que se muestra arriba
+ * (promedio, cuántas de cada estrella, promedio por aspecto, % de "sí" por
+ * pregunta y todas las fotos/videos juntos).
+ */
+export async function fetchResenasPaseador(idWalker) {
+  let { data, error } = await supabase.from('Paseo').select(COLUMNAS_RESENA)
+    .eq('Id_Walker', idWalker).eq('Estado', 'finalizado').not('Rating', 'is', null);
+  if (error && esEsquemaFaltante(error)) {
+    // Sin la 042: sólo estrellas y texto
+    ({ data, error } = await supabase.from('Paseo')
+      .select('"Id_Paseo","Id_Mascota","Id_Dueno","FechaProgramada","DuracionMin","Rating","Resena"')
+      .eq('Id_Walker', idWalker).eq('Estado', 'finalizado').not('Rating', 'is', null));
+  }
   if (error) throw error;
-  notificar(paseo.idWalker, `Te calificaron con ${rating} ${rating === 1 ? 'estrella' : 'estrellas'}`,
-    resena?.trim() ? `"${resena.trim().slice(0, 80)}"` : `Paseo con ${paseo.mascota.nombre}`);
+  const filas = data ?? [];
+
+  const idsDuenos = [...new Set(filas.map((r) => r.Id_Dueno).filter(Boolean))];
+  const idsMascotas = [...new Set(filas.map((r) => r.Id_Mascota).filter(Boolean))];
+  const [{ data: duenos }, { data: mascotas }] = await Promise.all([
+    idsDuenos.length
+      ? supabase.from('User').select('Id_User, Nombre, Apellido, FotoPerfil').in('Id_User', idsDuenos)
+      : { data: [] },
+    idsMascotas.length
+      ? supabase.from('Mascota').select('Id_Mascota, Nombre, Especie, Raza, Foto, ImagenAsset, MostrarFoto').in('Id_Mascota', idsMascotas)
+      : { data: [] },
+  ]);
+  const porDueno = Object.fromEntries((duenos ?? []).map((u) => [u.Id_User, u]));
+  const porMascota = Object.fromEntries((mascotas ?? []).map((m) => [m.Id_Mascota, m]));
+
+  const resenas = filas.map((r) => {
+    const u = porDueno[r.Id_Dueno] ?? {};
+    const m = porMascota[r.Id_Mascota] ?? {};
+    return {
+      id: r.Id_Paseo,
+      rating: r.Rating,
+      resena: r.Resena,
+      fecha: r.ResenaFecha ?? r.FechaProgramada,
+      duracionMin: r.DuracionMin,
+      aspectos: r.ResenaAspectos ?? {},
+      respuestas: r.ResenaRespuestas ?? {},
+      media: Array.isArray(r.ResenaMedia) ? r.ResenaMedia : [],
+      dueno: {
+        nombre: `${u.Nombre ?? ''} ${(u.Apellido ?? '').slice(0, 1)}${u.Apellido ? '.' : ''}`.trim() || 'Dueño',
+        foto: u.FotoPerfil ?? null,
+      },
+      mascota: {
+        nombre: m.Nombre ?? 'Mascota',
+        visual: resolveMascotaVisual({
+          fotoUrl: m.Foto, imagenAsset: m.ImagenAsset, especie: m.Especie, raza: m.Raza, mostrarFoto: m.MostrarFoto,
+        }),
+      },
+    };
+  }).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+  const distribucion = [5, 4, 3, 2, 1].map((n) => ({ estrellas: n, cantidad: resenas.filter((r) => r.rating === n).length }));
+  const aspectos = ASPECTOS_RESENA.map((a) => {
+    const vals = resenas.map((r) => Number(r.aspectos[a.key])).filter((v) => v >= 1);
+    return { ...a, promedio: vals.length ? vals.reduce((x, y) => x + y, 0) / vals.length : null, votos: vals.length };
+  });
+  const preguntas = PREGUNTAS_RESENA.map((p) => {
+    const vals = resenas.map((r) => r.respuestas[p.key]).filter((v) => typeof v === 'boolean');
+    return { ...p, porcentaje: vals.length ? Math.round((vals.filter(Boolean).length / vals.length) * 100) : null, votos: vals.length };
+  });
+
+  return {
+    promedio: resenas.length ? resenas.reduce((a, r) => a + r.rating, 0) / resenas.length : null,
+    cantidad: resenas.length,
+    distribucion,
+    aspectos,
+    preguntas,
+    media: resenas.flatMap((r) => r.media.map((x) => ({ ...x, idResena: r.id }))),
+    resenas,
+  };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

@@ -4,7 +4,8 @@
  *   · Filtro Semana / Mes / Todo
  *   · Total cobrado como número protagonista ("Cobraste $X esta semana")
  *   · Barras de lo cobrado por día (semana), por semana (mes) o por mes (todo)
- *   · Historial de paseos finalizados (es también la "vista tabla" del gráfico)
+ *   · Historial: UNA fila por perro (paseos, último paseo y cobrado en el
+ *     período). Tocarlo abre todos sus paseos con vos (HistorialPerroModal).
  *
  * Gráfico: una sola serie → un solo color (teal), sin leyenda; tocar una barra
  * muestra su valor. El teal tiene poco contraste contra el blanco, por eso el
@@ -15,8 +16,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { Avatar, C, Card, Seccion, Stat, Vacio } from '../../../components/paseador/PaseadorUI';
+import HistorialPerroModal from '../../../components/paseador/HistorialPerroModal';
 import {
   fetchGanancias, formatoDistancia, formatoPlata, inicioDePeriodo,
 } from '../../../services/paseadorApi';
@@ -68,6 +71,20 @@ function armarBarras(paseos, periodo) {
   return barras;
 }
 
+/** Un grupo por perro, del paseado más recientemente al más viejo. */
+function agruparPorPerro(paseos) {
+  const grupos = new Map();
+  paseos.forEach((p) => {
+    const key = String(p.mascota.id ?? p.mascota.nombre);
+    if (!grupos.has(key)) grupos.set(key, { key, mascota: p.mascota, dueno: p.dueno, paseos: [], total: 0, ultimo: p.fecha });
+    const g = grupos.get(key);
+    g.paseos.push(p);
+    g.total += p.precio;
+    if (new Date(p.fecha) > new Date(g.ultimo)) g.ultimo = p.fecha;
+  });
+  return [...grupos.values()].sort((a, b) => new Date(b.ultimo) - new Date(a.ultimo));
+}
+
 function GraficoBarras({ barras }) {
   const max = Math.max(...barras.map((b) => b.total), 1);
   const iMax = barras.findIndex((b) => b.total === max);
@@ -117,6 +134,7 @@ export default function GananciasTab() {
   const [periodo, setPeriodo] = useState('semana');
   const [paseos, setPaseos] = useState(null);
   const [refrescando, setRefrescando] = useState(false);
+  const [perroSel, setPerroSel] = useState(null); // grupo cuyo historial completo se ve
 
   const cargar = useCallback(async () => {
     try {
@@ -146,6 +164,7 @@ export default function GananciasTab() {
       metros,
       promedio: lista.length ? total / lista.length : 0,
       barras: armarBarras(lista, periodo),
+      perros: agruparPorPerro(lista),
     };
   }, [paseos, periodo]);
 
@@ -201,33 +220,44 @@ export default function GananciasTab() {
   }
 
   return (
-    <FlatList
-      data={paseos}
-      keyExtractor={(p) => String(p.id)}
-      ListHeaderComponent={cabecera}
-      contentContainerStyle={s.lista}
-      showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refrescando} onRefresh={refrescar} tintColor={C.teal} />}
-      ListEmptyComponent={
-        <Vacio icono="wallet-outline" titulo={`Sin paseos ${frase}`}
-          texto="Cuando finalices un paseo, lo que cobraste aparece acá." />
-      }
-      renderItem={({ item }) => {
-        const d = new Date(item.fecha);
-        return (
-          <View style={s.fila}>
-            <Avatar fuente={item.mascota.visual} nombre={item.mascota.nombre} size={42} />
-            <View style={{ flex: 1 }}>
-              <Text style={s.filaNombre}>{item.mascota.nombre}</Text>
-              <Text style={s.filaSub}>
-                {d.getDate()}/{d.getMonth() + 1} · {Math.round((item.segundosAcumulados || item.duracionMin * 60) / 60)} minutos · {formatoDistancia(item.distanciaMetros)}
-              </Text>
-            </View>
-            <Text style={s.filaPrecio}>{formatoPlata(item.precio)}</Text>
-          </View>
-        );
-      }}
-    />
+    <>
+      <FlatList
+        data={resumen.perros}
+        keyExtractor={(g) => g.key}
+        ListHeaderComponent={cabecera}
+        contentContainerStyle={s.lista}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refrescando} onRefresh={refrescar} tintColor={C.teal} />}
+        ListEmptyComponent={
+          <Vacio icono="wallet-outline" titulo={`Sin paseos ${frase}`}
+            texto="Cuando finalices un paseo, lo que cobraste aparece acá." />
+        }
+        renderItem={({ item }) => {
+          const d = new Date(item.ultimo);
+          const n = item.paseos.length;
+          return (
+            <TouchableOpacity style={s.fila} onPress={() => setPerroSel(item)} activeOpacity={0.85}
+              accessibilityRole="button" accessibilityLabel={`Ver todos los paseos de ${item.mascota.nombre}`}>
+              <Avatar fuente={item.mascota.visual} nombre={item.mascota.nombre} size={42} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.filaNombre}>{item.mascota.nombre}</Text>
+                <Text style={s.filaSub}>
+                  {n} {n === 1 ? 'paseo' : 'paseos'} · último {d.getDate()}/{d.getMonth() + 1}
+                </Text>
+              </View>
+              <Text style={s.filaPrecio}>{formatoPlata(item.total)}</Text>
+              <Ionicons name="chevron-forward" size={18} color={C.gris} />
+            </TouchableOpacity>
+          );
+        }}
+      />
+      <HistorialPerroModal
+        visible={!!perroSel}
+        mascota={perroSel?.mascota}
+        dueno={perroSel?.dueno}
+        onCerrar={() => setPerroSel(null)}
+      />
+    </>
   );
 }
 

@@ -9,7 +9,7 @@
  * App de DUEÑOS: fondo menta, header centrado, botones pill.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView,
   StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
@@ -22,7 +22,7 @@ import HoraPicker from '../components/HoraPicker';
 import { useMisMascotas } from '../hooks/useMisMascotas';
 import { resolveMascotaVisual } from '../constants/petImages';
 import {
-  crearSolicitudPaseo, direccionDe, fetchPaseadorPublico, formatoDuracion, formatoPlata, precioPara,
+  MEDIOS_PAGO, crearSolicitudPaseo, direccionDe, fetchPaseadorPublico, formatoDuracion, formatoPlata, precioPara,
   serviciosDe,
 } from '../services/paseadorApi';
 
@@ -32,7 +32,6 @@ const AMARILLO = '#F5C842';
 const ROJO = '#E63946';
 const TEXTO = '#2C2C2C';
 const TEXTO2 = '#6B6B6B';
-const DIAS_KEY = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
 
 function proximaHoraRedonda() {
   const d = new Date(Date.now() + 2 * 3600 * 1000);
@@ -53,12 +52,17 @@ export default function SolicitarPaseoScreen() {
   const [mascotaId, setMascotaId] = useState(null);
   const [fecha, setFecha] = useState(proximaHoraRedonda);
   const [duracion, setDuracion] = useState(null); // minutos de uno de sus servicios
+  // Cómo le va a pagar al paseador: él lo ve en su sección Pagos
+  const [medioPago, setMedioPago] = useState(null);
   const [direccion, setDireccion] = useState('');
   const [coords, setCoords] = useState(null);
   const [notas, setNotas] = useState('');
   const [picker, setPicker] = useState(null); // 'fecha' | 'hora'
   const [ubicando, setUbicando] = useState(false);
   const [enviando, setEnviando] = useState(false);
+  // Candado sincrónico: dos toques rápidos llegan antes de que `enviando`
+  // deshabilite el botón, y cada uno creaba una solicitud.
+  const enviandoRef = useRef(false);
   const [errores, setErrores] = useState([]);
   const [errorGeneral, setErrorGeneral] = useState(null);
 
@@ -84,18 +88,6 @@ export default function SolicitarPaseoScreen() {
   const servicios = serviciosDe(paseador);
   const precio = paseador ? (precioPara(paseador, duracion) ?? 0) : 0;
 
-  // ¿El horario elegido cae dentro de los días/horas en que trabaja?
-  const fueraDeHorario = useMemo(() => {
-    const h = paseador?.horarios?.[DIAS_KEY[fecha.getDay()]];
-    if (!h) return false;
-    if (!h.activo) return 'Ese día el paseador no trabaja. Puede aceptarlo igual, pero es menos probable.';
-    const hhmm = horaTexto(fecha);
-    if (hhmm < h.desde || hhmm >= h.hasta) {
-      return `Ese día trabaja de ${h.desde} a ${h.hasta}. Puede aceptarlo igual, pero es menos probable.`;
-    }
-    return false;
-  }, [paseador, fecha]);
-
   const usarUbicacion = () => {
     const geo = typeof navigator !== 'undefined' ? navigator.geolocation : null;
     if (!geo) return;
@@ -110,19 +102,22 @@ export default function SolicitarPaseoScreen() {
   };
 
   const enviar = async () => {
+    if (enviandoRef.current) return;
     const faltan = [];
     if (!mascota) faltan.push('Es necesario elegir qué mascota va a pasear');
     if (precioPara(paseador, duracion) == null) faltan.push('Es necesario elegir cuánto tiempo dura el paseo');
+    if (!medioPago) faltan.push('Es necesario elegir cómo le vas a pagar');
     if (fecha.getTime() < Date.now() + 15 * 60 * 1000) faltan.push('Es necesario elegir un horario de al menos 15 minutos desde ahora');
     if (direccion.trim().length < 5) faltan.push('Es necesario la dirección donde el paseador busca a tu mascota');
     setErrores(faltan);
     setErrorGeneral(null);
     if (faltan.length) return;
 
+    enviandoRef.current = true;
     setEnviando(true);
     try {
       await crearSolicitudPaseo({
-        paseador, mascota, fecha, duracionMin: duracion, direccion,
+        paseador, mascota, fecha, duracionMin: duracion, direccion, medioPago,
         lat: coords?.lat ?? paseador.lat, lng: coords?.lng ?? paseador.lng, notas,
       });
       navigation.replace('MisPaseos', { enviada: paseador.nombreCompleto });
@@ -132,6 +127,7 @@ export default function SolicitarPaseoScreen() {
         ? `A la base de datos le falta Zooni Paseadores: es necesario correr las migraciones 035 y 038.${err?.detalle ? `\n\nDetalle: ${err.detalle}` : ''}`
         : `No se pudo enviar la solicitud.${err?.detalle ? `\n\nDetalle: ${err.detalle}` : ''}`);
     } finally {
+      enviandoRef.current = false;
       setEnviando(false);
     }
   };
@@ -213,12 +209,6 @@ export default function SolicitarPaseoScreen() {
               <Text style={s.campoTxt}>{horaTexto(fecha)}</Text>
             </TouchableOpacity>
           </View>
-          {fueraDeHorario ? (
-            <View style={s.aviso}>
-              <Ionicons name="information-circle" size={16} color="#B07A00" />
-              <Text style={s.avisoTxt}>{fueraDeHorario}</Text>
-            </View>
-          ) : null}
 
           {/* Duración y precio */}
           <Text style={s.label}>¿Cuánto tiempo?</Text>
@@ -236,6 +226,22 @@ export default function SolicitarPaseoScreen() {
           </View>
 
           {/* Dónde */}
+          {/* Medio de pago */}
+          <Text style={s.label}>¿Cómo le vas a pagar?</Text>
+          <View style={s.medios}>
+            {MEDIOS_PAGO.map((m) => {
+              const on = medioPago === m.key;
+              return (
+                <TouchableOpacity key={m.key} style={[s.medio, on && s.medioOn]} onPress={() => setMedioPago(m.key)}
+                  accessibilityRole="radio" accessibilityState={{ selected: on }}>
+                  <Ionicons name={m.icono} size={16} color={on ? '#FFF' : VERDE} />
+                  <Text style={[s.medioTxt, on && { color: '#FFF' }]}>{m.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <Text style={s.medioAyuda}>Le pagás directo al paseador: este dato es para que sepa cómo vas a hacerlo.</Text>
+
           <Text style={s.label}>¿Dónde lo busca?</Text>
           <View style={s.inputFila}>
             <TextInput style={s.inputFlex} value={direccion} onChangeText={(v) => { setDireccion(v.slice(0, 200)); setCoords(null); }}
@@ -336,16 +342,19 @@ const s = StyleSheet.create({
     borderRadius: 16, paddingHorizontal: 14, height: 52,
   },
   campoTxt: { flex: 1, fontSize: 14, fontWeight: '700', color: TEXTO },
-  aviso: {
-    flexDirection: 'row', gap: 6, alignItems: 'flex-start', marginTop: 8,
-    backgroundColor: '#FFF6E5', borderRadius: 12, padding: 10,
-  },
-  avisoTxt: { flex: 1, fontSize: 12, color: TEXTO, lineHeight: 17 },
 
   duracion: { flexGrow: 1, flexBasis: '40%', backgroundColor: '#FFF', borderRadius: 18, paddingVertical: 14, alignItems: 'center' },
   duracionOn: { backgroundColor: VERDE },
   duracionTxt: { fontSize: 14, fontWeight: '700', color: TEXTO2 },
   duracionPrecio: { fontSize: 22, fontWeight: '900', color: TEXTO, marginTop: 2 },
+  medios: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  medio: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF', borderRadius: 18,
+    paddingHorizontal: 14, paddingVertical: 10,
+  },
+  medioOn: { backgroundColor: VERDE },
+  medioTxt: { fontSize: 14, fontWeight: '700', color: TEXTO },
+  medioAyuda: { fontSize: 12, color: TEXTO2, marginTop: 8 },
 
   inputFila: {
     flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF',

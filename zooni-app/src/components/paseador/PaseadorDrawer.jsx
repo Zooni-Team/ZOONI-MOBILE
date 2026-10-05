@@ -24,6 +24,7 @@ export const SECCIONES_PASEADOR = [
   { key: 'solicitudes', label: 'Solicitudes', icono: 'file-tray-full-outline' },
   { key: 'paseo', label: 'Paseo', icono: 'walk-outline' },
   { key: 'ganancias', label: 'Ganancias', icono: 'wallet-outline' },
+  { key: 'pagos', label: 'Pagos', icono: 'card-outline' },
   { key: 'perfil', label: 'Perfil', icono: 'person-outline' },
 ];
 
@@ -33,7 +34,7 @@ function iniciales(nombre = '', apellido = '') {
 
 export default function PaseadorDrawer({
   visible, onClose, perfil, activo, onElegir, pendientes = 0, enCurso = false,
-  chatsSinLeer = 0, onChats, onHorarios, onModoDueno, onSalir,
+  chatsSinLeer = 0, onChats, onZona, onModoDueno, onSalir,
 }) {
   const [confirmarSalida, setConfirmarSalida] = useState(false);
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
@@ -93,7 +94,7 @@ export default function PaseadorDrawer({
             ))}
             <View style={st.divisor} />
             <Item icono="chatbubbles-outline" label="Chats" badge={chatsSinLeer} onPress={() => elegir(onChats)} />
-            <Item icono="calendar-outline" label="Horarios y zonas" onPress={() => elegir(onHorarios)} />
+            <Item icono="map-outline" label="Zona de trabajo" onPress={() => elegir(onZona)} />
             {onModoDueno && (
               <Item icono="swap-horizontal-outline" label="Cambiar a modo dueño" onPress={() => elegir(onModoDueno)} />
             )}

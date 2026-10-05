@@ -18,7 +18,7 @@ import { useUsuarioActivo } from '../../hooks/useUsuarioActivo';
 
 import { fetchMapaData, actualizarUbicacion } from '../../api/comunidad';
 import { getCurrentUserId } from '../../config/session';
-import { fetchPaseadoresZona } from '../../services/paseadorApi';
+import { fetchPaseadoresParaMi } from '../../services/paseadorApi';
 
 const TABS    = ['Amigos', 'Servicios', 'Solicitudes', 'Buscar'];
 
@@ -35,6 +35,11 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
 .mk{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;
     justify-content:center;border:2px solid #fff;font-size:16px;
     box-shadow:0 1px 4px rgba(0,0,0,.3);line-height:34px;text-align:center}
+.pz{width:46px;height:46px;border-radius:50%;border:3px solid #2DBD72;background:#2DBD72;
+    position:relative;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.35);
+    display:flex;align-items:center;justify-content:center}
+.pz img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.pz.off{border-color:#9AA5A0}
 .uw{width:44px;height:44px;display:flex;align-items:center;justify-content:center;position:relative}
 .up{position:absolute;width:34px;height:34px;border-radius:50%;
     background:rgba(33,150,243,.25);animation:pu 1.8s ease-in-out infinite}
@@ -50,14 +55,21 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
   var map = L.map('map',{zoomControl:false,doubleClickZoom:false}).setView([-34.6089,-58.4340],16);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
 
+  // Paseador: su foto de perfil en un círculo (si no tiene o no carga, la huella)
+  var PATA='<svg viewBox="0 0 24 24" width="20" height="20" fill="#fff"><circle cx="5" cy="9.5" r="2.2"/><circle cx="9" cy="5.5" r="2.2"/><circle cx="15" cy="5.5" r="2.2"/><circle cx="19" cy="9.5" r="2.2"/><path d="M12 10.5c-3 0-6.5 4.6-6.5 7.3 0 1.8 1.4 2.7 3 2.7 1.4 0 2.3-.8 3.5-.8s2.1.8 3.5.8c1.6 0 3-.9 3-2.7 0-2.7-3.5-7.3-6.5-7.3z"/></svg>';
+  function iconPaseador(x){
+    var foto=(typeof x.foto==='string'&&/^(https?:|data:image)/.test(x.foto))
+      ?'<img src="'+x.foto.replace(/"/g,'%22')+'" alt="" onerror="this.remove()"/>':'';
+    return L.divIcon({className:'',html:'<div class="pz'+(x.disponible?'':' off')+'">'+PATA+foto+'</div>',
+      iconSize:[46,46],iconAnchor:[23,23]});
+  }
   function mk(e,bg){return L.divIcon({className:'',html:'<div class="mk" style="background:'+bg+'">'+e+'</div>',iconSize:[34,34],iconAnchor:[17,34]})}
   var iconUser=L.divIcon({className:'',html:'<div class="uw"><div class="up"></div><div class="ud"></div></div>',iconSize:[44,44],iconAnchor:[22,22]});
   var ICONS={
     veterinaria:mk('🏥','#E63946'),paseador:mk('🦮','#F5A623'),
     petshop:mk('🛍️','#F5C842'),peluqueria:mk('✂️','#9B59B6'),
     perdida:mk('🔴','#E63946'),aviso:mk('📌','#6B6B6B'),
-    amigo:mk('👤','#2DBD72'),temporal:mk('📍','#2DBD72'),
-    zooniWalker:mk('<svg viewBox="0 0 24 24" width="18" height="18" fill="#fff"><circle cx="5" cy="9.5" r="2.2"/><circle cx="9" cy="5.5" r="2.2"/><circle cx="15" cy="5.5" r="2.2"/><circle cx="19" cy="9.5" r="2.2"/><path d="M12 10.5c-3 0-6.5 4.6-6.5 7.3 0 1.8 1.4 2.7 3 2.7 1.4 0 2.3-.8 3.5-.8s2.1.8 3.5.8c1.6 0 3-.9 3-2.7 0-2.7-3.5-7.3-6.5-7.3z"/></svg>','#2DBD72')
+    amigo:mk('👤','#2DBD72'),temporal:mk('📍','#2DBD72')
   };
 
   // Notifica al padre (React)
@@ -84,13 +96,13 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
               .on('click',function(){notify({type:'cartel',data:x})});
       dynLayers.push(m);
     });
-    // Paseadores registrados en Zooni: su zona de atención como círculo
+    // Paseadores de Zooni que pasean en tu zona: su círculo de atención + su foto
     (d.paseadores||[]).forEach(function(x){
       var abrir=function(){notify({type:'paseador',data:x})};
       var c=L.circle([x.lat,x.lng],{radius:x.radioKm*1000,color:'#2DBD72',weight:2,
         fillColor:'#2DBD72',fillOpacity:x.disponible?.12:.05,dashArray:x.disponible?null:'6 6'})
         .addTo(map).on('click',abrir);
-      var m=L.marker([x.lat,x.lng],{icon:ICONS.zooniWalker,zIndexOffset:500}).addTo(map).on('click',abrir);
+      var m=L.marker([x.lat,x.lng],{icon:iconPaseador(x),zIndexOffset:500}).addTo(map).on('click',abrir);
       dynLayers.push(c);dynLayers.push(m);
     });
     (d.amigos||[]).forEach(function(x){
@@ -175,6 +187,10 @@ export default function ComunidadScreen() {
 
   const iframeRef   = useRef(null);
   const boundsTimer = useRef(null);
+  const ultimoBboxRef = useRef(null);
+  // Los paseadores dependen de TU ubicación (los que te cubren con su radio),
+  // no del área visible: cargarMapa los pide con userPosRef, no con el bbox.
+  const userPosRef = useRef(null);
   const mapaReady   = useRef(false);
   const bannerAnim  = useRef(new Animated.Value(0)).current;
 
@@ -199,13 +215,20 @@ export default function ComunidadScreen() {
         case 'bounds': {
           const b = { lat_min: msg.lat_min, lat_max: msg.lat_max, lng_min: msg.lng_min, lng_max: msg.lng_max };
           setBbox(b);
+          ultimoBboxRef.current = b;
           clearTimeout(boundsTimer.current);
           boundsTimer.current = setTimeout(() => cargarMapaRef.current(b), 800);
           break;
         }
-        case 'location':
-          setUserPos({ lat: msg.lat, lng: msg.lng });
+        case 'location': {
+          const antes = userPosRef.current;
+          userPosRef.current = { lat: msg.lat, lng: msg.lng };
+          setUserPos(userPosRef.current);
+          // Primera ubicación (o te moviste bastante): recalcular qué paseadores te cubren
+          const movido = !antes || Math.abs(antes.lat - msg.lat) + Math.abs(antes.lng - msg.lng) > 0.002;
+          if (movido && ultimoBboxRef.current) cargarMapaRef.current(ultimoBboxRef.current);
           break;
+        }
         case 'servicio':
           setPopServ(msg.data); setPopCart(null); setPopPaseador(null);
           break;
@@ -231,7 +254,7 @@ export default function ComunidadScreen() {
     try {
       const [data, paseadores] = await Promise.all([
         fetchMapaData(b),
-        fetchPaseadoresZona(b).catch(() => []),
+        fetchPaseadoresParaMi(userPosRef.current).catch(() => []),
       ]);
       setMapaData({ ...data, paseadores });
     } catch {}

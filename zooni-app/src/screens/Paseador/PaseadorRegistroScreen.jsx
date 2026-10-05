@@ -6,6 +6,11 @@
  *
  * Con route.params.activar ({ email, hash, nombre }) viene de una cuenta de
  * dueño existente: se saltea el paso 1 y sólo se suma el perfil de paseador.
+ * Con route.params.social ({ email, nombre, apellido, foto, proveedor }) viene
+ * de "Continuar con Google / Facebook / Apple" sin cuenta: el paso 1 no pide
+ * mail ni contraseña y la foto del proveedor sirve como foto de la cara.
+ * Con route.params.activarSocial ({ nombre, fotoPerfil }) es un dueño que entró
+ * con su proveedor y se suma como paseador: como `activar`, sin contraseña.
  * Con route.params.completar la cuenta YA tiene el rol de paseador pero no su
  * perfil (ej. rol asignado a mano): también se saltea el paso 1.
  *
@@ -33,15 +38,19 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { C, PillButton, sombra } from '../../components/paseador/PaseadorUI';
 import {
-  HORARIOS_DEFAULT, activarPaseador, completarPerfilPaseador, fetchMiFotoPerfil,
+  HORARIOS_DEFAULT, activarPaseador, activarPaseadorSocial, completarPerfilPaseador, fetchMiFotoPerfil,
+  registrarPaseadorSocial,
   registrarPaseador, validarServicios,
 } from '../../services/paseadorApi';
+import CantidadPerros from '../../components/paseador/CantidadPerros';
 import ServiciosEditor, { filasDesdeServicios, serviciosDesdeFilas } from '../../components/paseador/ServiciosEditor';
 import FechaPicker from '../../components/FechaPicker';
 import ZonaMapaPicker, { RADIO_MAX, RADIO_MIN } from '../../components/paseador/ZonaMapaPicker';
 import { actualizarMiFotoPerfil } from '../../services/perfilApi';
 import { alerta } from '../../utils/dialogo';
 import { verificarDisponibilidad } from '../../services/authApi';
+import BotonesSociales from '../../components/BotonesSociales';
+import { volverOLogin } from '../../utils/volverOLogin';
 import { sanitizarDigitos } from '../../utils/sanitizar';
 import { toISODateLocal } from '../../utils/fechaLocal';
 
@@ -140,8 +149,8 @@ function CampoFoto({ uri, error, onElegir }) {
 
 export default function PaseadorRegistroScreen() {
   const navigation = useNavigation();
-  const { activar, completar } = useRoute().params ?? {};
-  const sinPaso1 = !!(activar || completar);
+  const { activar, completar, social, activarSocial } = useRoute().params ?? {};
+  const sinPaso1 = !!(activar || completar || activarSocial);
 
   const [paso, setPaso] = useState(sinPaso1 ? 2 : 1);
   const [errores, setErrores] = useState({});
@@ -150,7 +159,9 @@ export default function PaseadorRegistroScreen() {
   const scrollRef = useRef(null);
   const [foto, setFoto] = useState(null);
   // Foto que la cuenta YA tenía (dueño que activa / cuenta que completa): no se vuelve a pedir
-  const [fotoExistente, setFotoExistente] = useState(activar?.fotoPerfil ?? null);
+  const [fotoExistente, setFotoExistente] = useState(activar?.fotoPerfil ?? activarSocial?.fotoPerfil ?? null);
+  // Foto del proveedor (Google / Facebook): sirve de foto de la cara si no elige otra
+  const fotoSocial = /^https:\/\//.test(social?.foto ?? '') ? social.foto : null;
   // Si la cuenta se creó pero falló la subida de la foto, reintentar sólo la foto
   const cuentaCreadaRef = useRef(false);
 
@@ -161,8 +172,8 @@ export default function PaseadorRegistroScreen() {
   const pideFotoEnPaso2 = sinPaso1 && !fotoExistente;
 
   const [usuario, setUsuario] = useState({
-    nombre: '', apellido: '', genero: null, fechaNacimiento: null,
-    email: '', telefono: '', password: '', password2: '',
+    nombre: social?.nombre ?? '', apellido: social?.apellido ?? '', genero: null, fechaNacimiento: null,
+    email: social?.email ?? '', telefono: '', password: '', password2: '',
   });
   const [verFecha, setVerFecha] = useState(false);
   const edad = usuario.fechaNacimiento ? edadDe(usuario.fechaNacimiento) : null;
@@ -178,18 +189,21 @@ export default function PaseadorRegistroScreen() {
 
   const validarPaso1 = async () => {
     const e = {};
-    if (!foto) e.foto = 'Es necesario una foto de tu cara';
+    if (!foto && !fotoSocial) e.foto = 'Es necesario una foto de tu cara';
     if (usuario.nombre.trim().length < 2) e.nombre = 'El nombre es obligatorio';
     if (usuario.apellido.trim().length < 2) e.apellido = 'El apellido es obligatorio';
     if (!usuario.genero) e.genero = 'Es necesario elegir una opción de género';
     if (!usuario.fechaNacimiento) e.fechaNacimiento = 'Es necesario tu fecha de nacimiento';
     else if (edad < EDAD_MINIMA) e.fechaNacimiento = `Para ser paseador es necesario tener al menos ${EDAD_MINIMA} años`;
     else if (edad > EDAD_MAXIMA) e.fechaNacimiento = 'Revisá tu fecha de nacimiento';
-    if (!EMAIL_REGEX.test(usuario.email.trim())) e.email = 'Es necesario un email válido';
     if (usuario.telefono.length < 8) e.telefono = 'El teléfono es obligatorio (mínimo 8 números)';
-    if (usuario.password.length < 7) e.password = 'La contraseña necesita al menos 7 caracteres';
-    else if (usuario.password !== usuario.password2) e.password2 = 'Las contraseñas no coinciden';
-    if (!e.email) {
+    // Con Google / Facebook / Apple el mail lo verificó el proveedor y no hay contraseña
+    if (!social) {
+      if (!EMAIL_REGEX.test(usuario.email.trim())) e.email = 'Es necesario un email válido';
+      if (usuario.password.length < 7) e.password = 'La contraseña necesita al menos 7 caracteres';
+      else if (usuario.password !== usuario.password2) e.password2 = 'Las contraseñas no coinciden';
+    }
+    if (!social && !e.email) {
       // Máximo 3 s: si la red tarda, se sigue (el servidor igual rechaza mails repetidos)
       const { mailTomado } = await Promise.race([
         verificarDisponibilidad({ email: usuario.email }).catch(() => ({ mailTomado: false })),
@@ -208,6 +222,7 @@ export default function PaseadorRegistroScreen() {
     if (perfil.radioKm == null) e.radioKm = `Es necesario elegir tu radio de atención (entre ${String(RADIO_MIN).replace('.', ',')} y ${RADIO_MAX} km)`;
     const errServicios = validarServicios(filasServicios);
     if (errServicios) e.servicios = errServicios;
+    if (!(perfil.maxPerros >= 1)) e.maxPerros = 'Es necesario indicar cuántos perros sacás por paseo (al menos 1)';
     if (!perfil.tamanos.length) e.tamanos = 'Es necesario elegir al menos un tamaño de perro';
     setErrores(e);
     return Object.keys(e).length === 0;
@@ -245,6 +260,15 @@ export default function PaseadorRegistroScreen() {
           await completarPerfilPaseador(datosPerfil);
         } else if (activar) {
           await activarPaseador({ email: activar.email, hash: activar.hash, perfil: datosPerfil });
+        } else if (activarSocial) {
+          await activarPaseadorSocial(datosPerfil);
+        } else if (social) {
+          await registrarPaseadorSocial({
+            usuario: { ...usuario, fechaNacimiento: toISODateLocal(usuario.fechaNacimiento) },
+            perfil: datosPerfil,
+            // Si eligió una foto propia se sube después; si no, queda la del proveedor
+            fotoPerfil: foto ? null : fotoSocial,
+          });
         } else {
           await registrarPaseador({
             usuario: { ...usuario, fechaNacimiento: toISODateLocal(usuario.fechaNacimiento) },
@@ -256,7 +280,7 @@ export default function PaseadorRegistroScreen() {
 
       // La foto se sube con la sesión ya iniciada (va a "User".FotoPerfil,
       // la misma que usa el perfil de dueño)
-      let fotoUrl = fotoExistente;
+      let fotoUrl = fotoExistente ?? (foto ? null : fotoSocial);
       if (foto) {
         try {
           fotoUrl = await actualizarMiFotoPerfil(foto);
@@ -269,7 +293,7 @@ export default function PaseadorRegistroScreen() {
       // El perfil viaja a la home: si la base no lo deja leer, se usa esta copia
       const perfilLocal = {
         idUser: null,
-        nombre: usuario.nombre.trim() || activar?.nombre || '',
+        nombre: usuario.nombre.trim() || activar?.nombre || activarSocial?.nombre || '',
         apellido: usuario.apellido.trim(),
         foto: fotoUrl ?? null,
         ...datosPerfil,
@@ -297,6 +321,8 @@ export default function PaseadorRegistroScreen() {
         setErrores(String(err.detalle).includes('genero_invalido')
           ? { genero: 'Es necesario elegir una opción de género' }
           : { fechaNacimiento: `Para ser paseador es necesario tener al menos ${EDAD_MINIMA} años` });
+      } else if (msg === 'sesion_social_vencida') {
+        setErrorGeneral(`Se venció el inicio de sesión con ${social?.proveedor ?? 'tu cuenta'}. Volvé al inicio y entrá de nuevo.`);
       } else if (msg === 'migracion_pendiente') {
         setErrorGeneral(`No se pudo guardar tu perfil: a la base de datos le falta algo de Zooni Paseadores. Es necesario correr las migraciones 035 y 036 en el SQL Editor de Supabase.${detalle}`);
       } else if (msg === 'no_es_paseador') {
@@ -313,7 +339,7 @@ export default function PaseadorRegistroScreen() {
 
   const volver = () => {
     if (paso === 2 && !sinPaso1) setPaso(1);
-    else navigation.goBack();
+    else volverOLogin(navigation, 'PaseadorLogin');
   };
 
   const toggleTamano = (k) => {
@@ -345,7 +371,20 @@ export default function PaseadorRegistroScreen() {
         <ScrollView ref={scrollRef} contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {paso === 1 ? (
             <View style={s.card}>
-              <CampoFoto uri={foto} error={errores.foto}
+              {social ? (
+                <View style={s.socialInfo}>
+                  <Ionicons name="shield-checkmark" size={18} color={C.teal} />
+                  <Text style={s.socialInfoTxt}>
+                    Entraste con {social.proveedor} (<Text style={{ fontWeight: '800' }}>{social.email}</Text>).
+                    No hace falta contraseña: completá tus datos y listo.
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ marginTop: -16, marginBottom: 14 }}>
+                  <BotonesSociales intencion="paseador" titulo="Registrate más rápido con" />
+                </View>
+              )}
+              <CampoFoto uri={foto ?? fotoSocial} error={errores.foto}
                 onElegir={(u) => { setFoto(u); setErrores((e) => ({ ...e, foto: null })); }} />
               <View style={s.fila}>
                 <View style={{ flex: 1 }}>
@@ -387,27 +426,33 @@ export default function PaseadorRegistroScreen() {
                 </TouchableOpacity>
                 {edad != null && !errores.fechaNacimiento ? <Text style={s.ayuda}>Tenés {edad} años</Text> : null}
               </Campo>
-              <Campo label="Correo electrónico" error={errores.email}>
-                <TextInput style={[s.input, errores.email && s.inputError]} value={usuario.email}
-                  onChangeText={(v) => setU('email', v.trim())} placeholder="vos@mail.com" placeholderTextColor={C.gris}
-                  keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
-                  // Sin esto el navegador guardaba el TELÉFONO (el campo justo antes de la
-                  // contraseña) como usuario, y después lo rellenaba en el login
-                  autoComplete="username" textContentType="username" />
-              </Campo>
+              {!social && (
+                <Campo label="Correo electrónico" error={errores.email}>
+                  <TextInput style={[s.input, errores.email && s.inputError]} value={usuario.email}
+                    onChangeText={(v) => setU('email', v.trim())} placeholder="vos@mail.com" placeholderTextColor={C.gris}
+                    keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
+                    // Sin esto el navegador guardaba el TELÉFONO (el campo justo antes de la
+                    // contraseña) como usuario, y después lo rellenaba en el login
+                    autoComplete="username" textContentType="username" />
+                </Campo>
+              )}
               <Campo label="Teléfono" error={errores.telefono}>
                 <TextInput style={[s.input, errores.telefono && s.inputError]} value={usuario.telefono}
                   onChangeText={(v) => setU('telefono', sanitizarDigitos(v, 15))} placeholder="11 2345 6789" placeholderTextColor={C.gris}
                   keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber" />
               </Campo>
-              <Campo label="Contraseña" error={errores.password}>
-                <InputPassword value={usuario.password} error={errores.password}
-                  onChangeText={(v) => setU('password', v)} placeholder="Mínimo 7 caracteres" />
-              </Campo>
-              <Campo label="Repetí la contraseña" error={errores.password2}>
-                <InputPassword value={usuario.password2} error={errores.password2}
-                  onChangeText={(v) => setU('password2', v)} placeholder="Repetila" />
-              </Campo>
+              {!social && (
+                <>
+                  <Campo label="Contraseña" error={errores.password}>
+                    <InputPassword value={usuario.password} error={errores.password}
+                      onChangeText={(v) => setU('password', v)} placeholder="Mínimo 7 caracteres" />
+                  </Campo>
+                  <Campo label="Repetí la contraseña" error={errores.password2}>
+                    <InputPassword value={usuario.password2} error={errores.password2}
+                      onChangeText={(v) => setU('password2', v)} placeholder="Repetila" />
+                  </Campo>
+                </>
+              )}
             </View>
           ) : (
             <View style={s.card}>
@@ -415,9 +460,9 @@ export default function PaseadorRegistroScreen() {
                 <CampoFoto uri={foto} error={errores.foto}
                   onElegir={(u) => { setFoto(u); setErrores((e) => ({ ...e, foto: null })); }} />
               )}
-              {activar ? (
+              {activar || activarSocial ? (
                 <Text style={s.intro}>
-                  ¡Genial{activar.nombre ? `, ${activar.nombre}` : ''}! Completá cómo trabajás y listo: vas a poder
+                  ¡Genial{(activar ?? activarSocial).nombre ? `, ${(activar ?? activarSocial).nombre}` : ''}! Completá cómo trabajás y listo: vas a poder
                   cambiar entre dueño y paseador con la misma cuenta.
                 </Text>
               ) : completar ? (
@@ -446,17 +491,9 @@ export default function PaseadorRegistroScreen() {
               />
 
               <Text style={[s.label, { marginTop: 16 }]}>Perros por paseo (máximo)</Text>
-              <View style={s.stepper}>
-                <TouchableOpacity style={s.stepBtn} onPress={() => setP('maxPerros', Math.max(1, perfil.maxPerros - 1))}
-                  accessibilityLabel="Uno menos">
-                  <Ionicons name="remove" size={22} color={C.teal} />
-                </TouchableOpacity>
-                <Text style={s.stepValor}>{perfil.maxPerros}</Text>
-                <TouchableOpacity style={s.stepBtn} onPress={() => setP('maxPerros', Math.min(6, perfil.maxPerros + 1))}
-                  accessibilityLabel="Uno más">
-                  <Ionicons name="add" size={22} color={C.teal} />
-                </TouchableOpacity>
-              </View>
+              <CantidadPerros valor={perfil.maxPerros} error={!!errores.maxPerros}
+                onCambio={(n) => setP('maxPerros', n)} />
+              {errores.maxPerros ? <Text style={s.errorCampo}>{errores.maxPerros}</Text> : null}
 
               <Text style={[s.label, { marginTop: 16 }]}>Tamaños que aceptás</Text>
               <View style={s.chips}>
@@ -529,6 +566,11 @@ const s = StyleSheet.create({
   card: { backgroundColor: C.card, borderRadius: 20, padding: 18, ...sombra },
   intro: { fontSize: 14, color: C.texto2, lineHeight: 20, marginBottom: 16 },
   fila: { flexDirection: 'row', gap: 10 },
+  socialInfo: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.menta,
+    borderRadius: 12, padding: 12, marginBottom: 16,
+  },
+  socialInfoTxt: { flex: 1, fontSize: 13, color: C.texto, lineHeight: 18 },
 
   label: { fontSize: 13, fontWeight: '700', color: C.texto, marginBottom: 6 },
   input: {
@@ -543,12 +585,6 @@ const s = StyleSheet.create({
   ayuda: { fontSize: 12, color: C.texto2, marginTop: 6 },
 
 
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: 18 },
-  stepBtn: {
-    width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: C.teal,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  stepValor: { fontSize: 26, fontWeight: '900', color: C.texto, minWidth: 30, textAlign: 'center' },
 
   chips: { flexDirection: 'row', gap: 8, marginBottom: 14 },
   generos: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

@@ -48,7 +48,7 @@ function capitalizar(str) {
 export default function RegisterStep2Screen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { nombre, especie } = route.params ?? {};
+  const { nombre, especie, social } = route.params ?? {};
 
   const [sexo, setSexo] = useState(null);
   const [raza, setRaza] = useState(null);           // { id, nombre }
@@ -138,6 +138,7 @@ export default function RegisterStep2Screen() {
       pesoKg: peso,
       fechaNacimiento: toISODateLocal(fechaNacimiento),
       fotoUri,
+      social,
     });
   };
 

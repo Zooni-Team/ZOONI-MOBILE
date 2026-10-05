@@ -64,7 +64,7 @@ export default function PaseadorChatsScreen() {
         // `activo` queda sin sección marcada: Chats no es una de las pestañas.
         onElegir={irASeccion}
         onChats={() => setMenuAbierto(false)}   // ya estás acá
-        onHorarios={() => { setMenuAbierto(false); navigation.navigate('PaseadorDisponibilidad'); }}
+        onZona={() => { setMenuAbierto(false); navigation.navigate('PaseadorDisponibilidad'); }}
         onModoDueno={cambiarAModoDueno}
         onSalir={salir}
       />

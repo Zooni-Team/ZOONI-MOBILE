@@ -3,7 +3,7 @@
  *
  *   · Rating, paseos y experiencia (contada desde el primer paseo en la app)
  *   · Servicios ofrecidos (tiempos de paseo y precios editables, tamaños, perros por paseo)
- *   · Reseñas de los dueños
+ *   · Reseñas de los dueños ("Ver todas" abre ResenasPaseadorModal, con fotos y videos)
  *   · Configuración de disponibilidad, cambiar a modo dueño, cerrar sesión
  */
 
@@ -19,6 +19,8 @@ import {
   actualizarPerfilPaseador, experienciaEnZooni, fetchResenas, formatoDuracion, formatoPlata,
   serviciosDe, validarServicios,
 } from '../../../services/paseadorApi';
+import ResenasPaseadorModal from '../../../components/resenas/ResenasPaseadorModal';
+import CantidadPerros from '../../../components/paseador/CantidadPerros';
 import ServiciosEditor, { filasDesdeServicios, serviciosDesdeFilas } from '../../../components/paseador/ServiciosEditor';
 import { clearCurrentUserId, getCurrentUserId, setModo, MODO_DUENO } from '../../../config/session';
 import { supabase } from '../../../lib/supabase';
@@ -59,6 +61,7 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState(null);
   const [guardando, setGuardando] = useState(false);
+  const [verResenas, setVerResenas] = useState(false);
 
   const cargar = useCallback(async () => {
     fetchResenas().then(setResenas).catch(() => setResenas({ promedio: null, cantidad: 0, totalPaseos: 0, primerPaseo: null, resenas: [] }));
@@ -85,6 +88,10 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
     const errServicios = validarServicios(form.servicios);
     if (errServicios) {
       setForm((f) => ({ ...f, errorServicios: errServicios }));
+      return;
+    }
+    if (!(form.maxPerros >= 1)) {
+      avisar('Es necesario indicar cuántos perros sacás por paseo', 'alert-circle');
       return;
     }
     const cambios = {
@@ -118,7 +125,7 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
     navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 
-  const diasActivos = Object.values(perfil.horarios ?? {}).filter((d) => d.activo).length;
+  const cantZonas = [perfil.zona, ...(perfil.zonas ?? [])].filter(Boolean).length;
 
   return (
     <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
@@ -170,7 +177,7 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
       </Card>
 
       {/* ── Reseñas ────────────────────────────────────────────────── */}
-      <Seccion titulo="Reseñas" />
+      <Seccion titulo="Reseñas" accion={resenas?.cantidad ? 'Ver todas' : null} onAccion={() => setVerResenas(true)} />
       {resenas?.resenas?.length ? (
         resenas.resenas.slice(0, 5).map((r) => (
           <Card key={r.id} style={{ marginBottom: 10 }}>
@@ -189,11 +196,18 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
         <Card><Text style={s.sinResenas}>Todavía no tenés reseñas. Llegan cuando los dueños califican tus paseos.</Text></Card>
       )}
 
+      <ResenasPaseadorModal
+        visible={verResenas}
+        idPaseador={getCurrentUserId()}
+        nombre="Lo que dicen los dueños de vos"
+        onCerrar={() => setVerResenas(false)}
+      />
+
       {/* ── Configuración ──────────────────────────────────────────── */}
       <Seccion titulo="Configuración" />
       <Card style={{ paddingVertical: 4 }}>
-        <FilaMenu icono="calendar" titulo="Horarios y zonas"
-          sub={`${diasActivos} ${diasActivos === 1 ? 'día' : 'días'} activos · ${[perfil.zona, ...(perfil.zonas ?? [])].filter(Boolean).length} zonas`}
+        <FilaMenu icono="map" titulo="Zona de trabajo"
+          sub={`${perfil.radioKm} km a la redonda · ${cantZonas} ${cantZonas === 1 ? 'zona' : 'zonas'}`}
           onPress={() => navigation.navigate('PaseadorDisponibilidad')} />
         {tieneMascotas && (
           <FilaMenu icono="swap-horizontal" titulo="Cambiar a modo dueño" sub="Volver a Zooni con tus mascotas" onPress={modoDueno} />
@@ -216,15 +230,8 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
                 onCambio={(filas) => setForm((f) => ({ ...f, servicios: filas, errorServicios: null }))}
               />
               <Text style={s.sheetLabel}>Perros por paseo</Text>
-              <View style={s.stepper}>
-                <TouchableOpacity style={s.stepBtn} onPress={() => setForm((f) => ({ ...f, maxPerros: Math.max(1, f.maxPerros - 1) }))} accessibilityLabel="Uno menos">
-                  <Ionicons name="remove" size={22} color={C.teal} />
-                </TouchableOpacity>
-                <Text style={s.stepValor}>{form.maxPerros}</Text>
-                <TouchableOpacity style={s.stepBtn} onPress={() => setForm((f) => ({ ...f, maxPerros: Math.min(6, f.maxPerros + 1) }))} accessibilityLabel="Uno más">
-                  <Ionicons name="add" size={22} color={C.teal} />
-                </TouchableOpacity>
-              </View>
+              <CantidadPerros valor={form.maxPerros}
+                onCambio={(n) => setForm((f) => ({ ...f, maxPerros: n }))} />
               <Text style={s.sheetLabel}>Sobre vos</Text>
               <TextInput style={s.bioInput} multiline maxLength={500} value={form.bio}
                 onChangeText={(v) => setForm((f) => ({ ...f, bio: v }))} />
@@ -278,9 +285,6 @@ const s = StyleSheet.create({
   sheetHandle: { width: 44, height: 5, borderRadius: 3, backgroundColor: '#E0E0E0', alignSelf: 'center', marginBottom: 14 },
   sheetTitulo: { fontSize: 19, fontWeight: '900', color: C.texto, marginBottom: 14 },
   sheetLabel: { fontSize: 13, fontWeight: '700', color: C.texto, marginTop: 16, marginBottom: 8 },
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: 18 },
-  stepBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: C.teal, alignItems: 'center', justifyContent: 'center' },
-  stepValor: { fontSize: 26, fontWeight: '900', color: C.texto, minWidth: 30, textAlign: 'center' },
   bioInput: {
     borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 12, padding: 12, minHeight: 80,
     fontSize: 14, color: C.texto, textAlignVertical: 'top',

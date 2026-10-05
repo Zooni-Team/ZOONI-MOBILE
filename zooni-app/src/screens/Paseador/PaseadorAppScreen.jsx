@@ -1,5 +1,5 @@
 /**
- * PaseadorAppScreen.jsx — Contenedor de Zooni Paseadores (5 tabs)
+ * PaseadorAppScreen.jsx — Contenedor de Zooni Paseadores (6 secciones)
  *
  * Inicio · Solicitudes · Paseo · Ganancias · Perfil
  *
@@ -32,6 +32,7 @@ import InicioTab from './tabs/InicioTab';
 import SolicitudesTab from './tabs/SolicitudesTab';
 import PaseoTab from './tabs/PaseoTab';
 import GananciasTab from './tabs/GananciasTab';
+import PagosTab from './tabs/PagosTab';
 import PerfilTab from './tabs/PerfilTab';
 
 const POLL_SOLICITUDES_MS = 20000;
@@ -250,6 +251,7 @@ export default function PaseadorAppScreen() {
         {tab === 'solicitudes' && <SolicitudesTab {...ctx} />}
         {tab === 'paseo' && <PaseoTab {...ctx} />}
         {tab === 'ganancias' && <GananciasTab {...ctx} />}
+        {tab === 'pagos' && <PagosTab {...ctx} />}
         {tab === 'perfil' && <PerfilTab {...ctx} />}
 
         {toast && (
@@ -276,7 +278,7 @@ export default function PaseadorAppScreen() {
         enCurso={!!paseoActivo}
         chatsSinLeer={chatsSinLeer}
         onChats={() => navigation.navigate('PaseadorChats')}
-        onHorarios={() => navigation.navigate('PaseadorDisponibilidad')}
+        onZona={() => navigation.navigate('PaseadorDisponibilidad')}
         onModoDueno={esDueno ? modoDueno : null}
         onSalir={salir}
       />

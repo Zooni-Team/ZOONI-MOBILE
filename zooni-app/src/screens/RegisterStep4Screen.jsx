@@ -4,6 +4,8 @@
  *
  * Al confirmar, llama a services/authApi.js → registro() (usuario + mascota
  * en Supabase) y vuelve al Login con el banner de éxito.
+ * Si vino de Google / Facebook / Apple (datos.social) no hay contraseña que
+ * escribir en el Login: entra directo a la app.
  */
 
 import { useState } from 'react';
@@ -26,6 +28,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { registro } from '../services/authApi';
+import { setCurrentUserId, setModo, MODO_DUENO } from '../config/session';
 import { alerta } from '../utils/dialogo';
 import { PAISES } from '../constants/registroAssets';
 import { resolveMascotaBasicoImage } from '../constants/registroImages';
@@ -120,7 +123,8 @@ export default function RegisterStep4Screen() {
     }
     setCargando(true);
     try {
-      await registro({
+      const { usuario: creado } = await registro({
+        social: datos.social ?? null,
         mascota: {
           nombre: datos.nombre,
           especie: datos.especie,
@@ -146,6 +150,12 @@ export default function RegisterStep4Screen() {
           telefono: telefono.trim() || null,
         },
       });
+      if (datos.social) {
+        await setCurrentUserId(creado.id, creado.email);
+        await setModo(MODO_DUENO);
+        navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+        return;
+      }
       navigation.reset({
         index: 0,
         routes: [{ name: 'Login', params: { registroExitoso: true } }],
@@ -166,6 +176,8 @@ export default function RegisterStep4Screen() {
         alerta('Ese mail ya está en uso', 'Ya existe una cuenta con ese mail. Volvé atrás y usá otro, o iniciá sesión.');
       } else if (err?.message === 'usuario_existente') {
         alerta('Ese usuario ya está tomado', 'Volvé atrás y elegí otro nombre de usuario.');
+      } else if (err?.message === 'sesion_social_vencida') {
+        alerta('Se venció el inicio de sesión', `Volvé al inicio y entrá de nuevo con ${datos.social?.proveedor ?? 'tu cuenta'}.`);
       } else if (err?.message === 'password_corta') {
         alerta('Contraseña inválida', 'La contraseña debe tener al menos 7 caracteres.');
       } else {

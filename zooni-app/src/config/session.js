@@ -23,7 +23,13 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
+import { supabase, supabaseSocial } from '../lib/supabase';
+
 const STORAGE_KEY = 'zooni_user_id';
+// Mail de la última cuenta que usó este dispositivo: el login lo muestra ya
+// escrito después de cerrar sesión. No se borra en el logout (es sólo el mail,
+// nunca la contraseña).
+const ULTIMO_MAIL_KEY = 'zooni_ultimo_mail';
 
 let currentUserId = null;
 
@@ -61,10 +67,11 @@ export function esperarSesion() {
   return sesionLista;
 }
 
-/** Guarda la sesión tras un login exitoso. */
-export async function setCurrentUserId(id) {
+/** Guarda la sesión tras un login exitoso (y el mail, si se conoce). */
+export async function setCurrentUserId(id, mail) {
   currentUserId = id;
   marcarSesionResuelta();
+  if (mail) recordarUltimoMail(mail);
   try {
     if (Platform.OS === 'web') {
       if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, String(id));
@@ -100,6 +107,20 @@ export async function loadStoredUserId() {
 
 /** Borra la sesión (logout). Queda sin usuario: nadie hereda datos ajenos. */
 export async function clearCurrentUserId() {
+  // Antes de olvidar el id, guardar su mail para el próximo login (cubre las
+  // sesiones abiertas antes de que existiera ULTIMO_MAIL_KEY). Máx. 2 s: el
+  // logout no espera a una red lenta.
+  const id = currentUserId;
+  if (id != null) {
+    const mail = await Promise.race([
+      supabase.from('User').select('Mail').eq('Id_User', id).maybeSingle()
+        .then(({ data }) => data?.Mail ?? null).catch(() => null),
+      new Promise((resolve) => setTimeout(() => resolve(null), 2000)),
+    ]);
+    if (mail) await recordarUltimoMail(mail);
+  }
+  // Si entró con Google / Facebook / Apple, cortar también esa sesión
+  supabaseSocial.auth.signOut({ scope: 'local' }).catch(() => {});
   currentUserId = null;
   modoActual = MODO_DUENO;
   try {
@@ -114,6 +135,48 @@ export async function clearCurrentUserId() {
     }
   } catch {
     // noop
+  }
+}
+
+// ─────────────────────────────────────────────
+// ÚLTIMO MAIL (para precargar el login)
+// ─────────────────────────────────────────────
+
+export async function recordarUltimoMail(mail) {
+  const limpio = String(mail ?? '').trim().toLowerCase();
+  if (!limpio.includes('@')) return;
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof localStorage !== 'undefined') localStorage.setItem(ULTIMO_MAIL_KEY, limpio);
+    } else {
+      await SecureStore.setItemAsync(ULTIMO_MAIL_KEY, limpio);
+    }
+  } catch {
+    // noop
+  }
+}
+
+/**
+ * En web se lee SINCRÓNICO para usarlo como valor inicial del campo: si el
+ * campo arranca vacío, el gestor de contraseñas del navegador lo puede llenar
+ * con un usuario guardado viejo (ej. un teléfono) antes de que llegue el mail.
+ */
+export function getUltimoMailWeb() {
+  try {
+    return Platform.OS === 'web' && typeof localStorage !== 'undefined'
+      ? (localStorage.getItem(ULTIMO_MAIL_KEY) ?? '')
+      : '';
+  } catch {
+    return '';
+  }
+}
+
+export async function getUltimoMail() {
+  if (Platform.OS === 'web') return getUltimoMailWeb();
+  try {
+    return (await SecureStore.getItemAsync(ULTIMO_MAIL_KEY)) ?? '';
+  } catch {
+    return '';
   }
 }
 

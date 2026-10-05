@@ -11,7 +11,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Image,
   KeyboardAvoidingView,
@@ -30,24 +29,27 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { login } from '../services/authApi';
 import { fetchRolesCuenta } from '../services/paseadorApi';
-import { setModo, MODO_PASEADOR } from '../config/session';
-import { MASCOTAS_BIENVENIDA, GOOGLE_ICON, FACEBOOK_ICON, APPLE_ICON } from '../constants/registroImages';
+import { getUltimoMail, getUltimoMailWeb, setModo, MODO_PASEADOR } from '../config/session';
+import { MASCOTAS_BIENVENIDA } from '../constants/registroImages';
+import BotonesSociales from '../components/BotonesSociales';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function proximamente() {
-  Alert.alert('Próximamente', 'Esta opción estará disponible pronto.');
-}
 
 export default function LoginScreen() {
   const navigation = useNavigation();
   const route = useRoute();
 
-  const [email, setEmail] = useState('');
+  // Mail de la cuenta que acaba de cerrar sesión, ya escrito. En web se lee
+  // sincrónico para que el navegador no rellene un usuario guardado viejo.
+  const [email, setEmail] = useState(getUltimoMailWeb);
+  useEffect(() => {
+    getUltimoMail().then((m) => { if (m) setEmail((actual) => actual || m); });
+  }, []);
   const [password, setPassword] = useState('');
   const [verPassword, setVerPassword] = useState(false);
   const [cargando, setCargando] = useState(false);
-  const [errorLogin, setErrorLogin] = useState(null);
+  // Si volvió de Google / Facebook / Apple con un error, se muestra acá
+  const [errorLogin, setErrorLogin] = useState(route.params?.errorSocial ?? null);
   const [focusEmail, setFocusEmail] = useState(false);
   const [focusPass, setFocusPass] = useState(false);
   const [errEmail, setErrEmail] = useState(false);
@@ -195,17 +197,7 @@ export default function LoginScreen() {
             <Text style={s.btnProveedorTxt}>Registrarse como Proveedor</Text>
           </TouchableOpacity>
 
-          <View style={s.socialRow}>
-            <TouchableOpacity onPress={proximamente} accessibilityLabel="Ingresar con Google">
-              <Image source={GOOGLE_ICON} style={s.socialImg} resizeMode="contain" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={proximamente} accessibilityLabel="Ingresar con Facebook">
-              <Image source={FACEBOOK_ICON} style={s.socialImg} resizeMode="contain" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={proximamente} accessibilityLabel="Ingresar con Apple">
-              <Image source={APPLE_ICON} style={s.socialImg} resizeMode="contain" />
-            </TouchableOpacity>
-          </View>
+          <BotonesSociales intencion="dueno" titulo="O continuá con" />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -273,6 +265,4 @@ const s = StyleSheet.create({
   },
   btnProveedorTxt: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
 
-  socialRow: { flexDirection: 'row', justifyContent: 'center', gap: 30, marginTop: 16 },
-  socialImg: { width: 42, height: 42 },
 });

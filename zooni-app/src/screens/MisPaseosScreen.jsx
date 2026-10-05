@@ -11,16 +11,17 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, Image, Modal, Pressable, RefreshControl, SafeAreaView,
-  StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  ActivityIndicator, FlatList, Image, RefreshControl, SafeAreaView,
+  StatusBar, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 
 import HamburgerDrawer from '../components/HamburgerDrawer';
+import CalificarPaseoModal from '../components/resenas/CalificarPaseoModal';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import {
-  calificarPaseo, cancelarPaseoDueno, cuandoDe, fetchMisPaseosDueno, formatoDistancia,
+  cancelarPaseoDueno, cuandoDe, fetchMisPaseosDueno, formatoDistancia,
   formatoPlata, formatoTimer, segundosDePaseo,
 } from '../services/paseadorApi';
 import { confirmar } from '../utils/dialogo';
@@ -66,9 +67,6 @@ export default function MisPaseosScreen() {
   const [aviso, setAviso] = useState(route.params?.enviada
     ? `¡Listo! Le enviamos tu solicitud a ${route.params.enviada}. Te avisamos cuando responda.` : null);
   const [calificando, setCalificando] = useState(null); // paseo
-  const [estrellas, setEstrellas] = useState(5);
-  const [resena, setResena] = useState('');
-  const [guardando, setGuardando] = useState(false);
   const [, setTick] = useState(0);
 
   const cargar = useCallback(async () => {
@@ -113,18 +111,12 @@ export default function MisPaseosScreen() {
     }
   };
 
-  const guardarCalificacion = async () => {
-    setGuardando(true);
-    try {
-      await calificarPaseo(calificando, estrellas, resena);
-      setCalificando(null);
-      setAviso('¡Gracias! Tu reseña ayuda a otros dueños a elegir.');
-      cargar();
-    } catch {
-      setError('No se pudo guardar la calificación. Probá de nuevo.');
-    } finally {
-      setGuardando(false);
-    }
+  const calificacionEnviada = ({ parcial }) => {
+    setCalificando(null);
+    setAviso(parcial
+      ? '¡Gracias! Guardamos tus estrellas y tu opinión (las fotos y respuestas necesitan la migración 042).'
+      : '¡Gracias! Tu reseña ayuda a otros dueños a elegir.');
+    cargar();
   };
 
   const renderPaseo = ({ item: p }) => {
@@ -181,7 +173,7 @@ export default function MisPaseosScreen() {
             </TouchableOpacity>
           )}
           {p.estado === 'finalizado' && p.rating == null && (
-            <TouchableOpacity style={s.btnPri} onPress={() => { setCalificando(p); setEstrellas(5); setResena(''); }}>
+            <TouchableOpacity style={s.btnPri} onPress={() => setCalificando(p)}>
               <Ionicons name="star" size={16} color={TEXTO} />
               <Text style={s.btnPriTxt}>Calificar</Text>
             </TouchableOpacity>
@@ -235,20 +227,12 @@ export default function MisPaseosScreen() {
         />
       )}
 
-      <Modal visible={!!calificando} transparent animationType="fade" onRequestClose={() => setCalificando(null)}>
-        <Pressable style={s.overlay} onPress={() => setCalificando(null)}>
-          <Pressable style={s.modal} onPress={() => {}}>
-            <Text style={s.modalTitulo}>¿Cómo estuvo el paseo de {calificando?.mascota.nombre}?</Text>
-            <Text style={s.modalSub}>con {calificando?.paseador?.nombre}</Text>
-            <View style={{ marginVertical: 16 }}><Estrellas valor={estrellas} onCambio={setEstrellas} /></View>
-            <TextInput style={s.modalInput} value={resena} onChangeText={setResena} multiline maxLength={500}
-              placeholder="Contá cómo te fue (opcional)" placeholderTextColor="#AAAAAA" />
-            <TouchableOpacity style={[s.btnPri, { marginTop: 16, height: 52 }]} onPress={guardarCalificacion} disabled={guardando}>
-              {guardando ? <ActivityIndicator color={TEXTO} /> : <Text style={s.btnPriTxt}>Enviar calificación</Text>}
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <CalificarPaseoModal
+        visible={!!calificando}
+        paseo={calificando}
+        onCerrar={() => setCalificando(null)}
+        onEnviado={calificacionEnviada}
+      />
 
       <HamburgerDrawer visible={drawerOpen} onClose={() => setDrawerOpen(false)}
         usuario={usuario} mascotaActiva={mascotaActiva} activeRoute="MisPaseos" />
@@ -311,12 +295,4 @@ const s = StyleSheet.create({
   vacioTitulo: { fontSize: 17, fontWeight: '800', color: TEXTO, marginTop: 6 },
   vacioTxt: { fontSize: 14, color: TEXTO2, textAlign: 'center', lineHeight: 20 },
 
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', padding: 24 },
-  modal: { backgroundColor: '#FFF', borderRadius: 22, padding: 22 },
-  modalTitulo: { fontSize: 18, fontWeight: '800', color: TEXTO, textAlign: 'center' },
-  modalSub: { fontSize: 14, color: TEXTO2, textAlign: 'center', marginTop: 4 },
-  modalInput: {
-    borderWidth: 1, borderColor: '#DDD', borderRadius: 14, padding: 12, minHeight: 80,
-    fontSize: 14, color: TEXTO, textAlignVertical: 'top',
-  },
 });

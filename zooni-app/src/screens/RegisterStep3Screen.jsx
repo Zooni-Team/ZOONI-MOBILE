@@ -1,6 +1,10 @@
 /**
  * RegisterStep3Screen.jsx — Registro Paso 3: datos personales del dueño
  * (Login6 de Figma)
+ *
+ * Si viene de Google / Facebook / Apple (datosPrevios.social), el nombre y el
+ * apellido llegan precargados y NO se piden mail ni contraseña: el mail es el
+ * que verificó el proveedor y la cuenta entra siempre con él.
  */
 
 import { useMemo, useState } from 'react';
@@ -32,10 +36,11 @@ export default function RegisterStep3Screen() {
   const route = useRoute();
   const datosPrevios = route.params ?? {};
 
-  const [nombre, setNombre] = useState('');
-  const [apellido, setApellido] = useState('');
+  const social = datosPrevios.social ?? null;
+  const [nombre, setNombre] = useState(social?.nombre ?? '');
+  const [apellido, setApellido] = useState(social?.apellido ?? '');
   const [usuario, setUsuario] = useState('');
-  const [mail, setMail] = useState('');
+  const [mail, setMail] = useState(social?.email ?? '');
   const [password, setPassword] = useState('');
   const [confirmar, setConfirmar] = useState('');
   const [verPassword, setVerPassword] = useState(false);
@@ -67,10 +72,8 @@ export default function RegisterStep3Screen() {
     nombre.trim().length > 0
     && apellido.trim().length > 0
     && usuarioValido
-    && mailValido
-    && passwordValida
-    && confirmarValido
-  ), [nombre, apellido, usuarioValido, mailValido, passwordValida, confirmarValido]);
+    && (social || (mailValido && passwordValida && confirmarValido))
+  ), [nombre, apellido, usuarioValido, mailValido, passwordValida, confirmarValido, social]);
 
   /*
     Antes de avanzar se comprueba que el mail y el @usuario estén libres.
@@ -91,7 +94,8 @@ export default function RegisterStep3Screen() {
     setVerificando(true);
     try {
       const { mailTomado, usuarioTomado } = await verificarDisponibilidad({
-        email: mail.trim(),
+        // Con login social la cuenta es nueva por definición (lo confirmó el servidor)
+        email: social ? undefined : mail.trim(),
         nombreUsuario: usuarioLimpio,
       });
       if (mailTomado || usuarioTomado) {
@@ -114,7 +118,7 @@ export default function RegisterStep3Screen() {
       usuarioApellido: apellido.trim(),
       nombreUsuario: usuarioLimpio,
       email: mail.trim(),
-      password,
+      password: social ? null : password,
     });
   };
 
@@ -180,47 +184,58 @@ export default function RegisterStep3Screen() {
             {/* "Ya está tomado" viene del servidor, no del formato */}
             {!!errores.usuario && <Text style={s.errorTxt}>{errores.usuario}</Text>}
 
-            <TextInput style={[s.input, focus === 'mail' && s.inputFocus, mostrarErrorMail && s.inputError]}
-              placeholder="Mail" placeholderTextColor="#AAAAAA"
-              value={mail}
-              // Al corregir el mail se borra el "ya existe una cuenta": si no,
-              // el cartel quedaba pegado aunque ya hubiera escrito otro.
-              onChangeText={(v) => { setMail(v); if (errores.mail) setErrores((p) => ({ ...p, mail: null })); }}
-              keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
-              autoComplete="username" textContentType="username"
-              onFocus={() => setFocus('mail')} onBlur={() => setFocus(null)} returnKeyType="next" />
-            {mostrarErrorMail && <Text style={s.errorTxt}>Ingresá un email válido</Text>}
-            {!!errores.mail && <Text style={s.errorTxt}>{errores.mail}</Text>}
+            {social ? (
+              <View style={s.socialInfo}>
+                <Ionicons name="shield-checkmark" size={18} color="#2DBD72" />
+                <Text style={s.socialInfoTxt}>
+                  Vas a entrar con {social.proveedor}: <Text style={{ fontWeight: '800' }}>{social.email}</Text>. No hace falta contraseña.
+                </Text>
+              </View>
+            ) : (
+              <>
+              <TextInput style={[s.input, focus === 'mail' && s.inputFocus, mostrarErrorMail && s.inputError]}
+                placeholder="Mail" placeholderTextColor="#AAAAAA"
+                value={mail}
+                // Al corregir el mail se borra el "ya existe una cuenta": si no,
+                // el cartel quedaba pegado aunque ya hubiera escrito otro.
+                onChangeText={(v) => { setMail(v); if (errores.mail) setErrores((p) => ({ ...p, mail: null })); }}
+                keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
+                autoComplete="username" textContentType="username"
+                onFocus={() => setFocus('mail')} onBlur={() => setFocus(null)} returnKeyType="next" />
+              {mostrarErrorMail && <Text style={s.errorTxt}>Ingresá un email válido</Text>}
+              {!!errores.mail && <Text style={s.errorTxt}>{errores.mail}</Text>}
 
-            <View style={[s.inputRow, focus === 'password' && s.inputFocus, mostrarErrorPassword && s.inputError]}>
-              <TextInput style={s.inputPass} placeholder="Contraseña" placeholderTextColor="#AAAAAA"
-                value={password} onChangeText={setPassword}
-                secureTextEntry={!verPassword} autoCapitalize="none"
-                autoComplete="new-password" textContentType="newPassword"
-                onFocus={() => setFocus('password')} onBlur={() => setFocus(null)} returnKeyType="next" />
-              <TouchableOpacity onPress={() => setVerPassword((v) => !v)}
-                accessibilityLabel={verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name={verPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#6B6B6B" />
-              </TouchableOpacity>
-            </View>
-            {mostrarErrorPassword && (
-              <Text style={s.errorTxt}>{`La contraseña debe tener al menos ${PASSWORD_MIN} caracteres`}</Text>
+              <View style={[s.inputRow, focus === 'password' && s.inputFocus, mostrarErrorPassword && s.inputError]}>
+                <TextInput style={s.inputPass} placeholder="Contraseña" placeholderTextColor="#AAAAAA"
+                  value={password} onChangeText={setPassword}
+                  secureTextEntry={!verPassword} autoCapitalize="none"
+                  autoComplete="new-password" textContentType="newPassword"
+                  onFocus={() => setFocus('password')} onBlur={() => setFocus(null)} returnKeyType="next" />
+                <TouchableOpacity onPress={() => setVerPassword((v) => !v)}
+                  accessibilityLabel={verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name={verPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#6B6B6B" />
+                </TouchableOpacity>
+              </View>
+              {mostrarErrorPassword && (
+                <Text style={s.errorTxt}>{`La contraseña debe tener al menos ${PASSWORD_MIN} caracteres`}</Text>
+              )}
+
+              <View style={[s.inputRow, focus === 'confirmar' && s.inputFocus, mostrarErrorConfirmar && s.inputError]}>
+                <TextInput style={s.inputPass} placeholder="Confirmar contraseña" placeholderTextColor="#AAAAAA"
+                  value={confirmar} onChangeText={setConfirmar}
+                  secureTextEntry={!verConfirmar} autoCapitalize="none"
+                  autoComplete="new-password" textContentType="newPassword"
+                  onFocus={() => setFocus('confirmar')} onBlur={() => setFocus(null)} returnKeyType="done" />
+                <TouchableOpacity onPress={() => setVerConfirmar((v) => !v)}
+                  accessibilityLabel={verConfirmar ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name={verConfirmar ? 'eye-off-outline' : 'eye-outline'} size={20} color="#6B6B6B" />
+                </TouchableOpacity>
+              </View>
+              {mostrarErrorConfirmar && <Text style={s.errorTxt}>Las contraseñas no coinciden</Text>}
+              </>
             )}
-
-            <View style={[s.inputRow, focus === 'confirmar' && s.inputFocus, mostrarErrorConfirmar && s.inputError]}>
-              <TextInput style={s.inputPass} placeholder="Confirmar contraseña" placeholderTextColor="#AAAAAA"
-                value={confirmar} onChangeText={setConfirmar}
-                secureTextEntry={!verConfirmar} autoCapitalize="none"
-                autoComplete="new-password" textContentType="newPassword"
-                onFocus={() => setFocus('confirmar')} onBlur={() => setFocus(null)} returnKeyType="done" />
-              <TouchableOpacity onPress={() => setVerConfirmar((v) => !v)}
-                accessibilityLabel={verConfirmar ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name={verConfirmar ? 'eye-off-outline' : 'eye-outline'} size={20} color="#6B6B6B" />
-              </TouchableOpacity>
-            </View>
-            {mostrarErrorConfirmar && <Text style={s.errorTxt}>Las contraseñas no coinciden</Text>}
           </View>
         </ScrollView>
 
@@ -253,6 +268,11 @@ const s = StyleSheet.create({
     paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24,
     shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 4,
   },
+  socialInfo: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#E8F5EC',
+    borderRadius: 12, padding: 12, marginTop: 4,
+  },
+  socialInfoTxt: { flex: 1, fontSize: 13, color: '#2C2C2C', lineHeight: 18 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   mascotaNombre: { fontSize: 18, fontWeight: '700', color: '#2C2C2C', textAlign: 'center' },
 

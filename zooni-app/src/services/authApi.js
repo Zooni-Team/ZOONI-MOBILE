@@ -17,6 +17,7 @@ import { supabase } from '../lib/supabase';
 import { setCurrentUserId, setModo, MODO_DUENO } from '../config/session';
 import { toISODateLocal } from '../utils/fechaLocal';
 import { subirImagenPublica } from '../utils/imagenStorage';
+import { rpcSocial } from './socialAuthApi';
 import { marcarPresencia } from './presenciaApi';
 
 export async function hashPassword(password) {
@@ -87,7 +88,7 @@ export async function login(email, password) {
     throw rpcError;
   }
 
-  await setCurrentUserId(usuario.id);
+  await setCurrentUserId(usuario.id, mail);
   // Entró por el login de dueños: la app arranca en modo dueño aunque la
   // cuenta también sea de paseador (eso se elige desde "Proveedor").
   await setModo(MODO_DUENO);
@@ -228,12 +229,16 @@ const IMAGEN_ASSET_POR_ESPECIE = {
  *   }
  * Lanza Error('email_existente') si ya hay una cuenta con ese mail.
  * NO inicia sesión: el flujo vuelve al Login con banner de éxito.
+ *
+ * Con `datos.social` (vino de Google / Facebook / Apple) no hay contraseña:
+ * la RPC registrar_social_con_mascota (043) toma el mail verificado de la
+ * sesión del proveedor y guarda su foto como foto de perfil.
  */
 export async function registro(datos) {
-  const { mascota, usuario } = datos;
+  const { mascota, usuario, social } = datos;
   const mail = usuario.email.trim().toLowerCase();
 
-  if ((usuario.password ?? '').length < 7) throw new Error('password_corta');
+  if (!social && (usuario.password ?? '').length < 7) throw new Error('password_corta');
 
   // Chequeo temprano del mail: corta el registro ANTES de subir la foto a
   // Storage (si no, cada intento repetido dejaba una imagen huérfana).
@@ -241,7 +246,7 @@ export async function registro(datos) {
   // correcto en el caso normal.
   if (await mailYaRegistrado(mail)) throw new Error('email_existente');
 
-  const hash = await hashPassword(usuario.password);
+  const hash = social ? null : await hashPassword(usuario.password);
   const ubicacionDisplay = [usuario.ciudad, usuario.provincia].filter(Boolean).join(', ') || null;
 
   // @usuario: chequeo de disponibilidad previo (el índice único del 025 es la
@@ -277,32 +282,50 @@ export async function registro(datos) {
   // Camino seguro: RPC atómica del servidor (021_seguridad.sql).
   // Usuario + credencial + mascota + rol en una sola transacción: si algo
   // falla, Postgres revierte todo solo — sin rollback manual con DELETEs.
+  const pUsuario = {
+    nombre: usuario.nombre.trim(),
+    apellido: usuario.apellido.trim(),
+    email: mail,
+    telefono: usuario.telefono?.trim() || null,
+    codigoTelefono: usuario.codigoTelefono?.trim() || null,
+    pais: usuario.pais ?? null,
+    paisCodigo: usuario.paisCodigo ?? null,
+    provincia: usuario.provincia?.trim() || null,
+    ciudad: usuario.ciudad?.trim() || null,
+    ubicacion: ubicacionDisplay,
+  };
+  const pMascota = {
+    nombre: mascota.nombre.trim(),
+    especie: mascota.especie,
+    sexo: mascota.sexo,
+    raza: mascota.razaNombre,
+    peso: mascota.pesoKg ?? null,
+    fechaNacimiento: resolverFechaNacimiento(mascota),
+    imagenAsset: IMAGEN_ASSET_POR_ESPECIE[mascota.especie] ?? 'perro_default',
+  };
+
+  if (social) {
+    let data;
+    try {
+      data = await rpcSocial('registrar_social_con_mascota', {
+        p_usuario: { ...pUsuario, fotoPerfil: social.foto ?? null },
+        p_mascota: pMascota,
+      });
+    } catch (err) {
+      if (String(err?.message ?? '').includes('email_existente')) throw new Error('email_existente');
+      throw err;
+    }
+    await setUsuario(data.id);
+    await setFotoMascota(data.id);
+    return {
+      mensaje: 'Cuenta creada exitosamente',
+      usuario: { id: data.id, nombre: pUsuario.nombre, apellido: pUsuario.apellido, email: data.email },
+    };
+  }
+
   const { data: rpcData, error: rpcError } = await supabase.rpc(
     'registrar_usuario_con_mascota',
-    {
-      p_usuario: {
-        nombre: usuario.nombre.trim(),
-        apellido: usuario.apellido.trim(),
-        email: mail,
-        telefono: usuario.telefono?.trim() || null,
-        codigoTelefono: usuario.codigoTelefono?.trim() || null,
-        pais: usuario.pais ?? null,
-        paisCodigo: usuario.paisCodigo ?? null,
-        provincia: usuario.provincia?.trim() || null,
-        ciudad: usuario.ciudad?.trim() || null,
-        ubicacion: ubicacionDisplay,
-      },
-      p_hash: hash,
-      p_mascota: {
-        nombre: mascota.nombre.trim(),
-        especie: mascota.especie,
-        sexo: mascota.sexo,
-        raza: mascota.razaNombre,
-        peso: mascota.pesoKg ?? null,
-        fechaNacimiento: resolverFechaNacimiento(mascota),
-        imagenAsset: IMAGEN_ASSET_POR_ESPECIE[mascota.especie] ?? 'perro_default',
-      },
-    }
+    { p_usuario: pUsuario, p_hash: hash, p_mascota: pMascota }
   );
 
   if (!rpcError) {

@@ -6,11 +6,12 @@
  * es segura para embeber en el cliente: el control de acceso real se hace
  * con Row Level Security en Postgres, no ocultando esta key.
  *
- * Todavía no hay login (ver src/config/session.js), así que no usamos
- * supabase.auth acá — cuando se implemente login real, este cliente se
- * reutiliza tal cual y se agrega auth con supabase.auth.signInWithPassword.
+ * La sesión de la app no usa Supabase Auth (ver src/config/session.js), así
+ * que este cliente no usa supabase.auth. La única excepción es el login con
+ * Google / Facebook / Apple, que va por `supabaseSocial` (abajo).
  */
 
+import { Platform } from 'react-native';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -59,6 +60,29 @@ export const supabase =
           persistSession: false,
           autoRefreshToken: false,
           detectSessionInUrl: false,
+        },
+      })
+    : crearStubSinConfig();
+
+/**
+ * Cliente APARTE sólo para "Entrar con Google / Facebook / Apple"
+ * (services/socialAuthApi.js). Guarda su propia sesión de Supabase Auth con
+ * otra clave de storage, así el cliente principal sigue anónimo como siempre:
+ * si compartieran sesión, todas las queries de la app pasarían a ir con el
+ * rol `authenticated` y los permisos pensados para `anon` dejarían de aplicar.
+ * El flujo PKCE devuelve un ?code= que se canjea a mano al volver a la app.
+ */
+export const supabaseSocial =
+  supabaseUrl && supabaseAnonKey
+    ? createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          storageKey: 'zooni-social-auth',
+          // El login social es sólo web por ahora (sin expo-web-browser): en
+          // nativo no hay storage configurado para la sesión.
+          persistSession: Platform.OS === 'web',
+          autoRefreshToken: true,
+          detectSessionInUrl: false,
+          flowType: 'pkce',
         },
       })
     : crearStubSinConfig();

@@ -1,52 +1,39 @@
 /**
- * PaseadorDisponibilidadScreen.jsx — Horarios y zonas de trabajo
+ * PaseadorDisponibilidadScreen.jsx — Zona de trabajo
  *
- * Se abre desde Perfil. Define en qué días/horarios trabaja el paseador, el
- * radio que está dispuesto a moverse y los barrios donde pasea. Se guarda
- * todo junto con "Guardar" (no hay autosave: son decisiones de trabajo y es
- * mejor confirmarlas).
+ * Se abre desde Perfil y desde el menú. Define el radio que el paseador está
+ * dispuesto a moverse y los barrios donde pasea. No hay días ni horarios
+ * fijos: cuándo le llegan solicitudes lo decide el switch "Disponible" de la
+ * home. Se guarda todo junto con "Guardar" (no hay autosave: son decisiones
+ * de trabajo y es mejor confirmarlas).
  */
 
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, SafeAreaView, ScrollView, StatusBar, StyleSheet, Switch, Text,
+  ActivityIndicator, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text,
   TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import { C, Card, PillButton, Seccion } from '../../components/paseador/PaseadorUI';
-import HoraPicker from '../../components/HoraPicker';
 import ZonaMapaPicker from '../../components/paseador/ZonaMapaPicker';
-import {
-  DIAS, actualizarPerfilPaseador, fetchPerfilPaseador,
-} from '../../services/paseadorApi';
+import { actualizarPerfilPaseador, fetchPerfilPaseador } from '../../services/paseadorApi';
 import { alerta } from '../../utils/dialogo';
-
-function aDate(hhmm) {
-  const [h, m] = (hhmm ?? '08:00').split(':').map(Number);
-  const d = new Date();
-  d.setHours(h || 0, m || 0, 0, 0);
-  return d;
-}
-const aHHMM = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
 export default function PaseadorDisponibilidadScreen() {
   const navigation = useNavigation();
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
-  const [horarios, setHorarios] = useState({});
   const [radioKm, setRadioKm] = useState(3);
   const [zona, setZona] = useState('');
   const [coords, setCoords] = useState({ lat: null, lng: null });
   const [zonas, setZonas] = useState([]);
   const [nuevaZona, setNuevaZona] = useState('');
-  const [picker, setPicker] = useState(null); // { dia, campo }
 
   useEffect(() => {
     fetchPerfilPaseador().then((p) => {
       if (p) {
-        setHorarios(p.horarios);
         setRadioKm(p.radioKm);
         setZona(p.zona);
         setCoords({ lat: p.lat, lng: p.lng });
@@ -55,8 +42,6 @@ export default function PaseadorDisponibilidadScreen() {
       setCargando(false);
     }).catch(() => setCargando(false));
   }, []);
-
-  const setDia = (dia, cambios) => setHorarios((h) => ({ ...h, [dia]: { ...h[dia], ...cambios } }));
 
   const agregarZona = () => {
     const z = nuevaZona.trim();
@@ -67,11 +52,6 @@ export default function PaseadorDisponibilidadScreen() {
   };
 
   const guardar = async () => {
-    const invalido = DIAS.find(({ key }) => horarios[key]?.activo && horarios[key].desde >= horarios[key].hasta);
-    if (invalido) {
-      alerta('Revisá los horarios', `El ${invalido.label.toLowerCase()} termina antes de empezar.`);
-      return;
-    }
     if (coords.lat == null) {
       alerta('Falta tu zona', 'Marcá en el mapa dónde paseás.');
       return;
@@ -83,7 +63,7 @@ export default function PaseadorDisponibilidadScreen() {
     setGuardando(true);
     try {
       await actualizarPerfilPaseador({
-        horarios, radioKm, zona: zona.trim() || 'Mi zona', zonas, lat: coords.lat, lng: coords.lng,
+        radioKm, zona: zona.trim() || 'Mi zona', zonas, lat: coords.lat, lng: coords.lng,
       });
       navigation.goBack();
     } catch {
@@ -93,8 +73,6 @@ export default function PaseadorDisponibilidadScreen() {
     }
   };
 
-  const diasActivos = DIAS.filter(({ key }) => horarios[key]?.activo).length;
-
   return (
     <SafeAreaView style={s.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -103,8 +81,8 @@ export default function PaseadorDisponibilidadScreen() {
           <Ionicons name="chevron-back" size={26} color={C.teal} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={s.titulo}>Horarios y zonas</Text>
-          <Text style={s.sub}>Te llegan solicitudes sólo dentro de esto</Text>
+          <Text style={s.titulo}>Zona de trabajo</Text>
+          <Text style={s.sub}>Te llegan solicitudes sólo dentro de esta zona</Text>
         </View>
       </View>
 
@@ -112,38 +90,6 @@ export default function PaseadorDisponibilidadScreen() {
         <ActivityIndicator color={C.teal} style={{ marginTop: 40 }} />
       ) : (
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
-          <Seccion titulo={`Días y horarios · ${diasActivos} activos`} />
-          <Card style={{ paddingVertical: 6 }}>
-            {DIAS.map(({ key, label }, i) => {
-              const d = horarios[key] ?? { activo: false, desde: '08:00', hasta: '19:00' };
-              return (
-                <View key={key} style={[s.dia, i > 0 && s.diaBorde]}>
-                  <Switch
-                    value={d.activo}
-                    onValueChange={(v) => setDia(key, { activo: v })}
-                    trackColor={{ false: '#DDDDDD', true: C.teal }}
-                    thumbColor="#FFFFFF"
-                    accessibilityLabel={`Trabajo los ${label}`}
-                  />
-                  <Text style={[s.diaLabel, !d.activo && { color: C.gris }]}>{label}</Text>
-                  {d.activo ? (
-                    <View style={s.horas}>
-                      <TouchableOpacity style={s.hora} onPress={() => setPicker({ dia: key, campo: 'desde' })}>
-                        <Text style={s.horaTxt}>{d.desde}</Text>
-                      </TouchableOpacity>
-                      <Text style={s.guion}>–</Text>
-                      <TouchableOpacity style={s.hora} onPress={() => setPicker({ dia: key, campo: 'hasta' })}>
-                        <Text style={s.horaTxt}>{d.hasta}</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <Text style={s.libre}>Libre</Text>
-                  )}
-                </View>
-              );
-            })}
-          </Card>
-
           <Seccion titulo="Zona de atención" />
           <Card>
             <ZonaMapaPicker
@@ -182,17 +128,6 @@ export default function PaseadorDisponibilidadScreen() {
           <PillButton titulo="Guardar" onPress={guardar} cargando={guardando} style={{ marginTop: 24 }} />
         </ScrollView>
       )}
-
-      <HoraPicker
-        visible={!!picker}
-        titulo={picker?.campo === 'desde' ? 'Empiezo a las' : 'Termino a las'}
-        valor={picker ? aDate(horarios[picker.dia]?.[picker.campo]) : null}
-        onCancelar={() => setPicker(null)}
-        onConfirmar={(d) => {
-          setDia(picker.dia, { [picker.campo]: aHHMM(d) });
-          setPicker(null);
-        }}
-      />
     </SafeAreaView>
   );
 }
@@ -207,16 +142,6 @@ const s = StyleSheet.create({
   titulo: { fontSize: 19, fontWeight: '800', color: C.texto },
   sub: { fontSize: 12, color: C.texto2, marginTop: 1 },
   scroll: { padding: 20, paddingTop: 0, paddingBottom: 40 },
-
-  dia: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, minHeight: 56 },
-  diaBorde: { borderTopWidth: 1, borderTopColor: '#F2F2F2' },
-  diaLabel: { flex: 1, fontSize: 15, fontWeight: '700', color: C.texto },
-  horas: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  hora: { backgroundColor: C.menta, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 },
-  horaTxt: { fontSize: 15, fontWeight: '800', color: C.texto, fontVariant: ['tabular-nums'] },
-  guion: { color: C.texto2, fontWeight: '700' },
-  libre: { fontSize: 14, color: C.gris, fontWeight: '600' },
-
 
   label: { fontSize: 13, fontWeight: '700', color: C.texto, marginBottom: 6 },
   input: {
