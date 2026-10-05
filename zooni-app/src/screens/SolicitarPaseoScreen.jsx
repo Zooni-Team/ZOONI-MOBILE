@@ -22,7 +22,8 @@ import HoraPicker from '../components/HoraPicker';
 import { useMisMascotas } from '../hooks/useMisMascotas';
 import { resolveMascotaVisual } from '../constants/petImages';
 import {
-  crearSolicitudPaseo, direccionDe, fetchPaseadorPublico, formatoPlata,
+  crearSolicitudPaseo, direccionDe, fetchPaseadorPublico, formatoDuracion, formatoPlata, precioPara,
+  serviciosDe,
 } from '../services/paseadorApi';
 
 const VERDE = '#2DBD72';
@@ -51,7 +52,7 @@ export default function SolicitarPaseoScreen() {
   const [cargando, setCargando] = useState(true);
   const [mascotaId, setMascotaId] = useState(null);
   const [fecha, setFecha] = useState(proximaHoraRedonda);
-  const [duracion, setDuracion] = useState(30);
+  const [duracion, setDuracion] = useState(null); // minutos de uno de sus servicios
   const [direccion, setDireccion] = useState('');
   const [coords, setCoords] = useState(null);
   const [notas, setNotas] = useState('');
@@ -63,7 +64,11 @@ export default function SolicitarPaseoScreen() {
 
   useEffect(() => {
     fetchPaseadorPublico(paseadorId)
-      .then(setPaseador)
+      .then((p) => {
+        setPaseador(p);
+        // El primer paseo que ofrece (el más corto) queda elegido de entrada
+        setDuracion(serviciosDe(p)[0]?.minutos ?? null);
+      })
       .catch(() => setPaseador(null))
       .finally(() => setCargando(false));
   }, [paseadorId]);
@@ -76,7 +81,8 @@ export default function SolicitarPaseoScreen() {
   }, [mascotas, mascotaId]);
 
   const mascota = mascotas.find((m) => m.id === mascotaId) ?? null;
-  const precio = paseador ? (duracion === 60 ? paseador.precio60 : paseador.precio30) : 0;
+  const servicios = serviciosDe(paseador);
+  const precio = paseador ? (precioPara(paseador, duracion) ?? 0) : 0;
 
   // ¿El horario elegido cae dentro de los días/horas en que trabaja?
   const fueraDeHorario = useMemo(() => {
@@ -106,6 +112,7 @@ export default function SolicitarPaseoScreen() {
   const enviar = async () => {
     const faltan = [];
     if (!mascota) faltan.push('Es necesario elegir qué mascota va a pasear');
+    if (precioPara(paseador, duracion) == null) faltan.push('Es necesario elegir cuánto tiempo dura el paseo');
     if (fecha.getTime() < Date.now() + 15 * 60 * 1000) faltan.push('Es necesario elegir un horario de al menos 15 minutos desde ahora');
     if (direccion.trim().length < 5) faltan.push('Es necesario la dirección donde el paseador busca a tu mascota');
     setErrores(faltan);
@@ -215,14 +222,13 @@ export default function SolicitarPaseoScreen() {
 
           {/* Duración y precio */}
           <Text style={s.label}>¿Cuánto tiempo?</Text>
-          <View style={s.fila}>
-            {[30, 60].map((d) => {
-              const on = duracion === d;
-              const p = d === 60 ? paseador.precio60 : paseador.precio30;
+          <View style={[s.fila, { flexWrap: 'wrap' }]}>
+            {servicios.map(({ minutos, precio: p }) => {
+              const on = duracion === minutos;
               return (
-                <TouchableOpacity key={d} style={[s.duracion, on && s.duracionOn]} onPress={() => setDuracion(d)}
+                <TouchableOpacity key={minutos} style={[s.duracion, on && s.duracionOn]} onPress={() => setDuracion(minutos)}
                   accessibilityRole="radio" accessibilityState={{ selected: on }}>
-                  <Text style={[s.duracionTxt, on && { color: '#FFF' }]}>{d} minutos</Text>
+                  <Text style={[s.duracionTxt, on && { color: '#FFF' }]}>{formatoDuracion(minutos)}</Text>
                   <Text style={[s.duracionPrecio, on && { color: '#FFF' }]}>{formatoPlata(p)}</Text>
                 </TouchableOpacity>
               );
@@ -336,7 +342,7 @@ const s = StyleSheet.create({
   },
   avisoTxt: { flex: 1, fontSize: 12, color: TEXTO, lineHeight: 17 },
 
-  duracion: { flex: 1, backgroundColor: '#FFF', borderRadius: 18, paddingVertical: 14, alignItems: 'center' },
+  duracion: { flexGrow: 1, flexBasis: '40%', backgroundColor: '#FFF', borderRadius: 18, paddingVertical: 14, alignItems: 'center' },
   duracionOn: { backgroundColor: VERDE },
   duracionTxt: { fontSize: 14, fontWeight: '700', color: TEXTO2 },
   duracionPrecio: { fontSize: 22, fontWeight: '900', color: TEXTO, marginTop: 2 },

@@ -3,7 +3,7 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView, Activit
 import { Ionicons } from '@expo/vector-icons';
 import { fetchServicios } from '../../api/comunidad';
 import { areaBuscable } from '../../services/lugaresApi';
-import { formatoPlata } from '../../services/paseadorApi';
+import { formatoPlata, serviciosDe } from '../../services/paseadorApi';
 
 const FILTROS = [
   { v: 'todos', l: 'Todos' }, { v: 'veterinaria', l: 'Veterinaria' },
@@ -62,7 +62,8 @@ export default function TabServicios({ bbox, onSeleccionar, paseadores = [], onS
               <View style={styles.info}>
                 <Text style={styles.nombre} numberOfLines={1}>{p.nombreCompleto}</Text>
                 <Text style={styles.dir} numberOfLines={1}>
-                  {p.zona} · {p.radioKm} km · desde {formatoPlata(p.precio30)}
+                  {p.zona} · {p.radioKm} km
+                  {serviciosDe(p).length ? ` · desde ${formatoPlata(Math.min(...serviciosDe(p).map((x) => x.precio)))}` : ''}
                   {p.rating != null ? ` · ★ ${p.rating.toFixed(1).replace('.', ',')}` : ''}
                 </Text>
               </View>

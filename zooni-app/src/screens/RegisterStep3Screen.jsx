@@ -172,6 +172,8 @@ export default function RegisterStep3Screen() {
                   if (errores.usuario) setErrores((p) => ({ ...p, usuario: null }));
                 }}
                 autoCapitalize="none" autoCorrect={false} maxLength={31}
+                // El @usuario de Zooni NO es con lo que se inicia sesión (eso es el mail)
+                autoComplete="off"
                 onFocus={() => setFocus('usuario')} onBlur={() => setFocus(null)} returnKeyType="next" />
             </View>
             {mostrarErrorUsuario && <Text style={s.errorTxt}>Usá 3 a 30 letras, números, punto, guion o guion bajo</Text>}
@@ -185,6 +187,7 @@ export default function RegisterStep3Screen() {
               // el cartel quedaba pegado aunque ya hubiera escrito otro.
               onChangeText={(v) => { setMail(v); if (errores.mail) setErrores((p) => ({ ...p, mail: null })); }}
               keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
+              autoComplete="username" textContentType="username"
               onFocus={() => setFocus('mail')} onBlur={() => setFocus(null)} returnKeyType="next" />
             {mostrarErrorMail && <Text style={s.errorTxt}>Ingresá un email válido</Text>}
             {!!errores.mail && <Text style={s.errorTxt}>{errores.mail}</Text>}
@@ -193,6 +196,7 @@ export default function RegisterStep3Screen() {
               <TextInput style={s.inputPass} placeholder="Contraseña" placeholderTextColor="#AAAAAA"
                 value={password} onChangeText={setPassword}
                 secureTextEntry={!verPassword} autoCapitalize="none"
+                autoComplete="new-password" textContentType="newPassword"
                 onFocus={() => setFocus('password')} onBlur={() => setFocus(null)} returnKeyType="next" />
               <TouchableOpacity onPress={() => setVerPassword((v) => !v)}
                 accessibilityLabel={verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
@@ -208,6 +212,7 @@ export default function RegisterStep3Screen() {
               <TextInput style={s.inputPass} placeholder="Confirmar contraseña" placeholderTextColor="#AAAAAA"
                 value={confirmar} onChangeText={setConfirmar}
                 secureTextEntry={!verConfirmar} autoCapitalize="none"
+                autoComplete="new-password" textContentType="newPassword"
                 onFocus={() => setFocus('confirmar')} onBlur={() => setFocus(null)} returnKeyType="done" />
               <TouchableOpacity onPress={() => setVerConfirmar((v) => !v)}
                 accessibilityLabel={verConfirmar ? 'Ocultar contraseña' : 'Mostrar contraseña'}

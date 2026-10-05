@@ -2,7 +2,8 @@
  * ZonaMapaPicker.jsx — Zona de atención del paseador: un círculo en el mapa
  *
  * El paseador arrastra el círculo (o toca el mapa) hasta donde trabaja y
- * elige el radio. El punto de partida es una "ubicación base": la que se pase
+ * escribe el radio en km (entre RADIO_MIN y RADIO_MAX, no hay uno elegido de
+ * entrada). Hasta que no haya un radio válido sólo se ve el centro, sin círculo. El punto de partida es una "ubicación base": la que se pase
  * por props (ej. la guardada en su perfil), si no su GPS, y si no Caballito.
  * Al soltar el círculo se busca el nombre del barrio (Nominatim / OSM) para
  * completar la zona sola.
@@ -10,7 +11,8 @@
  * Mismo Leaflet + OpenStreetMap en iframe que Comunidad y MapaPaseo (sólo
  * web). En nativo queda un buscador de barrio + radio, sin mapa.
  *
- * Props: valor { lat, lng, radioKm, zona } · onCambio(valor)
+ * Props: valor { lat, lng, radioKm, zona } · onCambio(valor) — radioKm es null
+ *        mientras el radio escrito no sea válido
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -23,7 +25,26 @@ import { C } from './PaseadorUI';
 import { barrioDe, buscarLugar } from '../../services/paseadorApi';
 
 const BASE_DEFAULT = { lat: -34.6189, lng: -58.4380 }; // Caballito
-const RADIOS = [1, 2, 3, 5, 8];
+// Mismos límites que el CHECK paseador_radio_ok (035): NUMERIC(4,1) entre 0.5 y 30
+export const RADIO_MIN = 0.5;
+export const RADIO_MAX = 30;
+
+/** "2,5" → 2.5 · null si está vacío o fuera de rango */
+export function radioValido(texto) {
+  const n = Number(String(texto ?? '').replace(',', '.'));
+  if (!String(texto ?? '').trim() || !Number.isFinite(n)) return null;
+  return n >= RADIO_MIN && n <= RADIO_MAX ? Math.round(n * 10) / 10 : null;
+}
+
+/** Deja sólo dígitos y un separador decimal con un decimal como máximo */
+function sanitizarKm(v) {
+  const limpio = v.replace(/[^0-9.,]/g, '').replace(',', '.');
+  const [ent, ...resto] = limpio.split('.');
+  const entero = ent.slice(0, 2);
+  return resto.length ? `${entero}.${resto.join('').slice(0, 1)}` : entero;
+}
+
+const formatoKm = (n) => (n == null ? '' : String(n).replace('.', ','));
 
 const MAPA_HTML = `<!DOCTYPE html><html><head>
 <meta charset="UTF-8"/>
@@ -44,13 +65,16 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%;background:#E8F5EC}
   var map=L.map('map',{zoomControl:false}).setView([${BASE_DEFAULT.lat},${BASE_DEFAULT.lng}],14);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
   var icon=L.divIcon({className:'',html:'<div class="centro"><svg viewBox="0 0 24 24" width="20" height="20" fill="#fff"><circle cx="5" cy="9.5" r="2.2"/><circle cx="9" cy="5.5" r="2.2"/><circle cx="15" cy="5.5" r="2.2"/><circle cx="19" cy="9.5" r="2.2"/><path d="M12 10.5c-3 0-6.5 4.6-6.5 7.3 0 1.8 1.4 2.7 3 2.7 1.4 0 2.3-.8 3.5-.8s2.1.8 3.5.8c1.6 0 3-.9 3-2.7 0-2.7-3.5-7.3-6.5-7.3z"/></svg></div>',iconSize:[40,40],iconAnchor:[20,20]});
-  var circulo=null, centro=null, radio=3000;
+  var circulo=null, centro=null, radio=0;
 
   function avisar(){
     var p=centro.getLatLng();
     try{window.parent.__zooniZona&&window.parent.__zooniZona({lat:p.lat,lng:p.lng})}catch(e){}
   }
-  function encuadrar(){ map.fitBounds(circulo.getBounds().pad(0.15),{animate:true}); }
+  function encuadrar(){
+    if(radio>0) map.fitBounds(circulo.getBounds().pad(0.15),{animate:true});
+    else map.setView(centro.getLatLng(),14,{animate:true});
+  }
   function dibujar(lat,lng){
     if(!circulo){
       circulo=L.circle([lat,lng],{radius:radio,color:'#2DBD72',weight:3,fillColor:'#2DBD72',fillOpacity:.18}).addTo(map);
@@ -72,9 +96,11 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%;background:#E8F5EC}
 
   window.__zooniZonaMapa={
     set:function(d,mover){
-      radio=d.radioKm*1000;
+      // Sin radio válido: sólo el centro, el círculo queda invisible
+      radio=d.radioKm>0?d.radioKm*1000:0;
       dibujar(d.lat,d.lng);
-      circulo.setRadius(radio);
+      circulo.setRadius(radio||1);
+      circulo.setStyle(radio?{opacity:1,fillOpacity:.18}:{opacity:0,fillOpacity:0});
       if(mover) encuadrar();
     }
   };
@@ -106,6 +132,24 @@ export default function ZonaMapaPicker({ valor, onCambio, baseTexto }) {
   const [buscando, setBuscando] = useState(false);
   const [nombrando, setNombrando] = useState(false);
   const [error, setError] = useState(null);
+  const [radioTexto, setRadioTexto] = useState(formatoKm(valor?.radioKm));
+
+  // Si el radio cambia desde afuera (ej. llega el perfil guardado), mostrarlo
+  useEffect(() => {
+    if (radioValido(radioTexto) !== (valor?.radioKm ?? null)) setRadioTexto(formatoKm(valor?.radioKm));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valor?.radioKm]);
+
+  const cambiarRadio = (texto) => {
+    setRadioTexto(texto);
+    onCambio({ ...valorRef.current, radioKm: radioValido(texto) });
+  };
+  const pasoRadio = (delta) => {
+    const actual = radioValido(radioTexto) ?? 0;
+    const nuevo = Math.min(RADIO_MAX, Math.max(RADIO_MIN, Math.round((actual + delta) * 10) / 10));
+    cambiarRadio(formatoKm(nuevo));
+  };
+  const radioFueraDeRango = radioTexto.trim() !== '' && radioValido(radioTexto) == null;
 
   const enviarAlMapa = useCallback((mover, v = valorRef.current) => {
     const api = iframeRef.current?.contentWindow?.__zooniZonaMapa;
@@ -223,19 +267,32 @@ export default function ZonaMapaPicker({ valor, onCambio, baseTexto }) {
         </Text>
       </View>
 
-      <Text style={s.label}>Radio de atención</Text>
-      <View style={s.radios}>
-        {RADIOS.map((r) => {
-          const on = r === valor?.radioKm;
-          return (
-            <TouchableOpacity key={r} style={[s.radio, on && s.radioOn]}
-              onPress={() => onCambio({ ...valor, radioKm: r })}
-              accessibilityRole="radio" accessibilityState={{ selected: on }}>
-              <Text style={[s.radioTxt, on && s.radioTxtOn]}>{r} km</Text>
-            </TouchableOpacity>
-          );
-        })}
+      <Text style={s.label}>Radio de atención (km)</Text>
+      <View style={s.radioFila}>
+        <TouchableOpacity style={s.radioBtn} onPress={() => pasoRadio(-1)} accessibilityLabel="Un kilómetro menos">
+          <Ionicons name="remove" size={22} color={C.teal} />
+        </TouchableOpacity>
+        <View style={[s.radioInputWrap, radioFueraDeRango && { borderColor: C.rojo }]}>
+          <TextInput
+            style={s.radioInput}
+            value={radioTexto}
+            onChangeText={(v) => cambiarRadio(sanitizarKm(v))}
+            placeholder="Ej: 4"
+            placeholderTextColor={C.gris}
+            keyboardType="decimal-pad"
+            accessibilityLabel="Radio de atención en kilómetros"
+          />
+          <Text style={s.radioUnidad}>km</Text>
+        </View>
+        <TouchableOpacity style={s.radioBtn} onPress={() => pasoRadio(1)} accessibilityLabel="Un kilómetro más">
+          <Ionicons name="add" size={22} color={C.teal} />
+        </TouchableOpacity>
       </View>
+      <Text style={[s.ayuda, radioFueraDeRango && { color: C.rojo }]}>
+        {radioFueraDeRango
+          ? `El radio tiene que estar entre ${formatoKm(RADIO_MIN)} y ${RADIO_MAX} km`
+          : `Hasta dónde vas a buscar perros: entre ${formatoKm(RADIO_MIN)} y ${RADIO_MAX} km.`}
+      </Text>
     </View>
   );
 }
@@ -257,12 +314,15 @@ const s = StyleSheet.create({
   },
   zonaTxt: { fontSize: 14, fontWeight: '800', color: C.texto, flexShrink: 1 },
   label: { fontSize: 13, fontWeight: '700', color: C.texto, marginTop: 14, marginBottom: 8 },
-  radios: { flexDirection: 'row', gap: 6 },
-  radio: {
-    flex: 1, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: C.menta,
+  radioFila: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  radioBtn: {
+    width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: C.teal,
+    alignItems: 'center', justifyContent: 'center',
   },
-  radioOn: { backgroundColor: C.teal, borderColor: C.teal },
-  radioTxt: { fontSize: 14, fontWeight: '700', color: C.texto },
-  radioTxtOn: { color: '#FFFFFF', fontWeight: '800' },
+  radioInputWrap: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, height: 46,
+    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 12, backgroundColor: '#FFFFFF', paddingHorizontal: 12,
+  },
+  radioInput: { flex: 1, fontSize: 20, fontWeight: '900', color: C.texto, textAlign: 'center', minWidth: 0 },
+  radioUnidad: { fontSize: 15, fontWeight: '700', color: C.texto2 },
 });

@@ -96,6 +96,8 @@ export default function EliminarCuentaScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            autoComplete="current-password"
+            textContentType="password"
           />
         </View>
         <TouchableOpacity style={s.checkRow} onPress={() => setEntiendo((v) => !v)}

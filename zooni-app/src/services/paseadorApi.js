@@ -133,7 +133,7 @@ function crearDemo() {
       idUser: null, nombre: 'Paseador', apellido: 'Demo', foto: null,
       bio: 'Amo a los perros. Paseos tranquilos por plazas de Caballito.',
       zona: 'Caballito', zonas: ['Almagro', 'Flores'], lat: -34.6189, lng: -58.4380, radioKm: 3,
-      precio30: 5000, precio60: 9000, maxPerros: 3, tamanos: ['chico', 'mediano', 'grande'],
+      servicios: [{ minutos: 30, precio: 5000 }, { minutos: 60, precio: 9000 }], maxPerros: 3, tamanos: ['chico', 'mediano', 'grande'],
       experienciaAnios: 2, disponible: true, horarios: HORARIOS_DEFAULT(), verificado: false,
     },
     notificaciones: [
@@ -184,6 +184,54 @@ export function HORARIOS_DEFAULT() {
 export function formatoPlata(n) {
   const entero = Math.round(Number(n) || 0);
   return `$${String(entero).replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
+}
+
+// ─────────────────────────────────────────────
+// SERVICIOS: cada paseador define sus tiempos de paseo y el precio de cada uno
+// ─────────────────────────────────────────────
+
+export const SERVICIO_MIN_MINUTOS = 10;
+export const SERVICIO_MAX_MINUTOS = 240;
+export const SERVICIOS_MAX = 4;
+
+/** 45 → "45 minutos" · 90 → "90 minutos" (mismo formato que el resto de la app) */
+export const formatoDuracion = (min) => `${min} minutos`;
+
+/**
+ * Lista ordenada [{ minutos, precio }] de un perfil. Los perfiles anteriores a
+ * la 040 no tienen `servicios`: se arman con los viejos precio_30 / precio_60.
+ */
+export function serviciosDe(p) {
+  const lista = Array.isArray(p?.servicios) && p.servicios.length
+    ? p.servicios
+    : [{ minutos: 30, precio: p?.precio30 }, { minutos: 60, precio: p?.precio60 }];
+  return lista
+    .map((x) => ({ minutos: Number(x.minutos), precio: Number(x.precio) }))
+    .filter((x) => x.minutos > 0 && x.precio > 0)
+    .sort((a, b) => a.minutos - b.minutos);
+}
+
+/** Precio que cobra el paseador por un paseo de `minutos` (null si no lo ofrece). */
+export function precioPara(paseador, minutos) {
+  return serviciosDe(paseador).find((x) => x.minutos === Number(minutos))?.precio ?? null;
+}
+
+/**
+ * Valida lo que cargó el paseador ([{ minutos, precio }] con strings o números).
+ * Devuelve el mensaje del primer problema o null si está todo bien.
+ */
+export function validarServicios(lista) {
+  if (!lista?.length) return 'Es necesario cargar al menos un tiempo de paseo con su precio';
+  for (const x of lista) {
+    const m = Number(x.minutos);
+    if (!(m >= SERVICIO_MIN_MINUTOS && m <= SERVICIO_MAX_MINUTOS)) {
+      return `Cada paseo tiene que durar entre ${SERVICIO_MIN_MINUTOS} y ${SERVICIO_MAX_MINUTOS} minutos`;
+    }
+    if (!(Number(x.precio) > 0)) return `Es necesario el precio del paseo de ${m} minutos`;
+  }
+  const minutos = lista.map((x) => Number(x.minutos));
+  if (new Set(minutos).size !== minutos.length) return 'Hay dos paseos con la misma duración';
+  return null;
 }
 
 /** 1.234 m → "1,2 km"; menos de 1 km → "850 m". */
@@ -297,8 +345,7 @@ function perfilParaRpc(perfil) {
     lat: perfil.lat ?? null,
     lng: perfil.lng ?? null,
     radioKm: perfil.radioKm ?? 3,
-    precio30: perfil.precio30 ?? 0,
-    precio60: perfil.precio60 ?? 0,
+    servicios: serviciosDe(perfil),
     maxPerros: perfil.maxPerros ?? 3,
     tamanos: perfil.tamanos ?? ['chico', 'mediano', 'grande'],
     experienciaAnios: perfil.experienciaAnios ?? 0,
@@ -322,6 +369,8 @@ export async function registrarPaseador({ usuario, perfil }) {
       apellido: usuario.apellido.trim(),
       email: usuario.email.trim().toLowerCase(),
       telefono: usuario.telefono?.trim() || null,
+      genero: usuario.genero,
+      fechaNacimiento: usuario.fechaNacimiento, // "YYYY-MM-DD"
     },
     p_hash: hash,
     p_perfil: perfilParaRpc(perfil),
@@ -366,7 +415,7 @@ export async function completarPerfilPaseador(perfil) {
     const f = perfilParaRpc(perfil);
     const { error: errDirecto } = await supabase.from('paseador_perfil').upsert({
       id_user: getCurrentUserId(), bio: f.bio, zona: f.zona, lat: f.lat, lng: f.lng,
-      radio_km: f.radioKm, precio_30: f.precio30, precio_60: f.precio60,
+      radio_km: f.radioKm, servicios: f.servicios,
       max_perros: f.maxPerros, tamanos: f.tamanos, experiencia_anios: f.experienciaAnios,
       horarios: f.horarios,
     });
@@ -511,8 +560,9 @@ function mapPerfil(row, user) {
     lat: row.lat != null ? Number(row.lat) : null,
     lng: row.lng != null ? Number(row.lng) : null,
     radioKm: Number(row.radio_km ?? 3),
-    precio30: Number(row.precio_30 ?? 0),
-    precio60: Number(row.precio_60 ?? 0),
+    servicios: serviciosDe({
+      servicios: row.servicios, precio30: row.precio_30, precio60: row.precio_60,
+    }),
     maxPerros: row.max_perros ?? 3,
     tamanos: row.tamanos ?? [],
     experienciaAnios: row.experiencia_anios ?? 0,
@@ -541,7 +591,7 @@ export async function fetchPerfilPaseador() {
 export async function actualizarPerfilPaseador(campos) {
   const columnas = {
     bio: 'bio', zona: 'zona', zonas: 'zonas', radioKm: 'radio_km', lat: 'lat', lng: 'lng',
-    precio30: 'precio_30', precio60: 'precio_60', maxPerros: 'max_perros',
+    servicios: 'servicios', maxPerros: 'max_perros',
     tamanos: 'tamanos', experienciaAnios: 'experiencia_anios',
     disponible: 'disponible', horarios: 'horarios',
   };
@@ -869,8 +919,24 @@ export async function fetchGanancias(periodo) {
   return lista.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 }
 
+/**
+ * Experiencia en Zooni: se cuenta sola desde el primer paseo terminado en la
+ * app (no se pregunta al registrarse). → { valor, etiqueta } para un Stat.
+ */
+export function experienciaEnZooni(primerPaseo, ahora = new Date()) {
+  if (!primerPaseo) return { valor: '–', etiqueta: 'de exp. en Zooni' };
+  const desde = new Date(primerPaseo);
+  let meses = (ahora.getFullYear() - desde.getFullYear()) * 12 + (ahora.getMonth() - desde.getMonth());
+  if (ahora.getDate() < desde.getDate()) meses -= 1;
+  if (meses < 1) return { valor: '<1', etiqueta: 'mes en Zooni' };
+  if (meses < 12) return { valor: String(meses), etiqueta: meses === 1 ? 'mes en Zooni' : 'meses en Zooni' };
+  const anios = Math.floor(meses / 12);
+  return { valor: String(anios), etiqueta: anios === 1 ? 'año en Zooni' : 'años en Zooni' };
+}
+
 export async function fetchResenas() {
   const lista = await fetchMisPaseos(['finalizado']);
+  const fechas = lista.map((p) => new Date(p.horaInicio ?? p.fecha).getTime()).filter(Number.isFinite);
   const conRating = lista.filter((p) => p.rating != null);
   const promedio = conRating.length
     ? conRating.reduce((acc, p) => acc + p.rating, 0) / conRating.length
@@ -879,6 +945,8 @@ export async function fetchResenas() {
     promedio,
     cantidad: conRating.length,
     totalPaseos: lista.length,
+    // Desde acá corre la experiencia (experienciaEnZooni)
+    primerPaseo: fechas.length ? new Date(Math.min(...fechas)).toISOString() : null,
     resenas: conRating
       .filter((p) => p.resena)
       .sort((a, b) => new Date(b.fecha) - new Date(a.fecha)),
@@ -1073,7 +1141,8 @@ export async function fetchPaseadorPublico(idUser) {
 export async function crearSolicitudPaseo({
   paseador, mascota, fecha, duracionMin, direccion, lat, lng, notas,
 }) {
-  const precio = duracionMin === 60 ? paseador.precio60 : paseador.precio30;
+  const precio = precioPara(paseador, duracionMin);
+  if (precio == null) throw new Error('servicio_inexistente');
   const { data, error } = await supabase.from('Paseo').insert({
     Id_Mascota: mascota.id,
     Id_Dueno: getCurrentUserId(),

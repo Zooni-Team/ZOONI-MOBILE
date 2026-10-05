@@ -84,6 +84,9 @@ export default function PaseadorLoginScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            // El gestor de contraseñas guarda/rellena el MAIL como usuario
+            autoComplete="username"
+            textContentType="username"
             returnKeyType="next"
           />
           <View style={s.inputRow}>
@@ -95,6 +98,8 @@ export default function PaseadorLoginScreen() {
               onChangeText={(v) => { setPassword(v); setError(null); }}
               secureTextEntry={!verPassword}
               autoCapitalize="none"
+              autoComplete="current-password"
+              textContentType="password"
               returnKeyType="done"
               onSubmitEditing={ingresar}
             />

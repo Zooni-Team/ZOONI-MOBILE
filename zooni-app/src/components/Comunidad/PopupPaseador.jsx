@@ -11,7 +11,7 @@ import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-import { formatoPlata } from '../../services/paseadorApi';
+import { formatoDuracion, formatoPlata, serviciosDe } from '../../services/paseadorApi';
 
 const TAMANO = { chico: 'chicos', mediano: 'medianos', grande: 'grandes' };
 
@@ -73,14 +73,12 @@ export default function PopupPaseador({ paseador, onClose }) {
       {paseador.bio ? <Text style={st.bio} numberOfLines={2}>{paseador.bio}</Text> : null}
 
       <View style={st.precios}>
-        <View style={st.precio}>
-          <Text style={st.precioDur}>30 minutos</Text>
-          <Text style={st.precioValor}>{formatoPlata(paseador.precio30)}</Text>
-        </View>
-        <View style={st.precio}>
-          <Text style={st.precioDur}>60 minutos</Text>
-          <Text style={st.precioValor}>{formatoPlata(paseador.precio60)}</Text>
-        </View>
+        {serviciosDe(paseador).map((x) => (
+          <View key={x.minutos} style={st.precio}>
+            <Text style={st.precioDur}>{formatoDuracion(x.minutos)}</Text>
+            <Text style={st.precioValor}>{formatoPlata(x.precio)}</Text>
+          </View>
+        ))}
       </View>
 
       <TouchableOpacity style={st.btn} onPress={contratar} activeOpacity={0.85} accessibilityRole="button">
@@ -107,8 +105,8 @@ const st = StyleSheet.create({
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
   info: { fontSize: 13, color: '#6B6B6B', flexShrink: 1 },
   bio: { fontSize: 13, color: '#2C2C2C', marginTop: 8, lineHeight: 18 },
-  precios: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  precio: { flex: 1, backgroundColor: '#F9FFF9', borderRadius: 14, padding: 10, borderWidth: 1, borderColor: '#E6EFE9' },
+  precios: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  precio: { flexGrow: 1, flexBasis: '40%', backgroundColor: '#F9FFF9', borderRadius: 14, padding: 10, borderWidth: 1, borderColor: '#E6EFE9' },
   precioDur: { fontSize: 12, fontWeight: '700', color: '#2DBD72' },
   precioValor: { fontSize: 20, fontWeight: '900', color: '#2C2C2C' },
   btn: {

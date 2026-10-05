@@ -142,6 +142,9 @@ export default function LoginScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            // El gestor de contraseñas guarda/rellena el MAIL como usuario
+            autoComplete="username"
+            textContentType="username"
             onFocus={() => setFocusEmail(true)}
             onBlur={() => setFocusEmail(false)}
             returnKeyType="next"
@@ -157,6 +160,8 @@ export default function LoginScreen() {
               onChangeText={(v) => { setPassword(v); setErrPass(false); setErrorLogin(null); }}
               secureTextEntry={!verPassword}
               autoCapitalize="none"
+              autoComplete="current-password"
+              textContentType="password"
               onFocus={() => setFocusPass(true)}
               onBlur={() => setFocusPass(false)}
               returnKeyType="done"

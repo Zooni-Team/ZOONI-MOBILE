@@ -76,6 +76,10 @@ export default function PaseadorDisponibilidadScreen() {
       alerta('Falta tu zona', 'Marcá en el mapa dónde paseás.');
       return;
     }
+    if (radioKm == null) {
+      alerta('Falta tu radio', 'Escribí hasta cuántos kilómetros vas a buscar perros.');
+      return;
+    }
     setGuardando(true);
     try {
       await actualizarPerfilPaseador({

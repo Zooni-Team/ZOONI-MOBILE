@@ -1,19 +1,25 @@
 /**
  * PaseadorRegistroScreen.jsx — Alta de paseador en 2 pasos
  *
- *   Paso 1 · Tus datos      (nombre, apellido, mail, teléfono, contraseña)
- *   Paso 2 · Cómo trabajás  (zona, precios, perros por paseo, tamaños, bio)
+ *   Paso 1 · Tus datos      (nombre, apellido, género, nacimiento, mail, teléfono, contraseña)
+ *   Paso 2 · Cómo trabajás  (zona, tiempos de paseo y precios, perros por paseo, tamaños, bio)
  *
  * Con route.params.activar ({ email, hash, nombre }) viene de una cuenta de
  * dueño existente: se saltea el paso 1 y sólo se suma el perfil de paseador.
  * Con route.params.completar la cuenta YA tiene el rol de paseador pero no su
  * perfil (ej. rol asignado a mano): también se saltea el paso 1.
  *
- * La zona se elige arrastrando un círculo en el mapa (ZonaMapaPicker).
+ * La zona se elige arrastrando un círculo en el mapa (ZonaMapaPicker) y el
+ * radio lo escribe el paseador en km: no viene ninguno elegido de entrada.
+ * Los tiempos de paseo tampoco son fijos: el paseador carga cuántos minutos
+ * dura cada paseo que ofrece y cuánto cobra (ServiciosEditor).
  * La FOTO DE LA CARA es obligatoria (es lo primero que ve un dueño antes de
  * dejarle su mascota): en cuenta nueva va en el paso 1; si la cuenta ya
  * existe y no tiene foto, se pide arriba del paso 2.
  * Al terminar entra directo a la app (el paseador viene a trabajar).
+ *
+ * La edad se pide como FECHA DE NACIMIENTO (igual que en mascotas): una edad
+ * fija queda vieja. Hay que ser mayor de EDAD_MINIMA para pasear perros ajenos.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -27,21 +33,39 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { C, PillButton, sombra } from '../../components/paseador/PaseadorUI';
 import {
-  HORARIOS_DEFAULT, activarPaseador, completarPerfilPaseador, fetchMiFotoPerfil, formatoPlata,
-  registrarPaseador,
+  HORARIOS_DEFAULT, activarPaseador, completarPerfilPaseador, fetchMiFotoPerfil,
+  registrarPaseador, validarServicios,
 } from '../../services/paseadorApi';
-import ZonaMapaPicker from '../../components/paseador/ZonaMapaPicker';
+import ServiciosEditor, { filasDesdeServicios, serviciosDesdeFilas } from '../../components/paseador/ServiciosEditor';
+import FechaPicker from '../../components/FechaPicker';
+import ZonaMapaPicker, { RADIO_MAX, RADIO_MIN } from '../../components/paseador/ZonaMapaPicker';
 import { actualizarMiFotoPerfil } from '../../services/perfilApi';
 import { alerta } from '../../utils/dialogo';
 import { verificarDisponibilidad } from '../../services/authApi';
 import { sanitizarDigitos } from '../../utils/sanitizar';
+import { toISODateLocal } from '../../utils/fechaLocal';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EDAD_MINIMA = 18;
+const EDAD_MAXIMA = 100;
+const GENEROS = [
+  { key: 'masculino', label: 'Masculino' },
+  { key: 'femenino', label: 'Femenino' },
+  { key: 'prefiero_no_decir', label: 'Prefiero no decir' },
+];
 const TAMANOS = [
   { key: 'chico', label: 'Chico', detalle: 'hasta 10 kg' },
   { key: 'mediano', label: 'Mediano', detalle: '10–25 kg' },
   { key: 'grande', label: 'Grande', detalle: '+25 kg' },
 ];
+
+function edadDe(nacimiento, hoy = new Date()) {
+  let edad = hoy.getFullYear() - nacimiento.getFullYear();
+  const cumplioEsteAnio = hoy.getMonth() > nacimiento.getMonth()
+    || (hoy.getMonth() === nacimiento.getMonth() && hoy.getDate() >= nacimiento.getDate());
+  if (!cumplioEsteAnio) edad -= 1;
+  return edad;
+}
 
 function Campo({ label, error, children }) {
   return (
@@ -49,6 +73,23 @@ function Campo({ label, error, children }) {
       <Text style={s.label}>{label}</Text>
       {children}
       {error ? <Text style={s.errorCampo}>{error}</Text> : null}
+    </View>
+  );
+}
+
+/** Input de contraseña con el ojito para mostrarla u ocultarla. */
+function InputPassword({ value, onChangeText, placeholder, error }) {
+  const [ver, setVer] = useState(false);
+  return (
+    <View style={[s.input, s.inputPassWrap, error && s.inputError]}>
+      <TextInput style={s.inputPass} value={value} onChangeText={onChangeText}
+        placeholder={placeholder} placeholderTextColor={C.gris}
+        secureTextEntry={!ver} autoCapitalize="none" autoCorrect={false}
+        autoComplete="new-password" textContentType="newPassword" />
+      <TouchableOpacity onPress={() => setVer((v) => !v)} hitSlop={8}
+        accessibilityLabel={ver ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
+        <Ionicons name={ver ? 'eye-off-outline' : 'eye-outline'} size={20} color={C.texto2} />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -120,12 +161,17 @@ export default function PaseadorRegistroScreen() {
   const pideFotoEnPaso2 = sinPaso1 && !fotoExistente;
 
   const [usuario, setUsuario] = useState({
-    nombre: '', apellido: '', email: '', telefono: '', password: '', password2: '',
+    nombre: '', apellido: '', genero: null, fechaNacimiento: null,
+    email: '', telefono: '', password: '', password2: '',
   });
+  const [verFecha, setVerFecha] = useState(false);
+  const edad = usuario.fechaNacimiento ? edadDe(usuario.fechaNacimiento) : null;
   const [perfil, setPerfil] = useState({
-    zona: '', lat: null, lng: null, radioKm: 3, precio30: '', precio60: '', maxPerros: 3,
-    tamanos: ['chico', 'mediano', 'grande'], experienciaAnios: '', bio: '',
+    zona: '', lat: null, lng: null, radioKm: null, maxPerros: 3,
+    tamanos: ['chico', 'mediano', 'grande'], bio: '',
   });
+
+  const [filasServicios, setFilasServicios] = useState(() => filasDesdeServicios([]));
 
   const setU = (k, v) => { setUsuario((p) => ({ ...p, [k]: v })); setErrores((e) => ({ ...e, [k]: null })); };
   const setP = (k, v) => { setPerfil((p) => ({ ...p, [k]: v })); setErrores((e) => ({ ...e, [k]: null })); };
@@ -135,6 +181,10 @@ export default function PaseadorRegistroScreen() {
     if (!foto) e.foto = 'Es necesario una foto de tu cara';
     if (usuario.nombre.trim().length < 2) e.nombre = 'El nombre es obligatorio';
     if (usuario.apellido.trim().length < 2) e.apellido = 'El apellido es obligatorio';
+    if (!usuario.genero) e.genero = 'Es necesario elegir una opción de género';
+    if (!usuario.fechaNacimiento) e.fechaNacimiento = 'Es necesario tu fecha de nacimiento';
+    else if (edad < EDAD_MINIMA) e.fechaNacimiento = `Para ser paseador es necesario tener al menos ${EDAD_MINIMA} años`;
+    else if (edad > EDAD_MAXIMA) e.fechaNacimiento = 'Revisá tu fecha de nacimiento';
     if (!EMAIL_REGEX.test(usuario.email.trim())) e.email = 'Es necesario un email válido';
     if (usuario.telefono.length < 8) e.telefono = 'El teléfono es obligatorio (mínimo 8 números)';
     if (usuario.password.length < 7) e.password = 'La contraseña necesita al menos 7 caracteres';
@@ -155,8 +205,9 @@ export default function PaseadorRegistroScreen() {
     const e = {};
     if (pideFotoEnPaso2 && !foto) e.foto = 'Es necesario una foto de tu cara';
     if (perfil.lat == null) e.zona = 'Es necesario marcar tu zona en el mapa';
-    if (!(Number(perfil.precio30) > 0)) e.precio30 = 'Es necesario el precio del paseo de 30 minutos';
-    if (!(Number(perfil.precio60) > 0)) e.precio60 = 'Es necesario el precio del paseo de 60 minutos';
+    if (perfil.radioKm == null) e.radioKm = `Es necesario elegir tu radio de atención (entre ${String(RADIO_MIN).replace('.', ',')} y ${RADIO_MAX} km)`;
+    const errServicios = validarServicios(filasServicios);
+    if (errServicios) e.servicios = errServicios;
     if (!perfil.tamanos.length) e.tamanos = 'Es necesario elegir al menos un tamaño de perro';
     setErrores(e);
     return Object.keys(e).length === 0;
@@ -184,9 +235,7 @@ export default function PaseadorRegistroScreen() {
 
     const datosPerfil = {
       ...perfil,
-      precio30: Number(perfil.precio30),
-      precio60: Number(perfil.precio60),
-      experienciaAnios: Number(perfil.experienciaAnios) || 0,
+      servicios: serviciosDesdeFilas(filasServicios),
       zona: perfil.zona.trim() || 'Mi zona',
     };
     setCargando(true);
@@ -197,7 +246,10 @@ export default function PaseadorRegistroScreen() {
         } else if (activar) {
           await activarPaseador({ email: activar.email, hash: activar.hash, perfil: datosPerfil });
         } else {
-          await registrarPaseador({ usuario, perfil: datosPerfil });
+          await registrarPaseador({
+            usuario: { ...usuario, fechaNacimiento: toISODateLocal(usuario.fechaNacimiento) },
+            perfil: datosPerfil,
+          });
         }
         cuentaCreadaRef.current = true;
       }
@@ -238,6 +290,13 @@ export default function PaseadorRegistroScreen() {
       if (msg === 'email_existente') {
         setPaso(1);
         setErrores({ email: 'Ya hay una cuenta con este mail.' });
+      } else if (/servicios_invalidos/.test(err?.detalle ?? '')) {
+        setErrores({ servicios: 'Revisá tus tiempos de paseo: cada uno necesita duración y precio' });
+      } else if (/genero_invalido|edad_invalida/.test(err?.detalle ?? '')) {
+        setPaso(1);
+        setErrores(String(err.detalle).includes('genero_invalido')
+          ? { genero: 'Es necesario elegir una opción de género' }
+          : { fechaNacimiento: `Para ser paseador es necesario tener al menos ${EDAD_MINIMA} años` });
       } else if (msg === 'migracion_pendiente') {
         setErrorGeneral(`No se pudo guardar tu perfil: a la base de datos le falta algo de Zooni Paseadores. Es necesario correr las migraciones 035 y 036 en el SQL Editor de Supabase.${detalle}`);
       } else if (msg === 'no_es_paseador') {
@@ -302,25 +361,52 @@ export default function PaseadorRegistroScreen() {
                   </Campo>
                 </View>
               </View>
+              <Campo label="Género" error={errores.genero}>
+                <View style={s.generos}>
+                  {GENEROS.map((g) => {
+                    const on = usuario.genero === g.key;
+                    return (
+                      <TouchableOpacity key={g.key} style={[s.genero, on && s.chipOn, errores.genero && s.inputError]}
+                        onPress={() => setU('genero', g.key)}
+                        accessibilityRole="radio" accessibilityState={{ selected: on }}>
+                        <Text style={[s.generoTxt, on && s.chipTxtOn]}>{g.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </Campo>
+              <Campo label="Fecha de nacimiento" error={errores.fechaNacimiento}>
+                <TouchableOpacity style={[s.input, s.fechaBtn, errores.fechaNacimiento && s.inputError]}
+                  onPress={() => setVerFecha(true)} accessibilityLabel="Elegir fecha de nacimiento">
+                  <Text style={[s.fechaTxt, !usuario.fechaNacimiento && { color: C.gris }]}>
+                    {usuario.fechaNacimiento
+                      ? usuario.fechaNacimiento.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
+                      : 'Elegí tu fecha de nacimiento'}
+                  </Text>
+                  <Ionicons name="calendar-outline" size={20} color={C.teal} />
+                </TouchableOpacity>
+                {edad != null && !errores.fechaNacimiento ? <Text style={s.ayuda}>Tenés {edad} años</Text> : null}
+              </Campo>
               <Campo label="Correo electrónico" error={errores.email}>
                 <TextInput style={[s.input, errores.email && s.inputError]} value={usuario.email}
                   onChangeText={(v) => setU('email', v.trim())} placeholder="vos@mail.com" placeholderTextColor={C.gris}
-                  keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+                  keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
+                  // Sin esto el navegador guardaba el TELÉFONO (el campo justo antes de la
+                  // contraseña) como usuario, y después lo rellenaba en el login
+                  autoComplete="username" textContentType="username" />
               </Campo>
               <Campo label="Teléfono" error={errores.telefono}>
                 <TextInput style={[s.input, errores.telefono && s.inputError]} value={usuario.telefono}
                   onChangeText={(v) => setU('telefono', sanitizarDigitos(v, 15))} placeholder="11 2345 6789" placeholderTextColor={C.gris}
-                  keyboardType="phone-pad" />
+                  keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber" />
               </Campo>
               <Campo label="Contraseña" error={errores.password}>
-                <TextInput style={[s.input, errores.password && s.inputError]} value={usuario.password}
-                  onChangeText={(v) => setU('password', v)} placeholder="Mínimo 7 caracteres" placeholderTextColor={C.gris}
-                  secureTextEntry autoCapitalize="none" />
+                <InputPassword value={usuario.password} error={errores.password}
+                  onChangeText={(v) => setU('password', v)} placeholder="Mínimo 7 caracteres" />
               </Campo>
               <Campo label="Repetí la contraseña" error={errores.password2}>
-                <TextInput style={[s.input, errores.password2 && s.inputError]} value={usuario.password2}
-                  onChangeText={(v) => setU('password2', v)} placeholder="Repetila" placeholderTextColor={C.gris}
-                  secureTextEntry autoCapitalize="none" />
+                <InputPassword value={usuario.password2} error={errores.password2}
+                  onChangeText={(v) => setU('password2', v)} placeholder="Repetila" />
               </Campo>
             </View>
           ) : (
@@ -345,35 +431,19 @@ export default function PaseadorRegistroScreen() {
                 valor={{ lat: perfil.lat, lng: perfil.lng, radioKm: perfil.radioKm, zona: perfil.zona }}
                 onCambio={(z) => {
                   setPerfil((p) => ({ ...p, lat: z.lat, lng: z.lng, radioKm: z.radioKm, zona: z.zona ?? '' }));
-                  setErrores((e) => ({ ...e, zona: null }));
+                  setErrores((e) => ({ ...e, zona: null, ...(z.radioKm != null ? { radioKm: null } : {}) }));
                 }}
               />
               {errores.zona ? <Text style={s.errorCampo}>{errores.zona}</Text> : null}
+              {errores.radioKm ? <Text style={s.errorCampo}>{errores.radioKm}</Text> : null}
               <View style={{ height: 18 }} />
 
-              <Text style={s.label}>Tus precios</Text>
-              <View style={s.fila}>
-                <View style={[s.precio, errores.precio30 && s.inputError]}>
-                  <Text style={s.precioDur}>30 minutos</Text>
-                  <View style={s.precioInputRow}>
-                    <Text style={s.precioSigno}>$</Text>
-                    <TextInput style={s.precioInput} value={perfil.precio30} keyboardType="number-pad"
-                      onChangeText={(v) => setP('precio30', sanitizarDigitos(v, 7))} placeholder="Precio" placeholderTextColor="#C8C8C8" />
-                  </View>
-                </View>
-                <View style={[s.precio, errores.precio60 && s.inputError]}>
-                  <Text style={s.precioDur}>60 minutos</Text>
-                  <View style={s.precioInputRow}>
-                    <Text style={s.precioSigno}>$</Text>
-                    <TextInput style={s.precioInput} value={perfil.precio60} keyboardType="number-pad"
-                      onChangeText={(v) => setP('precio60', sanitizarDigitos(v, 7))} placeholder="Precio" placeholderTextColor="#C8C8C8" />
-                  </View>
-                </View>
-              </View>
-              {(errores.precio30 || errores.precio60) && <Text style={s.errorCampo}>Es necesario un precio para 30 y para 60 minutos</Text>}
-              {Number(perfil.precio30) > 0 && (
-                <Text style={s.ayuda}>Por un paseo de 30 minutos vas a cobrar {formatoPlata(perfil.precio30)}.</Text>
-              )}
+              <Text style={s.label}>Tus paseos y precios</Text>
+              <ServiciosEditor
+                filas={filasServicios}
+                error={errores.servicios}
+                onCambio={(f) => { setFilasServicios(f); setErrores((e) => ({ ...e, servicios: null })); }}
+              />
 
               <Text style={[s.label, { marginTop: 16 }]}>Perros por paseo (máximo)</Text>
               <View style={s.stepper}>
@@ -403,11 +473,6 @@ export default function PaseadorRegistroScreen() {
               </View>
               {errores.tamanos && <Text style={s.errorCampo}>{errores.tamanos}</Text>}
 
-              <Campo label="Años de experiencia">
-                <TextInput style={[s.input, { marginTop: 0 }]} value={perfil.experienciaAnios} keyboardType="number-pad"
-                  onChangeText={(v) => setP('experienciaAnios', sanitizarDigitos(v, 2))} placeholder="0" placeholderTextColor={C.gris} />
-              </Campo>
-
               <Campo label="Contales a los dueños sobre vos (opcional)">
                 <TextInput style={[s.input, s.textarea]} value={perfil.bio} multiline maxLength={500}
                   onChangeText={(v) => setP('bio', v)} placeholderTextColor={C.gris}
@@ -415,6 +480,16 @@ export default function PaseadorRegistroScreen() {
               </Campo>
             </View>
           )}
+
+          <FechaPicker
+            visible={verFecha}
+            titulo="Fecha de nacimiento"
+            valor={usuario.fechaNacimiento ?? new Date(new Date().getFullYear() - 25, 0, 1)}
+            aniosAtras={EDAD_MAXIMA}
+            sinFuturo
+            onConfirmar={(d) => { setU('fechaNacimiento', d); setVerFecha(false); }}
+            onCancelar={() => setVerFecha(false)}
+          />
 
           {Object.values(errores).some(Boolean) && (
             <View style={s.resumen}>
@@ -461,17 +536,12 @@ const s = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: C.texto, backgroundColor: '#FFFFFF',
   },
   inputError: { borderColor: C.rojo },
+  inputPassWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 0 },
+  inputPass: { flex: 1, paddingVertical: 12, fontSize: 15, color: C.texto },
   textarea: { minHeight: 90, textAlignVertical: 'top' },
   errorCampo: { fontSize: 12, color: C.rojo, marginTop: 4 },
   ayuda: { fontSize: 12, color: C.texto2, marginTop: 6 },
 
-  precio: {
-    flex: 1, borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 14, padding: 12, backgroundColor: C.fondo,
-  },
-  precioDur: { fontSize: 12, fontWeight: '700', color: C.teal },
-  precioInputRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
-  precioSigno: { fontSize: 22, fontWeight: '900', color: C.texto, marginRight: 2 },
-  precioInput: { flex: 1, fontSize: 22, fontWeight: '900', color: C.texto, paddingVertical: 2, minWidth: 0 },
 
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 18 },
   stepBtn: {
@@ -481,6 +551,14 @@ const s = StyleSheet.create({
   stepValor: { fontSize: 26, fontWeight: '900', color: C.texto, minWidth: 30, textAlign: 'center' },
 
   chips: { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  generos: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  genero: {
+    flexGrow: 1, borderRadius: 14, borderWidth: 1.5, borderColor: C.menta, paddingVertical: 11,
+    paddingHorizontal: 12, alignItems: 'center', backgroundColor: '#FFFFFF',
+  },
+  generoTxt: { fontSize: 14, fontWeight: '700', color: C.texto },
+  fechaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  fechaTxt: { fontSize: 15, color: C.texto, flex: 1 },
   chip: {
     flex: 1, borderRadius: 14, borderWidth: 1.5, borderColor: C.menta, paddingVertical: 10,
     alignItems: 'center', backgroundColor: '#FFFFFF',

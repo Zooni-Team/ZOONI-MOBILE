@@ -71,13 +71,15 @@ export default function CambiarContrasenaScreen() {
           <Text style={s.label}>Contraseña actual</Text>
           <TextInput style={[s.input, errorActual && { borderColor: T.sosRedText }]}
             value={actual} onChangeText={(v) => { setActual(v); setErrorActual(false); }}
-            secureTextEntry placeholder="••••••••" placeholderTextColor={T.textSoft} />
+            secureTextEntry autoComplete="current-password" textContentType="password"
+            placeholder="••••••••" placeholderTextColor={T.textSoft} />
           {errorActual && <Text style={s.errorTxt}>La contraseña actual no es correcta.</Text>}
         </View>
         <View style={s.campo}>
           <Text style={s.label}>Nueva contraseña</Text>
           <TextInput style={s.input} value={nueva} onChangeText={setNueva}
-            secureTextEntry placeholder="Mínimo 8 caracteres" placeholderTextColor={T.textSoft} />
+            secureTextEntry autoComplete="new-password" textContentType="newPassword"
+            placeholder="Mínimo 8 caracteres" placeholderTextColor={T.textSoft} />
           {nueva.length > 0 && (
             <View style={s.fuerzaWrap}>
               <View style={s.fuerzaTrack}>
@@ -90,7 +92,8 @@ export default function CambiarContrasenaScreen() {
         <View style={s.campo}>
           <Text style={s.label}>Repetir nueva contraseña</Text>
           <TextInput style={s.input} value={repetir} onChangeText={setRepetir}
-            secureTextEntry placeholder="••••••••" placeholderTextColor={T.textSoft} />
+            secureTextEntry autoComplete="new-password" textContentType="newPassword"
+            placeholder="••••••••" placeholderTextColor={T.textSoft} />
           {repetir.length > 0 && nueva !== repetir && (
             <Text style={s.errorTxt}>Las contraseñas no coinciden.</Text>
           )}

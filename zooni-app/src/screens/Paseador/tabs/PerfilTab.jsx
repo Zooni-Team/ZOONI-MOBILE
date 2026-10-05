@@ -1,8 +1,8 @@
 /**
  * PerfilTab.jsx — Tab 5 de Zooni Paseadores
  *
- *   · Rating, paseos y experiencia
- *   · Servicios ofrecidos (precios editables, tamaños, perros por paseo)
+ *   · Rating, paseos y experiencia (contada desde el primer paseo en la app)
+ *   · Servicios ofrecidos (tiempos de paseo y precios editables, tamaños, perros por paseo)
  *   · Reseñas de los dueños
  *   · Configuración de disponibilidad, cambiar a modo dueño, cerrar sesión
  */
@@ -16,11 +16,12 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Avatar, C, Card, Chip, PillButton, Seccion, Stat } from '../../../components/paseador/PaseadorUI';
 import {
-  actualizarPerfilPaseador, fetchResenas, formatoPlata,
+  actualizarPerfilPaseador, experienciaEnZooni, fetchResenas, formatoDuracion, formatoPlata,
+  serviciosDe, validarServicios,
 } from '../../../services/paseadorApi';
+import ServiciosEditor, { filasDesdeServicios, serviciosDesdeFilas } from '../../../components/paseador/ServiciosEditor';
 import { clearCurrentUserId, getCurrentUserId, setModo, MODO_DUENO } from '../../../config/session';
 import { supabase } from '../../../lib/supabase';
-import { sanitizarDigitos } from '../../../utils/sanitizar';
 import { confirmar } from '../../../utils/dialogo';
 import { tiempoRelativo } from '../../../utils/tiempoRelativo';
 
@@ -60,7 +61,7 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
   const [guardando, setGuardando] = useState(false);
 
   const cargar = useCallback(async () => {
-    fetchResenas().then(setResenas).catch(() => setResenas({ promedio: null, cantidad: 0, totalPaseos: 0, resenas: [] }));
+    fetchResenas().then(setResenas).catch(() => setResenas({ promedio: null, cantidad: 0, totalPaseos: 0, primerPaseo: null, resenas: [] }));
     const { data } = await supabase.from('Mascota').select('Id_Mascota').eq('Id_User', getCurrentUserId()).limit(1);
     setTieneMascotas((data?.length ?? 0) > 0);
   }, []);
@@ -69,11 +70,11 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
 
   if (!perfil) return null;
   const nombre = `${perfil.nombre} ${perfil.apellido}`.trim();
+  const experiencia = experienciaEnZooni(resenas?.primerPaseo);
 
   const abrirEditor = () => {
     setForm({
-      precio30: String(perfil.precio30 || ''),
-      precio60: String(perfil.precio60 || ''),
+      servicios: filasDesdeServicios(serviciosDe(perfil)),
       maxPerros: perfil.maxPerros,
       bio: perfil.bio ?? '',
     });
@@ -81,12 +82,13 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
   };
 
   const guardar = async () => {
-    if (!(Number(form.precio30) > 0) || !(Number(form.precio60) > 0)) {
-      avisar('Es necesario un precio para 30 y para 60 minutos', 'alert-circle');
+    const errServicios = validarServicios(form.servicios);
+    if (errServicios) {
+      setForm((f) => ({ ...f, errorServicios: errServicios }));
       return;
     }
     const cambios = {
-      precio30: Number(form.precio30), precio60: Number(form.precio60),
+      servicios: serviciosDesdeFilas(form.servicios),
       maxPerros: form.maxPerros, bio: form.bio.trim(),
     };
     setGuardando(true);
@@ -144,7 +146,7 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
         <View style={s.divisor} />
         <Stat valor={String(resenas?.totalPaseos ?? 0)} etiqueta="paseos hechos" />
         <View style={s.divisor} />
-        <Stat valor={String(perfil.experienciaAnios)} etiqueta={perfil.experienciaAnios === 1 ? 'año de exp.' : 'años de exp.'} />
+        <Stat valor={experiencia.valor} etiqueta={experiencia.etiqueta} />
       </Card>
 
       {perfil.bio ? <Text style={s.bio}>{perfil.bio}</Text> : null}
@@ -152,11 +154,11 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
       {/* ── Servicios ──────────────────────────────────────────────── */}
       <Seccion titulo="Servicios que ofrecés" accion="Editar" onAccion={abrirEditor} />
       <Card>
-        {[{ dur: 30, precio: perfil.precio30 }, { dur: 60, precio: perfil.precio60 }].map((x, i) => (
-          <View key={x.dur} style={[s.servicio, i > 0 && s.servicioBorde]}>
+        {serviciosDe(perfil).map((x, i) => (
+          <View key={x.minutos} style={[s.servicio, i > 0 && s.servicioBorde]}>
             <View style={s.servicioIcono}><Ionicons name="walk" size={20} color={C.teal} /></View>
             <View style={{ flex: 1 }}>
-              <Text style={s.servicioTitulo}>Paseo de {x.dur} minutos</Text>
+              <Text style={s.servicioTitulo}>Paseo de {formatoDuracion(x.minutos)}</Text>
               <Text style={s.servicioSub}>Hasta {perfil.maxPerros} {perfil.maxPerros === 1 ? 'perro' : 'perros'} por salida</Text>
             </View>
             <Text style={s.servicioPrecio}>{formatoPlata(x.precio)}</Text>
@@ -207,18 +209,12 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
             <View style={s.sheet}>
               <View style={s.sheetHandle} />
               <Text style={s.sheetTitulo}>Editar servicios</Text>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                {[['precio30', '30 minutos'], ['precio60', '60 minutos']].map(([k, label]) => (
-                  <View key={k} style={s.precioBox}>
-                    <Text style={s.precioLabel}>{label}</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Text style={s.precioSigno}>$</Text>
-                      <TextInput style={s.precioInput} keyboardType="number-pad" value={form[k]}
-                        onChangeText={(v) => setForm((f) => ({ ...f, [k]: sanitizarDigitos(v, 7) }))} />
-                    </View>
-                  </View>
-                ))}
-              </View>
+              <Text style={[s.sheetLabel, { marginTop: 0 }]}>Tus paseos y precios</Text>
+              <ServiciosEditor
+                filas={form.servicios}
+                error={form.errorServicios}
+                onCambio={(filas) => setForm((f) => ({ ...f, servicios: filas, errorServicios: null }))}
+              />
               <Text style={s.sheetLabel}>Perros por paseo</Text>
               <View style={s.stepper}>
                 <TouchableOpacity style={s.stepBtn} onPress={() => setForm((f) => ({ ...f, maxPerros: Math.max(1, f.maxPerros - 1) }))} accessibilityLabel="Uno menos">
@@ -282,10 +278,6 @@ const s = StyleSheet.create({
   sheetHandle: { width: 44, height: 5, borderRadius: 3, backgroundColor: '#E0E0E0', alignSelf: 'center', marginBottom: 14 },
   sheetTitulo: { fontSize: 19, fontWeight: '900', color: C.texto, marginBottom: 14 },
   sheetLabel: { fontSize: 13, fontWeight: '700', color: C.texto, marginTop: 16, marginBottom: 8 },
-  precioBox: { flex: 1, borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 14, padding: 12, backgroundColor: C.fondo },
-  precioLabel: { fontSize: 12, fontWeight: '700', color: C.teal },
-  precioSigno: { fontSize: 22, fontWeight: '900', color: C.texto, marginRight: 2 },
-  precioInput: { flex: 1, fontSize: 22, fontWeight: '900', color: C.texto, paddingVertical: 2, minWidth: 0 },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 18 },
   stepBtn: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: C.teal, alignItems: 'center', justifyContent: 'center' },
   stepValor: { fontSize: 26, fontWeight: '900', color: C.texto, minWidth: 30, textAlign: 'center' },
