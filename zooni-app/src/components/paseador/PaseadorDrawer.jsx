@@ -6,6 +6,10 @@
  * resaltado en verde suave, "Cerrar sesión" en rojo al final.
  * Reemplaza al bottom nav: las secciones (Inicio, Solicitudes, Paseo,
  * Ganancias, Perfil) se eligen desde acá.
+ *
+ * Zooni Negocios usa el mismo menú con sus propias secciones: `secciones`,
+ * `badges` ({ seccion: cantidad }), `subtitulo`, `extras` (ítems de abajo en
+ * lugar de Chats / Zona) y `textoSalir`. Sin esas props es el del paseador.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -35,6 +39,7 @@ function iniciales(nombre = '', apellido = '') {
 export default function PaseadorDrawer({
   visible, onClose, perfil, activo, onElegir, pendientes = 0, enCurso = false,
   chatsSinLeer = 0, onChats, onZona, onModoDueno, onSalir,
+  secciones = SECCIONES_PASEADOR, badges = {}, subtitulo, extras, textoSalir,
 }) {
   const [confirmarSalida, setConfirmarSalida] = useState(false);
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
@@ -79,22 +84,28 @@ export default function PaseadorDrawer({
             <View style={{ flex: 1 }}>
               <Text style={st.nombre} numberOfLines={1}>{nombre || 'Paseador'}</Text>
               <Text style={st.sub} numberOfLines={1}>
-                Zooni Paseadores · {perfil?.disponible ? 'Disponible' : 'No disponible'}
+                {subtitulo ?? `Zooni Paseadores · ${perfil?.disponible ? 'Disponible' : 'No disponible'}`}
               </Text>
             </View>
           </View>
           <View style={st.divisor} />
 
           <ScrollView showsVerticalScrollIndicator={false}>
-            {SECCIONES_PASEADOR.map((sec) => (
+            {secciones.map((sec) => (
               <Item key={sec.key} icono={sec.icono} label={sec.label} activoItem={activo === sec.key}
-                badge={sec.key === 'solicitudes' ? pendientes : 0}
+                badge={badges[sec.key] ?? (sec.key === 'solicitudes' ? pendientes : 0)}
                 punto={sec.key === 'paseo' && enCurso}
                 onPress={() => elegir(() => onElegir(sec.key))} />
             ))}
             <View style={st.divisor} />
-            <Item icono="chatbubbles-outline" label="Chats" badge={chatsSinLeer} onPress={() => elegir(onChats)} />
-            <Item icono="map-outline" label="Zona de trabajo" onPress={() => elegir(onZona)} />
+            {extras ? extras.map((x) => (
+              <Item key={x.label} icono={x.icono} label={x.label} badge={x.badge ?? 0} onPress={() => elegir(x.onPress)} />
+            )) : (
+              <>
+                <Item icono="chatbubbles-outline" label="Chats" badge={chatsSinLeer} onPress={() => elegir(onChats)} />
+                <Item icono="map-outline" label="Zona de trabajo" onPress={() => elegir(onZona)} />
+              </>
+            )}
             {onModoDueno && (
               <Item icono="swap-horizontal-outline" label="Cambiar a modo dueño" onPress={() => elegir(onModoDueno)} />
             )}
@@ -106,7 +117,7 @@ export default function PaseadorDrawer({
         <AppDialog
           visible={confirmarSalida}
           titulo="¿Cerrar sesión?"
-          mensaje="Vas a dejar de recibir solicitudes en este dispositivo."
+          mensaje={textoSalir ?? 'Vas a dejar de recibir solicitudes en este dispositivo.'}
           botones={[
             { texto: 'Cerrar sesión', estilo: 'destructive', onPress: () => { setConfirmarSalida(false); onClose(); onSalir(); } },
             { texto: 'Cancelar', estilo: 'ghost' },

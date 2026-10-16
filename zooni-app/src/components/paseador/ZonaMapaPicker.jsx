@@ -13,6 +13,8 @@
  *
  * Props: valor { lat, lng, radioKm, zona } · onCambio(valor) — radioKm es null
  *        mientras el radio escrito no sea válido
+ *        conRadio (default true) — false para marcar sólo un punto (el local
+ *        de un negocio): no se pide radio ni se dibuja el círculo
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -121,7 +123,7 @@ function obtenerGps() {
   });
 }
 
-export default function ZonaMapaPicker({ valor, onCambio, baseTexto }) {
+export default function ZonaMapaPicker({ valor, onCambio, baseTexto, conRadio = true }) {
   const iframeRef = useRef(null);
   const valorRef = useRef(valor);
   valorRef.current = valor;
@@ -258,15 +260,21 @@ export default function ZonaMapaPicker({ valor, onCambio, baseTexto }) {
           <Text style={s.sinMapaTxt}>Buscá tu barrio arriba: el mapa está disponible en la versión web.</Text>
         </View>
       )}
-      <Text style={s.ayuda}>Arrastrá el círculo verde o tocá el mapa para mover tu zona.</Text>
+      <Text style={s.ayuda}>
+        {conRadio
+          ? 'Arrastrá el círculo verde o tocá el mapa para mover tu zona.'
+          : 'Tocá el mapa o arrastrá el punto hasta donde está tu local.'}
+      </Text>
 
       <View style={s.zonaRow}>
         <Ionicons name="location" size={16} color={C.teal} />
         <Text style={s.zonaTxt} numberOfLines={1}>
-          {nombrando ? 'Buscando el barrio…' : (valor?.zona || 'Elegí tu zona en el mapa')}
+          {nombrando ? 'Buscando el barrio…' : (valor?.zona || (conRadio ? 'Elegí tu zona en el mapa' : 'Marcá tu local en el mapa'))}
         </Text>
       </View>
 
+      {conRadio && (
+      <>
       <Text style={s.label}>Radio de atención (km)</Text>
       <View style={s.radioFila}>
         <TouchableOpacity style={s.radioBtn} onPress={() => pasoRadio(-1)} accessibilityLabel="Un kilómetro menos">
@@ -293,6 +301,8 @@ export default function ZonaMapaPicker({ valor, onCambio, baseTexto }) {
           ? `El radio tiene que estar entre ${formatoKm(RADIO_MIN)} y ${RADIO_MAX} km`
           : `Hasta dónde vas a buscar perros: entre ${formatoKm(RADIO_MIN)} y ${RADIO_MAX} km.`}
       </Text>
+      </>
+      )}
     </View>
   );
 }

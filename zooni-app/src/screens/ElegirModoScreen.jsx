@@ -1,15 +1,16 @@
 /**
  * ElegirModoScreen.jsx — "¿Cómo querés entrar hoy?"
  *
- * Para cuentas que son dueño Y paseador a la vez. Aparece al abrir la app con
- * la sesión guardada y después del login de dueños: así la misma cuenta tiene
- * las dos apps (Zooni y Zooni Paseadores) y elige cada vez.
+ * Para cuentas con más de una app: dueño, paseador y/o negocios (veterinaria,
+ * peluquería, pet shop — 046). Aparece al abrir la app con la sesión guardada
+ * y después del login de dueños: la misma cuenta tiene todas sus apps y elige
+ * cada vez. Sólo se ofrecen las que la cuenta tiene.
  *
  * Si elige paseador y la cuenta tiene el rol pero todavía no el perfil (ej.
  * rol asignado a mano en la base), primero completa el perfil.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator, Image, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text,
   TouchableOpacity, View,
@@ -19,8 +20,11 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { C, sombra } from '../components/paseador/PaseadorUI';
 import { MASCOTAS_BIENVENIDA } from '../constants/registroImages';
-import { clearCurrentUserId, setModo, MODO_DUENO, MODO_PASEADOR } from '../config/session';
+import {
+  clearCurrentUserId, setModo, modoNegocio, MODO_DUENO, MODO_PASEADOR,
+} from '../config/session';
 import { fetchRolesCuenta } from '../services/paseadorApi';
+import { configNegocio } from '../constants/negocios';
 
 const OPCIONES = [
   {
@@ -37,10 +41,33 @@ export default function ElegirModoScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const [eligiendo, setEligiendo] = useState(null);
+  const [roles, setRoles] = useState(null);
 
-  const elegir = async (modo) => {
+  useEffect(() => {
+    fetchRolesCuenta().then(setRoles).catch(() => setRoles(null));
+  }, []);
+
+  // Mientras no se sabe (o sin red), las dos de siempre
+  const opciones = [
+    ...OPCIONES.filter((o) => !roles
+      || (o.key === MODO_DUENO ? roles.esDueno : roles.esPaseador)),
+    ...(roles?.negocios ?? []).map((n) => {
+      const cfg = configNegocio(n.tipo);
+      return {
+        key: modoNegocio(n.tipo), tipo: n.tipo, titulo: n.nombre, texto: `${cfg.app} · ${cfg.textoTipo}`,
+        icono: cfg.icono, fondo: cfg.fondoIcono,
+      };
+    }),
+  ];
+
+  const elegir = async (modo, tipo) => {
     setEligiendo(modo);
     try {
+      if (tipo) {
+        await setModo(modoNegocio(tipo));
+        navigation.reset({ index: 0, routes: [{ name: 'NegocioApp', params: { tipo } }] });
+        return;
+      }
       if (modo === MODO_DUENO) {
         await setModo(MODO_DUENO);
         navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
@@ -72,13 +99,15 @@ export default function ElegirModoScreen() {
         <Image source={MASCOTAS_BIENVENIDA} style={s.ilustracion} resizeMode="contain" />
 
         <Text style={s.titulo}>¿Cómo querés entrar hoy?</Text>
-        <Text style={s.subtitulo}>Tu cuenta tiene las dos apps. Podés cambiar cuando quieras.</Text>
+        <Text style={s.subtitulo}>
+          Tu cuenta tiene {opciones.length === 2 ? 'las dos' : opciones.length} apps. Podés cambiar cuando quieras.
+        </Text>
 
-        {OPCIONES.map((o) => (
+        {opciones.map((o) => (
           <TouchableOpacity
             key={o.key}
             style={s.opcion}
-            onPress={() => elegir(o.key)}
+            onPress={() => elegir(o.key, o.tipo)}
             disabled={!!eligiendo}
             activeOpacity={0.85}
             accessibilityRole="button"

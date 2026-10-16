@@ -29,7 +29,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { login } from '../services/authApi';
 import { fetchRolesCuenta } from '../services/paseadorApi';
-import { getUltimoMail, getUltimoMailWeb, setModo, MODO_PASEADOR } from '../config/session';
+import { rutaSegunRoles } from '../utils/rutaSegunRoles';
+import { getUltimoMail, getUltimoMailWeb } from '../config/session';
 import { MASCOTAS_BIENVENIDA } from '../constants/registroImages';
 import BotonesSociales from '../components/BotonesSociales';
 
@@ -88,19 +89,11 @@ export default function LoginScreen() {
     setCargando(true);
     try {
       const { usuario } = await login(mail, password);
-      // Si la cuenta también es de paseador, que elija con qué app entrar
+      // Si la cuenta también es de paseador o tiene un negocio, que elija con
+      // qué app entrar (o entra directo si tiene una sola)
       const roles = await fetchRolesCuenta(usuario.id).catch(() => null);
-      if (roles?.esPaseador && roles?.esDueno) {
-        navigation.reset({ index: 0, routes: [{ name: 'ElegirModo', params: { tienePerfil: roles.tienePerfil } }] });
-      } else if (roles?.esPaseador) {
-        // Cuenta sólo de paseador que entró por el login de dueños
-        await setModo(MODO_PASEADOR);
-        navigation.reset({ index: 0, routes: roles.tienePerfil
-          ? [{ name: 'PaseadorApp' }]
-          : [{ name: 'PaseadorRegistro', params: { completar: true } }] });
-      } else {
-        navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
-      }
+      const [ruta, params] = await rutaSegunRoles(roles ?? { esDueno: true, esPaseador: false, negocios: [] });
+      navigation.reset({ index: 0, routes: [{ name: ruta, params }] });
     } catch (err) {
       if (err?.message === 'credenciales') {
         setErrorLogin('Email o contraseña incorrectos');

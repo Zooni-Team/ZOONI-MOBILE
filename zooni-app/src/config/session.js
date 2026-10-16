@@ -183,13 +183,31 @@ export async function getUltimoMail() {
 // ─────────────────────────────────────────────
 // MODO DE LA APP (dueño / paseador)
 // ─────────────────────────────────────────────
-// Una misma cuenta puede ser dueño y paseador a la vez. El modo decide qué
-// "app" se abre al arrancar: la de dueños (Home) o Zooni Paseadores. Se guarda
-// aparte del id para que reabrir la app te deje donde estabas trabajando.
+// Una misma cuenta puede ser dueño, paseador y tener negocios (veterinaria,
+// peluquería, pet shop) a la vez. El modo decide qué "app" se abre al
+// arrancar: la de dueños (Home), Zooni Paseadores o la de uno de sus negocios
+// ('negocio:veterinaria'…). Se guarda aparte del id para que reabrir la app
+// te deje donde estabas trabajando.
 
 const MODO_KEY = 'zooni_modo';
 export const MODO_DUENO = 'dueno';
 export const MODO_PASEADOR = 'paseador';
+const TIPOS_NEGOCIO_VALIDOS = ['veterinaria', 'peluqueria', 'petshop'];
+
+/** 'veterinaria' → 'negocio:veterinaria' */
+export const modoNegocio = (tipo) => `negocio:${tipo}`;
+
+/** 'negocio:petshop' → 'petshop'; cualquier otro modo → null */
+export function tipoNegocioDeModo(modo) {
+  const tipo = String(modo ?? '').startsWith('negocio:') ? modo.slice(8) : null;
+  return TIPOS_NEGOCIO_VALIDOS.includes(tipo) ? tipo : null;
+}
+
+function modoValido(modo) {
+  if (modo === MODO_PASEADOR) return MODO_PASEADOR;
+  if (tipoNegocioDeModo(modo)) return modo;
+  return MODO_DUENO;
+}
 
 let modoActual = MODO_DUENO;
 
@@ -198,7 +216,7 @@ export function getModo() {
 }
 
 export async function setModo(modo) {
-  modoActual = modo === MODO_PASEADOR ? MODO_PASEADOR : MODO_DUENO;
+  modoActual = modoValido(modo);
   try {
     if (Platform.OS === 'web') {
       if (typeof localStorage !== 'undefined') localStorage.setItem(MODO_KEY, modoActual);
@@ -216,7 +234,7 @@ export async function loadStoredModo() {
     const raw = Platform.OS === 'web'
       ? (typeof localStorage !== 'undefined' ? localStorage.getItem(MODO_KEY) : null)
       : await SecureStore.getItemAsync(MODO_KEY);
-    modoActual = raw === MODO_PASEADOR ? MODO_PASEADOR : MODO_DUENO;
+    modoActual = modoValido(raw);
   } catch {
     modoActual = MODO_DUENO;
   }

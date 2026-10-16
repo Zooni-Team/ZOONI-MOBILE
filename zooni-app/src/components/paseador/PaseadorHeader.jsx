@@ -5,9 +5,12 @@
  * que cambia: alineado a la izquierda (avatar + nombre o sección + estado de
  * trabajo) en vez de un título centrado. La
  * campana con badge ámbar queda a la derecha, igual que en Zooni.
+ *
+ * Zooni Negocios lo reusa: `chip` ({ texto, on }) reemplaza a Disponible y
+ * `contarChats` cuenta sus mensajes sin leer en lugar de los de paseos.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FlatList, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
@@ -23,15 +26,21 @@ import { tiempoRelativoCorto } from '../../utils/tiempoRelativo';
 
 export default function PaseadorHeader({
   perfil, subtitulo, mostrarEstado = true, titulo, onMenu, onChatsSinLeer, onIrASeccion,
+  chip, contarChats,
 }) {
   const navigation = useNavigation();
+  const contarRef = useRef(contarChats);
+  contarRef.current = contarChats;
   const [notifs, setNotifs] = useState([]);
   const [chatsSinLeer, setChatsSinLeer] = useState(0);
   const [abierto, setAbierto] = useState(false);
 
   const cargar = useCallback(async () => {
     try {
-      const [n, c] = await Promise.all([fetchNotificacionesPaseador(), contarNoLeidosPaseo('paseador')]);
+      const [n, c] = await Promise.all([
+        fetchNotificacionesPaseador(),
+        contarRef.current ? contarRef.current() : contarNoLeidosPaseo('paseador'),
+      ]);
       setNotifs(n);
       setChatsSinLeer(c);
       onChatsSinLeer?.(c);
@@ -92,7 +101,15 @@ export default function PaseadorHeader({
       <Avatar uri={perfil?.foto} nombre={nombre} size={42} borde />
       <View style={s.textos}>
         <Text style={s.hola} numberOfLines={1}>{titulo ?? `Hola, ${primerNombre}`}</Text>
-        {mostrarEstado && perfil ? (
+        {chip ? (
+          <Chip
+            texto={chip.texto}
+            icono={chip.on ? 'radio-button-on' : 'radio-button-off'}
+            color={chip.on ? C.teal : C.texto2}
+            fondo={chip.on ? C.menta : '#EFEFEF'}
+            style={{ marginTop: 3 }}
+          />
+        ) : mostrarEstado && perfil ? (
           <Chip
             texto={perfil.disponible ? 'Disponible' : 'No disponible'}
             icono={perfil.disponible ? 'radio-button-on' : 'radio-button-off'}

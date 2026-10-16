@@ -62,7 +62,15 @@ import ElegirModoScreen         from './src/screens/ElegirModoScreen';
 import SolicitarPaseoScreen     from './src/screens/SolicitarPaseoScreen';
 import MisPaseosScreen          from './src/screens/MisPaseosScreen';
 import PaseadorChatsScreen      from './src/screens/Paseador/PaseadorChatsScreen';
+import NegocioLoginScreen       from './src/screens/Negocio/NegocioLoginScreen';
+import NegocioRegistroScreen    from './src/screens/Negocio/NegocioRegistroScreen';
+import NegocioAppScreen         from './src/screens/Negocio/NegocioAppScreen';
+import NegocioChatScreen        from './src/screens/Negocio/NegocioChatScreen';
+import NegocioPublicoScreen     from './src/screens/NegocioPublicoScreen';
+import ReservarTurnoScreen      from './src/screens/ReservarTurnoScreen';
+import MisTurnosScreen          from './src/screens/MisTurnosScreen';
 import { fetchRolesCuenta }     from './src/services/paseadorApi';
+import { rutaSegunRoles }       from './src/utils/rutaSegunRoles';
 import { completarRetornoSocial, hayRetornoSocial } from './src/services/socialAuthApi';
 
 const Stack = createNativeStackNavigator();
@@ -101,22 +109,17 @@ async function rutaTrasLoginSocial() {
       activarSocial: { nombre: res.usuario.nombre, fotoPerfil: res.usuario.fotoPerfil ?? null },
     }];
   }
-  if (roles?.esDueno && roles?.esPaseador) return ['ElegirModo', { tienePerfil: roles.tienePerfil }];
-  if (roles?.esPaseador) {
-    await setModo(MODO_PASEADOR);
-    return roles.tienePerfil ? ['PaseadorApp'] : ['PaseadorRegistro', { completar: true }];
-  }
-  return ['Home'];
+  return rutaSegunRoles(roles ?? { esDueno: true, esPaseador: false, negocios: [] });
 }
 
 export default function App() {
   const [initialRoute, setInitialRoute] = useState(null);
   const [initialParams, setInitialParams] = useState(undefined);
 
-  // Con sesión guardada:
-  //   · cuenta dueño + paseador → pantalla "¿Cómo querés entrar hoy?"
-  //   · sólo paseador           → Zooni Paseadores
-  //   · sólo dueño              → Home
+  // Con sesión guardada, según las apps de la cuenta (utils/rutaSegunRoles):
+  //   · más de una (dueño, paseador, negocios) → "¿Cómo querés entrar hoy?"
+  //   · sólo paseador / sólo un negocio        → esa app
+  //   · sólo dueño                             → Home
   // Si los roles no se pueden consultar (sin red, o tardan más de 4 s), se usa
   // el último modo guardado para no dejar a nadie trabado en el arranque.
   // Sin sesión → Login.
@@ -134,17 +137,9 @@ export default function App() {
         return;
       }
       const roles = await rolesCon4s(userId);
-      if (roles?.esDueno && roles?.esPaseador) {
-        setInitialParams({ tienePerfil: roles.tienePerfil });
-        setInitialRoute('ElegirModo');
-      } else if (roles?.esPaseador) {
-        setInitialRoute(roles.tienePerfil ? 'PaseadorApp' : 'PaseadorRegistro');
-        if (!roles.tienePerfil) setInitialParams({ completar: true });
-      } else if (roles) {
-        setInitialRoute('Home');
-      } else {
-        setInitialRoute(modo === MODO_PASEADOR ? 'PaseadorApp' : 'Home');
-      }
+      const [ruta, params] = await rutaSegunRoles(roles, modo);
+      setInitialParams(params);
+      setInitialRoute(ruta);
     })();
   }, []);
 
@@ -254,6 +249,15 @@ function RootNavigator({ initialRoute, initialParams }) {
           <Stack.Screen name="PaseadorChat"           component={PaseadorChatScreen} />
           <Stack.Screen name="PaseadorDisponibilidad" component={PaseadorDisponibilidadScreen} />
           <Stack.Screen name="PaseadorChats"          component={PaseadorChatsScreen} />
+          {/* Zooni Negocios: veterinarias, peluquerías y pet shops */}
+          <Stack.Screen name="NegocioLogin"           component={NegocioLoginScreen} />
+          <Stack.Screen name="NegocioRegistro"        component={NegocioRegistroScreen} />
+          <Stack.Screen name="NegocioApp"             component={NegocioAppScreen} initialParams={p('NegocioApp')} />
+          <Stack.Screen name="NegocioChat"            component={NegocioChatScreen} />
+          {/* Lado dueño de los negocios */}
+          <Stack.Screen name="NegocioPublico"         component={NegocioPublicoScreen} />
+          <Stack.Screen name="ReservarTurno"          component={ReservarTurnoScreen} />
+          <Stack.Screen name="MisTurnos"              component={MisTurnosScreen} />
           {/* Lado dueño de los paseos */}
           <Stack.Screen name="SolicitarPaseo"         component={SolicitarPaseoScreen} />
           <Stack.Screen name="MisPaseos"              component={MisPaseosScreen} />
