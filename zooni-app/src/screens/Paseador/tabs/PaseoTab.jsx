@@ -12,6 +12,10 @@
  * (precioPorTiempo). Al terminar, el paseador anota si le pagaron o si el
  * dueño le paga después (cada semana / fin de mes, con recordatorio).
  *
+ * TOQUES SIN QUERER: finalizar antes del tiempo pactado pide una segunda
+ * confirmación, y en el resumen hay "Retomar paseo" durante RETOMAR_MINUTOS
+ * por si igual se finalizó por error.
+ *
  * GPS: navigator.geolocation (web y, si existe, nativo). Sólo acumula
  * distancia mientras el timer corre; descarta lecturas imprecisas y el
  * "temblor" del GPS parado. Cada ~15 s / 30 m guarda un punto en PaseoTrack
@@ -32,7 +36,8 @@ import ModalidadCobro from '../../../components/paseador/ModalidadCobro';
 import {
   COMISION_ZOONI, distanciaMetros, fetchCuentaCorriente, fetchMisPaseos, fetchRecorrido, finalizarPaseo,
   formatoDistancia, formatoPlata, formatoTimer, guardarModalidadCobro, minutosCobrados, pausarPaseo,
-  precioPorTiempo, reanudarPaseo, registrarPago, registrarPunto, segundosDePaseo,
+  precioPorTiempo, reanudarPaseo, registrarPago, registrarPunto, RETOMAR_MINUTOS, retomarPaseo,
+  segundosDePaseo, sePuedeRetomar,
 } from '../../../services/paseadorApi';
 import { confirmar } from '../../../utils/dialogo';
 
@@ -51,7 +56,10 @@ export default function PaseoTab(props) {
   const [resumen, setResumen] = useState(null);
 
   if (paseoActivo) return <PaseoEnCurso {...props} onFinalizado={setResumen} />;
-  if (resumen) return <Resumen paseo={resumen} onCerrar={() => setResumen(null)} irA={props.irA} avisar={props.avisar} />;
+  if (resumen) {
+    const retomado = (paseo) => { setResumen(null); props.setPaseoActivo(paseo); };
+    return <Resumen paseo={resumen} onCerrar={() => setResumen(null)} onRetomado={retomado} irA={props.irA} avisar={props.avisar} />;
+  }
   return <SinPaseo {...props} />;
 }
 
@@ -167,6 +175,16 @@ function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, abrirMenu
       { textoOk: `Finalizar · ${aCobrar}` },
     );
     if (!ok) return;
+    // Segunda confirmación si todavía no cumplió el tiempo: es cuando un toque
+    // sin querer le cuesta plata al paseador
+    if (corto) {
+      const seguro = await confirmar(
+        '¿Seguro que querés finalizar?',
+        `Faltan ${paseo.duracionMin - minutos} minutos para el tiempo pactado. Si lo finalizás ahora, ${paseo.mascota.nombre} figura de vuelta en casa y cobrás ${aCobrar}.`,
+        { textoOk: 'Sí, finalizar', textoCancelar: 'Seguir paseando', destructivo: true },
+      );
+      if (!seguro) return;
+    }
     setOcupado(true);
     try {
       const fin = await finalizarPaseo(paseo, distRef.current);
@@ -289,8 +307,34 @@ function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, abrirMenu
 // RESUMEN DEL PASEO TERMINADO
 // ─────────────────────────────────────────────────────────────────────────────
 
-function Resumen({ paseo, onCerrar, irA, avisar }) {
+function Resumen({ paseo, onCerrar, onRetomado, irA, avisar }) {
   const [cuenta, setCuenta] = useState(null);
+  const [retomando, setRetomando] = useState(false);
+  const [puedeRetomar, setPuedeRetomar] = useState(() => sePuedeRetomar(paseo));
+
+  // El botón "Retomar paseo" se va solo cuando pasa el plazo
+  useEffect(() => {
+    if (!puedeRetomar) return undefined;
+    const t = setInterval(() => setPuedeRetomar(sePuedeRetomar(paseo)), 15000);
+    return () => clearInterval(t);
+  }, [paseo, puedeRetomar]);
+
+  const retomar = async () => {
+    const ok = await confirmar(
+      `¿Retomar el paseo de ${paseo.mascota.nombre}?`,
+      'Sigue contando desde el tiempo y la distancia que llevabas. Le avisamos al dueño que el paseo sigue en curso.',
+      { textoOk: 'Retomar paseo' },
+    );
+    if (!ok) return;
+    setRetomando(true);
+    try {
+      onRetomado(await retomarPaseo(paseo));
+      avisar?.('Paseo retomado', 'play-circle');
+    } catch {
+      setRetomando(false);
+      avisar?.('No se pudo retomar el paseo. Probá de nuevo.', 'alert-circle');
+    }
+  };
   const [cobro, setCobro] = useState(null); // null · 'pagado' · 'despues'
   const [verForm, setVerForm] = useState(false);
 
@@ -331,6 +375,16 @@ function Resumen({ paseo, onCerrar, irA, avisar }) {
         <Text style={s.resumenTitulo}>¡{paseo.mascota.nombre} ya volvió a casa!</Text>
         <Text style={s.resumenSub}>Le avisamos a {paseo.dueno.nombre}.</Text>
       </View>
+      {puedeRetomar && (
+        <TouchableOpacity style={s.retomar} onPress={retomar} disabled={retomando} activeOpacity={0.85}
+          accessibilityRole="button" accessibilityLabel="Retomar paseo">
+          <Ionicons name="arrow-undo" size={18} color={C.teal} />
+          <View style={{ flex: 1 }}>
+            <Text style={s.retomarTitulo}>{retomando ? 'Retomando…' : '¿Lo finalizaste sin querer? Retomar paseo'}</Text>
+            <Text style={s.retomarSub}>Podés hacerlo durante {RETOMAR_MINUTOS} minutos.</Text>
+          </View>
+        </TouchableOpacity>
+      )}
       <Card>
         <Text style={s.cobradoLabel}>Ganaste</Text>
         <Text style={s.cobrado}>{formatoPlata(paseo.precio)}</Text>
@@ -487,6 +541,12 @@ const s = StyleSheet.create({
   resumenTop: { alignItems: 'center', marginVertical: 18 },
   resumenTitulo: { fontSize: 22, fontWeight: '900', color: C.texto, marginTop: 14, textAlign: 'center' },
   resumenSub: { fontSize: 14, color: C.texto2, marginTop: 4 },
+  retomar: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF', borderRadius: 16,
+    borderWidth: 1.5, borderColor: C.teal, borderStyle: 'dashed', padding: 12, marginBottom: 14,
+  },
+  retomarTitulo: { fontSize: 14, fontWeight: '800', color: C.teal },
+  retomarSub: { fontSize: 12, color: C.texto2, marginTop: 1 },
   cobradoLabel: { fontSize: 13, fontWeight: '700', color: C.texto2 },
   cobrado: { fontSize: 44, fontWeight: '900', color: C.teal, marginTop: 2 },
   tarifa: { fontSize: 13, fontWeight: '600', color: C.texto2, marginTop: 2 },

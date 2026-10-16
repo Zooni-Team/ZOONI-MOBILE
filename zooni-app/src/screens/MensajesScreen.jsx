@@ -6,7 +6,8 @@
  *   - Amigos: los chats de Match (services/chatStore.js → tabla Mensaje/idMatch).
  *   - Servicios: los paseadores de Zooni que contraté (tabla paseo_mensajes)
  *     MÁS las veterinarias, pet shops y peluquerías de Comunidad (tabla
- *     servicios), con la conversación que ya tenga cada uno.
+ *     servicios) con las que YA tengo una conversación. Los servicios a los
+ *     que nunca les escribí no aparecen: se buscan en Comunidad.
  *
  * Los paseadores eran una pestaña propia; son un servicio más de los que
  * ofrecemos, así que viven adentro de Servicios.
@@ -64,15 +65,12 @@ export default function MensajesScreen() {
       ]);
       setConversaciones(convs);
       setPaseadores(convsPaseo);
+      // Sólo los servicios con los que ya hablé: el resto del catálogo de
+      // Comunidad no es "mío" y llenaba la lista de "Tocá para escribirle"
       setServicios(
         (todosServicios.servicios ?? [])
+          .filter((s) => ultimosPorServicio.has(s.id))
           .map((s) => ({ ...s, ...ultimosPorServicio.get(s.id) }))
-          .sort((a, b) => {
-            if (a.fecha && !b.fecha) return -1;
-            if (!a.fecha && b.fecha) return 1;
-            if (a.fecha && b.fecha) return new Date(b.fecha) - new Date(a.fecha);
-            return a.nombre.localeCompare(b.nombre);
-          })
       );
     } finally {
       setLoading(false);
@@ -118,8 +116,7 @@ export default function MensajesScreen() {
       : tab === 'Servicios' ? [...dePaseadores, ...deServicios]
         : [...dePersonas, ...dePaseadores, ...deServicios];
 
-    // Con mensajes primero y por fecha; los servicios sin conversación van al
-    // final, que es donde molestan menos y siguen estando para escribirles.
+    // Lo más reciente arriba (un paseo contratado sin mensajes todavía va al final)
     return grupo.sort((a, b) => {
       if (a.fecha && !b.fecha) return -1;
       if (!a.fecha && b.fecha) return 1;
@@ -131,7 +128,7 @@ export default function MensajesScreen() {
   const textoVacio = tab === 'Amigos'
     ? 'Todavía no tenés conversaciones.\n¡Hacé match en Match para empezar a chatear!'
     : tab === 'Servicios'
-      ? 'Todavía no hablaste con ningún servicio.\nBuscá veterinarias, paseadores y pet shops en Comunidad.'
+      ? 'Todavía no contrataste ni le escribiste a ningún servicio.\nBuscá veterinarias, paseadores y pet shops en Comunidad.'
       : 'Todavía no tenés conversaciones.\nHacé match o escribile a un servicio desde Comunidad.';
 
   return (

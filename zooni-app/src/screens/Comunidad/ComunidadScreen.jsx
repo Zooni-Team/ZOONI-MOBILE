@@ -38,7 +38,11 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
 .pz{width:46px;height:46px;border-radius:50%;border:3px solid #2DBD72;background:#2DBD72;
     position:relative;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.35);
     display:flex;align-items:center;justify-content:center}
-.pz img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+/* !important: leaflet.css pone width:auto a las img de los marcadores y la foto
+   quedaba angosta (medio círculo verde). Así llena el círculo, recortada al centro. */
+.pz img{position:absolute;top:0;left:0;width:100%!important;height:100%!important;
+    max-width:none!important;max-height:none!important;object-fit:cover;object-position:center;
+    border-radius:50%}
 .pz.off{border-color:#9AA5A0}
 .uw{width:44px;height:44px;display:flex;align-items:center;justify-content:center;position:relative}
 .up{position:absolute;width:34px;height:34px;border-radius:50%;

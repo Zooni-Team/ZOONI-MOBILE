@@ -7,6 +7,10 @@
  * y todas las fotos/videos. Abajo, cada reseña con su texto, respuestas y
  * adjuntos. Filtro rápido: todas / con fotos o videos / por estrellas.
  *
+ * Un dueño que paseó con él puede escribir su opinión desde acá ("Escribir una
+ * opinión" abre CalificarPaseoModal con su paseo sin calificar más nuevo).
+ * El paseador, viendo sus propias opiniones, no ve ese botón.
+ *
  * Props: visible · idPaseador · nombre · onCerrar
  */
 
@@ -17,9 +21,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { fetchResenasPaseador, PREGUNTAS_RESENA } from '../../services/paseadorApi';
+import { fetchPaseosParaOpinar, fetchResenasPaseador, PREGUNTAS_RESENA } from '../../services/paseadorApi';
+import { getCurrentUserId } from '../../config/session';
 import { tiempoRelativo } from '../../utils/tiempoRelativo';
 import { MiniaturaMedia, VisorMedia } from './MediaResena';
+import CalificarPaseoModal from './CalificarPaseoModal';
 
 const VERDE = '#2DBD72';
 const MENTA = '#E8F5EC';
@@ -161,18 +167,44 @@ export default function ResenasPaseadorModal({ visible, idPaseador, nombre, onCe
   const [error, setError] = useState(false);
   const [filtro, setFiltro] = useState('todas');
   const [visor, setVisor] = useState({ items: [], indice: null });
+  // { sinCalificar, total } de mis paseos con este paseador (null = cargando)
+  const [paraOpinar, setParaOpinar] = useState(null);
+  const [calificando, setCalificando] = useState(null);
+  const [gracias, setGracias] = useState(null);
+  const [recarga, setRecarga] = useState(0);
+  const esElMismo = String(getCurrentUserId()) === String(idPaseador);
 
   useEffect(() => {
     if (!visible || idPaseador == null) return undefined;
     let vivo = true;
-    setDatos(null);
+    if (!recarga) {
+      setDatos(null);
+      setFiltro('todas');
+      setGracias(null);
+      setParaOpinar(null);
+    }
     setError(false);
-    setFiltro('todas');
     fetchResenasPaseador(idPaseador)
       .then((d) => { if (vivo) setDatos(d); })
       .catch(() => { if (vivo) setError(true); });
+    if (!esElMismo) {
+      fetchPaseosParaOpinar(idPaseador)
+        .then((r) => { if (vivo) setParaOpinar(r); })
+        .catch(() => { if (vivo) setParaOpinar({ sinCalificar: [], total: 0 }); });
+    }
     return () => { vivo = false; };
-  }, [visible, idPaseador]);
+  }, [visible, idPaseador, esElMismo, recarga]);
+
+  // Al cerrar, la próxima apertura arranca de cero
+  useEffect(() => { if (!visible) setRecarga(0); }, [visible]);
+
+  const opinionEnviada = ({ parcial }) => {
+    setCalificando(null);
+    setGracias(parcial
+      ? '¡Gracias por tu opinión! Se guardaron las estrellas y el texto.'
+      : '¡Gracias por tu opinión!');
+    setRecarga((n) => n + 1);
+  };
 
   const lista = useMemo(() => {
     const todas = datos?.resenas ?? [];
@@ -184,9 +216,42 @@ export default function ResenasPaseadorModal({ visible, idPaseador, nombre, onCe
 
   const verMedia = (items, indice) => setVisor({ items, indice });
 
+  const pendiente = paraOpinar?.sinCalificar?.[0] ?? null;
+  const escribir = esElMismo || !paraOpinar ? null : (
+    <View style={s.escribir}>
+      {gracias ? (
+        <View style={s.gracias}>
+          <Ionicons name="checkmark-circle" size={18} color={VERDE} />
+          <Text style={s.graciasTxt}>{gracias}</Text>
+        </View>
+      ) : null}
+      {pendiente ? (
+        <>
+          <TouchableOpacity style={s.escribirBtn} onPress={() => setCalificando(pendiente)} activeOpacity={0.85}
+            accessibilityRole="button">
+            <Ionicons name="create-outline" size={18} color={TEXTO} />
+            <Text style={s.escribirTxt}>Escribir una opinión</Text>
+          </TouchableOpacity>
+          <Text style={s.escribirSub}>
+            {paraOpinar.sinCalificar.length > 1
+              ? `Tenés ${paraOpinar.sinCalificar.length} paseos sin calificar con ${nombre ?? 'este paseador'}.`
+              : `Sobre el paseo con ${pendiente.mascota.nombre}.`}
+          </Text>
+        </>
+      ) : !gracias ? (
+        <Text style={s.escribirSub}>
+          {paraOpinar.total
+            ? 'Ya calificaste todos tus paseos con este paseador. ¡Gracias!'
+            : 'Vas a poder dejar tu opinión después de un paseo con este paseador.'}
+        </Text>
+      ) : null}
+    </View>
+  );
+
   const cabecera = datos ? (
     <View>
       <Resumen datos={datos} onVerMedia={verMedia} />
+      {escribir}
       {datos.cantidad > 0 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 18 }}
           contentContainerStyle={{ gap: 8 }}>
@@ -237,6 +302,13 @@ export default function ResenasPaseadorModal({ visible, idPaseador, nombre, onCe
           />
         )}
         <VisorMedia items={visor.items} indice={visor.indice} onCerrar={() => setVisor({ items: [], indice: null })} />
+        {/* Adentro de este Modal: en iOS no se abre un Modal hermano encima */}
+        <CalificarPaseoModal
+          visible={!!calificando}
+          paseo={calificando}
+          onCerrar={() => setCalificando(null)}
+          onEnviado={opinionEnviada}
+        />
       </SafeAreaView>
     </Modal>
   );
@@ -276,6 +348,19 @@ const s = StyleSheet.create({
   chipPctNum: { fontSize: 13, fontWeight: '900', color: VERDE },
   chipPctTxt: { fontSize: 13, color: TEXTO, fontWeight: '600' },
   subtitulo: { fontSize: 14, fontWeight: '800', color: TEXTO, marginBottom: 8 },
+
+  escribir: { marginTop: 16 },
+  escribirBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: AMARILLO, borderRadius: 24, height: 46,
+  },
+  escribirTxt: { fontSize: 15, fontWeight: '800', color: TEXTO },
+  escribirSub: { fontSize: 12, color: TEXTO2, marginTop: 6, textAlign: 'center' },
+  gracias: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: MENTA,
+    borderRadius: 12, padding: 10, marginBottom: 8,
+  },
+  graciasTxt: { flex: 1, fontSize: 13, fontWeight: '700', color: TEXTO },
 
   filtro: {
     flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: '#DDDDDD',

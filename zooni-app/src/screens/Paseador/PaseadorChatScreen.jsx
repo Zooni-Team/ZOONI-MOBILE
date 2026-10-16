@@ -27,10 +27,52 @@ import { etiquetaDia, horaCorta, mismoDia } from '../../utils/tiempoRelativo';
 
 const POLL_MS = 4000;
 
+// Respuestas rápidas del paseador según el estado del paseo, en el orden en
+// que conviene mandarlas. Se muestran RAPIDAS_VISIBLES a la vez: la que ya
+// mandó en esta conversación desaparece y entra la siguiente de la lista.
+const RAPIDAS_VISIBLES = 3;
 const RAPIDAS = {
-  pendiente: ['¡Hola! ¿Me contás un poco más?', '¿Tiene alguna alergia?', '¿Dónde lo paso a buscar?'],
-  aceptado: ['Estoy llegando 🚶', 'Llego en 10 minutos', 'Ya estoy en la puerta'],
-  en_curso: ['Ya salimos 🐾', 'Todo bien, está feliz 😊', 'Volvemos en 10 minutos'],
+  pendiente: [
+    '¡Hola! ¿Me contás un poco más?',
+    '¿Tiene alguna alergia?',
+    '¿Dónde lo paso a buscar?',
+    '¿Cómo se lleva con otros perros?',
+    '¿Tira de la correa?',
+    '¿Toma algún medicamento?',
+    '¿Tiene las vacunas al día?',
+    '¿Le puedo dar premios?',
+    '¿Hay algo que le dé miedo? (motos, ruidos, otros perros)',
+    '¿Lleva bozal o arnés?',
+    '¿Algún teléfono por si hay una emergencia?',
+    '¡Perfecto! Ya acepto la solicitud 🐾',
+  ],
+  aceptado: [
+    '¡Hola! Ya tengo agendado el paseo 🐾',
+    'Estoy llegando 🚶',
+    'Llego en 10 minutos',
+    'Ya estoy en la puerta',
+    '¿Me dejás la correa y las bolsitas preparadas?',
+    'Estoy con un poco de demora, llego en 15 minutos',
+    '¿Le toco el timbre o te aviso por acá?',
+    '¿Ya comió hoy?',
+  ],
+  en_curso: [
+    'Ya salimos 🐾',
+    'Todo bien, está feliz 😊',
+    'Hizo sus necesidades ✅',
+    'Estamos en la plaza jugando 🌳',
+    'Le di un poco de agua 💧',
+    'Se portó súper bien con otros perros',
+    'Volvemos en 10 minutos',
+    'Ya estamos llegando a casa 🏠',
+  ],
+  finalizado: [
+    '¡Ya está en casa! Gracias por confiar 🐾',
+    'Se portó genial, quedó cansado 😴',
+    'Cuando quieras repetimos el paseo',
+    '¿Querés agendar el próximo?',
+    'Si te gustó, ¡dejame una reseña! ⭐',
+  ],
 };
 
 const ESTADO_TXT = {
@@ -103,8 +145,12 @@ export default function PaseadorChatScreen() {
       ? { nombre: paseo.paseador?.nombre ?? 'Paseador', foto: paseo.paseador?.foto ?? null }
       : { nombre: paseo.dueno.nombre, foto: paseo.dueno.foto })
     : null;
-  // Las respuestas rápidas son para el paseador (escribe con la correa en la mano)
-  const rapidas = paseo && !soyDueno ? (RAPIDAS[paseo.estado] ?? []) : [];
+  // Las respuestas rápidas son para el paseador (escribe con la correa en la
+  // mano). Las que ya mandó no se ofrecen de nuevo: entra la siguiente.
+  const yaMandadas = new Set(mensajes.filter((m) => m.autor === 'yo').map((m) => String(m.texto ?? '').trim()));
+  const rapidas = paseo && !soyDueno
+    ? (RAPIDAS[paseo.estado] ?? []).filter((r) => !yaMandadas.has(r)).slice(0, RAPIDAS_VISIBLES)
+    : [];
   const cerrado = paseo && ['rechazado', 'cancelado'].includes(paseo.estado);
 
   return (

@@ -13,6 +13,9 @@
  *   mascotaActiva→ objeto { nombre, raza } de la mascota activa
  *   activeRoute  → nombre de la ruta actual (para resaltar el ítem activo)
  *
+ * Si la cuenta también es de paseador, aparece "Cambiar a modo paseador"
+ * (la contraparte del "Cambiar a modo dueño" del menú del paseador).
+ *
  * Animaciones:
  *   - translateX: el drawer se desliza desde -DRAWER_WIDTH hasta 0
  *   - overlayOpacity: el fondo oscuro aparece/desaparece con fade
@@ -26,8 +29,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { clearToken } from '../services/api';
-import { clearCurrentUserId } from '../config/session';
+import { clearCurrentUserId, setModo, MODO_PASEADOR } from '../config/session';
 import { contarMensajesNoLeidos } from '../services/chatStore';
+import { fetchRolesCuenta } from '../services/paseadorApi';
 import AppDialog from './AppDialog';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -55,6 +59,7 @@ const MENU_ITEMS = [
   { key: 'perfil',        label: 'Perfil',                    icono: 'person-outline',              ruta: 'Perfil' },
   { key: 'configuracion', label: 'Configuración',             icono: 'settings-outline',            ruta: 'Configuracion' },
   { key: 'divider', isDivider: true },
+  { key: 'modo_paseador', label: 'Cambiar a modo paseador',   icono: 'swap-horizontal-outline',     soloPaseador: true },
   { key: 'logout',        label: 'Cerrar sesión',             icono: 'log-out-outline',             isLogout: true },
 ];
 
@@ -62,6 +67,9 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
   const navigation = useNavigation();
   const [mensajesNoLeidos, setMensajesNoLeidos] = useState(0);
   const [logoutDialog, setLogoutDialog] = useState(false);
+  // Roles de la cuenta (null = todavía no se sabe): si es paseador se ofrece
+  // pasar al modo paseador
+  const [roles, setRoles] = useState(null);
 
   // Posición horizontal del drawer (empieza fuera de pantalla a la izquierda)
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
@@ -73,6 +81,7 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
   useEffect(() => {
     if (!visible) return;
     contarMensajesNoLeidos().then(setMensajesNoLeidos).catch(() => {});
+    fetchRolesCuenta().then(setRoles).catch(() => {});
   }, [visible]);
 
   // Anima la apertura/cierre del drawer cuando cambia `visible`
@@ -105,6 +114,20 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
     } else if (item.ruta) {
       navigation.navigate(item.ruta);
     }
+  };
+
+  /**
+   * modoPaseador — Igual que en ElegirModo: si tiene el rol pero le falta el
+   * perfil, primero lo completa; si no, entra directo a Zooni Paseadores.
+   */
+  const modoPaseador = async () => {
+    onClose();
+    if (roles?.tienePerfil === false) {
+      navigation.navigate('PaseadorRegistro', { completar: true });
+      return;
+    }
+    await setModo(MODO_PASEADOR);
+    navigation.reset({ index: 0, routes: [{ name: 'PaseadorApp' }] });
   };
 
   /**
@@ -180,6 +203,7 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
           {MENU_ITEMS.map((item) => {
             // Renderiza separador visual
             if (item.isDivider) return <View key={item.key} style={styles.dividerLine} />;
+            if (item.soloPaseador && !roles?.esPaseador) return null;
 
             // Resalta el ítem de la pantalla actual
             const isActive = activeRoute === item.ruta;
@@ -188,7 +212,7 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
               <TouchableOpacity
                 key={item.key}
                 style={[styles.menuItem, isActive && styles.menuItemActive]}
-                onPress={() => item.isLogout ? handleLogout() : handleNavigate(item)}
+                onPress={() => (item.isLogout ? handleLogout() : item.soloPaseador ? modoPaseador() : handleNavigate(item))}
                 accessibilityLabel={badge > 0 ? `${item.label}, ${badge} mensajes sin leer` : item.label}
               >
                 <Ionicons

@@ -528,14 +528,17 @@ export async function fetchMiFotoPerfil() {
  *   esPaseador    → rol WALKER o tiene perfil de paseador
  *   tienePerfil   → ya existe su fila en paseador_perfil (si es paseador
  *                   por rol pero sin perfil, hay que completarlo)
+ *   negocios      → [{ id, tipo, nombre }] veterinaria / peluquería / pet
+ *                   shop de la cuenta (046; sin la migración, [])
  * Devuelve null si no se pudo consultar (sin red): quien llama decide.
  */
 export async function fetchRolesCuenta(id = getCurrentUserId()) {
   if (id == null) return null;
-  const [roles, mascotas, perfil] = await Promise.all([
+  const [roles, mascotas, perfil, negocios] = await Promise.all([
     supabase.from('UserRole').select('Id_Role').eq('Id_User', id),
     supabase.from('Mascota').select('Id_Mascota').eq('Id_User', id).limit(1),
     supabase.from('paseador_perfil').select('id_user').eq('id_user', id).maybeSingle(),
+    supabase.from('negocio_perfil').select('id, tipo, nombre').eq('id_user', id),
   ]);
   if (roles.error && mascotas.error) return null;
   const ids = new Set((roles.data ?? []).map((r) => r.Id_Role));
@@ -544,6 +547,7 @@ export async function fetchRolesCuenta(id = getCurrentUserId()) {
     esDueno: ids.has(1) || (mascotas.data?.length ?? 0) > 0,
     esPaseador: ids.has(2) || tienePerfil,
     tienePerfil,
+    negocios: negocios.error ? [] : (negocios.data ?? []),
   };
 }
 
@@ -986,6 +990,39 @@ export async function finalizarPaseo(paseo, distancia) {
   return { ...paseo, ...cambios };
 }
 
+/** Minutos después de finalizar en los que todavía se puede retomar el paseo. */
+export const RETOMAR_MINUTOS = 15;
+
+/** ¿Este paseo recién finalizado se puede retomar todavía? */
+export function sePuedeRetomar(paseo, ahora = Date.now()) {
+  if (paseo?.estado !== 'finalizado' || !paseo.horaFin) return false;
+  return ahora - new Date(paseo.horaFin).getTime() < RETOMAR_MINUTOS * 60 * 1000;
+}
+
+/**
+ * Deshace un "Finalizar" tocado sin querer: el paseo vuelve a estar en curso
+ * con el tiempo y la distancia que llevaba (el rato que estuvo finalizado no
+ * cuenta, como una pausa) y vuelve al precio pactado; al finalizar de nuevo
+ * se recalcula. Le avisa al dueño, que ya había recibido "volvió a casa".
+ */
+export async function retomarPaseo(paseo) {
+  const ahora = new Date().toISOString();
+  const precio = paseo.precioPactado ?? paseo.precio;
+  const cambios = { estado: 'en_curso', horaFin: null, reanudadoEn: ahora, precio, comision: 0 };
+  if (modoDemo) return demoUpdate(paseo.id, cambios);
+  const fila = { Estado: 'en_curso', HoraFin: null, ReanudadoEn: ahora, Precio: precio, Comision: 0 };
+  const actualizar = (f) => supabase.from('Paseo').update(f).eq('Id_Paseo', paseo.id).eq('Estado', 'finalizado');
+  let { error } = await actualizar(fila);
+  if (error && esEsquemaFaltante(error)) {
+    const { Comision, ...sin045 } = fila; // eslint-disable-line no-unused-vars
+    ({ error } = await actualizar(sin045));
+  }
+  if (error) throw error;
+  notificarDueno(paseo, `El paseo de ${paseo.mascota.nombre} sigue en curso 🦮`,
+    'El paseador lo había finalizado sin querer. Podés seguirlo en vivo desde la app.');
+  return { ...paseo, ...cambios };
+}
+
 /** Guarda un punto del recorrido y la distancia acumulada. */
 export async function registrarPunto(idPaseo, { lat, lng }, distanciaTotal) {
   if (modoDemo) {
@@ -1321,7 +1358,12 @@ export function experienciaEnZooni(primerPaseo, ahora = new Date()) {
   const desde = new Date(primerPaseo);
   let meses = (ahora.getFullYear() - desde.getFullYear()) * 12 + (ahora.getMonth() - desde.getMonth());
   if (ahora.getDate() < desde.getDate()) meses -= 1;
-  if (meses < 1) return { valor: '<1', etiqueta: 'mes en Zooni' };
+  if (meses < 1) {
+    // Días de calendario desde el primer paseo; el primer día ya cuenta como 1
+    const dia = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const dias = Math.max(1, Math.round((dia(ahora) - dia(desde)) / 86400000));
+    return { valor: String(dias), etiqueta: dias === 1 ? 'día en Zooni' : 'días en Zooni' };
+  }
   if (meses < 12) return { valor: String(meses), etiqueta: meses === 1 ? 'mes en Zooni' : 'meses en Zooni' };
   const anios = Math.floor(meses / 12);
   return { valor: String(anios), etiqueta: anios === 1 ? 'año en Zooni' : 'años en Zooni' };
@@ -1698,7 +1740,19 @@ export async function calificarPaseo(paseo, {
   return { parcial };
 }
 
-const COLUMNAS_RESENA = '"Id_Paseo","Id_Mascota","Id_Dueno","FechaProgramada","DuracionMin","Rating","Resena","ResenaAspectos","ResenaRespuestas","ResenaMedia","ResenaFecha"';
+/**
+ * Para el botón "Escribir una opinión" de las Opiniones de un paseador: mis
+ * paseos terminados con él que todavía no califiqué (el más nuevo primero) y
+ * cuántos paseos terminados tengo con él en total. La reseña siempre va atada
+ * a un paseo real (como en Uber / PedidosYa).
+ */
+export async function fetchPaseosParaOpinar(idWalker) {
+  const conEl = (await fetchMisPaseosDueno())
+    .filter((p) => String(p.idWalker) === String(idWalker) && p.estado === 'finalizado');
+  return { sinCalificar: conEl.filter((p) => p.rating == null), total: conEl.length };
+}
+
+const COLUMNAS_RESENA ='"Id_Paseo","Id_Mascota","Id_Dueno","FechaProgramada","DuracionMin","Rating","Resena","ResenaAspectos","ResenaRespuestas","ResenaMedia","ResenaFecha"';
 
 /**
  * Todas las reseñas de un paseador, con el resumen que se muestra arriba
