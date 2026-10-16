@@ -24,7 +24,7 @@ import PaseadorDrawer, { SECCIONES_PASEADOR } from '../../components/paseador/Pa
 import { C, PillButton, Vacio } from '../../components/paseador/PaseadorUI';
 import {
   fetchPaseoEnCurso, fetchPerfilPaseador, fetchRolesCuenta, fetchSolicitudes, iniciarPaseo,
-  setDisponible,
+  revisarRecordatoriosCobro, setDisponible,
 } from '../../services/paseadorApi';
 import { clearCurrentUserId, setModo, MODO_DUENO } from '../../config/session';
 
@@ -144,6 +144,14 @@ export default function PaseadorAppScreen() {
       Animated.timing(toastAnim, { toValue: 0, duration: 220, useNativeDriver: true }),
     ]).start(() => setToast(null));
   }, [toastAnim]);
+
+  // Dueños que pagan por semana / mes: si se cerró su período y deben, avisar
+  // (la notificación queda en la campana y lleva a Pagos)
+  useEffect(() => {
+    revisarRecordatoriosCobro().then((n) => {
+      if (n > 0) avisar(n === 1 ? 'Un cliente te debe plata: mirá Pagos' : `${n} clientes te deben plata: mirá Pagos`, 'wallet');
+    });
+  }, [avisar]);
 
   useEffect(() => {
     if (!route.params?.bienvenida) return;

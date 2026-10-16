@@ -21,7 +21,7 @@ import HamburgerDrawer from '../components/HamburgerDrawer';
 import CalificarPaseoModal from '../components/resenas/CalificarPaseoModal';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import {
-  cancelarPaseoDueno, cuandoDe, fetchMisPaseosDueno, formatoDistancia,
+  cancelarPaseoDueno, cuandoDe, fetchMisPaseosDueno, formatoDistancia, minutosCobrados,
   formatoPlata, formatoTimer, segundosDePaseo,
 } from '../services/paseadorApi';
 import { confirmar } from '../utils/dialogo';
@@ -150,7 +150,7 @@ export default function MisPaseosScreen() {
         )}
         {p.estado === 'finalizado' && (
           <Text style={s.resumen}>
-            Duró {Math.round((p.segundosAcumulados || 0) / 60)} minutos · {formatoDistancia(p.distanciaMetros)} recorridos
+            Duró {minutosCobrados(p.segundosAcumulados)} {minutosCobrados(p.segundosAcumulados) === 1 ? 'minuto' : 'minutos'} · {formatoDistancia(p.distanciaMetros)} recorridos
           </Text>
         )}
         {p.estado === 'finalizado' && p.rating != null && (

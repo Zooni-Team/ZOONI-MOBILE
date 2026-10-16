@@ -2,10 +2,11 @@
  * PagoFormModal.jsx — Anotar (o corregir) un pago de un dueño
  *
  * Monto con atajos ("Todo lo que debe" / la mitad), medio de pago, fecha y
- * una nota opcional. Si se abre con `pago`, es para editarlo y además se puede
+ * una nota opcional. Acepta centavos (los paseos se cobran por tiempo). Si se abre con `pago`, es para editarlo y además se puede
  * borrar. El medio arranca en el que eligió el dueño al pedir los paseos.
  *
  * Props: visible · dueno · saldo · medioSugerido · pago (opcional) ·
+ *        montoInicial (opcional: ej. lo que salió el paseo recién terminado) ·
  *        onGuardar({ monto, medio, fecha, nota }) · onBorrar() · onCerrar
  */
 
@@ -17,14 +18,19 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { C, PillButton } from './PaseadorUI';
 import FechaPicker from '../FechaPicker';
-import { MEDIOS_PAGO, formatoPlata } from '../../services/paseadorApi';
-import { sanitizarDigitos } from '../../utils/sanitizar';
+import { MEDIOS_PAGO, aCentavos, formatoPlata } from '../../services/paseadorApi';
+import { parseDecimal, sanitizarDecimal } from '../../utils/sanitizar';
 import { confirmar } from '../../utils/dialogo';
 
 const fechaCorta = (d) => d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+/** 20000 → "20000" · 166.66 → "166,66" (lo que se ve en el input) */
+const aTexto = (n) => {
+  const v = aCentavos(n);
+  return Number.isInteger(v) ? String(v) : v.toFixed(2).replace('.', ',');
+};
 
 export default function PagoFormModal({
-  visible, dueno, saldo = 0, medioSugerido, pago, onGuardar, onBorrar, onCerrar,
+  visible, dueno, saldo = 0, medioSugerido, pago, montoInicial, onGuardar, onBorrar, onCerrar,
 }) {
   const [monto, setMonto] = useState('');
   const [medio, setMedio] = useState(null);
@@ -36,19 +42,22 @@ export default function PagoFormModal({
 
   useEffect(() => {
     if (!visible) return;
-    setMonto(pago ? String(Math.round(pago.monto)) : (saldo > 0 ? String(Math.round(saldo)) : ''));
+    const inicial = pago?.monto ?? montoInicial ?? (saldo > 0 ? saldo : null);
+    setMonto(inicial ? aTexto(inicial) : '');
     setMedio(pago?.medio ?? medioSugerido ?? null);
     setFecha(pago ? new Date(pago.fecha) : new Date());
     setNota(pago?.nota ?? '');
     setError(null);
-  }, [visible, pago, saldo, medioSugerido]);
+  }, [visible, pago, saldo, medioSugerido, montoInicial]);
+
+  const valor = aCentavos(parseDecimal(monto) ?? 0);
 
   const guardar = async () => {
-    if (!(Number(monto) > 0)) { setError('Es necesario el monto que te pagó'); return; }
+    if (!(valor > 0)) { setError('Es necesario el monto que te pagó'); return; }
     if (!medio) { setError('Es necesario elegir con qué medio te pagó'); return; }
     setGuardando(true);
     try {
-      await onGuardar({ monto: Number(monto), medio, fecha, nota });
+      await onGuardar({ monto: valor, medio, fecha, nota });
     } catch {
       setError('No se pudo guardar. Probá de nuevo.');
     } finally {
@@ -62,8 +71,8 @@ export default function PagoFormModal({
     if (ok) onBorrar();
   };
 
-  const parcial = Number(monto) > 0 && saldo > 0 && Number(monto) < saldo;
-  const deMas = Number(monto) > 0 && !pago && Number(monto) > saldo;
+  const parcial = valor > 0 && saldo > 0 && valor < saldo;
+  const deMas = valor > 0 && !pago && valor > saldo;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onCerrar}>
@@ -77,23 +86,28 @@ export default function PagoFormModal({
           </Text>
 
           <Text style={s.label}>¿Cuánto te pagó?</Text>
-          <View style={[s.montoBox, error && !(Number(monto) > 0) && { borderColor: C.rojo }]}>
+          <View style={[s.montoBox, error && !(valor > 0) && { borderColor: C.rojo }]}>
             <Text style={s.signo}>$</Text>
-            <TextInput style={s.montoInput} value={monto} keyboardType="number-pad" placeholder="0"
-              placeholderTextColor="#C8C8C8" onChangeText={(v) => { setMonto(sanitizarDigitos(v, 8)); setError(null); }} />
+            <TextInput style={s.montoInput} value={monto} keyboardType="decimal-pad" placeholder="0"
+              placeholderTextColor="#C8C8C8" onChangeText={(v) => { setMonto(sanitizarDecimal(v).slice(0, 11)); setError(null); }} />
           </View>
           {!pago && saldo > 0 && (
             <View style={s.atajos}>
-              <TouchableOpacity style={s.atajo} onPress={() => setMonto(String(Math.round(saldo)))}>
+              {montoInicial > 0 && aCentavos(montoInicial) !== aCentavos(saldo) && (
+                <TouchableOpacity style={s.atajo} onPress={() => setMonto(aTexto(montoInicial))}>
+                  <Text style={s.atajoTxt}>Este paseo ({formatoPlata(montoInicial)})</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={s.atajo} onPress={() => setMonto(aTexto(saldo))}>
                 <Text style={s.atajoTxt}>Todo ({formatoPlata(saldo)})</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={s.atajo} onPress={() => setMonto(String(Math.round(saldo / 2)))}>
+              <TouchableOpacity style={s.atajo} onPress={() => setMonto(aTexto(saldo / 2))}>
                 <Text style={s.atajoTxt}>La mitad</Text>
               </TouchableOpacity>
             </View>
           )}
-          {parcial && <Text style={s.ayuda}>Pago parcial: va a quedar debiendo {formatoPlata(saldo - Number(monto))}.</Text>}
-          {deMas && <Text style={s.ayuda}>Te paga {formatoPlata(Number(monto) - Math.max(0, saldo))} de más: le queda a favor.</Text>}
+          {parcial && <Text style={s.ayuda}>Pago parcial: va a quedar debiendo {formatoPlata(saldo - valor)}.</Text>}
+          {deMas && <Text style={s.ayuda}>Te paga {formatoPlata(valor - Math.max(0, saldo))} de más: le queda a favor.</Text>}
 
           <Text style={s.label}>¿Con qué te pagó?</Text>
           <View style={s.medios}>
@@ -151,7 +165,7 @@ const s = StyleSheet.create({
   },
   signo: { fontSize: 26, fontWeight: '900', color: C.texto, marginRight: 4 },
   montoInput: { flex: 1, fontSize: 28, fontWeight: '900', color: C.texto, paddingVertical: 10, minWidth: 0 },
-  atajos: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  atajos: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   atajo: { borderRadius: 16, borderWidth: 1.5, borderColor: C.teal, paddingHorizontal: 12, paddingVertical: 6 },
   atajoTxt: { fontSize: 13, fontWeight: '800', color: C.teal },
   ayuda: { fontSize: 12, color: C.texto2, marginTop: 6 },

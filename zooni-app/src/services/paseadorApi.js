@@ -127,6 +127,7 @@ function crearDemo() {
     duenos, mascotas, paseos,
     rechazados: new Set(),
     pagos: [],
+    cuentaConfig: {}, // idDueno → { modalidad, ultimoRecordatorio }
     mensajes: {
       3: [
         { id: 1, idUser: 901, texto: '¡Hola! Titán ya está listo, te espera en la puerta 🐶', fecha: new Date(Date.now() - 40 * 60 * 1000).toISOString() },
@@ -183,11 +184,21 @@ export function HORARIOS_DEFAULT() {
   return h;
 }
 
-/** $12.500 — separador de miles manual (Hermes no siempre trae locale es-AR). */
+/**
+ * $12.500 · $166,66 — separador de miles manual (Hermes no siempre trae locale
+ * es-AR). Los centavos aparecen sólo si los hay (paseos cobrados por tiempo).
+ */
 export function formatoPlata(n) {
-  const entero = Math.round(Number(n) || 0);
-  return `$${String(entero).replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
+  const centavos = Math.round((Number(n) || 0) * 100);
+  const signo = centavos < 0 ? '-' : '';
+  const abs = Math.abs(centavos);
+  const entero = String(Math.floor(abs / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const resto = abs % 100;
+  return `${signo}$${entero}${resto ? `,${String(resto).padStart(2, '0')}` : ''}`;
 }
+
+/** Redondea a centavos (evita los 0,1 + 0,2 de los floats). */
+export const aCentavos = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
 // ─────────────────────────────────────────────
 // SERVICIOS: cada paseador define sus tiempos de paseo y el precio de cada uno
@@ -279,6 +290,38 @@ export function segundosDePaseo(paseo, ahora = Date.now()) {
   const tramo = paseo.reanudadoEn ? (ahora - new Date(paseo.reanudadoEn).getTime()) / 1000 : 0;
   return (paseo.segundosAcumulados ?? 0) + Math.max(0, tramo);
 }
+
+// ─────────────────────────────────────────────
+// COBRO POR TIEMPO (045): como Uber / DiDi, se cobra lo que se paseó
+// ─────────────────────────────────────────────
+
+/**
+ * Comisión de Zooni por paseo finalizado (0,10 = 10 %). TODAVÍA NO DEFINIDA:
+ * mientras sea 0 no se muestra en ningún lado, pero ya se guarda por paseo.
+ */
+export const COMISION_ZOONI = 0;
+
+/** Minutos que se cobran: cada minuto empezado cuenta entero (30 s → 1). */
+export function minutosCobrados(segundos) {
+  return Math.ceil(Math.max(0, Math.round(Number(segundos) || 0)) / 60);
+}
+
+/**
+ * Lo que se cobra por un paseo según el tiempo real.
+ *   · Menos tiempo que el pactado → proporcional (la mitad del tiempo, la mitad
+ *     del precio). Se trunca al centavo: nunca se cobra de más.
+ *   · El tiempo pactado o más → el precio pactado, ni un peso más.
+ * Ej: pactado $20.000 por 120 minutos, paseó 1 minuto → $166,66.
+ */
+export function precioPorTiempo(precioPactado, duracionMin, segundos) {
+  const pactado = Number(precioPactado) || 0;
+  const minutos = minutosCobrados(segundos);
+  if (!(duracionMin > 0) || minutos >= duracionMin) return pactado;
+  return Math.floor((pactado * minutos * 100) / duracionMin + 1e-6) / 100;
+}
+
+/** Comisión de Zooni sobre lo cobrado en un paseo. */
+export const comisionDe = (cobrado) => aCentavos(Number(cobrado) * COMISION_ZOONI);
 
 /** Distancia en metros entre dos coordenadas (haversine). */
 export function distanciaMetros(a, b) {
@@ -907,21 +950,39 @@ export async function reanudarPaseo(paseo) {
   return { ...paseo, reanudadoEn: ahora };
 }
 
+/**
+ * Termina el paseo y fija lo que se cobra según el tiempo real
+ * (precioPorTiempo). "Precio" queda con lo cobrado y "PrecioPactado" con lo
+ * acordado; la comisión de Zooni se calcula acá, una vez por paseo.
+ */
 export async function finalizarPaseo(paseo, distancia) {
   const ahora = new Date().toISOString();
   const segundos = Math.round(segundosDePaseo(paseo));
   const metros = Math.round(distancia ?? paseo.distanciaMetros ?? 0);
+  const precioPactado = paseo.precio;
+  const precio = precioPorTiempo(precioPactado, paseo.duracionMin, segundos);
+  const comision = comisionDe(precio);
   const cambios = {
     estado: 'finalizado', horaFin: ahora, reanudadoEn: null,
     segundosAcumulados: segundos, distanciaMetros: metros,
+    precio, precioPactado, comision,
   };
   if (modoDemo) return demoUpdate(paseo.id, cambios);
-  await updatePaseo(paseo.id, {
+  const fila = {
     Estado: 'finalizado', HoraFin: ahora, ReanudadoEn: null,
     SegundosAcumulados: segundos, DistanciaMetros: metros,
-  });
+    Precio: precio, PrecioPactado: precioPactado, Comision: comision,
+  };
+  try {
+    await updatePaseo(paseo.id, fila);
+  } catch (error) {
+    // Sin la 045: se cobra igual por tiempo, sin guardar pactado ni comisión
+    if (!esEsquemaFaltante(error)) throw error;
+    const { PrecioPactado, Comision, ...sin045 } = fila; // eslint-disable-line no-unused-vars
+    await updatePaseo(paseo.id, sin045);
+  }
   notificarDueno(paseo, `${paseo.mascota.nombre} ya volvió a casa 🏠`,
-    `Paseo de ${Math.round(segundos / 60)} minutos · ${formatoDistancia(metros)}. ¡Dejale una reseña al paseador!`);
+    `Paseo de ${minutosCobrados(segundos)} minutos · ${formatoDistancia(metros)} · ${formatoPlata(precio)}. ¡Dejale una reseña al paseador!`);
   return { ...paseo, ...cambios };
 }
 
@@ -987,6 +1048,123 @@ async function leerPagos() {
   return (data ?? []).map(mapPago);
 }
 
+// ── Cada cuánto le cobra el paseador a cada dueño (045) ─────────────────────
+
+export const MODALIDADES_COBRO = [
+  { key: 'por_paseo', label: 'Cada paseo', corto: 'Paga cada paseo', icono: 'walk-outline' },
+  { key: 'semanal', label: 'Fin de semana', corto: 'Paga los domingos', icono: 'calendar-outline' },
+  { key: 'mensual', label: 'Fin de mes', corto: 'Paga a fin de mes', icono: 'calendar-number-outline' },
+];
+export const modalidadDeCobro = (key) => MODALIDADES_COBRO.find((m) => m.key === key) ?? MODALIDADES_COBRO[0];
+
+const fechaISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/**
+ * Último cierre de período (YYYY-MM-DD) hasta `hoy` inclusive:
+ *   semanal → el domingo más reciente · mensual → el último día del mes
+ *   (hoy si hoy es fin de mes; si no, el del mes anterior) · por_paseo → null
+ */
+export function ultimoCierre(modalidad, hoy = new Date()) {
+  const d = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  if (modalidad === 'semanal') {
+    d.setDate(d.getDate() - d.getDay());
+    return fechaISO(d);
+  }
+  if (modalidad === 'mensual') {
+    const manana = new Date(d);
+    manana.setDate(d.getDate() + 1);
+    if (manana.getMonth() !== d.getMonth()) return fechaISO(d);
+    return fechaISO(new Date(d.getFullYear(), d.getMonth(), 0));
+  }
+  return null;
+}
+
+/** Próximo cierre de período (para mostrar "te avisamos el …"). */
+export function proximoCierre(modalidad, hoy = new Date()) {
+  const d = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  if (modalidad === 'semanal') {
+    d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
+    return d;
+  }
+  if (modalidad === 'mensual') return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  return null;
+}
+
+/** { [idDueno]: { modalidad, ultimoRecordatorio } }. Sin la 045 → {}. */
+async function leerConfigCuentas() {
+  if (modoDemo) return getDemo().cuentaConfig;
+  const { data, error } = await supabase.from('paseo_cuenta_config')
+    .select('id_dueno, modalidad, ultimo_recordatorio').eq('id_walker', getCurrentUserId());
+  if (error) return {};
+  return Object.fromEntries((data ?? []).map((r) => [String(r.id_dueno), {
+    modalidad: r.modalidad, ultimoRecordatorio: r.ultimo_recordatorio,
+  }]));
+}
+
+/**
+ * Elige cada cuánto le cobra a un dueño. Al pasar a semanal / mensual, el
+ * período en curso no se avisa de nuevo: el próximo recordatorio es en el
+ * próximo cierre.
+ */
+export async function guardarModalidadCobro(idDueno, modalidad) {
+  const ultimoRecordatorio = ultimoCierre(modalidad);
+  if (modoDemo) {
+    getDemo().cuentaConfig[String(idDueno)] = { modalidad, ultimoRecordatorio };
+    return;
+  }
+  const { error } = await supabase.from('paseo_cuenta_config').upsert({
+    id_walker: getCurrentUserId(), id_dueno: idDueno, modalidad,
+    ultimo_recordatorio: ultimoRecordatorio, actualizado_en: new Date().toISOString(),
+  });
+  if (error) throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
+}
+
+/**
+ * Recordatorios de cobro: a cada dueño que paga por semana / mes y debe
+ * plata, cuando se cierra su período le llega al paseador una notificación
+ * ("Sofía te debe $X") que lleva a Pagos. Uno por período (ultimo_recordatorio).
+ *
+ * No hay servidor que corra esto solo: se revisa cada vez que el paseador abre
+ * la app. Devuelve cuántos recordatorios se mandaron. Nunca rompe el flujo.
+ */
+export async function revisarRecordatoriosCobro() {
+  try {
+    const config = await leerConfigCuentas();
+    const pendientes = Object.entries(config).filter(([, c]) => {
+      const cierre = ultimoCierre(c.modalidad);
+      return cierre && (!c.ultimoRecordatorio || c.ultimoRecordatorio < cierre);
+    });
+    if (!pendientes.length) return 0;
+
+    const cuentas = await fetchCuentasCorrientes();
+    let enviados = 0;
+    for (const [idDueno, c] of pendientes) {
+      const cierre = ultimoCierre(c.modalidad);
+      const cuenta = cuentas.find((x) => String(x.idDueno) === idDueno);
+      if (cuenta?.saldo > 0) {
+        const periodo = c.modalidad === 'semanal' ? 'la semana' : 'el mes';
+        const titulo = `${cuenta.dueno.nombre} te debe ${formatoPlata(cuenta.saldo)}`;
+        const mensaje = `Terminó ${periodo}: tiene ${cuenta.pendientes} ${cuenta.pendientes === 1 ? 'paseo' : 'paseos'} sin pagar. Tocá para ver su cuenta.`;
+        if (modoDemo) {
+          getDemo().notificaciones.unshift({ id: Date.now() + enviados, titulo, mensaje, fecha: new Date().toISOString(), leido: false, dataExtra: { destino: 'pagos' } });
+        } else {
+          await notificar(getCurrentUserId(), titulo, mensaje, 'pagos');
+        }
+        enviados += 1;
+      }
+      if (modoDemo) {
+        getDemo().cuentaConfig[idDueno].ultimoRecordatorio = cierre;
+      } else {
+        await supabase.from('paseo_cuenta_config').update({ ultimo_recordatorio: cierre })
+          .eq('id_walker', getCurrentUserId()).eq('id_dueno', Number(idDueno));
+      }
+    }
+    return enviados;
+  } catch {
+    return 0;
+  }
+}
+
 /**
  * Cuentas corrientes: una por dueño con el que hiciste paseos o que te pagó.
  *   cargos  = paseos finalizados (lo que te tiene que pagar)
@@ -994,10 +1172,13 @@ async function leerPagos() {
  *   saldo   = cargos - pagos (> 0 te debe, 0 al día, < 0 tiene saldo a favor)
  * Los pagos se imputan a los paseos más viejos primero: cada paseo queda
  * 'pagado', 'parcial' (con cuánto falta) o 'pendiente'.
+ * `modalidad` es cada cuánto paga (por_paseo / semanal / mensual, ver 045).
  * Ordenadas: primero los que más deben; después los que están al día.
  */
 export async function fetchCuentasCorrientes() {
-  const [paseos, pagos] = await Promise.all([fetchMisPaseos(['finalizado']), leerPagos()]);
+  const [paseos, pagos, config] = await Promise.all([
+    fetchMisPaseos(['finalizado']), leerPagos(), leerConfigCuentas(),
+  ]);
 
   // Medio de pago que eligió el dueño en cada paseo (columna de la 044; si no
   // está, la cuenta igual se arma sin ese dato)
@@ -1030,17 +1211,19 @@ export async function fetchCuentasCorrientes() {
   const lista = [...cuentas.values()].map((c) => {
     c.paseos.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
     c.pagos.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
-    const totalCargos = c.paseos.reduce((a, p) => a + p.precio, 0);
-    const totalPagado = c.pagos.reduce((a, pg) => a + pg.monto, 0);
+    const totalCargos = aCentavos(c.paseos.reduce((a, p) => a + p.precio, 0));
+    const totalPagado = aCentavos(c.pagos.reduce((a, pg) => a + pg.monto, 0));
 
-    // Imputar los pagos a los paseos más viejos primero
+    // Imputar los pagos a los paseos más viejos primero (en centavos: con
+    // paseos cobrados por tiempo hay montos como $166,66)
     let disponible = totalPagado;
     const paseosEstado = c.paseos.map((p) => {
-      const cubierto = Math.min(p.precio, Math.max(0, disponible));
-      disponible -= cubierto;
+      const cubierto = aCentavos(Math.min(p.precio, Math.max(0, disponible)));
+      disponible = aCentavos(disponible - cubierto);
       const estado = cubierto >= p.precio ? 'pagado' : cubierto > 0 ? 'parcial' : 'pendiente';
-      return { ...p, cubierto, falta: p.precio - cubierto, estado };
+      return { ...p, cubierto, falta: aCentavos(p.precio - cubierto), estado };
     });
+    const modalidad = config[String(c.idDueno)]?.modalidad ?? 'por_paseo';
 
     const conMedio = [...paseosEstado].reverse().find((p) => p.medioPago);
     const fechas = [...c.paseos.map((p) => p.fecha), ...c.pagos.map((pg) => pg.fecha)];
@@ -1052,7 +1235,9 @@ export async function fetchCuentasCorrientes() {
       pagos: c.pagos,
       totalCargos,
       totalPagado,
-      saldo: Math.round((totalCargos - totalPagado) * 100) / 100,
+      saldo: aCentavos(totalCargos - totalPagado),
+      modalidad,
+      proximoCierre: proximoCierre(modalidad),
       pendientes: paseosEstado.filter((p) => p.estado !== 'pagado').length,
       medioPreferido: conMedio?.medioPago ?? c.pagos[c.pagos.length - 1]?.medio ?? null,
       ultimoPago: c.pagos[c.pagos.length - 1]?.fecha ?? null,
@@ -1065,6 +1250,12 @@ export async function fetchCuentasCorrientes() {
     if (a.saldo > 0) return b.saldo - a.saldo;
     return new Date(b.ultimoMovimiento) - new Date(a.ultimoMovimiento);
   });
+}
+
+/** La cuenta corriente con un dueño (o null si todavía no hay movimientos). */
+export async function fetchCuentaCorriente(idDueno) {
+  const cuentas = await fetchCuentasCorrientes();
+  return cuentas.find((c) => String(c.idDueno) === String(idDueno)) ?? null;
 }
 
 function filaPago({ idDueno, monto, medio, fecha, nota }) {
@@ -1245,7 +1436,7 @@ export async function fetchNotificacionesPaseador() {
  * DataExtra, así que para esas hay que mirar el título. Las nuevas traen
  * `DataExtra.destino` y entran por el primer caso.
  *
- * @returns {'chats'|'solicitudes'|'inicio'}
+ * @returns {'chats'|'solicitudes'|'pagos'|'inicio'}
  */
 export function destinoNotificacionPaseador(n) {
   if (n?.dataExtra?.destino) return n.dataExtra.destino;

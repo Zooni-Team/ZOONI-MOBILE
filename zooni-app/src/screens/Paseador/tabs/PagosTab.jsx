@@ -21,7 +21,8 @@ import { Avatar, C, Vacio } from '../../../components/paseador/PaseadorUI';
 import CuentaCorrienteModal, { EtiquetaSaldo } from '../../../components/paseador/CuentaCorrienteModal';
 import PagoFormModal from '../../../components/paseador/PagoFormModal';
 import {
-  borrarPago, editarPago, fetchCuentasCorrientes, formatoPlata, medioDePago, registrarPago,
+  borrarPago, editarPago, fetchCuentasCorrientes, formatoPlata, guardarModalidadCobro, medioDePago,
+  modalidadDeCobro, registrarPago,
 } from '../../../services/paseadorApi';
 
 const FILTROS = [
@@ -86,6 +87,18 @@ export default function PagosTab({ avisar }) {
     }
     setForm(undefined);
     await cargar();
+  };
+
+  const cambiarModalidad = async (modalidad) => {
+    try {
+      await guardarModalidadCobro(cuenta.idDueno, modalidad);
+      avisar?.(`${cuenta.dueno.nombre}: ${modalidadDeCobro(modalidad).corto.toLowerCase()}`);
+      await cargar();
+    } catch (err) {
+      avisar?.(err?.message === 'migracion_pendiente'
+        ? 'Es necesario correr la migración 045 en Supabase.'
+        : 'No se pudo guardar. Probá de nuevo.', 'alert-circle');
+    }
   };
 
   const borrar = async () => {
@@ -178,8 +191,11 @@ export default function PagosTab({ avisar }) {
                       <Text style={s.filaMedio}>{medio.label}</Text>
                     </>
                   ) : null}
+                  {c.modalidad !== 'por_paseo' && (
+                    <Text style={s.filaMedio}>{medio ? '· ' : ''}{modalidadDeCobro(c.modalidad).label}</Text>
+                  )}
                   {c.pendientes > 0 && (
-                    <Text style={s.filaMedio}>{medio ? '· ' : ''}{c.pendientes} sin pagar</Text>
+                    <Text style={s.filaMedio}>{medio || c.modalidad !== 'por_paseo' ? '· ' : ''}{c.pendientes} sin pagar</Text>
                   )}
                 </View>
               </View>
@@ -196,6 +212,7 @@ export default function PagosTab({ avisar }) {
         onCerrar={() => setAbierta(null)}
         onRegistrar={() => setForm({ pago: null })}
         onEditar={(pago) => setForm({ pago })}
+        onModalidad={cambiarModalidad}
       >
         <PagoFormModal
           visible={form !== undefined && !!cuenta}

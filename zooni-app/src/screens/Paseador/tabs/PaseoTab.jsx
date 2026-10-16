@@ -7,6 +7,11 @@
  * SIN paseo en curso: los paseos aceptados listos para iniciar, o el resumen
  * del paseo que se acaba de terminar.
  *
+ * COBRO (como Uber / DiDi): se cobra el tiempo que se paseó. Si se corta
+ * antes, la parte proporcional; si se pasa del tiempo, lo pactado
+ * (precioPorTiempo). Al terminar, el paseador anota si le pagaron o si el
+ * dueño le paga después (cada semana / fin de mes, con recordatorio).
+ *
  * GPS: navigator.geolocation (web y, si existe, nativo). Sólo acumula
  * distancia mientras el timer corre; descarta lecturas imprecisas y el
  * "temblor" del GPS parado. Cada ~15 s / 30 m guarda un punto en PaseoTrack
@@ -22,9 +27,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Avatar, C, Card, PillButton, Seccion, Stat, Vacio, sombra } from '../../../components/paseador/PaseadorUI';
 import MapaPaseo from '../../../components/paseador/MapaPaseo';
 import PaseoCard from '../../../components/paseador/PaseoCard';
+import PagoFormModal from '../../../components/paseador/PagoFormModal';
+import ModalidadCobro from '../../../components/paseador/ModalidadCobro';
 import {
-  distanciaMetros, fetchMisPaseos, fetchRecorrido, finalizarPaseo, formatoDistancia,
-  formatoPlata, formatoTimer, pausarPaseo, reanudarPaseo, registrarPunto, segundosDePaseo,
+  COMISION_ZOONI, distanciaMetros, fetchCuentaCorriente, fetchMisPaseos, fetchRecorrido, finalizarPaseo,
+  formatoDistancia, formatoPlata, formatoTimer, guardarModalidadCobro, minutosCobrados, pausarPaseo,
+  precioPorTiempo, reanudarPaseo, registrarPago, registrarPunto, segundosDePaseo,
 } from '../../../services/paseadorApi';
 import { confirmar } from '../../../utils/dialogo';
 
@@ -43,7 +51,7 @@ export default function PaseoTab(props) {
   const [resumen, setResumen] = useState(null);
 
   if (paseoActivo) return <PaseoEnCurso {...props} onFinalizado={setResumen} />;
-  if (resumen) return <Resumen paseo={resumen} onCerrar={() => setResumen(null)} irA={props.irA} />;
+  if (resumen) return <Resumen paseo={resumen} onCerrar={() => setResumen(null)} irA={props.irA} avisar={props.avisar} />;
   return <SinPaseo {...props} />;
 }
 
@@ -147,14 +155,16 @@ function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, abrirMenu
   };
 
   const finalizar = async () => {
-    const minutos = Math.round(segundosDePaseo(paseo) / 60);
-    const corto = minutos < paseo.duracionMin * 0.5;
+    const seg = segundosDePaseo(paseo);
+    const minutos = minutosCobrados(seg);
+    const aCobrar = formatoPlata(precioPorTiempo(paseo.precio, paseo.duracionMin, seg));
+    const corto = minutos < paseo.duracionMin;
     const ok = await confirmar(
       `¿Finalizar el paseo de ${paseo.mascota.nombre}?`,
       corto
-        ? `Llevás ${minutos} minutos de los ${paseo.duracionMin} pactados. ¿Seguro que terminaste?`
-        : 'Le avisamos al dueño que ya está de vuelta.',
-      { textoOk: 'Finalizar' },
+        ? `Llevás ${minutos} de los ${paseo.duracionMin} minutos pactados: se cobra la parte proporcional, ${aCobrar} (de ${formatoPlata(paseo.precio)}).`
+        : `Cumpliste el tiempo pactado: se cobra ${aCobrar}. Le avisamos al dueño que ya está de vuelta.`,
+      { textoOk: `Finalizar · ${aCobrar}` },
     );
     if (!ok) return;
     setOcupado(true);
@@ -180,6 +190,7 @@ function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, abrirMenu
 
   const segundos = segundosDePaseo(paseo);
   const progreso = Math.min(1, segundos / (paseo.duracionMin * 60));
+  const vaCobrando = precioPorTiempo(paseo.precio, paseo.duracionMin, segundos);
 
   return (
     <View style={{ flex: 1 }}>
@@ -253,7 +264,9 @@ function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, abrirMenu
           <View style={[s.barraFill, { width: `${progreso * 100}%` }, progreso >= 1 && { backgroundColor: C.amarillo }]} />
         </View>
         <Text style={s.barraTxt}>
-          {progreso >= 1 ? '¡Cumpliste el tiempo pactado!' : `Faltan ${Math.ceil((paseo.duracionMin * 60 - segundos) / 60)} minutos`}
+          {progreso >= 1
+            ? `¡Cumpliste el tiempo pactado! · ${formatoPlata(vaCobrando)}`
+            : `Faltan ${Math.ceil((paseo.duracionMin * 60 - segundos) / 60)} minutos · vas ${formatoPlata(vaCobrando)}`}
         </Text>
 
         <View style={s.acciones}>
@@ -276,7 +289,41 @@ function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, abrirMenu
 // RESUMEN DEL PASEO TERMINADO
 // ─────────────────────────────────────────────────────────────────────────────
 
-function Resumen({ paseo, onCerrar, irA }) {
+function Resumen({ paseo, onCerrar, irA, avisar }) {
+  const [cuenta, setCuenta] = useState(null);
+  const [cobro, setCobro] = useState(null); // null · 'pagado' · 'despues'
+  const [verForm, setVerForm] = useState(false);
+
+  const cargarCuenta = useCallback(() => {
+    fetchCuentaCorriente(paseo.idDueno).then(setCuenta).catch(() => {});
+  }, [paseo.idDueno]);
+  useEffect(() => { cargarCuenta(); }, [cargarCuenta]);
+
+  const minutos = minutosCobrados(paseo.segundosAcumulados);
+  const pactado = paseo.precioPactado ?? paseo.precio;
+  const proporcional = paseo.precio < pactado;
+  const comision = paseo.comision ?? 0;
+  const saldo = cuenta?.saldo ?? paseo.precio;
+
+  const guardarPago = async (datos) => {
+    await registrarPago({ ...datos, idDueno: paseo.idDueno });
+    setVerForm(false);
+    setCobro('pagado');
+    avisar?.('Pago registrado');
+    cargarCuenta();
+  };
+
+  const cambiarModalidad = async (modalidad) => {
+    try {
+      await guardarModalidadCobro(paseo.idDueno, modalidad);
+      cargarCuenta();
+    } catch (err) {
+      avisar?.(err?.message === 'migracion_pendiente'
+        ? 'Es necesario correr la migración 045 en Supabase.'
+        : 'No se pudo guardar. Probá de nuevo.', 'alert-circle');
+    }
+  };
+
   return (
     <ScrollView contentContainerStyle={s.scroll}>
       <View style={s.resumenTop}>
@@ -287,14 +334,76 @@ function Resumen({ paseo, onCerrar, irA }) {
       <Card>
         <Text style={s.cobradoLabel}>Ganaste</Text>
         <Text style={s.cobrado}>{formatoPlata(paseo.precio)}</Text>
+        <Text style={s.tarifa}>
+          {proporcional
+            ? `${minutos} de ${paseo.duracionMin} minutos · tarifa ${formatoPlata(pactado)}`
+            : `Paseo completo de ${paseo.duracionMin} minutos`}
+        </Text>
+        {comision > 0 && (
+          <View style={s.comision}>
+            <View style={s.comisionFila}>
+              <Text style={s.comisionTxt}>Comisión Zooni ({Math.round(COMISION_ZOONI * 100)} %)</Text>
+              <Text style={s.comisionTxt}>−{formatoPlata(comision)}</Text>
+            </View>
+            <View style={s.comisionFila}>
+              <Text style={s.netoTxt}>Te queda</Text>
+              <Text style={s.netoTxt}>{formatoPlata(paseo.precio - comision)}</Text>
+            </View>
+          </View>
+        )}
         <View style={s.stats}>
           <Stat valor={formatoTimer(paseo.segundosAcumulados)} etiqueta="tiempo" icono="time" />
           <Stat valor={formatoDistancia(paseo.distanciaMetros)} etiqueta="distancia" icono="footsteps" />
         </View>
       </Card>
+
+      {/* Cobro: ¿le pagó ahora o lo anota en la cuenta corriente? */}
+      <Card style={{ marginTop: 14 }}>
+        {cobro === 'pagado' ? (
+          <View style={s.cobroOk}>
+            <Ionicons name="checkmark-circle" size={22} color={C.teal} />
+            <Text style={s.cobroOkTxt}>
+              Pago registrado · {saldo > 0 ? `todavía te debe ${formatoPlata(saldo)}` : saldo < 0 ? `tiene ${formatoPlata(-saldo)} a favor` : 'está al día'}
+            </Text>
+          </View>
+        ) : (
+          <>
+            <Text style={s.cobroTitulo}>¿{paseo.dueno.nombre} te pagó este paseo?</Text>
+            {cuenta && saldo > paseo.precio ? (
+              <Text style={s.cobroSub}>Con este paseo te debe {formatoPlata(saldo)} en total.</Text>
+            ) : null}
+            <View style={s.cobroBotones}>
+              <PillButton titulo="Me pagó" icono="cash-outline" chico variante="teal"
+                onPress={() => setVerForm(true)} style={{ flex: 1 }} />
+              <PillButton titulo="Me paga después" icono="time-outline" chico
+                variante={cobro === 'despues' ? 'primario' : 'secundario'}
+                onPress={() => setCobro('despues')} style={{ flex: 1 }} />
+            </View>
+            {cobro === 'despues' && (
+              <>
+                <Text style={s.cobroSub}>Queda anotado en su cuenta corriente: te debe {formatoPlata(saldo)}.</Text>
+                <ModalidadCobro modalidad={cuenta?.modalidad} proximoCierre={cuenta?.proximoCierre}
+                  onCambiar={cambiarModalidad} />
+              </>
+            )}
+          </>
+        )}
+      </Card>
+
       <PillButton titulo="Volver al inicio" style={{ marginTop: 20 }} onPress={() => { onCerrar(); irA('inicio'); }} />
-      <PillButton titulo="Ver mis ganancias" variante="secundario" style={{ marginTop: 12 }}
-        onPress={() => { onCerrar(); irA('ganancias'); }} />
+      <PillButton titulo="Ver cuenta corriente" variante="secundario" style={{ marginTop: 12 }}
+        onPress={() => { onCerrar(); irA('pagos'); }} />
+
+      <PagoFormModal
+        visible={verForm}
+        dueno={paseo.dueno}
+        saldo={saldo}
+        montoInicial={paseo.precio}
+        medioSugerido={cuenta?.medioPreferido}
+        pago={null}
+        onGuardar={guardarPago}
+        onCerrar={() => setVerForm(false)}
+      />
     </ScrollView>
   );
 }
@@ -380,5 +489,16 @@ const s = StyleSheet.create({
   resumenSub: { fontSize: 14, color: C.texto2, marginTop: 4 },
   cobradoLabel: { fontSize: 13, fontWeight: '700', color: C.texto2 },
   cobrado: { fontSize: 44, fontWeight: '900', color: C.teal, marginTop: 2 },
+  tarifa: { fontSize: 13, fontWeight: '600', color: C.texto2, marginTop: 2 },
+  comision: { marginTop: 12, gap: 4 },
+  comisionFila: { flexDirection: 'row', justifyContent: 'space-between' },
+  comisionTxt: { fontSize: 13, color: C.texto2, fontWeight: '600' },
+  netoTxt: { fontSize: 14, color: C.texto, fontWeight: '800' },
+
+  cobroTitulo: { fontSize: 16, fontWeight: '800', color: C.texto },
+  cobroSub: { fontSize: 13, color: C.texto2, marginTop: 6 },
+  cobroBotones: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  cobroOk: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  cobroOkTxt: { flex: 1, fontSize: 14, fontWeight: '700', color: C.texto },
   stats: { flexDirection: 'row', marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
 });
