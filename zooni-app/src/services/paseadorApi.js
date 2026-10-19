@@ -1626,9 +1626,6 @@ export async function fetchPaseadoresZona(bbox) {
   });
 }
 
-// Tope del radio de un paseador (CHECK paseador_radio_ok de la 035)
-const RADIO_MAX_KM = 30;
-
 function distanciaKm(a, b) {
   const rad = (g) => (g * Math.PI) / 180;
   const dLat = rad(b.lat - a.lat);
@@ -1638,12 +1635,11 @@ function distanciaKm(a, b) {
 }
 
 /**
- * Paseadores que hacen paseos EN TU ZONA: sólo los que tienen tu ubicación
- * dentro de su círculo de atención (centro + radio). Los que pasean en otro
- * lado no aparecen, aunque estén en la parte visible del mapa.
+ * Todos los paseadores de Zooni con zona cargada (menos uno mismo), ordenados
+ * del más cercano al más lejano.
  *
  * `pos` es tu ubicación (GPS). Sin GPS se usa la última que guardó Comunidad
- * (ubicaciones_usuarios); si tampoco hay, no se muestra ninguno.
+ * (ubicaciones_usuarios); si tampoco hay, van sin ordenar por distancia.
  */
 export async function fetchPaseadoresParaMi(pos) {
   let yo = pos?.lat != null ? pos : null;
@@ -1652,18 +1648,13 @@ export async function fetchPaseadoresParaMi(pos) {
       .select('lat, lng').eq('usuario_id', getCurrentUserId()).maybeSingle();
     if (data?.lat != null) yo = { lat: Number(data.lat), lng: Number(data.lng) };
   }
-  if (!yo) return [];
-
-  // Un paseador te cubre sólo si su centro está a menos de su radio (máx.
-  // RADIO_MAX_KM): se buscan los de esa caja y se filtra por distancia real.
-  const dLat = RADIO_MAX_KM / 111;
-  const dLng = dLat / Math.cos((yo.lat * Math.PI) / 180);
-  const cerca = await fetchPaseadoresZona({
-    lat_min: yo.lat - dLat, lat_max: yo.lat + dLat, lng_min: yo.lng - dLng, lng_max: yo.lng + dLng,
-  });
-  return cerca
+  // Se muestran todos los paseadores de Zooni, cubran o no tu zona: antes sólo
+  // aparecían los que tenían tu ubicación dentro de su radio y cada perfil veía
+  // una lista distinta. Tu ubicación sólo ordena (los más cercanos primero).
+  const todos = await fetchPaseadoresZona(null);
+  if (!yo) return todos;
+  return todos
     .map((p) => ({ ...p, distanciaKm: distanciaKm(yo, p) }))
-    .filter((p) => p.distanciaKm <= p.radioKm)
     .sort((a, b) => a.distanciaKm - b.distanciaKm);
 }
 

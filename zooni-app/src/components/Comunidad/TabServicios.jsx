@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fetchServicios } from '../../api/comunidad';
 import { areaBuscable } from '../../services/lugaresApi';
@@ -12,6 +12,23 @@ const FILTROS = [
 ];
 const ICONOS  = { veterinaria: 'medkit-outline', paseador: 'walk-outline', petshop: 'bag-outline', peluqueria: 'cut-outline' };
 const COLORES = { veterinaria: '#E63946', paseador: '#F5A623', petshop: '#F5C842', peluqueria: '#9B59B6' };
+
+// La foto de perfil del paseador (la misma del marcador del mapa); la huella
+// queda sólo si no tiene o no carga.
+function AvatarPaseador({ foto }) {
+  const [fallo, setFallo] = useState(false);
+  if (foto && !fallo) {
+    return (
+      <Image source={{ uri: foto }} style={[styles.iconCircle, styles.avatar]}
+        referrerPolicy="no-referrer" onError={() => setFallo(true)} />
+    );
+  }
+  return (
+    <View style={[styles.iconCircle, { backgroundColor: '#2DBD72' }]}>
+      <Ionicons name="paw" size={16} color="#FFF" />
+    </View>
+  );
+}
 
 export default function TabServicios({ bbox, onSeleccionar, paseadores = [], onSeleccionarPaseador }) {
   const [lista,  setLista]  = useState([]);
@@ -49,30 +66,31 @@ export default function TabServicios({ bbox, onSeleccionar, paseadores = [], onS
           </TouchableOpacity>
         ))}
       </ScrollView>
-      {/* Paseadores registrados en Zooni: se pueden contratar desde la app */}
-      {(filtro === 'todos' || filtro === 'paseador') && paseadores.length > 0 && (
-        <View style={styles.zooniBox}>
-          <Text style={styles.zooniTitulo}>Paseadores de Zooni · se contratan desde la app</Text>
-          {paseadores.slice(0, 5).map((p, i, arr) => (
-            <TouchableOpacity key={`pz-${p.id}`}
-              style={[styles.item, i === arr.length - 1 && { borderBottomWidth: 0 }]} onPress={() => onSeleccionarPaseador?.(p)}>
-              <View style={[styles.iconCircle, { backgroundColor: '#2DBD72' }]}>
-                <Ionicons name="paw" size={16} color="#FFF" />
-              </View>
-              <View style={styles.info}>
-                <Text style={styles.nombre} numberOfLines={1}>{p.nombreCompleto}</Text>
-                <Text style={styles.dir} numberOfLines={1}>
-                  {p.zona} · {p.radioKm} km
-                  {serviciosDe(p).length ? ` · desde ${formatoPlata(Math.min(...serviciosDe(p).map((x) => x.precio)))}` : ''}
-                  {p.rating != null ? ` · ★ ${p.rating.toFixed(1).replace('.', ',')}` : ''}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#2DBD72" />
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
+      {/* Paseadores registrados en Zooni (se contratan desde la app). Van como
+          cabecera de la lista para que scrolleen con ella: fuera de la lista
+          empujaban y aplastaban la fila de filtros. */}
       <FlatList
+        style={{ flex: 1 }}
+        ListHeaderComponent={hayPaseadoresZooni ? (
+          <View style={styles.zooniBox}>
+            <Text style={styles.zooniTitulo}>Paseadores de Zooni · se contratan desde la app</Text>
+            {paseadores.map((p, i, arr) => (
+              <TouchableOpacity key={`pz-${p.id}`}
+                style={[styles.item, i === arr.length - 1 && { borderBottomWidth: 0 }]} onPress={() => onSeleccionarPaseador?.(p)}>
+                <AvatarPaseador foto={p.foto} />
+                <View style={styles.info}>
+                  <Text style={styles.nombre} numberOfLines={1}>{p.nombreCompleto}</Text>
+                  <Text style={styles.dir} numberOfLines={1}>
+                    {p.zona} · {p.radioKm} km
+                    {serviciosDe(p).length ? ` · desde ${formatoPlata(Math.min(...serviciosDe(p).map((x) => x.precio)))}` : ''}
+                    {p.rating != null ? ` · ★ ${p.rating.toFixed(1).replace('.', ',')}` : ''}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#2DBD72" />
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : null}
         data={lista}
         keyExtractor={s => String(s.id)}
         renderItem={({ item: s }) => (
@@ -127,13 +145,15 @@ export default function TabServicios({ bbox, onSeleccionar, paseadores = [], onS
 const styles = StyleSheet.create({
   zooniBox: { paddingHorizontal: 4, marginBottom: 4 },
   zooniTitulo: { fontSize: 12, fontWeight: '800', color: '#2DBD72', marginBottom: 4, marginLeft: 10 },
-  chips:       { flexDirection: 'row', paddingVertical: 8, maxHeight: 50 },
+  // flexGrow/flexShrink 0: alto fijo, que la lista de abajo no la aplaste
+  chips:       { flexDirection: 'row', paddingVertical: 8, height: 50, flexGrow: 0, flexShrink: 0 },
   chip:        { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#F5F5F5', marginRight: 8 },
   chipOn:      { backgroundColor: '#2DBD72' },
   chipText:    { fontSize: 13, color: '#6B6B6B' },
   chipTextOn:  { color: '#fff', fontWeight: '700' },
   item:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
   iconCircle:  { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  avatar:      { borderWidth: 2, borderColor: '#2DBD72', backgroundColor: '#EEE' },
   info:        { flex: 1 },
   nombre:      { fontWeight: '700', fontSize: 14, color: '#2C2C2C' },
   dir:         { fontSize: 12, color: '#6B6B6B', marginTop: 2 },

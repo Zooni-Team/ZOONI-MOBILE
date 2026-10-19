@@ -45,7 +45,7 @@ export default function PopupPaseador({ paseador, onClose }) {
         <TouchableOpacity style={st.perfilTap} onPress={() => setVerResenas(true)} activeOpacity={0.8}
           accessibilityRole="button" accessibilityLabel={`Ver opiniones de ${paseador.nombreCompleto}`}>
           {paseador.foto
-            ? <Image source={{ uri: paseador.foto }} style={st.avatar} />
+            ? <Image source={{ uri: paseador.foto }} style={st.avatar} referrerPolicy="no-referrer" />
             : <View style={[st.avatar, st.avatarIni]}><Ionicons name="walk" size={22} color="#2DBD72" /></View>}
           <View style={{ flex: 1 }}>
             <View style={st.nombreFila}>

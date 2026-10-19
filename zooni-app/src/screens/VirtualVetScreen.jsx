@@ -276,9 +276,10 @@ export default function VirtualVetScreen() {
     setPetId(id);
   }, [petId]);
 
-  const cantUser = mensajes.filter((m) => m.role === 'user').length;
-  const mostrarChips = ctx && !enviando && cantUser < 3;
-  const chips = ctx ? sugerenciasIniciales(ctx) : [];
+  // Los chips ya mandados (o escritos igual a mano) no se repiten: aparecen otros.
+  const preguntadas = mensajes.filter((m) => m.role === 'user').map((m) => m.content);
+  const chips = ctx ? sugerenciasIniciales(ctx, preguntadas) : [];
+  const mostrarChips = ctx && !enviando && chips.length > 0;
 
   // ── Render ────────────────────────────────────────────────────────────────
   const sinMascotas = !cargandoMascotas && mascotas.length === 0;

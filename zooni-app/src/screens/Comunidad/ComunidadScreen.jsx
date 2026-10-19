@@ -59,11 +59,13 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
   var map = L.map('map',{zoomControl:false,doubleClickZoom:false}).setView([-34.6089,-58.4340],16);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
 
-  // Paseador: su foto de perfil en un círculo (si no tiene o no carga, la huella)
+  // Paseador: su foto de perfil en un círculo (si no tiene o no carga, la huella).
+  // no-referrer: las fotos de Google/Facebook (login social) devuelven 403 si
+  // se piden con el Referer de otro sitio, y quedaba la huella.
   var PATA='<svg viewBox="0 0 24 24" width="20" height="20" fill="#fff"><circle cx="5" cy="9.5" r="2.2"/><circle cx="9" cy="5.5" r="2.2"/><circle cx="15" cy="5.5" r="2.2"/><circle cx="19" cy="9.5" r="2.2"/><path d="M12 10.5c-3 0-6.5 4.6-6.5 7.3 0 1.8 1.4 2.7 3 2.7 1.4 0 2.3-.8 3.5-.8s2.1.8 3.5.8c1.6 0 3-.9 3-2.7 0-2.7-3.5-7.3-6.5-7.3z"/></svg>';
   function iconPaseador(x){
     var foto=(typeof x.foto==='string'&&/^(https?:|data:image)/.test(x.foto))
-      ?'<img src="'+x.foto.replace(/"/g,'%22')+'" alt="" onerror="this.remove()"/>':'';
+      ?'<img src="'+x.foto.replace(/"/g,'%22')+'" alt="" referrerpolicy="no-referrer" onerror="this.remove()"/>':'';
     return L.divIcon({className:'',html:'<div class="pz'+(x.disponible?'':' off')+'">'+PATA+foto+'</div>',
       iconSize:[46,46],iconAnchor:[23,23]});
   }
@@ -100,7 +102,7 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
               .on('click',function(){notify({type:'cartel',data:x})});
       dynLayers.push(m);
     });
-    // Paseadores de Zooni que pasean en tu zona: su círculo de atención + su foto
+    // Paseadores de Zooni: su círculo de atención + su foto
     (d.paseadores||[]).forEach(function(x){
       var abrir=function(){notify({type:'paseador',data:x})};
       var c=L.circle([x.lat,x.lng],{radius:x.radioKm*1000,color:'#2DBD72',weight:2,
@@ -192,8 +194,8 @@ export default function ComunidadScreen() {
   const iframeRef   = useRef(null);
   const boundsTimer = useRef(null);
   const ultimoBboxRef = useRef(null);
-  // Los paseadores dependen de TU ubicación (los que te cubren con su radio),
-  // no del área visible: cargarMapa los pide con userPosRef, no con el bbox.
+  // Los paseadores se muestran todos, no sólo los del área visible: tu
+  // ubicación (userPosRef) sólo los ordena del más cercano al más lejano.
   const userPosRef = useRef(null);
   const mapaReady   = useRef(false);
   const bannerAnim  = useRef(new Animated.Value(0)).current;
@@ -228,7 +230,7 @@ export default function ComunidadScreen() {
           const antes = userPosRef.current;
           userPosRef.current = { lat: msg.lat, lng: msg.lng };
           setUserPos(userPosRef.current);
-          // Primera ubicación (o te moviste bastante): recalcular qué paseadores te cubren
+          // Primera ubicación (o te moviste bastante): reordenar los paseadores por cercanía
           const movido = !antes || Math.abs(antes.lat - msg.lat) + Math.abs(antes.lng - msg.lng) > 0.002;
           if (movido && ultimoBboxRef.current) cargarMapaRef.current(ultimoBboxRef.current);
           break;
@@ -521,7 +523,7 @@ const styles = StyleSheet.create({
   },
   handleRow: { alignItems: 'center', paddingVertical: 10 },
   handle:    { width: 40, height: 4, borderRadius: 2, backgroundColor: '#CCCCCC' },
-  tabsRow:   { flexDirection: 'row', paddingHorizontal: 12, paddingBottom: 8, maxHeight: 48 },
+  tabsRow:   { flexDirection: 'row', paddingHorizontal: 12, paddingBottom: 8, maxHeight: 48, flexGrow: 0, flexShrink: 0 },
   tabBtn:    { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20, marginRight: 6 },
   tabBtnOn:  { backgroundColor: '#2DBD72' },
   tabText:   { fontSize: 13, color: '#6B6B6B' },

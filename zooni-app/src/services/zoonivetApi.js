@@ -406,18 +406,43 @@ export async function preguntarZooniVet({ ctx, usuario, historial = [], mensaje,
 
 // ─── CHIPS DE SUGERENCIA personalizados ──────────────────────────────────────
 
-export function sugerenciasIniciales(ctx) {
+const CANT_CHIPS = 4;
+
+// Para comparar lo que el usuario ya mandó con cada chip sin que importen
+// mayúsculas, tildes ni signos.
+const normalizarPregunta = (s) =>
+  String(s ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9ñ ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+// Devuelve hasta CANT_CHIPS sugerencias, salteando las que ya se preguntaron:
+// al mandar una, su lugar lo ocupa la siguiente del pool. Cuando se agotan,
+// no hay más chips.
+export function sugerenciasIniciales(ctx, yaPreguntadas = []) {
   if (!ctx) return [];
   const nombre = ctx.nombre ?? 'tu mascota';
-  const base = [
-    `¿Qué vacunas le faltan a ${nombre}?`,
+  const esGato = /gato/i.test(ctx.especie ?? '');
+  const vencida = (ctx.vacunasPendientes ?? []).some((v) => /vencida/i.test(v));
+
+  const pool = [
+    vencida ? 'Tiene una vacuna vencida, ¿qué hago?' : `¿Qué vacunas le faltan a ${nombre}?`,
     '¿Cuánto debería pesar?',
-    '¿Cada cuánto lo saco a pasear?',
+    esGato ? '¿Cómo hago para que tome más agua?' : '¿Cada cuánto lo saco a pasear?',
     '¿Qué comida le hace mal?',
+    '¿Cuántas veces por día tiene que comer?',
+    '¿Cada cuánto lo desparasito?',
+    esGato ? '¿Cada cuánto le limpio el arenero?' : '¿Cada cuánto lo baño?',
+    '¿Cómo le cuido los dientes?',
+    '¿Cómo sé si tiene pulgas o garrapatas?',
+    '¿Qué juegos o actividades le hacen bien?',
+    '¿Cuándo conviene castrarlo?',
+    '¿Qué señales indican que está enfermo?',
   ];
-  const vencida = ctx.vacunasPendientes.find((v) => /vencida/i.test(v));
-  if (vencida) {
-    base[0] = `Tiene una vacuna vencida, ¿qué hago?`;
-  }
-  return base;
+
+  const usadas = new Set(yaPreguntadas.map(normalizarPregunta));
+  return pool.filter((p) => !usadas.has(normalizarPregunta(p))).slice(0, CANT_CHIPS);
 }
