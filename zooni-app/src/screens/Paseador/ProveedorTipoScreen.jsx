@@ -2,8 +2,9 @@
  * ProveedorTipoScreen.jsx — "¿Qué servicio ofrecés?"
  *
  * Se llega desde el botón "Registrarse como Proveedor" del Login de dueños.
- * Por ahora sólo Paseadores está habilitado; veterinarias, peluquerías y pet
- * shops se muestran como "Próximamente" para que se entienda hacia dónde va.
+ * Paseador → Zooni Paseadores. Veterinaria, peluquería y pet shop → Zooni
+ * Negocios (NegocioLogin con su tipo): cada uno con su app, mismas pantallas
+ * y secciones distintas según el tipo (constants/negocios.js).
  */
 
 import {
@@ -14,12 +15,22 @@ import { useNavigation } from '@react-navigation/native';
 
 import { C, sombra } from '../../components/paseador/PaseadorUI';
 import { MASCOTAS_BIENVENIDA } from '../../constants/registroImages';
+import { TIPOS_NEGOCIO } from '../../constants/negocios';
 
 const TIPOS = [
-  { key: 'paseador', titulo: 'Paseador', texto: 'Aceptá paseos cerca tuyo y cobrá por cada uno.', icono: 'walk', activo: true },
-  { key: 'veterinaria', titulo: 'Veterinaria', texto: 'Turnos, consultas y urgencias.', icono: 'medkit', activo: false },
-  { key: 'peluqueria', titulo: 'Peluquería', texto: 'Baños y cortes con turno.', icono: 'cut', activo: false },
-  { key: 'petshop', titulo: 'Pet shop', texto: 'Tu catálogo y pedidos.', icono: 'storefront', activo: false },
+  {
+    key: 'paseador', titulo: 'Paseador', texto: 'Aceptá paseos cerca tuyo y cobrá por cada uno.',
+    icono: 'walk', color: C.teal, fondo: C.menta, activo: true,
+  },
+  ...['veterinaria', 'peluqueria', 'petshop'].map((k) => ({
+    key: k,
+    titulo: TIPOS_NEGOCIO[k].label,
+    texto: TIPOS_NEGOCIO[k].textoTipo,
+    icono: TIPOS_NEGOCIO[k].icono,
+    color: TIPOS_NEGOCIO[k].color,
+    fondo: TIPOS_NEGOCIO[k].fondoIcono,
+    activo: true,
+  })),
 ];
 
 export default function ProveedorTipoScreen() {
@@ -48,13 +59,15 @@ export default function ProveedorTipoScreen() {
             style={[s.opcion, !t.activo && s.opcionOff]}
             disabled={!t.activo}
             activeOpacity={0.85}
-            onPress={() => navigation.navigate('PaseadorLogin')}
+            onPress={() => (t.key === 'paseador'
+              ? navigation.navigate('PaseadorLogin')
+              : navigation.navigate('NegocioLogin', { tipo: t.key }))}
             accessibilityRole="button"
             accessibilityState={{ disabled: !t.activo }}
             accessibilityLabel={t.activo ? t.titulo : `${t.titulo}, próximamente`}
           >
-            <View style={[s.icono, !t.activo && { backgroundColor: '#F0F0F0' }]}>
-              <Ionicons name={t.icono} size={26} color={t.activo ? C.teal : C.gris} />
+            <View style={[s.icono, { backgroundColor: t.activo ? t.fondo : '#F0F0F0' }]}>
+              <Ionicons name={t.icono} size={26} color={t.activo ? t.color : C.gris} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[s.opcionTitulo, !t.activo && { color: C.texto2 }]}>{t.titulo}</Text>

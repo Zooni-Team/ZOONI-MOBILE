@@ -58,8 +58,12 @@ export default function PagoFormModal({
     setGuardando(true);
     try {
       await onGuardar({ monto: valor, medio, fecha, nota });
-    } catch {
-      setError('No se pudo guardar. Probá de nuevo.');
+    } catch (err) {
+      setError(err?.message === 'migracion_pendiente'
+        ? 'Falta la tabla de pagos: es necesario correr la migración 044 en Supabase.'
+        : err?.message === 'sin_permiso'
+          ? 'La base no deja guardar pagos: es necesario correr la migración 047 en Supabase.'
+          : 'No se pudo guardar. Probá de nuevo.');
     } finally {
       setGuardando(false);
     }

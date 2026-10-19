@@ -18,6 +18,7 @@ export const TODAS_LAS_SECCIONES = [
   { key: 'comunidad',     label: 'Comunidad',                 icono: 'people-outline',              ruta: 'Comunidad' },
   { key: 'match',         label: 'Match',                     icono: 'paw-outline',                 ruta: 'Match' },
   { key: 'mis_paseos',    label: 'Mis paseos',                icono: 'walk-outline',                ruta: 'MisPaseos' },
+  { key: 'mis_turnos',    label: 'Turnos y pedidos',          icono: 'receipt-outline',             ruta: 'MisTurnos' },
   { key: 'planificador',  label: 'Planificador de Servicios', icono: 'calendar-outline',            ruta: 'Planificador' },
   { key: 'ficha_medica',  label: 'Ficha Médica',              icono: 'medkit-outline',              ruta: 'FichaMedica' },
   { key: 'calendario',    label: 'Calendario',                icono: 'today-outline',               ruta: 'Calendario' },

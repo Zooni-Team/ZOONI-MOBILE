@@ -43,6 +43,15 @@ function esEsquemaFaltante(error) {
 }
 
 /**
+ * La tabla existe pero la key pública no puede escribir: RLS activo sin
+ * políticas (Supabase lo prende solo en tablas nuevas) o falta un GRANT. El
+ * SELECT en ese caso vuelve vacío sin error, así que sólo se nota al guardar.
+ */
+function esSinPermiso(error) {
+  return error?.code === '42501' || /row-level security|permission denied/i.test(String(error?.message ?? ''));
+}
+
+/**
  * Error con código para la pantalla + el mensaje real de Supabase en
  * `detalle`, para mostrar QUÉ falló en vez de un texto genérico.
  */
@@ -139,6 +148,7 @@ function crearDemo() {
       zona: 'Caballito', zonas: ['Almagro', 'Flores'], lat: -34.6189, lng: -58.4380, radioKm: 3,
       servicios: [{ minutos: 30, precio: 5000 }, { minutos: 60, precio: 9000 }], maxPerros: 3, tamanos: ['chico', 'mediano', 'grande'],
       experienciaAnios: 2, disponible: true, horarios: HORARIOS_DEFAULT(), verificado: false,
+      desde: new Date().toISOString(),
     },
     notificaciones: [
       { id: 1, titulo: 'Tenés una solicitud nueva', mensaje: 'Rocco (Bulldog Francés) para hoy a las 19:00', fecha: new Date(Date.now() - 3 * 60 * 1000).toISOString(), leido: false },
@@ -301,23 +311,38 @@ export function segundosDePaseo(paseo, ahora = Date.now()) {
  */
 export const COMISION_ZOONI = 0;
 
-/** Minutos que se cobran: cada minuto empezado cuenta entero (30 s → 1). */
-export function minutosCobrados(segundos) {
-  return Math.ceil(Math.max(0, Math.round(Number(segundos) || 0)) / 60);
+/** Segundos enteros paseados (nunca negativos). */
+const segundosEnteros = (segundos) => Math.max(0, Math.round(Number(segundos) || 0));
+
+/**
+ * Duración legible de un paseo: "31 s", "4 min 10 s", "1 h 5 min".
+ * Con segundos exactos porque el cobro es por segundo: decir "1 minuto" de
+ * un paseo de 31 s no coincidía con lo cobrado.
+ */
+export function formatoTiempoPaseado(segundos) {
+  const s = segundosEnteros(segundos);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const seg = s % 60;
+  if (h > 0) return m > 0 ? `${h} h ${m} min` : `${h} h`;
+  if (m > 0) return seg > 0 ? `${m} min ${seg} s` : `${m} min`;
+  return `${seg} s`;
 }
 
 /**
- * Lo que se cobra por un paseo según el tiempo real.
+ * Lo que se cobra por un paseo según el tiempo real, segundo a segundo.
  *   · Menos tiempo que el pactado → proporcional (la mitad del tiempo, la mitad
  *     del precio). Se trunca al centavo: nunca se cobra de más.
  *   · El tiempo pactado o más → el precio pactado, ni un peso más.
- * Ej: pactado $20.000 por 120 minutos, paseó 1 minuto → $166,66.
+ * Ej: pactado $20.000 por 120 minutos → 1 min $166,66 · 2 min $333,33 ·
+ * 31 s $86,11 · 3 horas $20.000.
  */
 export function precioPorTiempo(precioPactado, duracionMin, segundos) {
   const pactado = Number(precioPactado) || 0;
-  const minutos = minutosCobrados(segundos);
-  if (!(duracionMin > 0) || minutos >= duracionMin) return pactado;
-  return Math.floor((pactado * minutos * 100) / duracionMin + 1e-6) / 100;
+  const total = (Number(duracionMin) || 0) * 60;
+  const seg = segundosEnteros(segundos);
+  if (!(total > 0) || seg >= total) return pactado;
+  return Math.floor((pactado * seg * 100) / total + 1e-6) / 100;
 }
 
 /** Comisión de Zooni sobre lo cobrado en un paseo. */
@@ -661,6 +686,8 @@ function mapPerfil(row, user) {
     disponible: !!row.disponible,
     horarios: { ...HORARIOS_DEFAULT(), ...(row.horarios ?? {}) },
     verificado: !!row.verificado,
+    // Desde cuándo es paseador de Zooni (para la antigüedad del perfil)
+    desde: row.creado_en ?? null,
   };
 }
 
@@ -986,7 +1013,7 @@ export async function finalizarPaseo(paseo, distancia) {
     await updatePaseo(paseo.id, sin045);
   }
   notificarDueno(paseo, `${paseo.mascota.nombre} ya volvió a casa 🏠`,
-    `Paseo de ${minutosCobrados(segundos)} minutos · ${formatoDistancia(metros)} · ${formatoPlata(precio)}. ¡Dejale una reseña al paseador!`);
+    `Paseo de ${formatoTiempoPaseado(segundos)} · ${formatoDistancia(metros)} · ${formatoPlata(precio)}. ¡Dejale una reseña al paseador!`);
   return { ...paseo, ...cambios };
 }
 
@@ -1295,6 +1322,13 @@ export async function fetchCuentaCorriente(idDueno) {
   return cuentas.find((c) => String(c.idDueno) === String(idDueno)) ?? null;
 }
 
+/** Error de paseo_pagos con un código que la pantalla sabe explicar. */
+function errorDePagos(error) {
+  console.error('[paseo_pagos]', error);
+  return errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente'
+    : esSinPermiso(error) ? 'sin_permiso' : 'error_base', error);
+}
+
 function filaPago({ idDueno, monto, medio, fecha, nota }) {
   return {
     id_dueno: idDueno,
@@ -1313,7 +1347,7 @@ export async function registrarPago(pago) {
     return;
   }
   const { error } = await supabase.from('paseo_pagos').insert({ ...fila, id_walker: getCurrentUserId() });
-  if (error) throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
+  if (error) throw errorDePagos(error);
   const medio = medioDePago(fila.medio);
   notificar(fila.id_dueno, 'Tu paseador registró un pago',
     `${formatoPlata(fila.monto)}${medio ? ` · ${medio.label}` : ''}. ¡Gracias!`);
@@ -1330,7 +1364,7 @@ export async function editarPago(id, pago) {
   const { error } = await supabase.from('paseo_pagos')
     .update({ ...fila, actualizado_en: new Date().toISOString() })
     .eq('id', id).eq('id_walker', getCurrentUserId());
-  if (error) throw errorApp('error_base', error);
+  if (error) throw errorDePagos(error);
 }
 
 export async function borrarPago(id) {
@@ -1340,7 +1374,7 @@ export async function borrarPago(id) {
   }
   const { error } = await supabase.from('paseo_pagos').delete()
     .eq('id', id).eq('id_walker', getCurrentUserId());
-  if (error) throw errorApp('error_base', error);
+  if (error) throw errorDePagos(error);
 }
 
 export async function fetchGanancias(periodo) {
@@ -1350,19 +1384,28 @@ export async function fetchGanancias(periodo) {
 }
 
 /**
- * Experiencia en Zooni: se cuenta sola desde el primer paseo terminado en la
- * app (no se pregunta al registrarse). → { valor, etiqueta } para un Stat.
+ * Antigüedad en Zooni, contada desde la fecha más vieja que se conozca: el
+ * alta como paseador (paseador_perfil.creado_en) o el primer paseo terminado.
+ * No se pregunta al registrarse. → { valor, etiqueta } para un Stat:
+ *   primera semana → "Nuevo" · después semanas · después meses · después años.
  */
-export function experienciaEnZooni(primerPaseo, ahora = new Date()) {
-  if (!primerPaseo) return { valor: '–', etiqueta: 'de exp. en Zooni' };
-  const desde = new Date(primerPaseo);
+export function experienciaEnZooni(fechas, ahora = new Date()) {
+  const tiempos = (Array.isArray(fechas) ? fechas : [fechas])
+    .map((f) => (f ? new Date(f).getTime() : NaN))
+    .filter(Number.isFinite);
+  if (!tiempos.length) return { valor: 'Nuevo', etiqueta: 'en Zooni' };
+  const desde = new Date(Math.min(...tiempos));
+
+  // Días de calendario (no de 24 h): registrarse a las 23 h no adelanta un día
+  const dia = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const dias = Math.max(0, Math.round((dia(ahora) - dia(desde)) / 86400000));
+  if (dias < 7) return { valor: 'Nuevo', etiqueta: 'en Zooni' };
+
   let meses = (ahora.getFullYear() - desde.getFullYear()) * 12 + (ahora.getMonth() - desde.getMonth());
   if (ahora.getDate() < desde.getDate()) meses -= 1;
   if (meses < 1) {
-    // Días de calendario desde el primer paseo; el primer día ya cuenta como 1
-    const dia = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-    const dias = Math.max(1, Math.round((dia(ahora) - dia(desde)) / 86400000));
-    return { valor: String(dias), etiqueta: dias === 1 ? 'día en Zooni' : 'días en Zooni' };
+    const semanas = Math.floor(dias / 7);
+    return { valor: String(semanas), etiqueta: semanas === 1 ? 'semana en Zooni' : 'semanas en Zooni' };
   }
   if (meses < 12) return { valor: String(meses), etiqueta: meses === 1 ? 'mes en Zooni' : 'meses en Zooni' };
   const anios = Math.floor(meses / 12);
@@ -1370,9 +1413,23 @@ export function experienciaEnZooni(primerPaseo, ahora = new Date()) {
 }
 
 export async function fetchResenas() {
-  const lista = await fetchMisPaseos(['finalizado']);
+  const yo = getCurrentUserId();
+  const [lista, opiniones] = await Promise.all([fetchMisPaseos(['finalizado']), leerOpiniones(yo)]);
   const fechas = lista.map((p) => new Date(p.horaInicio ?? p.fecha).getTime()).filter(Number.isFinite);
-  const conRating = lista.filter((p) => p.rating != null);
+  const autores = [...new Set(opiniones.map((o) => o.id_autor))];
+  const { data: usuarios } = autores.length
+    ? await supabase.from('User').select('Id_User, Nombre, Apellido, FotoPerfil').in('Id_User', autores)
+    : { data: [] };
+  const porUser = Object.fromEntries((usuarios ?? []).map((u) => [u.Id_User, u]));
+  // Opiniones sin paseo (048), con la misma forma que un paseo calificado
+  const libres = opiniones.map((o) => {
+    const u = porUser[o.id_autor] ?? {};
+    return {
+      id: `op-${o.id}`, rating: o.rating, resena: o.resena, fecha: o.fecha, mascota: null,
+      dueno: { nombre: `${u.Nombre ?? ''} ${u.Apellido ?? ''}`.trim() || 'Dueño', foto: u.FotoPerfil ?? null },
+    };
+  });
+  const conRating = [...lista.filter((p) => p.rating != null), ...libres];
   const promedio = conRating.length
     ? conRating.reduce((acc, p) => acc + p.rating, 0) / conRating.length
     : null;
@@ -1407,17 +1464,18 @@ export async function getMensajesPaseo(idPaseo) {
 
   if (modoDemo) {
     return ids
-      .flatMap((id) => (getDemo().mensajes[id] ?? []))
+      .flatMap((id) => (getDemo().mensajes[id] ?? []).map((m) => ({ ...m, idPaseo: id })))
       .sort((a, b) => new Date(a.fecha) - new Date(b.fecha))
       .map((m) => ({
-        id: m.id, texto: m.texto, fecha: m.fecha, autor: m.idUser === 'yo' ? 'yo' : 'otro',
+        id: m.id, idPaseo: m.idPaseo, texto: m.texto, fecha: m.fecha, autor: m.idUser === 'yo' ? 'yo' : 'otro',
       }));
   }
   const { data, error } = await supabase.from('paseo_mensajes')
     .select('*').in('id_paseo', ids).order('fecha', { ascending: true });
   if (error && caerADemo(error)) return getMensajesPaseo(idPaseo);
   return (data ?? []).map((m) => ({
-    id: m.id, texto: m.texto, fecha: m.fecha, leido: m.leido, autor: m.id_user === yo ? 'yo' : 'otro',
+    id: m.id, idPaseo: m.id_paseo, texto: m.texto, fecha: m.fecha, leido: m.leido,
+    autor: m.id_user === yo ? 'yo' : 'otro',
   }));
 }
 
@@ -1534,9 +1592,10 @@ export async function fetchPaseadoresZona(bbox) {
   if (!filas.length) return [];
 
   const ids = filas.map((r) => r.id_user);
-  const [{ data: usuarios }, { data: calificados }] = await Promise.all([
+  const [{ data: usuarios }, { data: calificados }, opiniones] = await Promise.all([
     supabase.from('User').select('Id_User, Nombre, Apellido, FotoPerfil').in('Id_User', ids),
     supabase.from('Paseo').select('Id_Walker, Rating').in('Id_Walker', ids).eq('Estado', 'finalizado'),
+    leerOpiniones(ids),
   ]);
   const porUser = Object.fromEntries((usuarios ?? []).map((u) => [u.Id_User, u]));
   const stats = {};
@@ -1545,6 +1604,12 @@ export async function fetchPaseadoresZona(bbox) {
     const st = stats[pz.Id_Walker];
     st.paseos += 1;
     if (pz.Rating != null) { st.suma += pz.Rating; st.votos += 1; }
+  });
+  // Opiniones sin paseo (048): suman al promedio, no a los paseos hechos
+  opiniones.forEach((o) => {
+    if (!stats[o.id_walker]) stats[o.id_walker] = { paseos: 0, suma: 0, votos: 0 };
+    stats[o.id_walker].suma += o.rating;
+    stats[o.id_walker].votos += 1;
   });
 
   return filas.map((r) => {
@@ -1743,13 +1808,54 @@ export async function calificarPaseo(paseo, {
 /**
  * Para el botón "Escribir una opinión" de las Opiniones de un paseador: mis
  * paseos terminados con él que todavía no califiqué (el más nuevo primero) y
- * cuántos paseos terminados tengo con él en total. La reseña siempre va atada
- * a un paseo real (como en Uber / PedidosYa).
+ * cuántos paseos terminados tengo con él en total. Si hay un paseo sin
+ * calificar la reseña va atada a ese paseo; si no, es una opinión general
+ * (opinarPaseador).
  */
 export async function fetchPaseosParaOpinar(idWalker) {
   const conEl = (await fetchMisPaseosDueno())
     .filter((p) => String(p.idWalker) === String(idWalker) && p.estado === 'finalizado');
   return { sinCalificar: conEl.filter((p) => p.rating == null), total: conEl.length };
+}
+
+/**
+ * Opiniones sobre un paseador SIN paseo de por medio (048): cualquiera puede
+ * opinar cuando quiera y las veces que quiera, también el propio paseador.
+ * Sin la 048 devuelve [] y todo sigue con las reseñas de los paseos.
+ */
+async function leerOpiniones(idsWalker) {
+  const ids = (Array.isArray(idsWalker) ? idsWalker : [idsWalker]).filter((x) => x != null);
+  if (modoDemo || !ids.length) return [];
+  const { data, error } = await supabase.from('paseador_opiniones').select('*').in('id_walker', ids);
+  return error ? [] : (data ?? []);
+}
+
+/** Guarda una opinión sobre un paseador (no hace falta un paseo). */
+export async function opinarPaseador(idWalker, {
+  rating, resena, aspectos = {}, respuestas = {}, media = [],
+}) {
+  const texto = resena?.trim() || null;
+  const subidos = [];
+  for (const m of media.slice(0, MEDIA_RESENA_MAX)) {
+    // eslint-disable-next-line no-await-in-loop
+    subidos.push(await subirArchivoPublico(m.uri, `opinion-${idWalker}`, { bucket: 'resenas', mimeHint: m.mimeType }));
+  }
+  const yo = getCurrentUserId();
+  const { error } = await supabase.from('paseador_opiniones').insert({
+    id_walker: idWalker,
+    id_autor: yo,
+    rating,
+    resena: texto,
+    aspectos: Object.keys(aspectos).length ? aspectos : null,
+    respuestas: Object.keys(respuestas).length ? respuestas : null,
+    media: subidos,
+  });
+  if (error) throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
+  if (String(idWalker) !== String(yo)) {
+    notificar(idWalker, `Nueva reseña: ${rating} ${rating === 1 ? 'estrella' : 'estrellas'}`,
+      texto ? `"${texto.slice(0, 80)}"` : 'Te dejaron una opinión', 'perfil');
+  }
+  return { parcial: false };
 }
 
 const COLUMNAS_RESENA ='"Id_Paseo","Id_Mascota","Id_Dueno","FechaProgramada","DuracionMin","Rating","Resena","ResenaAspectos","ResenaRespuestas","ResenaMedia","ResenaFecha"';
@@ -1770,8 +1876,9 @@ export async function fetchResenasPaseador(idWalker) {
   }
   if (error) throw error;
   const filas = data ?? [];
+  const opiniones = await leerOpiniones(idWalker);
 
-  const idsDuenos = [...new Set(filas.map((r) => r.Id_Dueno).filter(Boolean))];
+  const idsDuenos = [...new Set([...filas.map((r) => r.Id_Dueno), ...opiniones.map((o) => o.id_autor)].filter(Boolean))];
   const idsMascotas = [...new Set(filas.map((r) => r.Id_Mascota).filter(Boolean))];
   const [{ data: duenos }, { data: mascotas }] = await Promise.all([
     idsDuenos.length
@@ -1783,6 +1890,22 @@ export async function fetchResenasPaseador(idWalker) {
   ]);
   const porDueno = Object.fromEntries((duenos ?? []).map((u) => [u.Id_User, u]));
   const porMascota = Object.fromEntries((mascotas ?? []).map((m) => [m.Id_Mascota, m]));
+
+  const nombreCorto = (u) => `${u.Nombre ?? ''} ${(u.Apellido ?? '').slice(0, 1)}${u.Apellido ? '.' : ''}`.trim() || 'Dueño';
+  const libres = opiniones.map((o) => {
+    const u = porDueno[o.id_autor] ?? {};
+    return {
+      id: `op-${o.id}`,
+      rating: o.rating,
+      resena: o.resena,
+      fecha: o.fecha,
+      aspectos: o.aspectos ?? {},
+      respuestas: o.respuestas ?? {},
+      media: Array.isArray(o.media) ? o.media : [],
+      dueno: { nombre: nombreCorto(u), foto: u.FotoPerfil ?? null },
+      mascota: null, // opinión general, sin paseo
+    };
+  });
 
   const resenas = filas.map((r) => {
     const u = porDueno[r.Id_Dueno] ?? {};
@@ -1796,10 +1919,7 @@ export async function fetchResenasPaseador(idWalker) {
       aspectos: r.ResenaAspectos ?? {},
       respuestas: r.ResenaRespuestas ?? {},
       media: Array.isArray(r.ResenaMedia) ? r.ResenaMedia : [],
-      dueno: {
-        nombre: `${u.Nombre ?? ''} ${(u.Apellido ?? '').slice(0, 1)}${u.Apellido ? '.' : ''}`.trim() || 'Dueño',
-        foto: u.FotoPerfil ?? null,
-      },
+      dueno: { nombre: nombreCorto(u), foto: u.FotoPerfil ?? null },
       mascota: {
         nombre: m.Nombre ?? 'Mascota',
         visual: resolveMascotaVisual({
@@ -1807,7 +1927,7 @@ export async function fetchResenasPaseador(idWalker) {
         }),
       },
     };
-  }).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+  }).concat(libres).sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
   const distribucion = [5, 4, 3, 2, 1].map((n) => ({ estrellas: n, cantidad: resenas.filter((r) => r.rating === n).length }));
   const aspectos = ASPECTOS_RESENA.map((a) => {

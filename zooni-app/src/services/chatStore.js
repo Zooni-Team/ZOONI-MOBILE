@@ -3,9 +3,11 @@
  *
  * Dos tipos de conversación en la misma tabla:
  *   - Match (idMatch):    chat 1 a 1 entre dos usuarios que matchearon.
- *   - Servicio (idServicio): mensajes de un usuario hacia una veterinaria/
- *     paseador/petshop/peluquería. El negocio no tiene cuenta en la app,
- *     así que estos hilos son de un solo lado (no hay respuestas reales).
+ *   - Servicio (idServicio): el hilo de un usuario con una veterinaria,
+ *     peluquería o pet shop. Desde Zooni Negocios (046) el negocio tiene
+ *     cuenta y contesta: sus mensajes van en el MISMO hilo (idUsuario = el
+ *     dueño) marcados con "deNegocio". Los servicios cargados a mano, sin
+ *     negocio detrás, siguen siendo de un solo lado.
  * Cada fila pertenece a uno de los dos, nunca a ambos (ver migración 011).
  */
 
@@ -16,7 +18,9 @@ function mapRow(row) {
   return {
     id: row.id,
     texto: row.texto,
-    autor: row.idUsuario === getCurrentUserId() ? 'yo' : 'otro',
+    // En un hilo de servicio idUsuario es siempre el dueño: lo que escribió el
+    // negocio se distingue por deNegocio
+    autor: !row.deNegocio && row.idUsuario === getCurrentUserId() ? 'yo' : 'otro',
     fecha: row.fecha,
     // Para los tildes tipo WhatsApp: en mis mensajes, `leido` dice si el otro
     // ya lo abrió (lo marca marcarLeidosMatch cuando entra al chat).
@@ -53,8 +57,10 @@ export async function enviarMensaje({ matchId, servicioId, texto }) {
   const { error } = await supabase.from('Mensaje').insert(row);
   if (error) throw error;
 
-  // Solo en chats de Match hay alguien real del otro lado para avisarle
-  // (un servicio no tiene cuenta ni Notificaciones propias).
+  // Servicio con negocio de Zooni detrás: al dueño del negocio le llega la
+  // notificación y lo lleva a la sección Mensajes de su app
+  if (servicioId) avisarAlNegocio(servicioId, texto).catch(() => {});
+
   if (matchId) {
     const otroId = await resolverOtroUsuario(matchId);
     const { data: yo } = await supabase.from('User').select('Nombre, Apellido').eq('Id_User', getCurrentUserId()).single();
@@ -71,6 +77,37 @@ export async function enviarMensaje({ matchId, servicioId, texto }) {
   return getMensajes({ matchId, servicioId });
 }
 
+async function avisarAlNegocio(servicioId, texto) {
+  const { data: pin } = await supabase.from('servicios').select('id_negocio').eq('id', servicioId).maybeSingle();
+  if (!pin?.id_negocio) return;
+  const { data: negocio } = await supabase.from('negocio_perfil').select('id_user').eq('id', pin.id_negocio).maybeSingle();
+  if (!negocio?.id_user || negocio.id_user === getCurrentUserId()) return;
+  const { data: yo } = await supabase.from('User').select('Nombre, Apellido').eq('Id_User', getCurrentUserId()).single();
+  const nombreMio = `${yo?.Nombre ?? ''} ${yo?.Apellido ?? ''}`.trim() || 'Un cliente';
+  await supabase.from('Notificacion').insert({
+    Id_User: negocio.id_user,
+    Titulo: `Mensaje de ${nombreMio}`,
+    Mensaje: texto.length > 80 ? `${texto.slice(0, 80)}…` : texto,
+    Tipo: 'negocio',
+    Leido: false,
+    DataExtra: { destino: 'mensajes' },
+  });
+}
+
+/** El negocio de Zooni detrás de un servicio (pin de Comunidad), o null si es uno cargado a mano. */
+export async function negocioDeServicio(servicioId) {
+  if (!servicioId) return null;
+  const { data } = await supabase.from('servicios').select('id_negocio').eq('id', servicioId).maybeSingle();
+  return data?.id_negocio ?? null;
+}
+
+/** Marca como leídas las respuestas del negocio en mi hilo con un servicio. */
+export async function marcarLeidosServicio(servicioId) {
+  if (!servicioId) return;
+  await supabase.from('Mensaje').update({ leido: true })
+    .eq('idServicio', servicioId).eq('idUsuario', getCurrentUserId()).eq('deNegocio', true).eq('leido', false);
+}
+
 /** Marca como leídos los mensajes que me mandó el otro usuario en un chat de Match. */
 export async function marcarLeidosMatch(matchId) {
   if (!matchId) return;
@@ -81,6 +118,11 @@ export async function marcarLeidosMatch(matchId) {
 /** Total de mensajes sin leer en todos mis chats de Match (para el badge del menú). */
 export async function contarMensajesNoLeidos() {
   const miId = getCurrentUserId();
+  const [deMatches, deNegocios] = await Promise.all([contarNoLeidosMatch(miId), contarRespuestasNegocios(miId)]);
+  return deMatches + deNegocios;
+}
+
+async function contarNoLeidosMatch(miId) {
   const { data: matches } = await supabase
     .from('Match')
     .select('id')
@@ -96,6 +138,17 @@ export async function contarMensajesNoLeidos() {
     .neq('idUsuario', miId)
     .eq('leido', false);
   return count ?? 0;
+}
+
+/** Respuestas de veterinarias, peluquerías y pet shops que todavía no leí (sin la 046: 0). */
+async function contarRespuestasNegocios(miId) {
+  const { count, error } = await supabase
+    .from('Mensaje')
+    .select('id', { count: 'exact', head: true })
+    .eq('idUsuario', miId)
+    .eq('deNegocio', true)
+    .eq('leido', false);
+  return error ? 0 : (count ?? 0);
 }
 
 // ─────────────────────────────────────────────
@@ -159,8 +212,12 @@ export async function fetchMisUltimosMensajesServicios() {
   const porServicio = new Map();
   for (const msg of mensajes) {
     if (!porServicio.has(msg.idServicio)) {
-      porServicio.set(msg.idServicio, { ultimoMensaje: msg.texto, fecha: msg.fecha });
+      porServicio.set(msg.idServicio, {
+        ultimoMensaje: msg.texto, fecha: msg.fecha, ultimoDelNegocio: !!msg.deNegocio, noLeidos: 0,
+      });
     }
+    // Respuestas del negocio que todavía no abrí
+    if (msg.deNegocio && !msg.leido) porServicio.get(msg.idServicio).noLeidos += 1;
   }
   return porServicio;
 }

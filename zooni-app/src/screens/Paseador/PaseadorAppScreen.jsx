@@ -26,7 +26,9 @@ import {
   fetchPaseoEnCurso, fetchPerfilPaseador, fetchRolesCuenta, fetchSolicitudes, iniciarPaseo,
   revisarRecordatoriosCobro, setDisponible,
 } from '../../services/paseadorApi';
-import { clearCurrentUserId, setModo, MODO_DUENO } from '../../config/session';
+import {
+  clearCurrentUserId, recordarModoPaseador, setModo, MODO_DUENO,
+} from '../../config/session';
 
 import InicioTab from './tabs/InicioTab';
 import SolicitudesTab from './tabs/SolicitudesTab';
@@ -203,6 +205,8 @@ export default function PaseadorAppScreen() {
   const abrirChat = (paseo) => navigation.navigate('PaseadorChat', { paseoId: paseo.id });
 
   const modoDueno = async () => {
+    // Para que el menú del dueño ofrezca volver, aunque la base no devuelva el rol
+    await recordarModoPaseador();
     await setModo(MODO_DUENO);
     navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
   };

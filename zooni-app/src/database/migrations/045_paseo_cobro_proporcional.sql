@@ -6,6 +6,7 @@
 -- · Al FINALIZAR un paseo se cobra según el tiempo real (como Uber / DiDi):
 --     minutos  = minutos empezados (30 s cuentan como 1 minuto)
 --     cobrado  = PrecioPactado × minutos / DuracionMin   (tope: PrecioPactado)
+--   (Desde la 047 se cobra por SEGUNDO, no por minuto empezado.)
 --   "Precio" pasa a guardar lo COBRADO, así ganancias, cuenta corriente e
 --   historial lo usan sin cambios. Lo que se había pactado queda en
 --   "PrecioPactado".

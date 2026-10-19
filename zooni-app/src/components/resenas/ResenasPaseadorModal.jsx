@@ -7,9 +7,9 @@
  * y todas las fotos/videos. Abajo, cada reseña con su texto, respuestas y
  * adjuntos. Filtro rápido: todas / con fotos o videos / por estrellas.
  *
- * Un dueño que paseó con él puede escribir su opinión desde acá ("Escribir una
- * opinión" abre CalificarPaseoModal con su paseo sin calificar más nuevo).
- * El paseador, viendo sus propias opiniones, no ve ese botón.
+ * "Escribir una opinión" está siempre, para cualquiera (también el propio
+ * paseador) y las veces que quiera: si tengo un paseo con él sin calificar,
+ * la opinión va a ese paseo; si no, es una opinión general (048).
  *
  * Props: visible · idPaseador · nombre · onCerrar
  */
@@ -117,7 +117,9 @@ function TarjetaResena({ r, onVerMedia }) {
           : <View style={[s.avatar, s.avatarIni]}><Text style={s.avatarIniTxt}>{r.dueno.nombre[0]?.toUpperCase()}</Text></View>}
         <View style={{ flex: 1 }}>
           <Text style={s.cardNombre}>{r.dueno.nombre}</Text>
-          <Text style={s.cardSub}>Paseo con {r.mascota.nombre} · {tiempoRelativo(r.fecha)}</Text>
+          <Text style={s.cardSub}>
+            {r.mascota ? `Paseo con ${r.mascota.nombre}` : 'Opinión general'} · {tiempoRelativo(r.fecha)}
+          </Text>
         </View>
       </View>
       <View style={{ marginTop: 8 }}><Estrellas valor={r.rating} /></View>
@@ -187,7 +189,9 @@ export default function ResenasPaseadorModal({ visible, idPaseador, nombre, onCe
     fetchResenasPaseador(idPaseador)
       .then((d) => { if (vivo) setDatos(d); })
       .catch(() => { if (vivo) setError(true); });
-    if (!esElMismo) {
+    if (esElMismo) {
+      setParaOpinar({ sinCalificar: [], total: 0 });
+    } else {
       fetchPaseosParaOpinar(idPaseador)
         .then((r) => { if (vivo) setParaOpinar(r); })
         .catch(() => { if (vivo) setParaOpinar({ sinCalificar: [], total: 0 }); });
@@ -217,7 +221,9 @@ export default function ResenasPaseadorModal({ visible, idPaseador, nombre, onCe
   const verMedia = (items, indice) => setVisor({ items, indice });
 
   const pendiente = paraOpinar?.sinCalificar?.[0] ?? null;
-  const escribir = esElMismo || !paraOpinar ? null : (
+  // Sin paseo para calificar: opinión general sobre el paseador
+  const opinionLibre = { libre: true, idWalker: idPaseador, paseador: { nombre: esElMismo ? 'Vos como paseador' : nombre } };
+  const escribir = !paraOpinar ? null : (
     <View style={s.escribir}>
       {gracias ? (
         <View style={s.gracias}>
@@ -225,24 +231,16 @@ export default function ResenasPaseadorModal({ visible, idPaseador, nombre, onCe
           <Text style={s.graciasTxt}>{gracias}</Text>
         </View>
       ) : null}
+      <TouchableOpacity style={s.escribirBtn} onPress={() => setCalificando(pendiente ?? opinionLibre)}
+        activeOpacity={0.85} accessibilityRole="button">
+        <Ionicons name="create-outline" size={18} color={TEXTO} />
+        <Text style={s.escribirTxt}>Escribir una opinión</Text>
+      </TouchableOpacity>
       {pendiente ? (
-        <>
-          <TouchableOpacity style={s.escribirBtn} onPress={() => setCalificando(pendiente)} activeOpacity={0.85}
-            accessibilityRole="button">
-            <Ionicons name="create-outline" size={18} color={TEXTO} />
-            <Text style={s.escribirTxt}>Escribir una opinión</Text>
-          </TouchableOpacity>
-          <Text style={s.escribirSub}>
-            {paraOpinar.sinCalificar.length > 1
-              ? `Tenés ${paraOpinar.sinCalificar.length} paseos sin calificar con ${nombre ?? 'este paseador'}.`
-              : `Sobre el paseo con ${pendiente.mascota.nombre}.`}
-          </Text>
-        </>
-      ) : !gracias ? (
         <Text style={s.escribirSub}>
-          {paraOpinar.total
-            ? 'Ya calificaste todos tus paseos con este paseador. ¡Gracias!'
-            : 'Vas a poder dejar tu opinión después de un paseo con este paseador.'}
+          {paraOpinar.sinCalificar.length > 1
+            ? `Tenés ${paraOpinar.sinCalificar.length} paseos sin calificar con ${nombre ?? 'este paseador'}.`
+            : `Sobre el paseo con ${pendiente.mascota.nombre}.`}
         </Text>
       ) : null}
     </View>
@@ -296,7 +294,7 @@ export default function ResenasPaseadorModal({ visible, idPaseador, nombre, onCe
             renderItem={({ item }) => <TarjetaResena r={item} onVerMedia={verMedia} />}
             ListEmptyComponent={
               <Text style={s.vacio}>
-                {datos.cantidad ? 'No hay opiniones con ese filtro.' : 'Todavía no tiene opiniones. Aparecen cuando los dueños califican sus paseos.'}
+                {datos.cantidad ? 'No hay opiniones con ese filtro.' : 'Todavía no tiene opiniones. ¡Escribí la primera!'}
               </Text>
             }
           />

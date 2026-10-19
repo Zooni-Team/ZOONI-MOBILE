@@ -1,5 +1,7 @@
 /**
- * socialAuthApi.js — Entrar / registrarse con Google, Facebook y Apple
+ * socialAuthApi.js — Entrar / registrarse con Google y Facebook
+ *
+ * (Apple se sacó: "Sign in with Apple" pide la cuenta paga de Apple Developer.)
  *
  * Flujo (web):
  *   1. iniciarConProveedor('google', 'dueno') guarda la intención (dueño o
@@ -27,7 +29,6 @@ import { setCurrentUserId } from '../config/session';
 export const PROVEEDORES = {
   google: { nombre: 'Google' },
   facebook: { nombre: 'Facebook' },
-  apple: { nombre: 'Apple' },
 };
 
 const INTENCION_KEY = 'zooni_social_intencion';
@@ -47,20 +48,43 @@ function leerIntencion() {
 }
 
 /**
+ * ¿El proveedor está activado en Supabase (Authentication → Providers)?
+ * Se pregunta ANTES de salir de la app: si no está activado, Supabase no
+ * vuelve a la app sino que muestra un JSON de error en su propio dominio y
+ * la persona queda varada ahí. null = no se pudo saber (se intenta igual).
+ */
+async function proveedorHabilitado(proveedor) {
+  const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  const key = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) return null;
+  try {
+    const res = await fetch(`${url}/auth/v1/settings`, { headers: { apikey: key } });
+    if (!res.ok) return null;
+    const settings = await res.json();
+    return settings?.external?.[proveedor] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Manda al login del proveedor. `intencion` es 'dueno' o 'paseador': decide a
  * qué registro se sigue si la cuenta es nueva. La página se va: no vuelve acá.
  */
 export async function iniciarConProveedor(proveedor, intencion = 'dueno') {
   if (!loginSocialDisponible) throw new Error('social_no_disponible');
+  if (await proveedorHabilitado(proveedor) === false) throw new Error('provider is not enabled');
   guardarIntencion({ intencion, proveedor });
   const redirectTo = `${window.location.origin}${window.location.pathname}`;
   const { error } = await supabaseSocial.auth.signInWithOAuth({
     provider: proveedor,
     options: {
       redirectTo,
-      // Google: dejar elegir la cuenta siempre (si no, entra sola con la última)
+      // Google: dejar elegir la cuenta siempre (si no, entra sola con la última).
+      // Facebook: sin `scopes` propios. Supabase ya pide "email" y separa los
+      // extra por COMA: el "email public_profile" de antes llegaba a Facebook
+      // como un único permiso inválido. public_profile viene siempre.
       queryParams: proveedor === 'google' ? { prompt: 'select_account' } : undefined,
-      scopes: proveedor === 'facebook' ? 'email public_profile' : undefined,
     },
   });
   if (error) {
@@ -69,7 +93,7 @@ export async function iniciarConProveedor(proveedor, intencion = 'dueno') {
   }
 }
 
-/** ¿La app se está abriendo de vuelta desde Google / Facebook / Apple? */
+/** ¿La app se está abriendo de vuelta desde Google / Facebook? */
 export function hayRetornoSocial() {
   if (!loginSocialDisponible || typeof window === 'undefined') return false;
   const q = new URLSearchParams(window.location.search);
@@ -110,10 +134,13 @@ export async function completarRetornoSocial() {
 
   const errorProveedor = q.get('error_description') || h.get('error_description') || q.get('error') || h.get('error');
   if (errorProveedor) {
+    console.error('[Login social] el proveedor volvió con error:', errorProveedor);
     // Cancelar en el proveedor no es un error para mostrar en rojo
-    return /cancel|denied/i.test(errorProveedor)
-      ? { error: null, intencion }
-      : { error: 'El proveedor no permitió el inicio de sesión. Probá de nuevo.', intencion };
+    if (/cancel|denied/i.test(errorProveedor)) return { error: null, intencion };
+    // Facebook sin mail (cuentas creadas con el teléfono, o el permiso de mail
+    // sin aceptar): Supabase vuelve con "Error getting user email…"
+    if (/email/i.test(errorProveedor)) return { error: MENSAJES_ERROR.sin_email, intencion };
+    return { error: 'El proveedor no permitió el inicio de sesión. Probá de nuevo.', intencion };
   }
 
   try {

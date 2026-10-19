@@ -4,6 +4,9 @@
  * Dos formas de llegar acá:
  *   - Desde MatchCelebrationOverlay o Mensajes: { chatId, nombre, fotoPerfilUrl }
  *   - Desde Comunidad o Mensajes (servicios): { servicioId, nombre, tipoServicio }
+ *     Si el servicio es un negocio de Zooni (046), el negocio contesta por acá
+ *     y el header lleva a su ficha; si es uno cargado a mano, queda el aviso
+ *     de que no puede responder.
  * Los mensajes viven en Supabase (services/chatStore.js). Mientras la
  * pantalla está en foco, hace polling liviano para traer mensajes nuevos
  * del otro lado sin depender de una suscripción en tiempo real.
@@ -26,7 +29,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 
-import { enviarMensaje, getMensajes, marcarLeidosMatch } from '../services/chatStore';
+import {
+  enviarMensaje, getMensajes, marcarLeidosMatch, marcarLeidosServicio, negocioDeServicio,
+} from '../services/chatStore';
 import MatchInfoModal from '../components/chat/MatchInfoModal';
 import { etiquetaDia, horaCorta, mismoDia } from '../utils/tiempoRelativo';
 
@@ -58,6 +63,8 @@ export default function ChatScreen() {
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [infoAbierta, setInfoAbierta] = useState(false);
+  // Negocio de Zooni detrás del servicio (undefined = todavía no se sabe)
+  const [idNegocio, setIdNegocio] = useState(undefined);
   // Reloj propio: sin esto "hace 2 minutos" se congelaba hasta que llegara
   // otro mensaje. Se refresca al mismo ritmo que el polling.
   const [ahora, setAhora] = useState(() => new Date());
@@ -67,9 +74,14 @@ export default function ChatScreen() {
     const guardados = await getMensajes({ matchId: chatId, servicioId });
     setMensajes(guardados);
     if (chatId) marcarLeidosMatch(chatId).catch(() => {});
+    if (servicioId) marcarLeidosServicio(servicioId).catch(() => {});
   }, [chatId, servicioId]);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  useEffect(() => {
+    if (servicioId) negocioDeServicio(servicioId).then(setIdNegocio).catch(() => setIdNegocio(null));
+  }, [servicioId]);
 
   // Mientras la pantalla está en foco, refresca sola para traer lo que
   // escribió el otro lado (no hay suscripción en tiempo real todavía).
@@ -114,11 +126,14 @@ export default function ChatScreen() {
         {/* Tocar foto+nombre abre la ficha de perfil del match (no en servicios) */}
         <TouchableOpacity
           style={s.headerPerfil}
-          activeOpacity={esServicio ? 1 : 0.6}
-          onPress={() => { if (!esServicio && chatId) setInfoAbierta(true); }}
-          disabled={esServicio || !chatId}
+          activeOpacity={esServicio && !idNegocio ? 1 : 0.6}
+          onPress={() => {
+            if (esServicio && idNegocio) navigation.navigate('NegocioPublico', { idNegocio });
+            else if (!esServicio && chatId) setInfoAbierta(true);
+          }}
+          disabled={esServicio ? !idNegocio : !chatId}
           accessibilityRole="button"
-          accessibilityLabel={esServicio ? nombre : `Ver perfil de ${nombre}`}
+          accessibilityLabel={esServicio ? (idNegocio ? `Ver ficha de ${nombre}` : nombre) : `Ver perfil de ${nombre}`}
         >
           {esServicio ? (
             <View style={s.avatarFallback}>
@@ -134,14 +149,14 @@ export default function ChatScreen() {
           <View style={{ flex: 1 }}>
             <Text style={s.nombre} numberOfLines={1}>{nombre ?? 'Chat'}</Text>
             {esServicio && tipoServicio
-              ? <Text style={s.subNombre}>{tipoServicio}</Text>
+              ? <Text style={s.subNombre}>{tipoServicio}{idNegocio ? ' · Ver ficha' : ''}</Text>
               : !esServicio ? <Text style={s.subNombre}>Ver perfil</Text> : null}
           </View>
         </TouchableOpacity>
       </View>
       <View style={s.headerDivider} />
 
-      {esServicio && (
+      {esServicio && idNegocio === null && (
         <View style={s.avisoServicio}>
           <Ionicons name="information-circle-outline" size={14} color="#6B6B6B" />
           <Text style={s.avisoServicioTxt}>

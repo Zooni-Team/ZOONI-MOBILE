@@ -59,6 +59,15 @@ export async function fetchServicios(bbox, tipo) {
   return { servicios: combinarServicios(propios.data ?? [], externos) };
 }
 
+/** Servicios puntuales por id (sin el catálogo de la zona ni los externos). */
+export async function fetchServiciosPorId(ids) {
+  const lista = [...new Set((ids ?? []).filter((x) => x != null))];
+  if (!lista.length) return [];
+  const { data, error } = await supabase.from('servicios').select('*').in('id', lista);
+  if (error) throw error;
+  return data ?? [];
+}
+
 // ─────────────────────────────────────────────
 // AMIGOS
 // ─────────────────────────────────────────────

@@ -24,14 +24,15 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Avatar, C, PillButton } from './PaseadorUI';
 import ModalidadCobro from './ModalidadCobro';
-import { formatoPlata, medioDePago, minutosCobrados } from '../../services/paseadorApi';
+import { formatoTiempoPaseado, formatoPlata, medioDePago } from '../../services/paseadorApi';
 
 const fechaCorta = (iso) => new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: '2-digit' });
 
-/** "45 min" o, si se cortó antes, "1 de 120 min" (se cobró por tiempo) */
+/** "45 min" o, si se cortó antes, "31 s de 120 min" (se cobró por tiempo) */
 function minutosDePaseo(p) {
-  const min = minutosCobrados(p.segundosAcumulados);
-  return p.segundosAcumulados > 0 && min < p.duracionMin ? `${min} de ${p.duracionMin} min` : `${p.duracionMin} min`;
+  return p.segundosAcumulados > 0 && p.segundosAcumulados < p.duracionMin * 60
+    ? `${formatoTiempoPaseado(p.segundosAcumulados)} de ${p.duracionMin} min`
+    : `${p.duracionMin} min`;
 }
 
 const ESTADO_PASEO = {

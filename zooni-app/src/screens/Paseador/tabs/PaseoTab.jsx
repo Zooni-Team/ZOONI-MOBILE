@@ -35,7 +35,7 @@ import PagoFormModal from '../../../components/paseador/PagoFormModal';
 import ModalidadCobro from '../../../components/paseador/ModalidadCobro';
 import {
   COMISION_ZOONI, distanciaMetros, fetchCuentaCorriente, fetchMisPaseos, fetchRecorrido, finalizarPaseo,
-  formatoDistancia, formatoPlata, formatoTimer, guardarModalidadCobro, minutosCobrados, pausarPaseo,
+  formatoDistancia, formatoPlata, formatoTimer, guardarModalidadCobro, formatoTiempoPaseado, pausarPaseo,
   precioPorTiempo, reanudarPaseo, registrarPago, registrarPunto, RETOMAR_MINUTOS, retomarPaseo,
   segundosDePaseo, sePuedeRetomar,
 } from '../../../services/paseadorApi';
@@ -164,13 +164,12 @@ function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, abrirMenu
 
   const finalizar = async () => {
     const seg = segundosDePaseo(paseo);
-    const minutos = minutosCobrados(seg);
     const aCobrar = formatoPlata(precioPorTiempo(paseo.precio, paseo.duracionMin, seg));
-    const corto = minutos < paseo.duracionMin;
+    const corto = seg < paseo.duracionMin * 60;
     const ok = await confirmar(
       `¿Finalizar el paseo de ${paseo.mascota.nombre}?`,
       corto
-        ? `Llevás ${minutos} de los ${paseo.duracionMin} minutos pactados: se cobra la parte proporcional, ${aCobrar} (de ${formatoPlata(paseo.precio)}).`
+        ? `Llevás ${formatoTiempoPaseado(seg)} de los ${paseo.duracionMin} minutos pactados: se cobra la parte proporcional, ${aCobrar} (de ${formatoPlata(paseo.precio)}).`
         : `Cumpliste el tiempo pactado: se cobra ${aCobrar}. Le avisamos al dueño que ya está de vuelta.`,
       { textoOk: `Finalizar · ${aCobrar}` },
     );
@@ -180,7 +179,7 @@ function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, abrirMenu
     if (corto) {
       const seguro = await confirmar(
         '¿Seguro que querés finalizar?',
-        `Faltan ${paseo.duracionMin - minutos} minutos para el tiempo pactado. Si lo finalizás ahora, ${paseo.mascota.nombre} figura de vuelta en casa y cobrás ${aCobrar}.`,
+        `Faltan ${formatoTiempoPaseado(paseo.duracionMin * 60 - seg)} para el tiempo pactado. Si lo finalizás ahora, ${paseo.mascota.nombre} figura de vuelta en casa y cobrás ${aCobrar}.`,
         { textoOk: 'Sí, finalizar', textoCancelar: 'Seguir paseando', destructivo: true },
       );
       if (!seguro) return;
@@ -284,7 +283,7 @@ function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, abrirMenu
         <Text style={s.barraTxt}>
           {progreso >= 1
             ? `¡Cumpliste el tiempo pactado! · ${formatoPlata(vaCobrando)}`
-            : `Faltan ${Math.ceil((paseo.duracionMin * 60 - segundos) / 60)} minutos · vas ${formatoPlata(vaCobrando)}`}
+            : `Faltan ${formatoTiempoPaseado(paseo.duracionMin * 60 - segundos)} · vas ${formatoPlata(vaCobrando)}`}
         </Text>
 
         <View style={s.acciones}>
@@ -343,7 +342,6 @@ function Resumen({ paseo, onCerrar, onRetomado, irA, avisar }) {
   }, [paseo.idDueno]);
   useEffect(() => { cargarCuenta(); }, [cargarCuenta]);
 
-  const minutos = minutosCobrados(paseo.segundosAcumulados);
   const pactado = paseo.precioPactado ?? paseo.precio;
   const proporcional = paseo.precio < pactado;
   const comision = paseo.comision ?? 0;
@@ -390,7 +388,7 @@ function Resumen({ paseo, onCerrar, onRetomado, irA, avisar }) {
         <Text style={s.cobrado}>{formatoPlata(paseo.precio)}</Text>
         <Text style={s.tarifa}>
           {proporcional
-            ? `${minutos} de ${paseo.duracionMin} minutos · tarifa ${formatoPlata(pactado)}`
+            ? `${formatoTiempoPaseado(paseo.segundosAcumulados)} de ${paseo.duracionMin} minutos · tarifa ${formatoPlata(pactado)}`
             : `Paseo completo de ${paseo.duracionMin} minutos`}
         </Text>
         {comision > 0 && (

@@ -5,12 +5,15 @@
  *   Paso 2 · Tu negocio    (logo, nombre, descripción, dirección + punto en el
  *                           mapa, teléfono, horarios y lo propio de cada tipo)
  *
- * Lo propio de cada tipo (va a negocio_perfil.datos):
- *   · Veterinaria: matrícula (obligatoria), especialidades, urgencias 24 h,
- *     atención a domicilio.
- *   · Peluquería: tamaños y especies que atiende, busca y lleva a domicilio.
- *   · Pet shop: envíos (costo, gratis desde, radio), pedido mínimo y medios de
- *     pago que acepta.
+ * Lo propio de cada tipo (va a negocio_perfil.datos) lo arma DatosTipoNegocio
+ * (components/negocio/CamposNegocio), el mismo que se edita después en
+ * "Mi negocio":
+ *   · Veterinaria: matrícula (obligatoria), especialidades, especies,
+ *     urgencias 24 h con teléfono de guardia, atención a domicilio.
+ *   · Peluquería: especies y tamaños, busca y lleva (con costo), productos
+ *     hipoalergénicos.
+ *   · Pet shop: envíos (costo, gratis desde, radio, demora), pedido mínimo y
+ *     medios de pago.
  *
  * Con params.activar ({ email, hash, nombre }) es una cuenta que ya existe:
  * se saltea el paso 1 y sólo se suma el negocio.
@@ -33,8 +36,9 @@ import { C, PillButton, sombra } from '../../components/paseador/PaseadorUI';
 import ZonaMapaPicker from '../../components/paseador/ZonaMapaPicker';
 import HorariosEditor, { validarHorarios } from '../../components/negocio/HorariosEditor';
 import {
-  HORARIOS_NEGOCIO_DEFAULT, MEDIOS_PAGO_NEGOCIO, TAMANOS, configNegocio,
-} from '../../constants/negocios';
+  DatosTipoNegocio, datosNegocioParaGuardar, useDatosNegocio, validarDatosNegocio,
+} from '../../components/negocio/CamposNegocio';
+import { HORARIOS_NEGOCIO_DEFAULT, configNegocio } from '../../constants/negocios';
 import {
   activarNegocio, fetchMiNegocio, registrarNegocio, subirLogoNegocio,
 } from '../../services/negocioApi';
@@ -44,7 +48,6 @@ import { sanitizarDigitos } from '../../utils/sanitizar';
 import { alerta } from '../../utils/dialogo';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const ESPECIES = [{ key: 'perro', label: 'Perros' }, { key: 'gato', label: 'Gatos' }];
 
 function Campo({ label, error, ayuda, children }) {
   return (
@@ -73,52 +76,6 @@ function InputPassword({ value, onChangeText, placeholder, error }) {
   );
 }
 
-/** Chips de selección múltiple. */
-function Multi({ opciones, valor, onCambio, error }) {
-  return (
-    <View style={s.chips}>
-      {opciones.map((o) => {
-        const key = o.key ?? o;
-        const on = valor.includes(key);
-        return (
-          <TouchableOpacity key={key} style={[s.chip, on && s.chipOn, error && !valor.length && s.inputError]}
-            onPress={() => onCambio(on ? valor.filter((x) => x !== key) : [...valor, key])}
-            accessibilityRole="checkbox" accessibilityState={{ checked: on }}>
-            {o.icono ? <Ionicons name={o.icono} size={14} color={on ? '#FFF' : C.teal} /> : null}
-            <Text style={[s.chipTxt, on && s.chipTxtOn]}>{o.label ?? o}</Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
-
-function Toggle({ valor, onCambio, titulo, texto }) {
-  return (
-    <TouchableOpacity style={[s.toggle, valor && s.toggleOn]} onPress={() => onCambio(!valor)}
-      accessibilityRole="switch" accessibilityState={{ checked: valor }} activeOpacity={0.85}>
-      <Ionicons name={valor ? 'checkbox' : 'square-outline'} size={22} color={valor ? C.teal : C.gris} />
-      <View style={{ flex: 1 }}>
-        <Text style={s.toggleTitulo}>{titulo}</Text>
-        {texto ? <Text style={s.toggleTxt}>{texto}</Text> : null}
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-function datosIniciales(tipo) {
-  if (tipo === 'veterinaria') {
-    return { matricula: '', especialidades: ['Clínica general'], urgencias24h: false, aDomicilio: false };
-  }
-  if (tipo === 'peluqueria') {
-    return { tamanos: TAMANOS.map((t) => t.key), especies: ['perro'], buscaYLleva: false };
-  }
-  return {
-    envios: true, envioCosto: '', envioGratisDesde: '', radioEnvioKm: '3', pedidoMinimo: '',
-    mediosPago: ['efectivo', 'transferencia', 'mercadopago'],
-  };
-}
-
 export default function NegocioRegistroScreen() {
   const navigation = useNavigation();
   const { tipo = 'veterinaria', activar } = useRoute().params ?? {};
@@ -139,13 +96,13 @@ export default function NegocioRegistroScreen() {
     nombre: '', descripcion: '', direccion: '', telefono: '',
     lat: null, lng: null, barrio: '', horarios: HORARIOS_NEGOCIO_DEFAULT(),
   });
-  const [datos, setDatos] = useState(() => datosIniciales(tipo));
+  // Lo propio del tipo (matrícula, tamaños, envíos…), con sus propios errores
+  const tipoForm = useDatosNegocio(tipo);
   const [logo, setLogo] = useState(null);
 
   const limpiar = (k) => setErrores((e) => ({ ...e, [k]: null }));
   const setU = (k, v) => { setUsuario((p) => ({ ...p, [k]: v })); limpiar(k); };
   const setN = (k, v) => { setNegocio((p) => ({ ...p, [k]: v })); limpiar(k); };
-  const setD = (k, v) => { setDatos((p) => ({ ...p, [k]: v })); limpiar(k); };
 
   const elegirLogo = async () => {
     const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -185,34 +142,10 @@ export default function NegocioRegistroScreen() {
     if (negocio.lat == null) e.ubicacion = 'Es necesario marcar tu local en el mapa';
     const errHorarios = validarHorarios(negocio.horarios);
     if (errHorarios) e.horarios = errHorarios;
-    if (tipo === 'veterinaria') {
-      if (datos.matricula.trim().length < 3) e.matricula = 'Es necesaria la matrícula profesional';
-      if (!datos.especialidades.length) e.especialidades = 'Elegí al menos una especialidad';
-    }
-    if (tipo === 'peluqueria') {
-      if (!datos.tamanos.length) e.tamanos = 'Elegí al menos un tamaño';
-      if (!datos.especies.length) e.especies = 'Elegí perros, gatos o los dos';
-    }
-    if (tipo === 'petshop') {
-      if (!datos.mediosPago.length) e.mediosPago = 'Elegí al menos un medio de pago';
-      if (datos.envios && datos.envioCosto === '') e.envioCosto = 'Escribí cuánto cobrás el envío (0 si es gratis)';
-    }
+    const eTipo = validarDatosNegocio(tipo, tipoForm.datos);
+    tipoForm.setErrores(eTipo);
     setErrores(e);
-    return Object.keys(e).length === 0;
-  };
-
-  const datosParaGuardar = () => {
-    if (tipo === 'veterinaria') return { ...datos, matricula: datos.matricula.trim() };
-    if (tipo === 'petshop') {
-      return {
-        ...datos,
-        envioCosto: Number(datos.envioCosto) || 0,
-        envioGratisDesde: Number(datos.envioGratisDesde) || 0,
-        radioEnvioKm: Number(datos.radioEnvioKm) || 0,
-        pedidoMinimo: Number(datos.pedidoMinimo) || 0,
-      };
-    }
-    return datos;
+    return Object.keys(e).length === 0 && Object.keys(eTipo).length === 0;
   };
 
   const continuar = async () => {
@@ -233,7 +166,7 @@ export default function NegocioRegistroScreen() {
       return;
     }
 
-    const datosNegocio = { ...negocio, tipo, datos: datosParaGuardar() };
+    const datosNegocio = { ...negocio, tipo, datos: datosNegocioParaGuardar(tipo, tipoForm.datos) };
     setCargando(true);
     try {
       if (!cuentaCreadaRef.current) {
@@ -414,101 +347,15 @@ export default function NegocioRegistroScreen() {
               </View>
 
               {/* ─── Lo propio de cada tipo ─── */}
-              {tipo === 'veterinaria' && (
-                <View style={[s.card, { marginTop: 14 }]}>
-                  <Text style={s.cardTitulo}>Tu práctica</Text>
-                  <Campo label="Matrícula profesional" error={errores.matricula} ayuda="Ej: MN 12345 · Se muestra en tu ficha.">
-                    <TextInput style={[s.input, errores.matricula && s.inputError]} value={datos.matricula}
-                      onChangeText={(v) => setD('matricula', v.slice(0, 40))} placeholder="MN / MP"
-                      placeholderTextColor={C.gris} autoCapitalize="characters" />
-                  </Campo>
-                  <Campo label="Especialidades" error={errores.especialidades}>
-                    <Multi opciones={cfg.especialidades} valor={datos.especialidades} error={errores.especialidades}
-                      onCambio={(v) => setD('especialidades', v)} />
-                  </Campo>
-                  <Toggle valor={datos.urgencias24h} onCambio={(v) => setD('urgencias24h', v)}
-                    titulo="Atendemos urgencias 24 h" texto="Los dueños pueden marcar su pedido como urgente y te llega destacado." />
-                  <Toggle valor={datos.aDomicilio} onCambio={(v) => setD('aDomicilio', v)}
-                    titulo="Atención a domicilio" texto="El dueño puede pedir que vayas a su casa." />
-                </View>
-              )}
-
-              {tipo === 'peluqueria' && (
-                <View style={[s.card, { marginTop: 14 }]}>
-                  <Text style={s.cardTitulo}>A quiénes atendés</Text>
-                  <Campo label="Especies" error={errores.especies}>
-                    <Multi opciones={ESPECIES} valor={datos.especies} error={errores.especies}
-                      onCambio={(v) => setD('especies', v)} />
-                  </Campo>
-                  <Campo label="Tamaños" error={errores.tamanos}>
-                    <Multi opciones={TAMANOS.map((t) => ({ key: t.key, label: `${t.label} (${t.detalle})` }))}
-                      valor={datos.tamanos} error={errores.tamanos} onCambio={(v) => setD('tamanos', v)} />
-                  </Campo>
-                  <Toggle valor={datos.buscaYLleva} onCambio={(v) => setD('buscaYLleva', v)}
-                    titulo="Buscamos y llevamos" texto="Pasás a buscar la mascota y la devolvés en su casa." />
-                </View>
-              )}
-
-              {tipo === 'petshop' && (
-                <View style={[s.card, { marginTop: 14 }]}>
-                  <Text style={s.cardTitulo}>Ventas y envíos</Text>
-                  <Toggle valor={datos.envios} onCambio={(v) => setD('envios', v)}
-                    titulo="Hacemos envíos a domicilio" texto="Si no, los clientes retiran en el local." />
-                  {datos.envios && (
-                    <View style={s.fila}>
-                      <View style={{ flex: 1 }}>
-                        <Campo label="Costo del envío" error={errores.envioCosto}>
-                          <View style={[s.input, s.monto, errores.envioCosto && s.inputError]}>
-                            <Text style={s.signo}>$</Text>
-                            <TextInput style={s.montoInput} value={datos.envioCosto} keyboardType="number-pad"
-                              placeholder="0" placeholderTextColor={C.gris}
-                              onChangeText={(v) => setD('envioCosto', sanitizarDigitos(v, 7))} />
-                          </View>
-                        </Campo>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Campo label="Gratis desde">
-                          <View style={[s.input, s.monto]}>
-                            <Text style={s.signo}>$</Text>
-                            <TextInput style={s.montoInput} value={datos.envioGratisDesde} keyboardType="number-pad"
-                              placeholder="Nunca" placeholderTextColor={C.gris}
-                              onChangeText={(v) => setD('envioGratisDesde', sanitizarDigitos(v, 8))} />
-                          </View>
-                        </Campo>
-                      </View>
-                    </View>
-                  )}
-                  {datos.envios && (
-                    <Campo label="Hasta cuántos km enviás">
-                      <View style={[s.input, s.monto]}>
-                        <TextInput style={s.montoInput} value={datos.radioEnvioKm} keyboardType="number-pad"
-                          placeholder="3" placeholderTextColor={C.gris}
-                          onChangeText={(v) => setD('radioEnvioKm', sanitizarDigitos(v, 2))} />
-                        <Text style={s.unidad}>km</Text>
-                      </View>
-                    </Campo>
-                  )}
-                  <Campo label="Pedido mínimo (opcional)">
-                    <View style={[s.input, s.monto]}>
-                      <Text style={s.signo}>$</Text>
-                      <TextInput style={s.montoInput} value={datos.pedidoMinimo} keyboardType="number-pad"
-                        placeholder="Sin mínimo" placeholderTextColor={C.gris}
-                        onChangeText={(v) => setD('pedidoMinimo', sanitizarDigitos(v, 8))} />
-                    </View>
-                  </Campo>
-                  <Campo label="Medios de pago que aceptás" error={errores.mediosPago}>
-                    <Multi opciones={MEDIOS_PAGO_NEGOCIO} valor={datos.mediosPago} error={errores.mediosPago}
-                      onCambio={(v) => setD('mediosPago', v)} />
-                  </Campo>
-                </View>
-              )}
+              <DatosTipoNegocio tipo={tipo} datos={tipoForm.datos} onCambio={tipoForm.cambiar}
+                errores={tipoForm.errores} style={{ marginTop: 14 }} />
             </>
           )}
 
-          {Object.values(errores).some(Boolean) && (
+          {[...Object.values(errores), ...Object.values(tipoForm.errores)].some(Boolean) && (
             <View style={s.resumen}>
               <Text style={s.resumenTitulo}>Para continuar es necesario:</Text>
-              {Object.values(errores).filter(Boolean).map((m) => (
+              {[...Object.values(errores), ...Object.values(tipoForm.errores)].filter(Boolean).map((m) => (
                 <Text key={m} style={s.resumenItem}>• {m}</Text>
               ))}
             </View>
@@ -557,28 +404,6 @@ const s = StyleSheet.create({
   textarea: { minHeight: 90, textAlignVertical: 'top' },
   errorCampo: { fontSize: 12, color: C.rojo, marginTop: 4 },
   ayuda: { fontSize: 12, color: C.texto2, marginTop: 4 },
-
-  monto: { flexDirection: 'row', alignItems: 'center', paddingVertical: 0 },
-  signo: { fontSize: 16, fontWeight: '900', color: C.texto, marginRight: 4 },
-  montoInput: { flex: 1, paddingVertical: 12, fontSize: 15, color: C.texto, minWidth: 0 },
-  unidad: { fontSize: 13, fontWeight: '700', color: C.texto2 },
-
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 18, borderWidth: 1.5, borderColor: C.menta,
-    paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#FFFFFF',
-  },
-  chipOn: { backgroundColor: C.teal, borderColor: C.teal },
-  chipTxt: { fontSize: 13, fontWeight: '700', color: C.texto },
-  chipTxtOn: { color: '#FFFFFF' },
-
-  toggle: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderRadius: 14, borderWidth: 1.5,
-    borderColor: '#EEEEEE', padding: 12, marginBottom: 10,
-  },
-  toggleOn: { borderColor: C.menta, backgroundColor: '#F6FFF9' },
-  toggleTitulo: { fontSize: 14, fontWeight: '800', color: C.texto },
-  toggleTxt: { fontSize: 12, color: C.texto2, marginTop: 2, lineHeight: 17 },
 
   logoFila: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16 },
   logo: {

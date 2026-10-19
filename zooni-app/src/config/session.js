@@ -217,6 +217,7 @@ export function getModo() {
 
 export async function setModo(modo) {
   modoActual = modoValido(modo);
+  if (modoActual === MODO_PASEADOR) await recordarModoPaseador();
   try {
     if (Platform.OS === 'web') {
       if (typeof localStorage !== 'undefined') localStorage.setItem(MODO_KEY, modoActual);
@@ -226,6 +227,43 @@ export async function setModo(modo) {
   } catch {
     // Sin storage: el modo dura lo que dure la app abierta.
   }
+}
+
+// ¿Esta cuenta ya entró alguna vez a Zooni Paseadores en este dispositivo?
+// El menú del dueño lo usa para ofrecer "Cambiar a modo paseador" aunque la
+// base no devuelva el rol (ej. la app de paseador corriendo en modo demo, o
+// sin red): si pudo ir de paseador a dueño, tiene que poder volver. Se guarda
+// el id (no un sí/no) para que otra cuenta del mismo dispositivo no lo herede.
+const PASEADOR_KEY = 'zooni_paseador_id';
+let paseadorId = null;
+
+/** Marca la cuenta logueada como usuaria de Zooni Paseadores. */
+export async function recordarModoPaseador() {
+  if (currentUserId == null) return;
+  paseadorId = String(currentUserId);
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof localStorage !== 'undefined') localStorage.setItem(PASEADOR_KEY, paseadorId);
+    } else {
+      await SecureStore.setItemAsync(PASEADOR_KEY, paseadorId);
+    }
+  } catch {
+    // Sin storage: vale mientras la app siga abierta.
+  }
+}
+
+export async function usoModoPaseador() {
+  if (currentUserId == null) return false;
+  if (paseadorId == null) {
+    try {
+      paseadorId = Platform.OS === 'web'
+        ? (typeof localStorage !== 'undefined' ? localStorage.getItem(PASEADOR_KEY) : null)
+        : await SecureStore.getItemAsync(PASEADOR_KEY);
+    } catch {
+      paseadorId = null;
+    }
+  }
+  return paseadorId === String(currentUserId);
 }
 
 /** Lee el modo guardado al arrancar (por defecto, dueño). */

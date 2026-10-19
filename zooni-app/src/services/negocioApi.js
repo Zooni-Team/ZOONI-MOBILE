@@ -658,10 +658,22 @@ export async function guardarInforme(negocio, turno, informe) {
   return { ...turno, informe };
 }
 
+/** Recargo por ir a buscar / atender en la casa (hoy: el busca y lleva de la peluquería). */
+export function recargoDomicilio(negocio, aDomicilio) {
+  if (!aDomicilio || negocio?.tipo !== 'peluqueria') return 0;
+  return Number(negocio.datos?.buscaYLlevaCosto) || 0;
+}
+
+/** Precio final de un turno: el del servicio (por tamaño) más el recargo a domicilio. */
+export function precioTurno(negocio, item, tamano, aDomicilio = false) {
+  return aCentavos(precioItem(item, tamano) + recargoDomicilio(negocio, aDomicilio));
+}
+
 /**
  * El dueño pide un turno. El precio sale del servicio elegido (y del tamaño de
- * la mascota en peluquería). Antes de guardar se vuelve a chequear que el
- * horario siga libre: dos dueños pueden estar mirando el mismo.
+ * la mascota en peluquería), más el busca y lleva si lo pidió. Antes de
+ * guardar se vuelve a chequear que el horario siga libre: dos dueños pueden
+ * estar mirando el mismo.
  */
 export async function crearTurno({
   negocio, item, mascota, fecha, tamano, urgencia = false, aDomicilio = false, direccion = null, notas = '',
@@ -676,7 +688,7 @@ export async function crearTurno({
   });
   if (pisa) throw new Error('horario_ocupado');
 
-  const precio = precioItem(item, tamano ?? tamanoPorPeso(mascota?.peso));
+  const precio = precioTurno(negocio, item, tamano ?? tamanoPorPeso(mascota?.peso), aDomicilio);
   const { data, error } = await supabase.from('negocio_turnos').insert({
     id_negocio: negocio.id,
     id_dueno: getCurrentUserId(),
@@ -698,6 +710,24 @@ export async function crearTurno({
     `${mascota?.nombre ?? 'Una mascota'} · ${item.nombre} · ${cuandoTexto(fecha)}${aDomicilio ? ' · a domicilio' : ''}`,
     { destino: 'turnos' });
   return data.id;
+}
+
+/**
+ * Pines de Comunidad ("servicios") de los negocios que contraté: les pedí un
+ * turno o les hice un pedido. Para la pestaña Servicios de Mensajes. Sin la
+ * 046 (o sin red) devuelve [].
+ */
+export async function fetchServiciosContratados() {
+  const yo = getCurrentUserId();
+  if (yo == null) return [];
+  const [turnos, pedidos] = await Promise.all([
+    supabase.from('negocio_turnos').select('id_negocio').eq('id_dueno', yo),
+    supabase.from('negocio_pedidos').select('id_negocio').eq('id_dueno', yo),
+  ]);
+  const ids = [...new Set([...(turnos.data ?? []), ...(pedidos.data ?? [])].map((r) => r.id_negocio).filter(Boolean))];
+  if (!ids.length) return [];
+  const { data } = await supabase.from('servicios').select('*').in('id_negocio', ids);
+  return data ?? [];
 }
 
 /** Mis turnos como dueño (los más nuevos primero). */
@@ -1047,6 +1077,42 @@ export async function getMensajesNegocio(idServicio, idDueno) {
 export async function marcarLeidosNegocio(idServicio, idDueno) {
   await supabase.from('Mensaje').update({ leido: true })
     .eq('idServicio', idServicio).eq('idUsuario', idDueno).eq('deNegocio', false).eq('leido', false);
+}
+
+/**
+ * Lo que el negocio necesita saber de un cliente mientras chatea con él:
+ * quién es, su próximo turno (o el pedido que tiene en curso) y cuántas veces
+ * vino o compró. Nunca falla: sin datos devuelve lo mínimo.
+ */
+export async function fetchContextoCliente(negocio, idDueno) {
+  const [usuarios, filas] = await Promise.all([
+    usuariosPorId([idDueno]),
+    configNegocio(negocio.tipo).usaPedidos
+      ? supabase.from('negocio_pedidos').select('*').eq('id_negocio', negocio.id).eq('id_dueno', idDueno)
+        .order('creado_en', { ascending: false }).limit(20)
+      : supabase.from('negocio_turnos').select('*').eq('id_negocio', negocio.id).eq('id_dueno', idDueno)
+        .order('fecha', { ascending: false }).limit(30),
+  ]).catch(() => [{}, { data: [] }]);
+  const dueno = usuarios[idDueno] ?? { id: idDueno, nombre: 'Cliente', foto: null, telefono: null };
+
+  if (configNegocio(negocio.tipo).usaPedidos) {
+    const pedidos = (filas.data ?? []).map((r) => mapPedido(r, usuarios));
+    return {
+      dueno,
+      pedidoActivo: pedidos.find((p) => ['nuevo', 'preparando', 'listo', 'en_camino'].includes(p.estado)) ?? null,
+      compras: pedidos.filter((p) => p.estado === 'entregado').length,
+    };
+  }
+  const turnos = await enriquecerTurnos(filas.data ?? []).catch(() => []);
+  const ahora = Date.now();
+  return {
+    dueno,
+    proximoTurno: turnos
+      .filter((t) => ['pendiente', 'confirmado'].includes(t.estado) && new Date(t.fecha).getTime() > ahora - 3600000)
+      .sort((a, b) => new Date(a.fecha) - new Date(b.fecha))[0] ?? null,
+    visitas: turnos.filter((t) => t.estado === 'completado').length,
+    mascotas: [...new Map(turnos.filter((t) => t.idMascota).map((t) => [t.idMascota, t.mascota])).values()],
+  };
 }
 
 /** El negocio le contesta a un dueño. Al dueño le llega la notificación al chat. */

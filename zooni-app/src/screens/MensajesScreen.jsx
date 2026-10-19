@@ -2,12 +2,15 @@
  * MensajesScreen.jsx — Inbox de conversaciones
  *
  * Tres pestañas sobre UNA sola lista:
- *   - Todos (la que abre por defecto): todo junto, lo más reciente arriba.
+ *   - Todos (la que abre por defecto): mis conversaciones, lo más reciente
+ *     arriba. Un servicio entra acá recién cuando hay mensajes con él.
  *   - Amigos: los chats de Match (services/chatStore.js → tabla Mensaje/idMatch).
- *   - Servicios: los paseadores de Zooni que contraté (tabla paseo_mensajes)
- *     MÁS las veterinarias, pet shops y peluquerías de Comunidad (tabla
- *     servicios) con las que YA tengo una conversación. Los servicios a los
- *     que nunca les escribí no aparecen: se buscan en Comunidad.
+ *   - Servicios: sólo los servicios que contraté o a los que les escribí:
+ *     paseadores (tabla paseo_mensajes), veterinarias / peluquerías a las que
+ *     les pedí un turno, pet shops a los que les hice un pedido y cualquier
+ *     servicio de Comunidad con el que ya tengo una conversación. El catálogo
+ *     de Comunidad (servicios cargados de antemano, lugares externos) NO
+ *     aparece: se busca en Comunidad.
  *
  * Los paseadores eran una pestaña propia; son un servicio más de los que
  * ofrecemos, así que viven adentro de Servicios.
@@ -28,8 +31,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
-import { fetchServicios } from '../api/comunidad';
+import { fetchServiciosPorId } from '../api/comunidad';
 import { fetchMisConversacionesMatch, fetchMisUltimosMensajesServicios } from '../services/chatStore';
+import { fetchServiciosContratados } from '../services/negocioApi';
 import { fetchConversacionesPaseo } from '../services/paseadorApi';
 import MatchInfoModal from '../components/chat/MatchInfoModal';
 import HamburgerDrawer from '../components/HamburgerDrawer';
@@ -56,22 +60,23 @@ export default function MensajesScreen() {
   const cargar = useCallback(async () => {
     setLoading(true);
     try {
-      const [convs, todosServicios, ultimosPorServicio, convsPaseo] = await Promise.all([
+      const [convs, ultimosPorServicio, contratados, convsPaseo] = await Promise.all([
         fetchMisConversacionesMatch(),
-        fetchServicios(),
-        fetchMisUltimosMensajesServicios(),
+        fetchMisUltimosMensajesServicios().catch(() => new Map()),
+        fetchServiciosContratados().catch(() => []),
         // Los paseadores dejaron de ser una pestaña propia: son un servicio más.
         fetchConversacionesPaseo('dueno').catch(() => []),
       ]);
       setConversaciones(convs);
       setPaseadores(convsPaseo);
-      // Sólo los servicios con los que ya hablé: el resto del catálogo de
-      // Comunidad no es "mío" y llenaba la lista de "Tocá para escribirle"
-      setServicios(
-        (todosServicios.servicios ?? [])
-          .filter((s) => ultimosPorServicio.has(s.id))
-          .map((s) => ({ ...s, ...ultimosPorServicio.get(s.id) }))
-      );
+      // Sólo MIS servicios (contratados o con mensajes), pedidos por id: antes
+      // salían del catálogo entero de Comunidad y aparecían los cargados de
+      // antemano con "Tocá para escribirle"
+      const idsContratados = new Set(contratados.map((s) => s.id));
+      const conMensajes = await fetchServiciosPorId(
+        [...ultimosPorServicio.keys()].filter((id) => !idsContratados.has(id)),
+      ).catch(() => []);
+      setServicios([...contratados, ...conMensajes].map((s) => ({ ...s, ...ultimosPorServicio.get(s.id) })));
     } finally {
       setLoading(false);
     }
@@ -112,9 +117,15 @@ export default function MensajesScreen() {
       clave: `servicio-${s.id}`, tipo: 'servicio', fecha: s.fecha ?? null, datos: s,
     }));
 
+    // En Todos van mis chats: un servicio aparece recién cuando le escribí
+    // (o me escribió). Los contratados sin mensajes quedan sólo en Servicios.
     const grupo = tab === 'Amigos' ? dePersonas
       : tab === 'Servicios' ? [...dePaseadores, ...deServicios]
-        : [...dePersonas, ...dePaseadores, ...deServicios];
+        : [
+          ...dePersonas,
+          ...dePaseadores.filter((x) => x.datos.ultimoMensaje),
+          ...deServicios.filter((x) => x.datos.ultimoMensaje),
+        ];
 
     // Lo más reciente arriba (un paseo contratado sin mensajes todavía va al final)
     return grupo.sort((a, b) => {
@@ -240,9 +251,16 @@ export default function MensajesScreen() {
                 </View>
                 <View style={st.info}>
                   <Text style={st.nombre} numberOfLines={1}>{s.nombre}</Text>
-                  <Text style={st.preview} numberOfLines={1}>{s.ultimoMensaje ?? 'Tocá para escribirle'}</Text>
+                  <Text style={st.preview} numberOfLines={1}>
+                    {s.ultimoMensaje
+                      ? `${s.ultimoDelNegocio ? '' : 'Vos: '}${s.ultimoMensaje}`
+                      : 'Contratado · tocá para escribirle'}
+                  </Text>
                 </View>
-                {s.fecha && <Text style={st.fecha}>{tiempoRelativoCorto(s.fecha)}</Text>}
+                <View style={st.derecha}>
+                  {s.fecha && <Text style={st.fecha}>{tiempoRelativoCorto(s.fecha)}</Text>}
+                  {s.noLeidos > 0 && <View style={st.badge}><Text style={st.badgeTxt}>{s.noLeidos}</Text></View>}
+                </View>
               </TouchableOpacity>
             );
           }}

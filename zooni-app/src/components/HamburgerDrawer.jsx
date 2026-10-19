@@ -14,7 +14,8 @@
  *   activeRoute  → nombre de la ruta actual (para resaltar el ítem activo)
  *
  * Si la cuenta también es de paseador, aparece "Cambiar a modo paseador"
- * (la contraparte del "Cambiar a modo dueño" del menú del paseador).
+ * (la contraparte del "Cambiar a modo dueño" del menú del paseador), y por
+ * cada negocio que tenga (veterinaria, peluquería, pet shop) un "Ir a …".
  *
  * Animaciones:
  *   - translateX: el drawer se desliza desde -DRAWER_WIDTH hasta 0
@@ -29,7 +30,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { clearToken } from '../services/api';
-import { clearCurrentUserId, setModo, MODO_PASEADOR } from '../config/session';
+import {
+  clearCurrentUserId, getCurrentUserId, modoNegocio, setModo, usoModoPaseador, MODO_PASEADOR,
+} from '../config/session';
+import { configNegocio } from '../constants/negocios';
 import { contarMensajesNoLeidos } from '../services/chatStore';
 import { fetchRolesCuenta } from '../services/paseadorApi';
 import AppDialog from './AppDialog';
@@ -47,6 +51,7 @@ const MENU_ITEMS = [
   { key: 'match',         label: 'Match',                     icono: 'paw-outline',                 ruta: 'Match' },
   { key: 'mensajes',      label: 'Mensajes',                  icono: 'chatbubbles-outline',         ruta: 'Mensajes' },
   { key: 'mis_paseos',    label: 'Mis paseos',                icono: 'walk-outline',                ruta: 'MisPaseos' },
+  { key: 'mis_turnos',    label: 'Turnos y pedidos',          icono: 'receipt-outline',             ruta: 'MisTurnos' },
   { key: 'planificador',  label: 'Planificador de Servicios', icono: 'calendar-outline',            ruta: 'Planificador' },
   { key: 'ficha_medica',  label: 'Ficha Médica',              icono: 'medkit-outline',              ruta: 'FichaMedica' },
   { key: 'calendario',    label: 'Calendario',                icono: 'today-outline',               ruta: 'Calendario' },
@@ -63,13 +68,21 @@ const MENU_ITEMS = [
   { key: 'logout',        label: 'Cerrar sesión',             icono: 'log-out-outline',             isLogout: true },
 ];
 
+// Último resultado de los roles, compartido entre los drawers de todas las
+// pantallas: así "Cambiar a modo paseador" aparece apenas se abre el menú en
+// vez de esperar la consulta cada vez.
+let rolesCache = { userId: null, roles: null, usoPaseador: false };
+
 export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActiva, activeRoute }) {
   const navigation = useNavigation();
   const [mensajesNoLeidos, setMensajesNoLeidos] = useState(0);
   const [logoutDialog, setLogoutDialog] = useState(false);
   // Roles de la cuenta (null = todavía no se sabe): si es paseador se ofrece
   // pasar al modo paseador
-  const [roles, setRoles] = useState(null);
+  const cache = rolesCache.userId === getCurrentUserId() ? rolesCache : null;
+  const [roles, setRoles] = useState(cache?.roles ?? null);
+  // Ya entró a Zooni Paseadores desde este dispositivo (ver usoModoPaseador)
+  const [usoPaseador, setUsoPaseador] = useState(cache?.usoPaseador ?? false);
 
   // Posición horizontal del drawer (empieza fuera de pantalla a la izquierda)
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
@@ -81,8 +94,19 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
   useEffect(() => {
     if (!visible) return;
     contarMensajesNoLeidos().then(setMensajesNoLeidos).catch(() => {});
-    fetchRolesCuenta().then(setRoles).catch(() => {});
+    const userId = getCurrentUserId();
+    usoModoPaseador().then((uso) => {
+      setUsoPaseador(uso);
+      rolesCache = { ...rolesCache, userId, usoPaseador: uso };
+    });
+    fetchRolesCuenta().then((r) => {
+      if (!r) return;
+      setRoles(r);
+      rolesCache = { ...rolesCache, userId, roles: r };
+    }).catch(() => {});
   }, [visible]);
+
+  const puedeSerPaseador = !!roles?.esPaseador || usoPaseador;
 
   // Anima la apertura/cierre del drawer cuando cambia `visible`
   useEffect(() => {
@@ -119,15 +143,24 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
   /**
    * modoPaseador — Igual que en ElegirModo: si tiene el rol pero le falta el
    * perfil, primero lo completa; si no, entra directo a Zooni Paseadores.
+   * Si ya usó la app de paseador entra directo: si de verdad le falta el
+   * perfil, PaseadorApp lo manda a completarlo.
    */
   const modoPaseador = async () => {
     onClose();
-    if (roles?.tienePerfil === false) {
+    if (roles?.tienePerfil === false && !usoPaseador) {
       navigation.navigate('PaseadorRegistro', { completar: true });
       return;
     }
     await setModo(MODO_PASEADOR);
     navigation.reset({ index: 0, routes: [{ name: 'PaseadorApp' }] });
+  };
+
+  /** Entra a la app de uno de sus negocios (mismo flujo que ElegirModo). */
+  const irANegocio = async (tipo) => {
+    onClose();
+    await setModo(modoNegocio(tipo));
+    navigation.reset({ index: 0, routes: [{ name: 'NegocioApp', params: { tipo } }] });
   };
 
   /**
@@ -203,7 +236,26 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
           {MENU_ITEMS.map((item) => {
             // Renderiza separador visual
             if (item.isDivider) return <View key={item.key} style={styles.dividerLine} />;
-            if (item.soloPaseador && !roles?.esPaseador) return null;
+            // Antes de "Cerrar sesión": sus negocios, si tiene
+            if (item.isLogout && roles?.negocios?.length) {
+              return [
+                ...roles.negocios.map((n) => {
+                  const cfgN = configNegocio(n.tipo);
+                  return (
+                    <TouchableOpacity key={`negocio-${n.id}`} style={styles.menuItem} onPress={() => irANegocio(n.tipo)}
+                      accessibilityLabel={`Ir a ${n.nombre}`}>
+                      <Ionicons name={`${cfgN.icono}-outline`} size={22} color={cfgN.color} style={styles.menuIcon} />
+                      <Text style={styles.menuLabel} numberOfLines={1}>Ir a {n.nombre}</Text>
+                    </TouchableOpacity>
+                  );
+                }),
+                <TouchableOpacity key={item.key} style={styles.menuItem} onPress={handleLogout} accessibilityLabel={item.label}>
+                  <Ionicons name={item.icono} size={22} color="#E63946" style={styles.menuIcon} />
+                  <Text style={[styles.menuLabel, styles.menuLabelLogout]}>{item.label}</Text>
+                </TouchableOpacity>,
+              ];
+            }
+            if (item.soloPaseador && !puedeSerPaseador) return null;
 
             // Resalta el ítem de la pantalla actual
             const isActive = activeRoute === item.ruta;

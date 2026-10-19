@@ -9,6 +9,9 @@
  *
  * Al enviar, los archivos se suben a Storage y al paseador le llega una
  * notificación. Props: visible · paseo · onCerrar · onEnviado({ parcial })
+ *
+ * Opinión general (sin paseo): `paseo` = { libre: true, idWalker, paseador }.
+ * Mismo formulario, se guarda con opinarPaseador (048).
  */
 
 import { useEffect, useState } from 'react';
@@ -20,7 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 
 import {
-  ASPECTOS_RESENA, MEDIA_RESENA_MAX, PREGUNTAS_RESENA, calificarPaseo,
+  ASPECTOS_RESENA, MEDIA_RESENA_MAX, PREGUNTAS_RESENA, calificarPaseo, opinarPaseador,
 } from '../../services/paseadorApi';
 import { alerta } from '../../utils/dialogo';
 import { MiniaturaMedia, VisorMedia } from './MediaResena';
@@ -92,15 +95,20 @@ export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviad
   };
 
   const enviar = async () => {
-    if (!rating) { setError('Elegí cuántas estrellas le das al paseo'); return; }
+    if (!rating) { setError(paseo?.libre ? 'Elegí cuántas estrellas le das' : 'Elegí cuántas estrellas le das al paseo'); return; }
     setEnviando(true);
     setError(null);
     try {
-      const resultado = await calificarPaseo(paseo, { rating, resena: texto, aspectos, respuestas, media });
+      const datos = { rating, resena: texto, aspectos, respuestas, media };
+      const resultado = paseo?.libre
+        ? await opinarPaseador(paseo.idWalker, datos)
+        : await calificarPaseo(paseo, datos);
       onEnviado?.(resultado);
     } catch (e) {
-      console.error('[Reseña]', e?.message ?? e);
-      setError(media.length
+      console.error('[Reseña]', e?.message ?? e, e?.detalle ?? '');
+      setError(e?.message === 'migracion_pendiente'
+        ? 'Para opinar sin un paseo es necesario correr la migración 048 en Supabase.'
+        : media.length
         ? 'No se pudo enviar la reseña. Si subiste videos, probá con uno más corto.'
         : 'No se pudo enviar la reseña. Probá de nuevo.');
     } finally {
@@ -117,7 +125,9 @@ export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviad
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={s.titulo} numberOfLines={1}>{paseo?.paseador?.nombre ?? 'Tu paseador'}</Text>
-            <Text style={s.sub} numberOfLines={1}>Paseo con {paseo?.mascota?.nombre}</Text>
+            <Text style={s.sub} numberOfLines={1}>
+              {paseo?.libre ? 'Opinión general' : `Paseo con ${paseo?.mascota?.nombre}`}
+            </Text>
           </View>
         </View>
 
@@ -125,7 +135,7 @@ export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviad
           <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
             {/* 1. General */}
             <View style={{ alignItems: 'center' }}>
-              <Text style={s.pregunta}>¿Cómo estuvo el paseo?</Text>
+              <Text style={s.pregunta}>{paseo?.libre ? '¿Qué te parece este paseador?' : '¿Cómo estuvo el paseo?'}</Text>
               <View style={{ marginTop: 10 }}><EstrellasInput valor={rating} onCambio={(v) => { setRating(v); setError(null); }} size={40} /></View>
               <Text style={s.etiqueta}>{ETIQUETAS[rating] || 'Tocá las estrellas'}</Text>
             </View>

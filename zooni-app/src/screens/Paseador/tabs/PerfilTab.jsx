@@ -1,7 +1,7 @@
 /**
  * PerfilTab.jsx — Tab 5 de Zooni Paseadores
  *
- *   · Rating, paseos y experiencia (contada desde el primer paseo en la app)
+ *   · Rating, paseos y antigüedad en Zooni (desde el alta como paseador)
  *   · Servicios ofrecidos (tiempos de paseo y precios editables, tamaños, perros por paseo)
  *   · Reseñas de los dueños ("Ver todas" abre ResenasPaseadorModal, con fotos y videos)
  *   · Configuración de disponibilidad, cambiar a modo dueño, cerrar sesión
@@ -73,7 +73,7 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
 
   if (!perfil) return null;
   const nombre = `${perfil.nombre} ${perfil.apellido}`.trim();
-  const experiencia = experienciaEnZooni(resenas?.primerPaseo);
+  const experiencia = experienciaEnZooni([perfil.desde, resenas?.primerPaseo]);
 
   const abrirEditor = () => {
     setForm({
@@ -177,15 +177,19 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
       </Card>
 
       {/* ── Reseñas ────────────────────────────────────────────────── */}
-      <Seccion titulo="Reseñas" accion={resenas?.cantidad ? 'Ver todas' : null} onAccion={() => setVerResenas(true)} />
+      <Seccion titulo="Reseñas" accion={resenas ? (resenas.cantidad ? 'Ver todas' : 'Escribir una') : null} onAccion={() => setVerResenas(true)} />
       {resenas?.resenas?.length ? (
         resenas.resenas.slice(0, 5).map((r) => (
           <Card key={r.id} style={{ marginBottom: 10 }}>
             <View style={s.resenaTop}>
-              <Avatar fuente={r.mascota.visual} nombre={r.mascota.nombre} size={36} />
+              {r.mascota
+                ? <Avatar fuente={r.mascota.visual} nombre={r.mascota.nombre} size={36} />
+                : <Avatar uri={r.dueno.foto} nombre={r.dueno.nombre} size={36} />}
               <View style={{ flex: 1 }}>
                 <Text style={s.resenaNombre}>{r.dueno.nombre}</Text>
-                <Text style={s.resenaSub}>Paseo con {r.mascota.nombre} · {tiempoRelativo(r.fecha)}</Text>
+                <Text style={s.resenaSub}>
+                  {r.mascota ? `Paseo con ${r.mascota.nombre}` : 'Opinión general'} · {tiempoRelativo(r.fecha)}
+                </Text>
               </View>
               <Estrellas valor={r.rating} size={13} />
             </View>
@@ -200,7 +204,7 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
         visible={verResenas}
         idPaseador={getCurrentUserId()}
         nombre="Lo que dicen los dueños de vos"
-        onCerrar={() => setVerResenas(false)}
+        onCerrar={() => { setVerResenas(false); cargar(); }}
       />
 
       {/* ── Configuración ──────────────────────────────────────────── */}

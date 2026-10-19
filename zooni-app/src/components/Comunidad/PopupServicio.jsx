@@ -19,6 +19,13 @@ export default function PopupServicio({ servicio, onClose }) {
   // el mundo real pero no tiene usuario en Zooni: el chat no iría a ninguna
   // parte. Solo los servicios cargados en la tabla `servicios` son chateables.
   const esExterno = servicio.origen === 'osm' || servicio.origen === 'google';
+  // Negocio de Zooni (046): tiene ficha propia con turnos o catálogo
+  const idNegocio = servicio.id_negocio ?? null;
+
+  const verFicha = () => {
+    onClose();
+    navigation.navigate('NegocioPublico', { idNegocio });
+  };
 
   const abrirMaps = () => {
     const url = servicio.google_maps_url ||
@@ -88,6 +95,20 @@ export default function PopupServicio({ servicio, onClose }) {
           <Text style={styles.info}>{servicio.horario}</Text>
         </View>
       )}
+      {idNegocio ? (
+        <View style={styles.btnsRow}>
+          <TouchableOpacity style={[styles.btnMaps, styles.btnFicha]} onPress={verFicha}>
+            <Ionicons name={servicio.tipo === 'petshop' ? 'bag-handle-outline' : 'calendar-outline'} size={15} color="#2C2C2C" />
+            <Text style={[styles.btnMapsText, { color: '#2C2C2C' }]}>
+              {servicio.tipo === 'petshop' ? 'Ver productos' : 'Pedir turno'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.btnMaps, styles.btnMensaje]} onPress={enviarMensaje}>
+            <Ionicons name="chatbubble-outline" size={15} color="#2DBD72" />
+            <Text style={[styles.btnMapsText, styles.btnMensajeText]}>Mensaje</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
       <View style={styles.btnsRow}>
         {/* En los externos se ofrece llamar en lugar de chatear. */}
         {esExterno ? (
@@ -110,6 +131,13 @@ export default function PopupServicio({ servicio, onClose }) {
           <Text style={styles.btnMapsText}>Ver en Google Maps</Text>
         </TouchableOpacity>
       </View>
+      )}
+      {idNegocio ? (
+        <TouchableOpacity onPress={verFicha} style={styles.enZooni}>
+          <Ionicons name="checkmark-circle" size={13} color="#2DBD72" />
+          <Text style={styles.enZooniTxt}>En Zooni · respondé y reservá desde la app</Text>
+        </TouchableOpacity>
+      ) : null}
     </Animated.View>
   );
 }
@@ -134,4 +162,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FFF6', borderWidth: 1.5, borderColor: '#2DBD72',
   },
   btnMensajeText: { color: '#2DBD72' },
+  btnFicha: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#F5C842',
+  },
+  enZooni: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, alignSelf: 'center' },
+  enZooniTxt: { fontSize: 11, fontWeight: '700', color: '#2DBD72' },
 });

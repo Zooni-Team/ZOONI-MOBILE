@@ -14,7 +14,6 @@ const FALLBACK = require('../../assets/perro_basico.png');
 export const MASCOTAS_BIENVENIDA = require('../../wwwroot/img/mascotas-bienvenida.png');
 export const GOOGLE_ICON = require('../../wwwroot/img/google-icon.png');
 export const FACEBOOK_ICON = require('../../wwwroot/img/facebook-icon.png');
-export const APPLE_ICON = require('../../wwwroot/img/apple-icon.png');
 
 // ── Caja por especie (Registro Paso 2 / Registro3.cshtml) ──────────────────
 export const CAJAS_POR_ESPECIE = {

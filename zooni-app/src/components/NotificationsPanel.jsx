@@ -97,6 +97,33 @@ export default function NotificationsPanel({ visible, onClose, onNavigate, onMar
       return;
     }
 
+    // Respuesta de una veterinaria / peluquería / pet shop: directo a ese chat
+    if (item.dataExtra?.servicioId) {
+      onClose();
+      onNavigate({
+        screen: 'Chat',
+        params: {
+          servicioId: item.dataExtra.servicioId,
+          nombre: item.dataExtra.nombre ?? 'Chat',
+          tipoServicio: item.dataExtra.tipoServicio ?? null,
+        },
+      });
+      return;
+    }
+
+    // Turnos y pedidos de Zooni Negocios, y paseos
+    if (item.tipo === 'turno' || item.tipo === 'pedido') {
+      onClose();
+      onNavigate({ screen: 'MisTurnos', params: { tab: item.tipo === 'pedido' ? 'pedidos' : 'turnos' } });
+      return;
+    }
+    // (con `destino` es un aviso para la app de paseador de la misma cuenta)
+    if (item.tipo === 'paseo' && !item.dataExtra?.destino) {
+      onClose();
+      onNavigate({ screen: 'MisPaseos' });
+      return;
+    }
+
     // Match sin DataExtra (notificación vieja): buscar el chat en el momento
     if (item.tipo === 'match' && item.mascota?.id) {
       try {

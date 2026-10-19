@@ -16,9 +16,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 import { Avatar, C, Stat, Vacio } from './PaseadorUI';
-import { fetchMisPaseos, formatoDistancia, formatoPlata, minutosCobrados } from '../../services/paseadorApi';
+import { fetchMisPaseos, formatoDistancia, formatoTiempoPaseado, formatoPlata } from '../../services/paseadorApi';
 
-const minutosDe = (p) => (p.segundosAcumulados ? minutosCobrados(p.segundosAcumulados) : p.duracionMin);
+const duracionDe = (p) => (p.segundosAcumulados ? formatoTiempoPaseado(p.segundosAcumulados) : `${p.duracionMin} minutos`);
 const fechaLarga = (iso) => new Date(iso).toLocaleDateString('es-AR', {
   weekday: 'short', day: 'numeric', month: 'long', year: 'numeric',
 });
@@ -102,7 +102,7 @@ export default function HistorialPerroModal({ visible, mascota, dueno, onCerrar 
                 <View style={s.paseoDatos}>
                   <View style={s.dato}>
                     <Ionicons name="time-outline" size={14} color={C.teal} />
-                    <Text style={s.datoTxt}>{minutosDe(item)} {minutosDe(item) === 1 ? 'minuto' : 'minutos'}</Text>
+                    <Text style={s.datoTxt}>{duracionDe(item)}</Text>
                   </View>
                   <View style={s.dato}>
                     <Ionicons name="footsteps-outline" size={14} color={C.teal} />
