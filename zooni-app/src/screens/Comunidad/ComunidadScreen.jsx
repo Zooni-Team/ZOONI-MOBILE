@@ -16,11 +16,21 @@ import PopupCartel      from '../../components/Comunidad/PopupCartel';
 import HamburgerDrawer  from '../../components/HamburgerDrawer';
 import { useUsuarioActivo } from '../../hooks/useUsuarioActivo';
 
-import { fetchMapaData, actualizarUbicacion } from '../../api/comunidad';
+import {
+  fetchCarteles, fetchServiciosPropios, fetchAmigos, actualizarUbicacion,
+} from '../../api/comunidad';
 import { getCurrentUserId } from '../../config/session';
 import { fetchPaseadoresParaMi } from '../../services/paseadorApi';
+import { buscarLugares, combinarServicios } from '../../services/lugaresApi';
 
 const TABS    = ['Amigos', 'Servicios', 'Solicitudes', 'Buscar'];
+
+/*
+  Lo último que se mostró, para que al volver a Comunidad el mapa aparezca ya
+  cargado (paseadores, locales, carteles) mientras se refresca por detrás, en
+  vez de arrancar vacío cada vez que se entra a la pantalla.
+*/
+let ultimoMapa = { servicios: [], carteles: [], amigos: [], paseadores: [] };
 
 // ─── HTML del mapa ──────────────────────────────────────────────────────────
 // Definido fuera del componente → nunca se regenera → iframe nunca se recarga.
@@ -162,19 +172,26 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
   map.on('dblclick',function(e){
     if(modoCartel) notify({type:'dblclick',lat:e.latlng.lat,lng:e.latlng.lng});
   });
-  map.on('moveend',function(){
+  function notifyBounds(){
     var b=map.getBounds();
     notify({type:'bounds',lat_min:b.getSouth(),lat_max:b.getNorth(),lng_min:b.getWest(),lng_max:b.getEast()});
-  });
+  }
+  map.on('moveend',notifyBounds);
 
   notify({type:'ready'});
+  // El área inicial se avisa ya: el primer moveend recién llega cuando el GPS
+  // centra el mapa (segundos), y si se niega el permiso no llega nunca.
+  notifyBounds();
 })();
 </script>
 </body></html>`;
 
 // ─── Pantalla principal ──────────────────────────────────────────────────────
 export default function ComunidadScreen() {
-  const [mapaData,   setMapaData]   = useState({ servicios: [], carteles: [], amigos: [], paseadores: [] });
+  const [mapaData,   setMapaData]   = useState(ultimoMapa);
+  // Los locales de OpenStreetMap son lo único lento: la pestaña Servicios
+  // muestra el "Buscando…" solo mientras faltan esos.
+  const [cargandoLugares, setCargandoLugares] = useState(false);
   const [bbox,       setBbox]       = useState(null);
   const [tab,        setTab]        = useState('Amigos');
   const [sheetH,     setSheetH]     = useState('half');
@@ -199,6 +216,13 @@ export default function ComunidadScreen() {
   const userPosRef = useRef(null);
   const mapaReady   = useRef(false);
   const bannerAnim  = useRef(new Animated.Value(0)).current;
+  // Lo que hay que pintar, siempre al día: el mapa puede quedar listo después
+  // de que llegaron los datos, y el handler de 'ready' no ve el estado nuevo.
+  const pintarRef = useRef({ mapaData, markerTemp });
+  pintarRef.current = { mapaData, markerTemp };
+  // Cada carga de zona tiene un número: si el mapa se movió y llegó una
+  // respuesta de una zona anterior, se descarta.
+  const pedidoZona = useRef(0);
 
   // Llama una función en window.__zooniMap del iframe
   const mapCall = useCallback((fn, ...args) => {
@@ -216,14 +240,18 @@ export default function ComunidadScreen() {
       switch (msg.type) {
         case 'ready':
           mapaReady.current = true;
-          mapCall('setData', { ...mapaData, markerTemp });
+          mapCall('setData', { ...pintarRef.current.mapaData, markerTemp: pintarRef.current.markerTemp });
           break;
         case 'bounds': {
           const b = { lat_min: msg.lat_min, lat_max: msg.lat_max, lng_min: msg.lng_min, lng_max: msg.lng_max };
+          const primera = !ultimoBboxRef.current;
           setBbox(b);
           ultimoBboxRef.current = b;
           clearTimeout(boundsTimer.current);
-          boundsTimer.current = setTimeout(() => cargarMapaRef.current(b), 800);
+          // La primera zona se carga en el acto; después se espera a que el
+          // usuario termine de arrastrar para no pedir cada paso intermedio.
+          if (primera) cargarZonaRef.current(b);
+          else boundsTimer.current = setTimeout(() => cargarZonaRef.current(b), 300);
           break;
         }
         case 'location': {
@@ -232,7 +260,7 @@ export default function ComunidadScreen() {
           setUserPos(userPosRef.current);
           // Primera ubicación (o te moviste bastante): reordenar los paseadores por cercanía
           const movido = !antes || Math.abs(antes.lat - msg.lat) + Math.abs(antes.lng - msg.lng) > 0.002;
-          if (movido && ultimoBboxRef.current) cargarMapaRef.current(ultimoBboxRef.current);
+          if (movido) cargarPaseadoresRef.current();
           break;
         }
         case 'servicio':
@@ -255,27 +283,71 @@ export default function ComunidadScreen() {
   }, []); // eslint-disable-line
 
   // ── Carga de datos ─────────────────────────────────────────────────────────
-  const cargarMapa = useCallback(async (b) => {
-    if (!b) return;
-    try {
-      const [data, paseadores] = await Promise.all([
-        fetchMapaData(b),
-        fetchPaseadoresParaMi(userPosRef.current).catch(() => []),
-      ]);
-      setMapaData({ ...data, paseadores });
-    } catch {}
+  /*
+    Cada cosa se pinta apenas llega, sin esperar a las demás. Antes iba todo en
+    un solo Promise.all: los paseadores (Supabase, instantáneo) quedaban
+    esperando a las veterinarias de OpenStreetMap, que pueden tardar varios
+    segundos. Para contratar un paseo, el mapa tiene que estar ya.
+  */
+  const actualizar = useCallback((parcial) => {
+    setMapaData((p) => (ultimoMapa = { ...p, ...parcial }));
   }, []);
-  const cargarMapaRef = useRef(cargarMapa);
-  useEffect(() => { cargarMapaRef.current = cargarMapa; }, [cargarMapa]);
+
+  // Paseadores y amigos no dependen del área visible: se cargan al entrar, sin
+  // esperar a que el mapa avise qué zona muestra.
+  const cargarPaseadores = useCallback(() => {
+    fetchPaseadoresParaMi(userPosRef.current)
+      .then((paseadores) => actualizar({ paseadores }))
+      .catch(() => {});
+  }, [actualizar]);
+  const cargarAmigos = useCallback(() => {
+    fetchAmigos().then(({ amigos }) => actualizar({ amigos })).catch(() => {});
+  }, [actualizar]);
+
+  const cargarZona = useCallback((b) => {
+    if (!b) return;
+    const id = ++pedidoZona.current;
+    const vigente = () => id === pedidoZona.current;
+
+    fetchCarteles(b)
+      .then((carteles) => { if (vigente()) actualizar({ carteles }); })
+      .catch(() => {});
+
+    // Mientras llegan los locales de la zona nueva quedan los anteriores en el
+    // mapa (no se vacía para volver a llenarse). Si la zona ya se consultó,
+    // buscarLugares responde del caché en el acto.
+    setCargandoLugares(true);
+    Promise.all([
+      fetchServiciosPropios(b).catch(() => []),
+      buscarLugares(b, 'todos'),
+    ])
+      .then(([propios, externos]) => {
+        if (vigente()) actualizar({ servicios: combinarServicios(propios, externos) });
+      })
+      .catch(() => {})
+      .finally(() => { if (vigente()) setCargandoLugares(false); });
+  }, [actualizar]);
+
+  const cargarZonaRef = useRef(cargarZona);
+  useEffect(() => { cargarZonaRef.current = cargarZona; }, [cargarZona]);
+  const cargarPaseadoresRef = useRef(cargarPaseadores);
+  useEffect(() => { cargarPaseadoresRef.current = cargarPaseadores; }, [cargarPaseadores]);
+
+  useEffect(() => {
+    cargarPaseadores();
+    cargarAmigos();
+  }, [cargarPaseadores, cargarAmigos]);
 
   // ── Polling 30s ────────────────────────────────────────────────────────────
   useEffect(() => {
     const iv = setInterval(() => {
-      if (bbox)    cargarMapa(bbox);
+      if (bbox)    cargarZona(bbox);
+      cargarPaseadores();
+      cargarAmigos();
       if (userPos) actualizarUbicacion(userPos.lat, userPos.lng).catch(() => {});
     }, 30000);
     return () => clearInterval(iv);
-  }, [bbox, userPos, cargarMapa]);
+  }, [bbox, userPos, cargarZona, cargarPaseadores, cargarAmigos]);
 
   // ── Sincroniza markers cuando cambian ─────────────────────────────────────
   useEffect(() => {
@@ -420,9 +492,10 @@ export default function ComunidadScreen() {
                 flyTo(a.lat, a.lng); setSheetH('half');
               }} />}
               {tab === 'Servicios'   && <TabServicios bbox={bbox} paseadores={mapaData.paseadores}
+                servicios={mapaData.servicios} cargando={cargandoLugares}
                 onSeleccionarPaseador={p => { setPopPaseador(p); setPopServ(null); flyTo(p.lat, p.lng); setSheetH('half'); }}
                 onSeleccionar={s => { setPopServ(s); setPopPaseador(null); flyTo(s.lat, s.lng); setSheetH('half'); }} />}
-              {tab === 'Solicitudes' && <TabSolicitudes onRespuesta={() => { mostrarToast('✅ ¡Ahora son amigos!'); if (bbox) cargarMapa(bbox); }} />}
+              {tab === 'Solicitudes' && <TabSolicitudes onRespuesta={() => { mostrarToast('✅ ¡Ahora son amigos!'); cargarAmigos(); }} />}
               {tab === 'Buscar'      && <BuscadorUsuarios onSolicitudEnviada={n => mostrarToast(`✅ Solicitud enviada a ${n}`)} />}
             </View>
           </>

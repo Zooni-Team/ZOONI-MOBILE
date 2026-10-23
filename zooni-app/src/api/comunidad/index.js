@@ -45,18 +45,22 @@ function aplicarBbox(query, bbox, latCol = 'lat', lngCol = 'lng') {
  * Si el proveedor falla, esto devuelve exactamente lo mismo que antes: los
  * servicios propios. La pestaña nunca queda peor que como estaba.
  */
-export async function fetchServicios(bbox, tipo) {
+/** Servicios cargados en Zooni (tabla `servicios`): rápido, es Supabase. */
+export async function fetchServiciosPropios(bbox, tipo) {
   let query = supabase.from('servicios').select('*');
   query = aplicarBbox(query, bbox);
   if (tipo && tipo !== 'todos') query = query.eq('tipo', tipo);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
+}
 
+export async function fetchServicios(bbox, tipo) {
   const [propios, externos] = await Promise.all([
-    query,
+    fetchServiciosPropios(bbox, tipo),
     buscarLugares(bbox, tipo ?? 'todos'),
   ]);
-  if (propios.error) throw propios.error;
-
-  return { servicios: combinarServicios(propios.data ?? [], externos) };
+  return { servicios: combinarServicios(propios, externos) };
 }
 
 /** Servicios puntuales por id (sin el catálogo de la zona ni los externos). */
@@ -273,36 +277,36 @@ export async function eliminarCartel(id) {
 }
 
 // ─────────────────────────────────────────────
-// MAPA (carteles + servicios + amigos combinados)
+// MAPA (carteles)
 // ─────────────────────────────────────────────
 
-export async function fetchMapaData(bbox) {
+/**
+ * Carteles activos del área visible, con el nombre del autor y su mascota.
+ * Va aparte de los servicios: Comunidad los pinta apenas llegan, sin esperar
+ * a los locales de OpenStreetMap (que tardan bastante más).
+ */
+export async function fetchCarteles(bbox) {
   let carteleQuery = supabase.from('carteles').select('*').eq('activo', true);
   carteleQuery = aplicarBbox(carteleQuery, bbox);
-
-  const [{ data: cartelesRaw, error: errCarteles }, { servicios }, { amigos }] = await Promise.all([
-    carteleQuery,
-    fetchServicios(bbox),
-    fetchAmigos(),
-  ]);
+  const { data: cartelesRaw, error: errCarteles } = await carteleQuery;
   if (errCarteles) throw errCarteles;
 
   const usuarioIds = [...new Set((cartelesRaw ?? []).map((c) => c.usuario_id))];
-  const { data: usuarios } = usuarioIds.length
-    ? await supabase.from('User').select('*').in('Id_User', usuarioIds)
-    : { data: [] };
-  const nombrePorUsuario = new Map((usuarios ?? []).map((u) => [u.Id_User, `${u.Nombre ?? ''} ${u.Apellido ?? ''}`.trim()]));
-
   const mascotaIds = [...new Set((cartelesRaw ?? []).map((c) => c.mascota_id).filter(Boolean))];
-  const { data: mascotas } = mascotaIds.length
-    ? await supabase.from('Mascota').select('*').in('Id_Mascota', mascotaIds)
-    : { data: [] };
+  // Autores y mascotas no dependen entre sí: en paralelo
+  const [{ data: usuarios }, { data: mascotas }] = await Promise.all([
+    usuarioIds.length
+      ? supabase.from('User').select('*').in('Id_User', usuarioIds)
+      : { data: [] },
+    mascotaIds.length
+      ? supabase.from('Mascota').select('*').in('Id_Mascota', mascotaIds)
+      : { data: [] },
+  ]);
+  const nombrePorUsuario = new Map((usuarios ?? []).map((u) => [u.Id_User, `${u.Nombre ?? ''} ${u.Apellido ?? ''}`.trim()]));
   const mascotaPorId = new Map((mascotas ?? []).map((m) => [m.Id_Mascota, m]));
 
-  const carteles = (cartelesRaw ?? []).map((c) =>
+  return (cartelesRaw ?? []).map((c) =>
     mapCartel(c, nombrePorUsuario.get(c.usuario_id), c.mascota_id ? mascotaPorId.get(c.mascota_id) : null));
-
-  return { servicios, carteles, amigos };
 }
 
 // ─────────────────────────────────────────────

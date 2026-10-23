@@ -174,10 +174,18 @@ export default function NegocioRegistroScreen() {
         else await registrarNegocio({ usuario, negocio: datosNegocio });
         cuentaCreadaRef.current = true;
       }
+      /*
+        El alta pasa por una RPC con permisos propios, pero la app después lee
+        el negocio con la key pública. Si esa lectura vuelve vacía (tabla con
+        RLS activo, ver la 049), entrar llevaría a "esta cuenta no tiene una
+        veterinaria" y el login ofrecería sumarla otra vez, en bucle. Mejor
+        decirlo acá, con la solución.
+      */
+      const creado = await fetchMiNegocio(tipo).catch(() => null);
+      if (!creado) throw new Error('negocio_no_visible');
       if (logo) {
         try {
-          const creado = await fetchMiNegocio(tipo);
-          if (creado) await subirLogoNegocio(creado, logo);
+          await subirLogoNegocio(creado, logo);
         } catch (errLogo) {
           // El negocio ya quedó: el logo se puede subir después desde "Mi negocio"
           console.error('[Registro negocio] logo', errLogo);
@@ -195,6 +203,8 @@ export default function NegocioRegistroScreen() {
         setErrorGeneral('Es necesario volver a iniciar sesión: tu contraseña no coincide.');
       } else if (msg === 'ubicacion_invalida') {
         setErrores({ ubicacion: 'Revisá la dirección y el punto en el mapa' });
+      } else if (msg === 'negocio_no_visible') {
+        setErrorGeneral(`Tu ${cfg.label.toLowerCase()} quedó guardada, pero la app no la puede leer: es necesario correr la migración 049 (permisos de negocios) en el SQL Editor de Supabase. Después vas a poder ingresar normalmente.`);
       } else if (msg === 'migracion_pendiente') {
         setErrorGeneral(`A la base de datos le falta Zooni Negocios: es necesario correr la migración 046 en el SQL Editor de Supabase.${detalle}`);
       } else {

@@ -192,8 +192,6 @@ export default function AltaMascotaScreen() {
     if (!raza) errs.raza = 'Seleccioná una raza';
     if (!pesoValido(peso, especie)) errs.peso = `El peso tiene que estar entre ${textoRangoPeso(especie)}`;
     if (!fechaNacimiento) errs.fechaNacimiento = 'Elegí cuándo nació';
-    // Foto REAL obligatoria: es la que se ve en Match
-    if (!fotoUri) errs.foto = 'Agregá una foto real de tu mascota';
     setErrores(errs);
     if (Object.keys(errs).length > 0) return;
 
@@ -345,8 +343,8 @@ export default function AltaMascotaScreen() {
             {errores.fechaNacimiento && <Text style={[s.errorTxt, { textAlign: 'center' }]}>{errores.fechaNacimiento}</Text>}
             {fechaNacimiento && <Text style={s.sliderValor}>{calcularEdad(fechaNacimiento)}</Text>}
 
-            {/* Foto REAL (obligatoria) */}
-            <Text style={s.fotoLabel}>📷 Agregá una foto real de tu mascota</Text>
+            {/* Foto REAL (opcional): si está, es la que se ve en Match */}
+            <Text style={s.fotoLabel}>📷 Agregá una foto real de tu mascota (opcional)</Text>
             {fotoUri && (
               <View style={s.previewWrap}>
                 <Image source={{ uri: fotoUri }} style={s.preview} />
@@ -356,15 +354,14 @@ export default function AltaMascotaScreen() {
                 </TouchableOpacity>
               </View>
             )}
-            <TouchableOpacity style={[s.btnFoto, errores.foto && s.btnFotoError]}
-              onPress={() => { elegirDeGaleria(); setErrores((p2) => ({ ...p2, foto: null })); }} activeOpacity={0.85}>
+            <TouchableOpacity style={s.btnFoto}
+              onPress={elegirDeGaleria} activeOpacity={0.85}>
               <Text style={s.btnFotoTxt}>Seleccionar archivo</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[s.btnFoto, errores.foto && s.btnFotoError]}
-              onPress={() => { abrirCamara(); setErrores((p2) => ({ ...p2, foto: null })); }} activeOpacity={0.85}>
+            <TouchableOpacity style={s.btnFoto}
+              onPress={abrirCamara} activeOpacity={0.85}>
               <Text style={s.btnFotoTxt}>📷 Abrir cámara</Text>
             </TouchableOpacity>
-            {errores.foto && <Text style={[s.errorTxt, { textAlign: 'center' }]}>{errores.foto}</Text>}
           </View>
         </ScrollView>
 
@@ -518,7 +515,6 @@ const s = StyleSheet.create({
     paddingVertical: 10, paddingHorizontal: 20,
     alignSelf: 'center', marginBottom: 10, minWidth: 190, alignItems: 'center',
   },
-  btnFotoError: { borderWidth: 1.5, borderColor: '#E63946' },
   btnFotoTxt: { fontSize: 14, fontWeight: '700', color: '#2C2C2C' },
 
   btnContinuar: {

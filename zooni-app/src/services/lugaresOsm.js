@@ -30,25 +30,29 @@
  * Overpass es un servicio comunitario y gratuito; abusarlo hace que corte por
  * IP. Por eso acá hay: caché por área, un tope de superficie consultable, un
  * timeout corto y varios servidores espejo. Nunca lanza error hacia arriba.
+ *
+ * ─── VELOCIDAD ───────────────────────────────────────────────────────────────
+ * Overpass tarda segundos, y Comunidad tiene que sentirse instantáneo:
+ *   · Las tres categorías van en UNA consulta (antes eran tres, y Overpass
+ *     atiende de a dos pedidos por IP: el tercero hacía cola).
+ *   · Se consulta un área más grande que la visible, alineada a una grilla:
+ *     mover el mapa unas cuadras o acercarlo cae dentro de lo ya traído.
+ *   · El caché se guarda en el navegador: al volver a entrar, los locales de
+ *     la zona aparecen al instante y no se vuelve a consultar.
  */
 import { Platform } from 'react-native';
 
-// Espejos públicos, en orden. Si el primero está saturado (429/504) se prueba
-// el siguiente: son instancias distintas de la misma base de datos.
-const ENDPOINTS_TODOS = [
+/*
+  Espejos públicos: instancias distintas de la misma base de datos. Se les
+  pregunta a todos a la vez y gana el primero que contesta bien (ver
+  consultarOverpass): suelen estar saturados, y uno colgado ya no hace esperar
+  a los demás.
+*/
+const ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
   'https://overpass.private.coffee/api/interpreter',
 ];
-
-/*
-  En el navegador overpass-api.de rechaza los pedidos (406 sin cabecera CORS):
-  cada búsqueda llenaba la consola de errores rojos antes de caer al espejo
-  que sí responde. En web va último; en nativo (sin CORS) sigue primero.
-*/
-const ENDPOINTS = Platform.OS === 'web'
-  ? [...ENDPOINTS_TODOS.slice(1), ENDPOINTS_TODOS[0]]
-  : ENDPOINTS_TODOS;
 
 // Servidores que fallaron por algo que no se arregla reintentando (CORS, 403,
 // 406): se saltean el resto de la sesión en vez de volver a pegarles en cada
@@ -77,10 +81,20 @@ const TIPOS_OSM = Object.keys(TAGS);
 */
 const AREA_MAX_GRADOS2 = 0.25;
 
-// Tope de resultados por categoría (el mismo que se pedía a Google).
-const MAX_RESULTADOS = 30;
+// Tope de resultados de la consulta (las tres categorías juntas, en el área
+// agrandada por la grilla).
+const MAX_RESULTADOS = 200;
 
-const TIMEOUT_MS = 12000;
+// Espera máxima de la consulta (a todos los espejos juntos). Una consulta chica
+// responde en 1-3 s; más que esto es que están todos saturados.
+const TIMEOUT_MS = 10000;
+
+/*
+  Grilla (en grados, ~2,2 km) a la que se agranda el área consultada. Así el
+  área consultada no cambia con cada arrastre del mapa: mientras la vista quede
+  dentro, sale del caché sin consultar nada.
+*/
+const GRILLA = 0.02;
 
 /*
   Overpass EXIGE un User-Agent que identifique a la aplicación: sin él los
@@ -114,23 +128,61 @@ export function areaConsultable(bbox) {
   gratuito por los mismos locales — que es exactamente lo que hace que Overpass
   bloquee por IP.
 
-  La clave redondea el área a ~0,01° (≈1 km): mover el mapa unas cuadras
-  reutiliza el resultado en vez de volver a consultar.
+  Cada entrada guarda el área que se consultó: cualquier vista que entre en un
+  área ya traída se responde de acá. Los locales casi no cambian, así que dura
+  un día, y en web se guarda en localStorage para sobrevivir a la recarga.
 */
-const CACHE_TTL_MS = 15 * 60 * 1000;
-const cache = new Map();
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const CACHE_MAX = 30;
+const CACHE_STORAGE_KEY = 'zooni:lugaresOsm:v2';
+let cache = leerCacheGuardado(); // [{ area, ts, datos }]
 
-function claveCache(bbox, tipo) {
-  const r = (n) => Math.round(n * 100) / 100;
-  return `${tipo}|${r(bbox.lat_min)},${r(bbox.lng_min)},${r(bbox.lat_max)},${r(bbox.lng_max)}`;
+function storage() {
+  try { return Platform.OS === 'web' && typeof window !== 'undefined' ? window.localStorage : null; }
+  catch { return null; }
 }
 
-function deCache(clave) {
-  const hit = cache.get(clave);
-  if (!hit) return null;
-  if (Date.now() - hit.ts > CACHE_TTL_MS) { cache.delete(clave); return null; }
-  return hit.datos;
+function leerCacheGuardado() {
+  try {
+    const crudo = storage()?.getItem(CACHE_STORAGE_KEY);
+    const lista = crudo ? JSON.parse(crudo) : [];
+    return Array.isArray(lista) ? lista.filter((e) => Date.now() - e.ts < CACHE_TTL_MS) : [];
+  } catch { return []; }
 }
+
+function guardarCache() {
+  try { storage()?.setItem(CACHE_STORAGE_KEY, JSON.stringify(cache)); } catch { /* lleno o bloqueado */ }
+}
+
+const contiene = (a, b) =>
+  a.lat_min <= b.lat_min && a.lng_min <= b.lng_min && a.lat_max >= b.lat_max && a.lng_max >= b.lng_max;
+
+function deCache(bbox) {
+  const hit = cache.find((e) => Date.now() - e.ts < CACHE_TTL_MS && contiene(e.area, bbox));
+  return hit ? hit.datos : null;
+}
+
+function alCache(area, datos) {
+  // La más nueva adelante; las que quedan contenidas en ella ya no hacen falta
+  cache = [{ area, ts: Date.now(), datos }, ...cache.filter((e) => !contiene(area, e.area))]
+    .slice(0, CACHE_MAX);
+  guardarCache();
+}
+
+/** El área visible agrandada hasta la grilla (ver GRILLA). */
+function areaAConsultar(bbox) {
+  const abajo = (n) => Math.floor(n / GRILLA) * GRILLA;
+  const arriba = (n) => Math.ceil(n / GRILLA) * GRILLA;
+  const fix = (n) => Number(n.toFixed(4));
+  return {
+    lat_min: fix(abajo(bbox.lat_min)), lng_min: fix(abajo(bbox.lng_min)),
+    lat_max: fix(arriba(bbox.lat_max)), lng_max: fix(arriba(bbox.lng_max)),
+  };
+}
+
+// Consultas en vuelo por área: si dos partes de la app piden la misma zona a
+// la vez, comparten el pedido en vez de duplicarlo.
+const enVuelo = new Map();
 
 // ─── MAPEO ────────────────────────────────────────────────────────────────────
 
@@ -147,8 +199,22 @@ function direccionDe(tags) {
  * TabServicios, los marcadores del mapa y PopupServicio no tengan que
  * distinguir de dónde vino cada uno.
  */
-function mapLugar(el, tipo) {
+/**
+ * Categoría del elemento según sus etiquetas. Un local puede tener varias (una
+ * veterinaria de barrio que además vende alimento es `amenity=veterinary` +
+ * `shop=pet`): se queda con una sola, y `veterinaria` va primero — para esta
+ * app, ante la duda, un lugar es antes veterinaria que pet shop.
+ */
+function tipoDe(tags) {
+  if (tags.amenity === 'veterinary') return 'veterinaria';
+  if (tags.shop === 'pet') return 'petshop';
+  if (tags.shop === 'pet_grooming') return 'peluqueria';
+  return null;
+}
+
+function mapLugar(el) {
   const tags = el.tags ?? {};
+  const tipo = tipoDe(tags);
   // Los nodos traen lat/lon directo; las ways y relations (un edificio mapeado
   // como polígono) traen el centroide en `center` gracias a `out center`.
   const lat = el.lat ?? el.center?.lat ?? null;
@@ -184,31 +250,37 @@ function mapLugar(el, tipo) {
 
 // ─── BÚSQUEDA ─────────────────────────────────────────────────────────────────
 
-/** Consulta Overpass QL para una categoría dentro del área visible. */
-function armarConsulta(bbox, tipo) {
+/** Consulta Overpass QL con las tres categorías dentro del área. */
+function armarConsulta(area) {
   // Overpass usa el orden (sur, oeste, norte, este).
-  const area = `${bbox.lat_min},${bbox.lng_min},${bbox.lat_max},${bbox.lng_max}`;
+  const caja = `${area.lat_min},${area.lng_min},${area.lat_max},${area.lng_max}`;
   // `nwr` = nodes + ways + relations: una veterinaria puede estar mapeada como
   // punto o como el polígono del edificio, y las dos formas son igual de comunes.
-  return `[out:json][timeout:20];nwr${TAGS[tipo]}(${area});out center ${MAX_RESULTADOS};`;
+  const partes = TIPOS_OSM.map((t) => `nwr${TAGS[t]}(${caja});`).join('');
+  return `[out:json][timeout:10];(${partes});out center ${MAX_RESULTADOS};`;
 }
 
-/** Prueba los espejos en orden hasta que uno responda. */
-async function consultarOverpass(consulta, signal) {
-  let ultimoError = null;
+/*
+  Les pregunta a todos los espejos a la vez y se queda con la primera respuesta
+  válida; a las demás las corta.
 
+  Antes se probaban de a uno, con 12 s de espera cada uno: con los espejos
+  saturados (pasa seguido: colgados o devolviendo 502) eran más de 30 s hasta
+  ver una veterinaria. En paralelo, lo que tarde el más rápido. No carga de más
+  a los servidores: cada zona se consulta una vez y después sale del caché.
+*/
+async function consultarOverpass(consulta) {
   const candidatos = ENDPOINTS.filter((e) => !endpointsDescartados.has(e));
-  for (const endpoint of (candidatos.length ? candidatos : ENDPOINTS)) {
-    // Timeout propio: sin esto, un espejo colgado deja la pestaña esperando
-    // para siempre en vez de pasar al siguiente.
-    const abortador = new AbortController();
-    const temporizador = setTimeout(() => abortador.abort(), TIMEOUT_MS);
-    // Si quien llama cancela (el usuario siguió moviendo el mapa), se corta todo.
-    const alCancelar = () => abortador.abort();
-    signal?.addEventListener?.('abort', alCancelar);
+  const lista = candidatos.length ? candidatos : ENDPOINTS;
+  const abortadores = lista.map(() => new AbortController());
+  // Timeout propio: sin esto, si todos están colgados la pestaña queda
+  // esperando para siempre.
+  const temporizador = setTimeout(() => abortadores.forEach((a) => a.abort()), TIMEOUT_MS);
 
+  const pedir = async (endpoint, abortador) => {
+    let res;
     try {
-      const res = await fetch(endpoint, {
+      res = await fetch(endpoint, {
         method: 'POST',
         signal: abortador.signal,
         // En web, User-Agent no se puede fijar y sólo agregaría un preflight
@@ -218,30 +290,30 @@ async function consultarOverpass(consulta, signal) {
           : { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT },
         body: `data=${encodeURIComponent(consulta)}`,
       });
-      if (!res.ok) {
-        // 429 = demasiadas consultas, 504 = espejo saturado. Los dos se
-        // resuelven probando otro servidor.
-        ultimoError = new Error(`Overpass ${res.status}`);
-        if ([403, 405, 406].includes(res.status)) endpointsDescartados.add(endpoint);
-        continue;
-      }
-      // Overpass a veces contesta 200 con un cuerpo XML de error ("runtime
-      // error: ... too busy"). Ahí json() tira y se cae al catch, que prueba el
-      // espejo siguiente — que es justo lo que corresponde hacer.
-      return await res.json();
     } catch (e) {
-      // Si canceló quien llama, no tiene sentido seguir probando espejos.
-      if (signal?.aborted) throw e;
       // TypeError = error de red/CORS: ese servidor no le responde a la app
       if (e instanceof TypeError) endpointsDescartados.add(endpoint);
-      ultimoError = e;
-    } finally {
-      clearTimeout(temporizador);
-      signal?.removeEventListener?.('abort', alCancelar);
+      throw e;
     }
-  }
+    if (!res.ok) {
+      // 429 = demasiadas consultas, 502/504 = espejo saturado: puede andar en
+      // la próxima. 403/405/406 no se arreglan reintentando.
+      if ([403, 405, 406].includes(res.status)) endpointsDescartados.add(endpoint);
+      throw new Error(`Overpass ${res.status}`);
+    }
+    // Overpass a veces contesta 200 con un cuerpo XML de error ("runtime
+    // error: ... too busy"): json() tira y ese espejo cuenta como fallido.
+    return res.json();
+  };
 
-  throw ultimoError ?? new Error('Overpass no respondió');
+  try {
+    return await Promise.any(lista.map((e, i) => pedir(e, abortadores[i])));
+  } catch (e) {
+    throw e?.errors?.[0] ?? new Error('Overpass no respondió');
+  } finally {
+    clearTimeout(temporizador);
+    abortadores.forEach((a) => a.abort());
+  }
 }
 
 /** Nombre comparable: sin tildes, sin mayúsculas, sin puntuación. */
@@ -268,23 +340,30 @@ function quitarRepetidos(lugares) {
   });
 }
 
-async function buscarCategoria(bbox, tipo, signal) {
-  const clave = claveCache(bbox, tipo);
-  const enCache = deCache(clave);
+/** Los locales de las tres categorías en el área; del caché si ya se trajo. */
+async function buscarTodos(bbox) {
+  const enCache = deCache(bbox);
   if (enCache) return enCache;
 
-  const json = await consultarOverpass(armarConsulta(bbox, tipo), signal);
-
-  const lugares = quitarRepetidos(
-    (json.elements ?? [])
-      .map((el) => mapLugar(el, tipo))
-      .filter((l) => l.lat != null && l.lng != null)
-      // Sin nombre no sirve de nada en la lista: es un punto anónimo.
-      .filter((l) => l.nombre !== 'Sin nombre'),
-  );
-
-  cache.set(clave, { ts: Date.now(), datos: lugares });
-  return lugares;
+  const area = areaAConsultar(bbox);
+  const clave = JSON.stringify(area);
+  if (!enVuelo.has(clave)) {
+    const pedido = consultarOverpass(armarConsulta(area))
+      .then((json) => {
+        const lugares = quitarRepetidos(
+          (json.elements ?? [])
+            .map(mapLugar)
+            .filter((l) => l.tipo && l.lat != null && l.lng != null)
+            // Sin nombre no sirve de nada en la lista: es un punto anónimo.
+            .filter((l) => l.nombre !== 'Sin nombre'),
+        );
+        alCache(area, lugares);
+        return lugares;
+      })
+      .finally(() => enVuelo.delete(clave));
+    enVuelo.set(clave, pedido);
+  }
+  return enVuelo.get(clave);
 }
 
 /**
@@ -297,38 +376,15 @@ async function buscarCategoria(bbox, tipo, signal) {
  * Nunca tira error: si Overpass falla, Comunidad tiene que seguir mostrando lo
  * que haya en Supabase igual.
  */
-export async function buscarLugaresOsm(bbox, tipo = 'todos', { signal } = {}) {
+export async function buscarLugaresOsm(bbox, tipo = 'todos') {
   if (!bbox || !areaConsultable(bbox)) return [];
+  if (tipo !== 'todos' && !TIPOS_OSM.includes(tipo)) return [];
 
-  const tipos = tipo === 'todos' ? TIPOS_OSM : (TIPOS_OSM.includes(tipo) ? [tipo] : []);
-  if (!tipos.length) return [];
-
-  // allSettled y no all: que una categoría falle no puede dejar sin resultados
-  // a las otras dos.
-  const resultados = await Promise.allSettled(
-    tipos.map((t) => buscarCategoria(bbox, t, signal)),
-  );
-
-  const lugares = [];
-  for (const r of resultados) {
-    if (r.status === 'fulfilled') lugares.push(...r.value);
-    else if (r.reason?.name !== 'AbortError') console.warn('[lugares] OpenStreetMap:', r.reason?.message);
+  try {
+    const lugares = await buscarTodos(bbox);
+    return tipo === 'todos' ? lugares : lugares.filter((l) => l.tipo === tipo);
+  } catch (e) {
+    if (e?.name !== 'AbortError') console.warn('[lugares] OpenStreetMap:', e?.message);
+    return [];
   }
-
-  /*
-    Un mismo local puede estar en dos categorías a la vez: es muy común que una
-    veterinaria de barrio también venda alimento y esté etiquetada
-    `amenity=veterinary` + `shop=pet`. Como el id sale del elemento de OSM, esas
-    dos apariciones traen la MISMA key: la FlatList de la pestaña y los
-    marcadores del mapa se rompen con keys repetidas.
-
-    Se queda la primera, y el orden de TIPOS_OSM pone `veterinaria` adelante:
-    ante la duda, para esta app un lugar es antes veterinaria que pet shop.
-  */
-  const vistos = new Set();
-  return lugares.filter((l) => {
-    if (vistos.has(l.id)) return false;
-    vistos.add(l.id);
-    return true;
-  });
 }

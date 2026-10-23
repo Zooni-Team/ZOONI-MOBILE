@@ -302,8 +302,11 @@ export function segundosDePaseo(paseo, ahora = Date.now()) {
 }
 
 // ─────────────────────────────────────────────
-// COBRO POR TIEMPO (045): como Uber / DiDi, se cobra lo que se paseó
+// COBRO: precio fijo, el pactado
 // ─────────────────────────────────────────────
+// Antes (045 / 047) se cobraba por segundo paseado, con tope en lo pactado, y
+// el monto iba subiendo en vivo. No es el modelo: el paseo cuesta lo que se
+// acordó al contratarlo, dure lo que dure.
 
 /**
  * Comisión de Zooni por paseo finalizado (0,10 = 10 %). TODAVÍA NO DEFINIDA:
@@ -316,8 +319,6 @@ const segundosEnteros = (segundos) => Math.max(0, Math.round(Number(segundos) ||
 
 /**
  * Duración legible de un paseo: "31 s", "4 min 10 s", "1 h 5 min".
- * Con segundos exactos porque el cobro es por segundo: decir "1 minuto" de
- * un paseo de 31 s no coincidía con lo cobrado.
  */
 export function formatoTiempoPaseado(segundos) {
   const s = segundosEnteros(segundos);
@@ -327,22 +328,6 @@ export function formatoTiempoPaseado(segundos) {
   if (h > 0) return m > 0 ? `${h} h ${m} min` : `${h} h`;
   if (m > 0) return seg > 0 ? `${m} min ${seg} s` : `${m} min`;
   return `${seg} s`;
-}
-
-/**
- * Lo que se cobra por un paseo según el tiempo real, segundo a segundo.
- *   · Menos tiempo que el pactado → proporcional (la mitad del tiempo, la mitad
- *     del precio). Se trunca al centavo: nunca se cobra de más.
- *   · El tiempo pactado o más → el precio pactado, ni un peso más.
- * Ej: pactado $20.000 por 120 minutos → 1 min $166,66 · 2 min $333,33 ·
- * 31 s $86,11 · 3 horas $20.000.
- */
-export function precioPorTiempo(precioPactado, duracionMin, segundos) {
-  const pactado = Number(precioPactado) || 0;
-  const total = (Number(duracionMin) || 0) * 60;
-  const seg = segundosEnteros(segundos);
-  if (!(total > 0) || seg >= total) return pactado;
-  return Math.floor((pactado * seg * 100) / total + 1e-6) / 100;
 }
 
 /** Comisión de Zooni sobre lo cobrado en un paseo. */
@@ -982,16 +967,17 @@ export async function reanudarPaseo(paseo) {
 }
 
 /**
- * Termina el paseo y fija lo que se cobra según el tiempo real
- * (precioPorTiempo). "Precio" queda con lo cobrado y "PrecioPactado" con lo
- * acordado; la comisión de Zooni se calcula acá, una vez por paseo.
+ * Termina el paseo. Se cobra el precio pactado, dure lo que dure: el tiempo
+ * paseado queda registrado pero no cambia el monto. "Precio" y
+ * "PrecioPactado" quedan iguales; la comisión de Zooni se calcula acá, una
+ * vez por paseo.
  */
 export async function finalizarPaseo(paseo, distancia) {
   const ahora = new Date().toISOString();
   const segundos = Math.round(segundosDePaseo(paseo));
   const metros = Math.round(distancia ?? paseo.distanciaMetros ?? 0);
   const precioPactado = paseo.precio;
-  const precio = precioPorTiempo(precioPactado, paseo.duracionMin, segundos);
+  const precio = precioPactado;
   const comision = comisionDe(precio);
   const cambios = {
     estado: 'finalizado', horaFin: ahora, reanudadoEn: null,

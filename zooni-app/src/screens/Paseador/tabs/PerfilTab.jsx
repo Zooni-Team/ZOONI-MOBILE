@@ -1,6 +1,8 @@
 /**
  * PerfilTab.jsx — Tab 5 de Zooni Paseadores
  *
+ *   · Editar perfil: foto, descripción ("Sobre vos") y zona con su radio en km
+ *     (botón "Editar perfil" o tocando la foto)
  *   · Rating, paseos y antigüedad en Zooni (desde el alta como paseador)
  *   · Servicios ofrecidos (tiempos de paseo y precios editables, tamaños, perros por paseo)
  *   · Reseñas de los dueños ("Ver todas" abre ResenasPaseadorModal, con fotos y videos)
@@ -13,6 +15,7 @@ import {
   TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 
 import { Avatar, C, Card, Chip, PillButton, Seccion, Stat } from '../../../components/paseador/PaseadorUI';
 import {
@@ -22,9 +25,11 @@ import {
 import ResenasPaseadorModal from '../../../components/resenas/ResenasPaseadorModal';
 import CantidadPerros from '../../../components/paseador/CantidadPerros';
 import ServiciosEditor, { filasDesdeServicios, serviciosDesdeFilas } from '../../../components/paseador/ServiciosEditor';
+import ZonaMapaPicker from '../../../components/paseador/ZonaMapaPicker';
+import { actualizarMiFotoPerfil } from '../../../services/perfilApi';
 import { clearCurrentUserId, getCurrentUserId, setModo, MODO_DUENO } from '../../../config/session';
 import { supabase } from '../../../lib/supabase';
-import { confirmar } from '../../../utils/dialogo';
+import { alerta, confirmar } from '../../../utils/dialogo';
 import { tiempoRelativo } from '../../../utils/tiempoRelativo';
 
 const TAMANO_LABEL = { chico: 'Chicos', mediano: 'Medianos', grande: 'Grandes' };
@@ -62,6 +67,11 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
   const [form, setForm] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [verResenas, setVerResenas] = useState(false);
+  // Editor del perfil (foto, descripción, zona y radio). Va aparte del de
+  // servicios: antes la descripción estaba escondida ahí adentro y la zona
+  // sólo se cambiaba desde Configuración, al fondo de todo.
+  const [editPerfil, setEditPerfil] = useState(null);
+  const [guardandoPerfil, setGuardandoPerfil] = useState(false);
 
   const cargar = useCallback(async () => {
     fetchResenas().then(setResenas).catch(() => setResenas({ promedio: null, cantidad: 0, totalPaseos: 0, primerPaseo: null, resenas: [] }));
@@ -79,9 +89,63 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
     setForm({
       servicios: filasDesdeServicios(serviciosDe(perfil)),
       maxPerros: perfil.maxPerros,
-      bio: perfil.bio ?? '',
     });
     setEditando(true);
+  };
+
+  const abrirEditorPerfil = () => {
+    setEditPerfil({
+      fotoUri: null, // foto nueva elegida acá; null = queda la actual
+      bio: perfil.bio ?? '',
+      zona: { lat: perfil.lat, lng: perfil.lng, radioKm: perfil.radioKm, zona: perfil.zona ?? '' },
+    });
+  };
+
+  const elegirFoto = async (desdeCamara) => {
+    const permiso = desdeCamara
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permiso.granted) {
+      alerta('Sin permiso', `Habilitá el acceso a ${desdeCamara ? 'la cámara' : 'la galería'} desde la configuración.`);
+      return;
+    }
+    const opciones = { mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, allowsEditing: true, aspect: [1, 1] };
+    const res = desdeCamara
+      ? await ImagePicker.launchCameraAsync(opciones)
+      : await ImagePicker.launchImageLibraryAsync(opciones);
+    if (!res.canceled && res.assets?.[0]?.uri) {
+      setEditPerfil((f) => ({ ...f, fotoUri: res.assets[0].uri }));
+    }
+  };
+
+  const guardarPerfil = async () => {
+    const { zona } = editPerfil;
+    if (zona.lat == null) {
+      alerta('Falta tu zona', 'Marcá en el mapa dónde paseás.');
+      return;
+    }
+    if (zona.radioKm == null) {
+      alerta('Falta tu radio', 'Escribí hasta cuántos kilómetros vas a buscar perros.');
+      return;
+    }
+    const cambios = {
+      bio: editPerfil.bio.trim(),
+      zona: zona.zona?.trim() || 'Mi zona',
+      radioKm: zona.radioKm, lat: zona.lat, lng: zona.lng,
+    };
+    setGuardandoPerfil(true);
+    try {
+      // La foto primero: si falla la subida no queda guardada la mitad
+      const foto = editPerfil.fotoUri ? await actualizarMiFotoPerfil(editPerfil.fotoUri) : perfil.foto;
+      await actualizarPerfilPaseador(cambios);
+      setPerfil((p) => ({ ...p, ...cambios, foto }));
+      setEditPerfil(null);
+      avisar('Guardamos tu perfil');
+    } catch {
+      avisar('No se pudo guardar. Probá de nuevo.', 'alert-circle');
+    } finally {
+      setGuardandoPerfil(false);
+    }
   };
 
   const guardar = async () => {
@@ -96,7 +160,7 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
     }
     const cambios = {
       servicios: serviciosDesdeFilas(form.servicios),
-      maxPerros: form.maxPerros, bio: form.bio.trim(),
+      maxPerros: form.maxPerros,
     };
     setGuardando(true);
     try {
@@ -131,7 +195,10 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
     <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
       {/* ── Cabecera ───────────────────────────────────────────────── */}
       <View style={s.cabecera}>
-        <Avatar uri={perfil.foto} nombre={nombre} size={76} borde />
+        <TouchableOpacity onPress={abrirEditorPerfil} activeOpacity={0.85} accessibilityLabel="Cambiar foto de perfil">
+          <Avatar uri={perfil.foto} nombre={nombre} size={76} borde />
+          <View style={s.fotoBadge}><Ionicons name="camera" size={14} color="#FFFFFF" /></View>
+        </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={s.nombre}>{nombre || 'Paseador'}</Text>
           <View style={s.zonaRow}>
@@ -143,6 +210,11 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
             : <Chip texto="Verificación pendiente" icono="time-outline" color={C.texto2} fondo="#F1F1F1" style={{ marginTop: 6 }} />}
         </View>
       </View>
+      <TouchableOpacity style={s.editarPerfil} onPress={abrirEditorPerfil} activeOpacity={0.85}
+        accessibilityRole="button">
+        <Ionicons name="create-outline" size={18} color={C.teal} />
+        <Text style={s.editarPerfilTxt}>Editar perfil</Text>
+      </TouchableOpacity>
 
       <Card style={s.stats}>
         <View style={{ flex: 1 }}>
@@ -236,10 +308,49 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
               <Text style={s.sheetLabel}>Perros por paseo</Text>
               <CantidadPerros valor={form.maxPerros}
                 onCambio={(n) => setForm((f) => ({ ...f, maxPerros: n }))} />
-              <Text style={s.sheetLabel}>Sobre vos</Text>
-              <TextInput style={s.bioInput} multiline maxLength={500} value={form.bio}
-                onChangeText={(v) => setForm((f) => ({ ...f, bio: v }))} />
               <PillButton titulo="Guardar" onPress={guardar} cargando={guardando} style={{ marginTop: 16 }} />
+            </View>
+          )}
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* ── Editor de perfil ───────────────────────────────────────── */}
+      <Modal visible={!!editPerfil} transparent animationType="slide" onRequestClose={() => setEditPerfil(null)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable style={s.overlay} onPress={() => setEditPerfil(null)} />
+          {editPerfil && (
+            <View style={[s.sheet, s.sheetAlto]}>
+              <View style={s.sheetHandle} />
+              <Text style={s.sheetTitulo}>Editar perfil</Text>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                <View style={s.fotoEditor}>
+                  <Avatar uri={editPerfil.fotoUri ?? perfil.foto} nombre={nombre} size={96} borde />
+                  <View style={s.fotoBotones}>
+                    <TouchableOpacity style={s.fotoBtn} onPress={() => elegirFoto(false)} activeOpacity={0.85}>
+                      <Ionicons name="images-outline" size={18} color={C.teal} />
+                      <Text style={s.fotoBtnTxt}>Elegir foto</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.fotoBtn} onPress={() => elegirFoto(true)} activeOpacity={0.85}>
+                      <Ionicons name="camera-outline" size={18} color={C.teal} />
+                      <Text style={s.fotoBtnTxt}>Sacar foto</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <Text style={s.sheetLabel}>Sobre vos</Text>
+                <TextInput style={s.bioInput} multiline maxLength={500} value={editPerfil.bio}
+                  placeholder="Contale a los dueños cómo trabajás"
+                  placeholderTextColor={C.gris}
+                  onChangeText={(v) => setEditPerfil((f) => ({ ...f, bio: v }))} />
+
+                <Text style={s.sheetLabel}>Barrio y radio de atención</Text>
+                <ZonaMapaPicker
+                  valor={editPerfil.zona}
+                  onCambio={(z) => setEditPerfil((f) => ({ ...f, zona: z }))}
+                />
+
+                <PillButton titulo="Guardar" onPress={guardarPerfil} cargando={guardandoPerfil} style={{ marginTop: 20 }} />
+              </ScrollView>
             </View>
           )}
         </KeyboardAvoidingView>
@@ -255,6 +366,17 @@ const s = StyleSheet.create({
   nombre: { fontSize: 22, fontWeight: '900', color: C.texto },
   zonaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   zona: { fontSize: 13, color: C.texto2, fontWeight: '600' },
+  fotoBadge: {
+    position: 'absolute', right: 0, bottom: 0, width: 26, height: 26, borderRadius: 13,
+    backgroundColor: C.teal, borderWidth: 2, borderColor: '#FFFFFF',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  editarPerfil: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    marginTop: 14, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: C.teal,
+    backgroundColor: '#FFFFFF',
+  },
+  editarPerfilTxt: { fontSize: 14, fontWeight: '800', color: C.teal },
 
   stats: { flexDirection: 'row', alignItems: 'center', marginTop: 18 },
   rating: { fontSize: 30, fontWeight: '900', color: C.texto },
@@ -286,6 +408,15 @@ const s = StyleSheet.create({
     backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24,
     padding: 20, paddingBottom: 30,
   },
+  // El editor de perfil trae el mapa de la zona: alto tope y scroll adentro
+  sheetAlto: { maxHeight: '92%', paddingBottom: 20 },
+  fotoEditor: { alignItems: 'center', gap: 12 },
+  fotoBotones: { flexDirection: 'row', gap: 10 },
+  fotoBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9,
+    borderRadius: 20, backgroundColor: C.menta,
+  },
+  fotoBtnTxt: { fontSize: 14, fontWeight: '700', color: C.texto },
   sheetHandle: { width: 44, height: 5, borderRadius: 3, backgroundColor: '#E0E0E0', alignSelf: 'center', marginBottom: 14 },
   sheetTitulo: { fontSize: 19, fontWeight: '900', color: C.texto, marginBottom: 14 },
   sheetLabel: { fontSize: 13, fontWeight: '700', color: C.texto, marginTop: 16, marginBottom: 8 },

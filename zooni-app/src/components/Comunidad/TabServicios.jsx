@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { fetchServicios } from '../../api/comunidad';
 import { areaBuscable } from '../../services/lugaresApi';
 import { formatoPlata, serviciosDe } from '../../services/paseadorApi';
 
@@ -30,26 +29,20 @@ function AvatarPaseador({ foto }) {
   );
 }
 
-export default function TabServicios({ bbox, onSeleccionar, paseadores = [], onSeleccionarPaseador }) {
-  const [lista,  setLista]  = useState([]);
+/*
+  La lista sale de lo mismo que ya cargó el mapa (ComunidadScreen) y el filtro
+  se aplica acá: antes la pestaña volvía a consultar todo por su cuenta, con
+  otra espera de 800 ms y otra búsqueda en OpenStreetMap, y cada cambio de
+  filtro era otra vuelta. Ahora cambiar de filtro es instantáneo.
+*/
+export default function TabServicios({
+  bbox, servicios = [], cargando = false, onSeleccionar, paseadores = [], onSeleccionarPaseador,
+}) {
   const [filtro, setFiltro] = useState('todos');
-  // Buscar en OpenStreetMap tarda bastante más que leer la tabla de Supabase:
-  // sin un indicador, la pestaña parecía vacía mientras todavía estaba cargando.
-  const [cargando, setCargando] = useState(false);
-  const timer = useRef(null);
-
-  useEffect(() => {
-    clearTimeout(timer.current);
-    if (!bbox) return undefined;
-    setCargando(true);
-    timer.current = setTimeout(() => {
-      fetchServicios(bbox, filtro)
-        .then(d => setLista(d.servicios || []))
-        .catch(() => {})
-        .finally(() => setCargando(false));
-    }, 800);
-    return () => clearTimeout(timer.current);
-  }, [bbox, filtro]);
+  const lista = useMemo(
+    () => (filtro === 'todos' ? servicios : servicios.filter((x) => x.tipo === filtro)),
+    [servicios, filtro],
+  );
 
   // Con el mapa muy alejado no se consulta al proveedor gratuito (barrería medio
   // país). Conviene decirlo en vez de mostrar "no hay servicios", que es falso.

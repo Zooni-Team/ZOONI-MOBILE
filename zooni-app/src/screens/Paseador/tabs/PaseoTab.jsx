@@ -7,10 +7,9 @@
  * SIN paseo en curso: los paseos aceptados listos para iniciar, o el resumen
  * del paseo que se acaba de terminar.
  *
- * COBRO (como Uber / DiDi): se cobra el tiempo que se paseó. Si se corta
- * antes, la parte proporcional; si se pasa del tiempo, lo pactado
- * (precioPorTiempo). Al terminar, el paseador anota si le pagaron o si el
- * dueño le paga después (cada semana / fin de mes, con recordatorio).
+ * COBRO: precio fijo, el pactado al contratar; el tiempo no suma ni resta.
+ * Al terminar, el paseador anota si le pagaron o si el dueño le paga después
+ * (cada semana / fin de mes, con recordatorio).
  *
  * TOQUES SIN QUERER: finalizar antes del tiempo pactado pide una segunda
  * confirmación, y en el resumen hay "Retomar paseo" durante RETOMAR_MINUTOS
@@ -36,7 +35,7 @@ import ModalidadCobro from '../../../components/paseador/ModalidadCobro';
 import {
   COMISION_ZOONI, distanciaMetros, fetchCuentaCorriente, fetchMisPaseos, fetchRecorrido, finalizarPaseo,
   formatoDistancia, formatoPlata, formatoTimer, guardarModalidadCobro, formatoTiempoPaseado, pausarPaseo,
-  precioPorTiempo, reanudarPaseo, registrarPago, registrarPunto, RETOMAR_MINUTOS, retomarPaseo,
+  reanudarPaseo, registrarPago, registrarPunto, RETOMAR_MINUTOS, retomarPaseo,
   segundosDePaseo, sePuedeRetomar,
 } from '../../../services/paseadorApi';
 import { confirmar } from '../../../utils/dialogo';
@@ -164,22 +163,22 @@ function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, abrirMenu
 
   const finalizar = async () => {
     const seg = segundosDePaseo(paseo);
-    const aCobrar = formatoPlata(precioPorTiempo(paseo.precio, paseo.duracionMin, seg));
+    const aCobrar = formatoPlata(paseo.precio);
     const corto = seg < paseo.duracionMin * 60;
     const ok = await confirmar(
       `¿Finalizar el paseo de ${paseo.mascota.nombre}?`,
       corto
-        ? `Llevás ${formatoTiempoPaseado(seg)} de los ${paseo.duracionMin} minutos pactados: se cobra la parte proporcional, ${aCobrar} (de ${formatoPlata(paseo.precio)}).`
+        ? `Llevás ${formatoTiempoPaseado(seg)} de los ${paseo.duracionMin} minutos pactados. Se cobra lo pactado, ${aCobrar}.`
         : `Cumpliste el tiempo pactado: se cobra ${aCobrar}. Le avisamos al dueño que ya está de vuelta.`,
       { textoOk: `Finalizar · ${aCobrar}` },
     );
     if (!ok) return;
-    // Segunda confirmación si todavía no cumplió el tiempo: es cuando un toque
-    // sin querer le cuesta plata al paseador
+    // Segunda confirmación si todavía no cumplió el tiempo: un toque sin
+    // querer deja a la mascota "de vuelta en casa" antes de tiempo
     if (corto) {
       const seguro = await confirmar(
         '¿Seguro que querés finalizar?',
-        `Faltan ${formatoTiempoPaseado(paseo.duracionMin * 60 - seg)} para el tiempo pactado. Si lo finalizás ahora, ${paseo.mascota.nombre} figura de vuelta en casa y cobrás ${aCobrar}.`,
+        `Faltan ${formatoTiempoPaseado(paseo.duracionMin * 60 - seg)} para el tiempo pactado. Si lo finalizás ahora, ${paseo.mascota.nombre} figura de vuelta en casa.`,
         { textoOk: 'Sí, finalizar', textoCancelar: 'Seguir paseando', destructivo: true },
       );
       if (!seguro) return;
@@ -207,7 +206,6 @@ function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, abrirMenu
 
   const segundos = segundosDePaseo(paseo);
   const progreso = Math.min(1, segundos / (paseo.duracionMin * 60));
-  const vaCobrando = precioPorTiempo(paseo.precio, paseo.duracionMin, segundos);
 
   return (
     <View style={{ flex: 1 }}>
@@ -282,8 +280,8 @@ function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, abrirMenu
         </View>
         <Text style={s.barraTxt}>
           {progreso >= 1
-            ? `¡Cumpliste el tiempo pactado! · ${formatoPlata(vaCobrando)}`
-            : `Faltan ${formatoTiempoPaseado(paseo.duracionMin * 60 - segundos)} · vas ${formatoPlata(vaCobrando)}`}
+            ? '¡Cumpliste el tiempo pactado!'
+            : `Faltan ${formatoTiempoPaseado(paseo.duracionMin * 60 - segundos)}`}
         </Text>
 
         <View style={s.acciones}>

@@ -78,7 +78,7 @@ export default function SelectorMascota({
             accessibilityState={{ selected: activa, disabled: deshabilitado }}
             accessibilityLabel={`Ver los datos de ${m.nombre}`}
           >
-            <Text style={[s.txt, activa && s.txtOn]} numberOfLines={1}>{m.nombre}</Text>
+            <Text style={[s.txt, activa && s.txtOn]} numberOfLines={1} selectable={false}>{m.nombre}</Text>
           </TouchableOpacity>
         );
       })}
@@ -98,6 +98,12 @@ const s = StyleSheet.create({
     flexShrink: 0,
   },
   pastillaOn: { backgroundColor: '#FFFFFF', borderColor: '#2DBD72' },
-  txt: { fontSize: 13, color: '#6B6B6B', fontWeight: '600', maxWidth: 130 },
+  // pointerEvents/userSelect 'none': en web el nombre es un elemento propio que
+  // se quedaba con el clic (o arrancaba una selección de texto) y solo
+  // respondía el borde de la pastilla. Así el toque siempre le llega a ella.
+  txt: {
+    fontSize: 13, color: '#6B6B6B', fontWeight: '600', maxWidth: 130,
+    pointerEvents: 'none', userSelect: 'none',
+  },
   txtOn: { color: '#2DBD72', fontWeight: '700' },
 });
