@@ -1621,11 +1621,14 @@ function distanciaKm(a, b) {
 }
 
 /**
- * Todos los paseadores de Zooni con zona cargada (menos uno mismo), ordenados
- * del más cercano al más lejano.
+ * Los paseadores que te pueden atender: los que tienen tu ubicación DENTRO de
+ * su radio de cobertura (el círculo verde que dibujan en Comunidad), ordenados
+ * del más cercano al más lejano. Al que no te cubre no le podés pedir un paseo,
+ * así que tampoco aparece en el mapa ni en la lista.
  *
  * `pos` es tu ubicación (GPS). Sin GPS se usa la última que guardó Comunidad
- * (ubicaciones_usuarios); si tampoco hay, van sin ordenar por distancia.
+ * (ubicaciones_usuarios). Si no hay ninguna no se puede saber quién te cubre:
+ * en ese caso van todos y sin ordenar, mejor que un mapa vacío.
  */
 export async function fetchPaseadoresParaMi(pos) {
   let yo = pos?.lat != null ? pos : null;
@@ -1634,13 +1637,11 @@ export async function fetchPaseadoresParaMi(pos) {
       .select('lat, lng').eq('usuario_id', getCurrentUserId()).maybeSingle();
     if (data?.lat != null) yo = { lat: Number(data.lat), lng: Number(data.lng) };
   }
-  // Se muestran todos los paseadores de Zooni, cubran o no tu zona: antes sólo
-  // aparecían los que tenían tu ubicación dentro de su radio y cada perfil veía
-  // una lista distinta. Tu ubicación sólo ordena (los más cercanos primero).
   const todos = await fetchPaseadoresZona(null);
   if (!yo) return todos;
   return todos
     .map((p) => ({ ...p, distanciaKm: distanciaKm(yo, p) }))
+    .filter((p) => p.radioKm > 0 && p.distanciaKm <= p.radioKm)
     .sort((a, b) => a.distanciaKm - b.distanciaKm);
 }
 
