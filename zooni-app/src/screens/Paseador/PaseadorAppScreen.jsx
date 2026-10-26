@@ -8,13 +8,20 @@
  * Disponibilidad sí son pantallas del stack (se abren encima).
  *
  * Acá vive el estado que comparten los tabs: perfil, solicitudes pendientes
- * (para el badge) y el paseo en curso (para el punto rojo del tab Paseo).
+ * (para el badge) y los paseos en curso (para el punto rojo del tab Paseo).
  * Mientras el paseador está Disponible, las solicitudes se refrescan solas.
+ *
+ * PASEOS EN GRUPO: cada mascota es un paseo aparte, y se pueden tener varios
+ * en curso a la vez (hasta "perros por paseo" del perfil). Pausar, reanudar y
+ * finalizar son por mascota y están acá para que los usen Inicio y Paseo. El
+ * GPS también vive acá (useSeguimientoPaseos): sigue sumando distancia
+ * aunque el paseador cambie de sección. Al finalizar una mascota del grupo, su
+ * resumen (cobro) se abre encima y el resto del grupo sigue en curso.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Animated, SafeAreaView, StatusBar, StyleSheet, Text, View,
+  ActivityIndicator, Animated, Modal, SafeAreaView, StatusBar, StyleSheet, Text, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -23,16 +30,19 @@ import PaseadorHeader from '../../components/paseador/PaseadorHeader';
 import PaseadorDrawer, { SECCIONES_PASEADOR } from '../../components/paseador/PaseadorDrawer';
 import { C, PillButton, Vacio } from '../../components/paseador/PaseadorUI';
 import {
-  fetchPaseoEnCurso, fetchPerfilPaseador, fetchRolesCuenta, fetchSolicitudes, iniciarPaseo,
-  revisarRecordatoriosCobro, setDisponible,
+  fetchPaseosEnCurso, fetchPerfilPaseador, fetchRolesCuenta, fetchSolicitudes, finalizarPaseo, formatoPlata,
+  formatoTiempoPaseado, iniciarPaseo, pausarPaseo, reanudarPaseo, revisarRecordatoriosCobro, segundosDePaseo,
+  setDisponible,
 } from '../../services/paseadorApi';
+import useSeguimientoPaseos from '../../hooks/useSeguimientoPaseos';
+import { confirmar } from '../../utils/dialogo';
 import {
   clearCurrentUserId, recordarModoPaseador, setModo, MODO_DUENO,
 } from '../../config/session';
 
 import InicioTab from './tabs/InicioTab';
 import SolicitudesTab from './tabs/SolicitudesTab';
-import PaseoTab from './tabs/PaseoTab';
+import PaseoTab, { Resumen } from './tabs/PaseoTab';
 import GananciasTab from './tabs/GananciasTab';
 import PagosTab from './tabs/PagosTab';
 import PerfilTab from './tabs/PerfilTab';
@@ -48,13 +58,19 @@ export default function PaseadorAppScreen() {
   const [cargando, setCargando] = useState(true);
   const [sinPerfil, setSinPerfil] = useState(false);
   const [solicitudes, setSolicitudes] = useState([]);
-  const [paseoActivo, setPaseoActivo] = useState(null);
+  // Paseos en curso: uno por mascota (varios = paseo en grupo)
+  const [paseosActivos, setPaseosActivos] = useState([]);
+  // Paseo recién finalizado cuyo resumen (cobro) se está mostrando
+  const [resumen, setResumen] = useState(null);
+  // Id del paseo con una acción en marcha (deshabilita sus botones)
+  const [ocupado, setOcupado] = useState(null);
   const [toast, setToast] = useState(null);
   const [avisoPermisos, setAvisoPermisos] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [chatsSinLeer, setChatsSinLeer] = useState(0);
   const [esDueno, setEsDueno] = useState(false);
   const toastAnim = useRef(new Animated.Value(0)).current;
+  const seguimiento = useSeguimientoPaseos(paseosActivos, setPaseosActivos);
 
   // Perfil recién guardado en el registro (llega por params). Si la base no
   // deja leerlo, la app trabaja con esta copia en vez de mandar de nuevo al
@@ -104,7 +120,12 @@ export default function PaseadorAppScreen() {
 
   const recargarPaseo = useCallback(async () => {
     try {
-      setPaseoActivo(await fetchPaseoEnCurso());
+      const lista = await fetchPaseosEnCurso();
+      // La base guarda la distancia cada ~15 s: no pisar la que ya se midió acá
+      setPaseosActivos((actual) => lista.map((p) => {
+        const local = actual.find((x) => x.id === p.id);
+        return local ? { ...p, distanciaMetros: Math.max(p.distanciaMetros ?? 0, local.distanciaMetros ?? 0) } : p;
+      }));
     } catch {
       // idem
     }
@@ -186,20 +207,108 @@ export default function PaseadorAppScreen() {
     );
   }
 
-  // Arrancar un paseo aceptado: lo usan Inicio, Solicitudes (agenda) y Paseo
+  // Reemplaza un paseo del grupo por su versión nueva. La distancia se queda
+  // con la que viene midiendo el GPS (la respuesta de la API trae la vieja).
+  const actualizarActivo = (nuevo) => setPaseosActivos((lista) => lista.map((x) => (x.id === nuevo.id
+    ? { ...x, ...nuevo, distanciaMetros: x.distanciaMetros } : x)));
+
+  // Arrancar un paseo aceptado: lo usan Inicio, Solicitudes (agenda) y Paseo.
+  // Si ya hay otros en curso, la mascota se suma al grupo.
   const empezarPaseo = async (paseo) => {
-    if (paseoActivo && paseoActivo.id !== paseo.id) {
-      avisar(`Primero finalizá el paseo de ${paseoActivo.mascota.nombre}`, 'alert-circle');
+    if (paseosActivos.some((x) => x.id === paseo.id)) {
       setTab('paseo');
       return;
     }
+    const max = perfil?.maxPerros ?? 3;
+    if (paseosActivos.length >= max) {
+      avisar(`Sacás hasta ${max} ${max === 1 ? 'mascota' : 'mascotas'} a la vez. Podés cambiarlo en tu Perfil.`, 'alert-circle');
+      return;
+    }
+    setOcupado(paseo.id);
     try {
       const enCurso = await iniciarPaseo(paseo);
-      setPaseoActivo(enCurso);
+      setPaseosActivos((lista) => [...lista.filter((x) => x.id !== enCurso.id), enCurso]);
+      if (paseosActivos.length) avisar(`${paseo.mascota.nombre} se sumó al paseo`, 'paw');
       setTab('paseo');
     } catch {
       avisar('No se pudo iniciar el paseo. Probá de nuevo.', 'alert-circle');
+    } finally {
+      setOcupado(null);
     }
+  };
+
+  const pausarOReanudar = async (paseo) => {
+    setOcupado(paseo.id);
+    try {
+      actualizarActivo(paseo.reanudadoEn ? await pausarPaseo(paseo) : await reanudarPaseo(paseo));
+    } catch {
+      avisar('No se pudo actualizar el paseo. Probá de nuevo.', 'alert-circle');
+    } finally {
+      setOcupado(null);
+    }
+  };
+
+  /** Pausa a todos los que están caminando, o reanuda a todos si están todos en pausa. */
+  const pausarOReanudarTodos = async () => {
+    const corriendo = paseosActivos.filter((x) => x.reanudadoEn);
+    const lista = corriendo.length ? corriendo : paseosActivos;
+    setOcupado('todos');
+    try {
+      const nuevos = await Promise.all(lista.map((x) => (corriendo.length ? pausarPaseo(x) : reanudarPaseo(x))));
+      nuevos.forEach(actualizarActivo);
+    } catch {
+      avisar('No se pudo actualizar el paseo. Probá de nuevo.', 'alert-circle');
+      recargarPaseo();
+    } finally {
+      setOcupado(null);
+    }
+  };
+
+  const finalizar = async (paseo) => {
+    const seg = segundosDePaseo(paseo);
+    const aCobrar = formatoPlata(paseo.precio);
+    const corto = seg < paseo.duracionMin * 60;
+    const ok = await confirmar(
+      `¿Finalizar el paseo de ${paseo.mascota.nombre}?`,
+      corto
+        ? `Llevás ${formatoTiempoPaseado(seg)} de los ${paseo.duracionMin} minutos pactados. Se cobra lo pactado, ${aCobrar}.`
+        : `Cumpliste el tiempo pactado: se cobra ${aCobrar}. Le avisamos al dueño que ya está de vuelta.`,
+      { textoOk: `Finalizar · ${aCobrar}` },
+    );
+    if (!ok) return;
+    // Segunda confirmación si todavía no cumplió el tiempo: un toque sin
+    // querer deja a la mascota "de vuelta en casa" antes de tiempo
+    if (corto) {
+      const seguro = await confirmar(
+        '¿Seguro que querés finalizar?',
+        `Faltan ${formatoTiempoPaseado(paseo.duracionMin * 60 - seg)} para el tiempo pactado. Si lo finalizás ahora, ${paseo.mascota.nombre} figura de vuelta en casa.`,
+        { textoOk: 'Sí, finalizar', textoCancelar: 'Seguir paseando', destructivo: true },
+      );
+      if (!seguro) return;
+    }
+    setOcupado(paseo.id);
+    try {
+      // La distancia más nueva es la del estado (la mide el GPS de acá)
+      const actual = paseosActivos.find((x) => x.id === paseo.id) ?? paseo;
+      const fin = await finalizarPaseo(actual, actual.distanciaMetros);
+      const quedan = paseosActivos.filter((x) => x.id !== paseo.id).length;
+      setPaseosActivos((lista) => lista.filter((x) => x.id !== paseo.id));
+      setResumen(fin);
+      // Sin nadie más en curso, el resumen se ve en la sección Paseo; con el
+      // grupo todavía caminando, se abre encima de donde esté
+      if (!quedan) setTab('paseo');
+    } catch {
+      avisar('No se pudo finalizar. Probá de nuevo.', 'alert-circle');
+    } finally {
+      setOcupado(null);
+    }
+  };
+
+  // "Retomar paseo" desde el resumen: la mascota vuelve al grupo
+  const retomado = (paseo) => {
+    setResumen(null);
+    setPaseosActivos((lista) => [...lista.filter((x) => x.id !== paseo.id), paseo]);
+    setTab('paseo');
   };
 
   const abrirChat = (paseo) => navigation.navigate('PaseadorChat', { paseoId: paseo.id });
@@ -225,13 +334,15 @@ export default function PaseadorAppScreen() {
   const ctx = {
     perfil, setPerfil, recargarPerfil,
     solicitudes, recargarSolicitudes,
-    paseoActivo, setPaseoActivo, recargarPaseo,
-    empezarPaseo, abrirChat, abrirMenu,
+    paseosActivos, recargarPaseo, seguimiento, ocupado,
+    empezarPaseo, pausarOReanudar, pausarOReanudarTodos, finalizar,
+    resumen, setResumen, retomado,
+    abrirChat, abrirMenu,
     irA: setTab, avisar, navigation,
   };
 
   // En el Paseo activo el mapa ocupa toda la pantalla: sin header
-  const pantallaCompleta = tab === 'paseo' && !!paseoActivo;
+  const pantallaCompleta = tab === 'paseo' && paseosActivos.length > 0;
 
   return (
     <SafeAreaView style={s.safe}>
@@ -287,13 +398,24 @@ export default function PaseadorAppScreen() {
         activo={tab}
         onElegir={setTab}
         pendientes={pendientes}
-        enCurso={!!paseoActivo}
+        enCurso={paseosActivos.length > 0}
         chatsSinLeer={chatsSinLeer}
         onChats={() => navigation.navigate('PaseadorChats')}
         onZona={() => navigation.navigate('PaseadorDisponibilidad')}
         onModoDueno={esDueno ? modoDueno : null}
         onSalir={salir}
       />
+
+      {/* Resumen de una mascota finalizada mientras el resto del grupo sigue */}
+      <Modal visible={!!resumen && paseosActivos.length > 0} animationType="slide"
+        onRequestClose={() => setResumen(null)}>
+        <SafeAreaView style={s.safe}>
+          {resumen && (
+            <Resumen paseo={resumen} enGrupo={paseosActivos.length} onCerrar={() => setResumen(null)}
+              onRetomado={retomado} irA={setTab} avisar={avisar} />
+          )}
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }

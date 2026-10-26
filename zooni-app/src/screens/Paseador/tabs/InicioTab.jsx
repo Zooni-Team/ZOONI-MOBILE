@@ -2,8 +2,11 @@
  * InicioTab.jsx — Tab 1 de Zooni Paseadores
  *
  *   · Toggle "Disponible" (el control más importante de la app)
+ *   · Paseo en curso: TODAS las mascotas que se están paseando (un grupo),
+ *     cada una con su tiempo y sus botones de pausar y finalizar
  *   · Resumen del día: cobrado, paseos y km — números grandes
- *   · Próximo paseo con mini mapa e "Iniciar paseo"
+ *   · Próximo paseo con mini mapa e "Iniciar paseo" (o "Sumar al paseo" si
+ *     ya hay mascotas en curso)
  *   · Aviso de solicitudes nuevas
  */
 
@@ -12,14 +15,14 @@ import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } 
 import { Ionicons } from '@expo/vector-icons';
 
 import {
-  Avatar, C, Card, PillButton, Seccion, Stat, SwitchGrande, Vacio,
+  C, Card, PillButton, Seccion, Stat, SwitchGrande, Vacio,
 } from '../../../components/paseador/PaseadorUI';
 import MapaPaseo from '../../../components/paseador/MapaPaseo';
 import MapaPaseoModal from '../../../components/paseador/MapaPaseoModal';
 import PaseoCard from '../../../components/paseador/PaseoCard';
+import { FilaPaseo } from './PaseoTab';
 import {
-  cuandoDe, enModoDemo, fetchMisPaseos, formatoDistancia, formatoPlata, formatoTimer,
-  segundosDePaseo, setDisponible,
+  cuandoDe, enModoDemo, fetchMisPaseos, formatoDistancia, formatoPlata, setDisponible,
 } from '../../../services/paseadorApi';
 
 function inicioDeHoy() {
@@ -29,7 +32,8 @@ function inicioDeHoy() {
 }
 
 export default function InicioTab({
-  perfil, setPerfil, solicitudes, paseoActivo, empezarPaseo, abrirChat, irA, avisar,
+  perfil, setPerfil, solicitudes, paseosActivos, ocupado, empezarPaseo, pausarOReanudar, pausarOReanudarTodos,
+  finalizar, abrirChat, irA, avisar,
 }) {
   const [hoy, setHoy] = useState([]);
   const [agenda, setAgenda] = useState([]);
@@ -52,14 +56,16 @@ export default function InicioTab({
     }
   }, []);
 
-  useEffect(() => { cargar(); }, [cargar, paseoActivo?.estado]);
+  // Al iniciar o finalizar una mascota cambian la agenda y lo cobrado hoy
+  useEffect(() => { cargar(); }, [cargar, paseosActivos.length]);
 
-  // El timer del banner "paseo en curso" avanza solo
+  // Los timers del paseo en curso avanzan solos
+  const alguienCamina = paseosActivos.some((p) => p.reanudadoEn);
   useEffect(() => {
-    if (!paseoActivo?.reanudadoEn) return undefined;
+    if (!alguienCamina) return undefined;
     const t = setInterval(() => setTick((x) => x + 1), 1000);
     return () => clearInterval(t);
-  }, [paseoActivo?.reanudadoEn]);
+  }, [alguienCamina]);
 
   const refrescar = async () => {
     setRefrescando(true);
@@ -115,16 +121,28 @@ export default function InicioTab({
       </View>
 
       {/* ── Paseo en curso ─────────────────────────────────────────── */}
-      {paseoActivo && (
-        <TouchableOpacity style={s.enCurso} onPress={() => irA('paseo')} activeOpacity={0.9}>
-          <View style={s.enVivo} />
-          <Avatar fuente={paseoActivo.mascota.visual} nombre={paseoActivo.mascota.nombre} size={40} />
-          <View style={{ flex: 1 }}>
-            <Text style={s.enCursoTitulo}>Paseando a {paseoActivo.mascota.nombre}</Text>
-            <Text style={s.enCursoTxt}>{paseoActivo.reanudadoEn ? 'En curso' : 'En pausa'} · tocá para ver el mapa</Text>
-          </View>
-          <Text style={s.enCursoTimer}>{formatoTimer(segundosDePaseo(paseoActivo))}</Text>
-        </TouchableOpacity>
+      {paseosActivos.length > 0 && (
+        <View style={s.enCurso}>
+          <TouchableOpacity style={s.enCursoHeader} onPress={() => irA('paseo')} activeOpacity={0.8}
+            accessibilityRole="button" accessibilityLabel="Ver el paseo en el mapa">
+            <View style={[s.enVivo, !alguienCamina && { backgroundColor: C.gris }]} />
+            <Text style={s.enCursoTitulo} numberOfLines={1}>
+              {paseosActivos.length === 1
+                ? `Paseando a ${paseosActivos[0].mascota.nombre}`
+                : `Paseando ${paseosActivos.length} mascotas`}
+            </Text>
+            <Text style={s.verMapa}>Ver mapa ›</Text>
+          </TouchableOpacity>
+          {paseosActivos.map((p) => (
+            <FilaPaseo key={p.id} paseo={p} ocupado={ocupado === p.id || ocupado === 'todos'}
+              onPausa={() => pausarOReanudar(p)} onFinalizar={() => finalizar(p)} onChat={() => abrirChat(p)} />
+          ))}
+          {paseosActivos.length > 1 && (
+            <PillButton titulo={alguienCamina ? 'Pausar a todos' : 'Reanudar a todos'} icono={alguienCamina ? 'pause' : 'play'}
+              variante="secundario" chico onPress={pausarOReanudarTodos} cargando={ocupado === 'todos'}
+              style={{ marginTop: 10 }} />
+          )}
+        </View>
       )}
 
       {/* ── Resumen del día ────────────────────────────────────────── */}
@@ -191,14 +209,18 @@ export default function InicioTab({
           <PaseoCard paseo={proximo} onChat={() => abrirChat(proximo)} mostrarNotas
             style={proximo.lat != null ? s.cardBajoMapa : null}>
             <PillButton
-              titulo={paseoActivo ? 'Tenés un paseo en curso' : 'Iniciar paseo'}
-              icono="play"
-              disabled={!!paseoActivo}
+              titulo={paseosActivos.length ? 'Sumar al paseo' : 'Iniciar paseo'}
+              icono={paseosActivos.length ? 'add' : 'play'}
+              cargando={ocupado === proximo.id}
               onPress={() => empezarPaseo(proximo)}
               style={{ flex: 1 }}
             />
           </PaseoCard>
-          <Text style={s.tip}>Iniciá el paseo cuando tengas a {proximo.mascota.nombre} con la correa puesta.</Text>
+          <Text style={s.tip}>
+            {paseosActivos.length
+              ? `Sumá a ${proximo.mascota.nombre} al grupo cuando la tengas con la correa puesta.`
+              : `Iniciá el paseo cuando tengas a ${proximo.mascota.nombre} con la correa puesta.`}
+          </Text>
         </View>
       ) : (
         <Card>
@@ -245,13 +267,12 @@ const s = StyleSheet.create({
   dispTxt: { fontSize: 13, color: C.texto2, marginTop: 3, lineHeight: 18 },
 
   enCurso: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14,
-    backgroundColor: C.card, borderRadius: 18, padding: 14, borderWidth: 2, borderColor: C.teal,
+    marginTop: 14, backgroundColor: C.card, borderRadius: 18, padding: 12, borderWidth: 2, borderColor: C.teal,
   },
+  enCursoHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4, paddingBottom: 4, minHeight: 32 },
   enVivo: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.rojo },
-  enCursoTitulo: { fontSize: 15, fontWeight: '800', color: C.texto },
-  enCursoTxt: { fontSize: 12, color: C.texto2, marginTop: 1 },
-  enCursoTimer: { fontSize: 20, fontWeight: '900', color: C.teal },
+  enCursoTitulo: { flex: 1, fontSize: 16, fontWeight: '800', color: C.texto },
+  verMapa: { fontSize: 13, fontWeight: '800', color: C.teal },
 
   cobradoLabel: { fontSize: 13, fontWeight: '700', color: C.texto2 },
   cobrado: { fontSize: 40, fontWeight: '900', color: C.texto, marginTop: 2 },

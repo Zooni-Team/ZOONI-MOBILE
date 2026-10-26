@@ -23,7 +23,7 @@ import { confirmar } from '../../../utils/dialogo';
 const VENTANA_INICIO_MS = 60 * 60 * 1000;
 
 export default function SolicitudesTab({
-  perfil, setPerfil, solicitudes, recargarSolicitudes, paseoActivo,
+  perfil, setPerfil, solicitudes, recargarSolicitudes, paseosActivos,
   empezarPaseo, abrirChat, irA, avisar,
 }) {
   const [vista, setVista] = useState('nuevas');
@@ -127,14 +127,16 @@ export default function SolicitudesTab({
 
   const renderAgenda = ({ item }) => {
     const falta = item.fecha ? new Date(item.fecha).getTime() - Date.now() : 0;
-    const puedeIniciar = falta < VENTANA_INICIO_MS && !paseoActivo;
+    // Con otras mascotas ya en curso, ésta se suma al grupo
+    const puedeIniciar = falta < VENTANA_INICIO_MS;
+    const sumar = paseosActivos.length > 0;
     return (
       <PaseoCard paseo={item} onChat={() => abrirChat(item)}>
         <PillButton titulo="Cancelar" variante="peligro" chico onPress={() => cancelar(item)}
           cargando={ocupado === item.id} style={{ flex: 1 }} />
         <PillButton
-          titulo={puedeIniciar ? 'Iniciar paseo' : 'Todavía no'}
-          icono={puedeIniciar ? 'play' : 'time-outline'}
+          titulo={!puedeIniciar ? 'Todavía no' : sumar ? 'Sumar al paseo' : 'Iniciar paseo'}
+          icono={!puedeIniciar ? 'time-outline' : sumar ? 'add' : 'play'}
           chico
           disabled={!puedeIniciar}
           onPress={() => empezarPaseo(item)}
@@ -197,9 +199,13 @@ export default function SolicitudesTab({
             </Vacio>
           )
         }
-        ListFooterComponent={vista === 'agenda' && paseoActivo ? (
+        ListFooterComponent={vista === 'agenda' && paseosActivos.length ? (
           <TouchableOpacity onPress={() => irA('paseo')}>
-            <Text style={s.footer}>Tenés un paseo en curso con {paseoActivo.mascota.nombre} · Ver</Text>
+            <Text style={s.footer}>
+              {paseosActivos.length === 1
+                ? `Tenés un paseo en curso con ${paseosActivos[0].mascota.nombre}`
+                : `Estás paseando ${paseosActivos.length} mascotas`} · Ver
+            </Text>
           </TouchableOpacity>
         ) : null}
       />

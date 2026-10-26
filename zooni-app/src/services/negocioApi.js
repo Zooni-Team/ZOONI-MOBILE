@@ -27,7 +27,7 @@ import { subirImagenPublica } from '../utils/imagenStorage';
 import {
   DIA_DE_JS, HORARIOS_NEGOCIO_DEFAULT, TAMANOS, configNegocio, tamanoPorPeso,
 } from '../constants/negocios';
-import { aCentavos, formatoPlata } from './paseadorApi';
+import { aCentavos, distanciaMetros, formatoPlata } from './paseadorApi';
 
 // ─────────────────────────────────────────────
 // ERRORES
@@ -117,14 +117,18 @@ export function abiertoAhora(horarios, ahora = new Date()) {
   return min >= minutosDe(h.desde) && min < minutosDe(h.hasta);
 }
 
-/** "Lun a Vie 09:00–19:00 · Sáb 09:00–13:00 · Dom cerrado" (agrupa días iguales seguidos) */
-export function resumenHorarios(horarios) {
+/**
+ * "Lun a Vie 09:00–19:00 · Sáb 09:00–13:00 · Dom cerrado" (agrupa días iguales
+ * seguidos). `inactivo` es cómo se nombra un día sin horario (los paseadores
+ * usan "no pasea").
+ */
+export function resumenHorarios(horarios, { inactivo = 'cerrado' } = {}) {
   const orden = ['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom'];
   const cortos = { lun: 'Lun', mar: 'Mar', mie: 'Mié', jue: 'Jue', vie: 'Vie', sab: 'Sáb', dom: 'Dom' };
   const base = HORARIOS_NEGOCIO_DEFAULT();
   const txt = (k) => {
     const h = { ...base[k], ...(horarios?.[k] ?? {}) };
-    return h.activo ? `${h.desde}–${h.hasta}` : 'cerrado';
+    return h.activo ? `${h.desde}–${h.hasta}` : inactivo;
   };
   const grupos = [];
   orden.forEach((k) => {
@@ -662,6 +666,22 @@ export async function guardarInforme(negocio, turno, informe) {
 export function recargoDomicilio(negocio, aDomicilio) {
   if (!aDomicilio || negocio?.tipo !== 'peluqueria') return 0;
   return Number(negocio.datos?.buscaYLlevaCosto) || 0;
+}
+
+/**
+ * Hasta cuántos km del local busca y lleva la peluquería. null = sin límite
+ * (peluquerías que lo configuraron antes de que existiera el radio).
+ */
+export function radioBuscaYLlevaKm(negocio) {
+  if (negocio?.tipo !== 'peluqueria' || !negocio.datos?.buscaYLleva) return null;
+  const r = Number(negocio.datos.buscaYLlevaRadioKm);
+  return r > 0 ? r : null;
+}
+
+/** Km entre el local y un punto { lat, lng }. null si falta alguna coordenada. */
+export function distanciaAlLocalKm(negocio, punto) {
+  if (negocio?.lat == null || negocio?.lng == null || punto?.lat == null || punto?.lng == null) return null;
+  return distanciaMetros({ lat: negocio.lat, lng: negocio.lng }, punto) / 1000;
 }
 
 /** Precio final de un turno: el del servicio (por tamaño) más el recargo a domicilio. */

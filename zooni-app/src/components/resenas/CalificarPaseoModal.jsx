@@ -106,11 +106,16 @@ export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviad
       onEnviado?.(resultado);
     } catch (e) {
       console.error('[Reseña]', e?.message ?? e, e?.detalle ?? '');
-      setError(e?.message === 'migracion_pendiente'
-        ? 'Para opinar sin un paseo es necesario correr la migración 048 en Supabase.'
-        : media.length
-        ? 'No se pudo enviar la reseña. Si subiste videos, probá con uno más corto.'
-        : 'No se pudo enviar la reseña. Probá de nuevo.');
+      const hayVideo = media.some((m) => m.tipo === 'video');
+      setError({
+        migracion_pendiente: 'Para opinar sin un paseo es necesario correr la migración 048 en Supabase.',
+        bucket_faltante: 'Falta el espacio para fotos de reseñas: corré la migración 042 en Supabase.',
+        archivo_pesado: `Alguna foto o video pesa demasiado (máximo ${MAX_MB} MB).${hayVideo ? ' Probá con un video más corto.' : ''}`,
+        tipo_no_admitido: 'Ese tipo de archivo no se admite. Probá con una foto JPG/PNG o un video MP4.',
+        error_subida: 'No se pudieron subir las fotos o videos. Revisá tu conexión y probá de nuevo.',
+        sin_permiso: 'La base no deja guardar opiniones: falta el permiso de la migración 048 en Supabase.',
+        sin_sesion: 'No encontramos tu usuario. Cerrá sesión y volvé a entrar.',
+      }[e?.message] ?? `No se pudo enviar la reseña. Probá de nuevo.${e?.detalle ? `\n(${e.detalle})` : ''}`);
     } finally {
       setEnviando(false);
     }
@@ -178,14 +183,14 @@ export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviad
             ))}
 
             {/* 4. Texto */}
-            <Text style={s.seccion}>Tu opinión</Text>
+            <Text style={s.seccion}>Tu opinión (opcional)</Text>
             <TextInput style={s.input} value={texto} onChangeText={setTexto} multiline maxLength={1000}
               placeholder="Contá cómo te fue: puntualidad, cómo trató a tu mascota, si te mandó novedades…"
               placeholderTextColor="#AAAAAA" />
             <Text style={s.contador}>{texto.length}/1000</Text>
 
             {/* 5. Fotos y videos */}
-            <Text style={s.seccion}>Fotos y videos ({media.length}/{MEDIA_RESENA_MAX})</Text>
+            <Text style={s.seccion}>Fotos y videos (opcional · {media.length}/{MEDIA_RESENA_MAX})</Text>
             <View style={s.mediaFila}>
               {media.map((m, i) => (
                 <View key={`${m.uri.slice(-40)}-${i}`}>

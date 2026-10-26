@@ -28,20 +28,20 @@ export const ESPECIES = [
 
 /**
  * Países del selector del Registro Paso 4 (sin dependencia externa).
- * `callingCode` autocompleta el campo Código.
+ * `callingCode` autocompleta el campo Código. Mantener en orden alfabético.
  */
 export const PAISES = [
   { codigo: 'AR', nombre: 'Argentina', bandera: '🇦🇷', callingCode: '+54' },
-  { codigo: 'UY', nombre: 'Uruguay', bandera: '🇺🇾', callingCode: '+598' },
-  { codigo: 'CL', nombre: 'Chile', bandera: '🇨🇱', callingCode: '+56' },
-  { codigo: 'BR', nombre: 'Brasil', bandera: '🇧🇷', callingCode: '+55' },
-  { codigo: 'PY', nombre: 'Paraguay', bandera: '🇵🇾', callingCode: '+595' },
   { codigo: 'BO', nombre: 'Bolivia', bandera: '🇧🇴', callingCode: '+591' },
-  { codigo: 'PE', nombre: 'Perú', bandera: '🇵🇪', callingCode: '+51' },
+  { codigo: 'BR', nombre: 'Brasil', bandera: '🇧🇷', callingCode: '+55' },
+  { codigo: 'CL', nombre: 'Chile', bandera: '🇨🇱', callingCode: '+56' },
   { codigo: 'CO', nombre: 'Colombia', bandera: '🇨🇴', callingCode: '+57' },
   { codigo: 'EC', nombre: 'Ecuador', bandera: '🇪🇨', callingCode: '+593' },
-  { codigo: 'VE', nombre: 'Venezuela', bandera: '🇻🇪', callingCode: '+58' },
-  { codigo: 'MX', nombre: 'México', bandera: '🇲🇽', callingCode: '+52' },
   { codigo: 'ES', nombre: 'España', bandera: '🇪🇸', callingCode: '+34' },
   { codigo: 'US', nombre: 'Estados Unidos', bandera: '🇺🇸', callingCode: '+1' },
+  { codigo: 'MX', nombre: 'México', bandera: '🇲🇽', callingCode: '+52' },
+  { codigo: 'PY', nombre: 'Paraguay', bandera: '🇵🇾', callingCode: '+595' },
+  { codigo: 'PE', nombre: 'Perú', bandera: '🇵🇪', callingCode: '+51' },
+  { codigo: 'UY', nombre: 'Uruguay', bandera: '🇺🇾', callingCode: '+598' },
+  { codigo: 'VE', nombre: 'Venezuela', bandera: '🇻🇪', callingCode: '+58' },
 ];

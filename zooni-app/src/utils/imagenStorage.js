@@ -61,7 +61,13 @@ function tipoDeArchivo(uri, mimeHint) {
  * expo-image-picker (asset.mimeType) cuando la uri no lo dice.
  */
 export async function subirArchivoPublico(uri, carpeta, { bucket = BUCKET, mimeHint } = {}) {
-  const { mime, ext } = tipoDeArchivo(uri, mimeHint);
+  const tipo = tipoDeArchivo(uri, mimeHint);
+  // Una uri sin extensión (content://…, blob:…) deja como "ext" la uri entera,
+  // con barras y dos puntos: Storage rechaza esa key y ese contentType.
+  const extOk = /^[a-z0-9]{1,5}$/.test(tipo.ext);
+  const esVideo = tipo.mime.startsWith('video/');
+  const ext = extOk ? tipo.ext : esVideo ? 'mp4' : 'jpg';
+  const mime = extOk ? tipo.mime : esVideo ? 'video/mp4' : 'image/jpeg';
   const path = `${carpeta}/${Date.now()}-${Math.round(Math.random() * 1e6)}.${ext}`;
   const arraybuffer = await fetch(uri).then((res) => res.arrayBuffer());
 

@@ -13,8 +13,8 @@
  * Lo propio de cada tipo:
  *   · Veterinaria: matrícula (obligatoria), especialidades, especies que
  *     atiende, urgencias 24 h (con teléfono de guardia) y atención a domicilio.
- *   · Peluquería: especies y tamaños que atiende, busca y lleva (con su costo)
- *     y si usa productos hipoalergénicos.
+ *   · Peluquería: especies y tamaños que atiende, busca y lleva (con su costo
+ *     y hasta cuántos km del local) y si usa productos hipoalergénicos.
  *   · Pet shop: envíos (costo, gratis desde, radio y demora), pedido mínimo y
  *     medios de pago.
  */
@@ -145,6 +145,7 @@ export function datosInicialesNegocio(tipo, datos = {}) {
       tamanos: d.tamanos ?? TAMANOS.map((t) => t.key),
       buscaYLleva: !!d.buscaYLleva,
       buscaYLlevaCosto: aTexto(d.buscaYLlevaCosto),
+      buscaYLlevaRadioKm: aTexto(d.buscaYLlevaRadioKm ?? 3),
       hipoalergenicos: !!d.hipoalergenicos,
     };
   }
@@ -173,6 +174,9 @@ export function validarDatosNegocio(tipo, d) {
   if (tipo === 'peluqueria') {
     if (!d.tamanos?.length) e.tamanos = 'Elegí al menos un tamaño';
     if (!d.especies?.length) e.especies = 'Elegí perros, gatos o los dos';
+    if (d.buscaYLleva && !(aNumero(d.buscaYLlevaRadioKm) > 0)) {
+      e.buscaYLlevaRadioKm = 'Escribí hasta cuántos km buscás y llevás';
+    }
   }
   if (tipo === 'petshop') {
     if (!d.mediosPago?.length) e.mediosPago = 'Elegí al menos un medio de pago';
@@ -191,7 +195,11 @@ export function datosNegocioParaGuardar(tipo, d) {
     };
   }
   if (tipo === 'peluqueria') {
-    return { ...d, buscaYLlevaCosto: d.buscaYLleva ? aNumero(d.buscaYLlevaCosto) : 0 };
+    return {
+      ...d,
+      buscaYLlevaCosto: d.buscaYLleva ? aNumero(d.buscaYLlevaCosto) : 0,
+      buscaYLlevaRadioKm: aNumero(d.buscaYLlevaRadioKm),
+    };
   }
   return {
     ...d,
@@ -258,9 +266,16 @@ export function DatosTipoNegocio({ tipo, datos, onCambio, errores = {}, style })
         <Toggle valor={datos.buscaYLleva} onCambio={(v) => onCambio('buscaYLleva', v)}
           titulo="Buscamos y llevamos" texto="Pasás a buscar la mascota y la devolvés en su casa." />
         {datos.buscaYLleva && (
-          <Campo label="¿Cuánto cobrás el busca y lleva?" ayuda="0 si es gratis. Se suma al precio del turno.">
-            <CampoMonto valor={datos.buscaYLlevaCosto} onCambio={(v) => onCambio('buscaYLlevaCosto', v)} maxDigitos={7} />
-          </Campo>
+          <>
+            <Campo label="¿Cuánto cobrás el busca y lleva?" ayuda="0 si es gratis. Se suma al precio del turno.">
+              <CampoMonto valor={datos.buscaYLlevaCosto} onCambio={(v) => onCambio('buscaYLlevaCosto', v)} maxDigitos={7} />
+            </Campo>
+            <Campo label="¿Hasta cuántos km buscás y llevás?" error={errores.buscaYLlevaRadioKm}
+              ayuda="Desde tu local. Si la casa del dueño queda más lejos, no puede pedir el busca y lleva.">
+              <CampoMonto valor={datos.buscaYLlevaRadioKm} error={errores.buscaYLlevaRadioKm} signo={null} unidad="km"
+                placeholder="3" maxDigitos={2} onCambio={(v) => onCambio('buscaYLlevaRadioKm', v)} />
+            </Campo>
+          </>
         )}
         <Toggle valor={datos.hipoalergenicos} onCambio={(v) => onCambio('hipoalergenicos', v)}
           titulo="Usamos productos hipoalergénicos" texto="Se muestra como un sello en tu ficha." />

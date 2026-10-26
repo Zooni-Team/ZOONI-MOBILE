@@ -33,10 +33,12 @@ import { useMisMascotas } from '../hooks/useMisMascotas';
 import { resolveMascotaVisual } from '../constants/petImages';
 import { TAMANOS, configNegocio, tamanoPorPeso } from '../constants/negocios';
 import {
-  crearTurno, fetchNegocioPublico, fetchOcupados, formatoPlata, horaTexto, horarioDelDia, precioTurno,
-  recargoDomicilio, textoPrecioItem, turnosLibres,
+  crearTurno, distanciaAlLocalKm, fetchNegocioPublico, fetchOcupados, formatoPlata, horaTexto, horarioDelDia,
+  precioTurno, radioBuscaYLlevaKm, recargoDomicilio, textoPrecioItem, turnosLibres,
 } from '../services/negocioApi';
-import { direccionDe } from '../services/paseadorApi';
+import { buscarLugar, direccionDe } from '../services/paseadorApi';
+
+const kmTexto = (km) => `${km.toFixed(1).replace('.', ',')} km`;
 
 const VERDE = '#2DBD72';
 const MENTA = '#C8F0D8';
@@ -87,6 +89,9 @@ export default function ReservarTurnoScreen() {
   const [cargandoLibres, setCargandoLibres] = useState(false);
   const [aDomicilio, setADomicilio] = useState(false);
   const [direccion, setDireccion] = useState('');
+  // Dónde queda esa dirección (GPS o buscada en el mapa): para el radio del
+  // busca y lleva. undefined = todavía no se buscó · null = no se encontró
+  const [coords, setCoords] = useState(undefined);
   const [ubicando, setUbicando] = useState(false);
   const [notas, setNotas] = useState('');
   const [errores, setErrores] = useState([]);
@@ -120,6 +125,11 @@ export default function ReservarTurnoScreen() {
   const horarios = usa24h ? HORARIO_24H : negocio?.horarios;
   const ofreceDomicilio = (esVet && d.aDomicilio) || (esPelu && d.buscaYLleva);
   const precio = negocio && item ? precioTurno(negocio, item, tamanoMascota, aDomicilio) : 0;
+  // Radio del busca y lleva: sólo se controla si la peluquería lo cargó y
+  // tiene su local marcado en el mapa
+  const radioKm = negocio?.lat != null ? radioBuscaYLlevaKm(negocio) : null;
+  const distanciaKm = coords ? distanciaAlLocalKm(negocio, coords) : null;
+  const fueraDeRadio = radioKm != null && distanciaKm != null && distanciaKm > radioKm;
 
   const dias = useMemo(proximosDias, []);
   const diaAbierto = useCallback((x) => !!horarios && horarioDelDia(horarios, x).activo, [horarios]);
@@ -153,10 +163,22 @@ export default function ReservarTurnoScreen() {
     if (!geo) return;
     setUbicando(true);
     geo.getCurrentPosition(async (p) => {
+      setCoords({ lat: p.coords.latitude, lng: p.coords.longitude });
       const dir = await direccionDe(p.coords.latitude, p.coords.longitude);
       if (dir) setDireccion(dir);
       setUbicando(false);
     }, () => setUbicando(false), { enableHighAccuracy: true, timeout: 10000 });
+  };
+
+  /** Busca en el mapa la dirección escrita (si no se ubicó ya). Devuelve { lat, lng } o null. */
+  const ubicarDireccion = async () => {
+    if (coords !== undefined) return coords;
+    if (direccion.trim().length < 5) return null;
+    setUbicando(true);
+    const lugar = await buscarLugar(direccion, { cerca: { lat: negocio.lat, lng: negocio.lng } });
+    setUbicando(false);
+    setCoords(lugar);
+    return lugar;
   };
 
   const especieOk = !mascota || !d.especies?.length || d.especies.includes(ESPECIE_KEY(mascota.especie));
@@ -170,6 +192,19 @@ export default function ReservarTurnoScreen() {
     if (esPelu && !tamanoMascota) faltan.push('elegir el tamaño de tu mascota (define el precio)');
     if (!hora) faltan.push('elegir un horario libre');
     if (aDomicilio && direccion.trim().length < 5) faltan.push('escribir la dirección de tu casa');
+    else if (aDomicilio && radioKm != null) {
+      // El candado se toma antes de esperar al mapa: si no, dos toques
+      // rápidos pasan los dos la validación y piden dos turnos
+      enviandoRef.current = true;
+      const punto = await ubicarDireccion();
+      enviandoRef.current = false;
+      const km = distanciaAlLocalKm(negocio, punto);
+      if (km == null) {
+        faltan.push('que encontremos tu dirección en el mapa: escribila más completa (con la localidad) o tocá el ícono de ubicación');
+      } else if (km > radioKm) {
+        faltan.push(`una dirección dentro de los ${radioKm} km del local para el busca y lleva (la tuya queda a ${kmTexto(km)})`);
+      }
+    }
     setErrores(faltan);
     setErrorGeneral(null);
     if (faltan.length) { scrollRef.current?.scrollToEnd({ animated: true }); return; }
@@ -388,17 +423,40 @@ export default function ReservarTurnoScreen() {
                   <Text style={s.toggleTxt}>
                     {esVet ? 'La consulta es en tu casa.'
                       : recargoDomicilio(negocio, true) ? `Se suma ${formatoPlata(recargoDomicilio(negocio, true))} al precio.` : 'Sin costo extra.'}
+                    {radioKm != null ? ` Hasta ${radioKm} km del local.` : ''}
                   </Text>
                 </View>
               </TouchableOpacity>
               {aDomicilio && (
-                <View style={s.inputFila}>
-                  <TextInput style={s.inputFlex} value={direccion} onChangeText={(v) => setDireccion(v.slice(0, 300))}
-                    placeholder="Tu dirección (calle, número, piso)" placeholderTextColor="#AAAAAA" />
-                  <TouchableOpacity onPress={usarUbicacion} hitSlop={8} accessibilityLabel="Usar mi ubicación">
-                    {ubicando ? <ActivityIndicator size="small" color={VERDE} /> : <Ionicons name="locate" size={22} color={VERDE} />}
-                  </TouchableOpacity>
-                </View>
+                <>
+                  <View style={[s.inputFila, fueraDeRadio && { borderWidth: 1.5, borderColor: ROJO }]}>
+                    <TextInput style={s.inputFlex} value={direccion}
+                      onChangeText={(v) => { setDireccion(v.slice(0, 300)); setCoords(undefined); }}
+                      // Al terminar de escribir se ubica en el mapa, así ve enseguida si llegan
+                      onBlur={radioKm != null ? ubicarDireccion : undefined}
+                      onSubmitEditing={radioKm != null ? ubicarDireccion : undefined}
+                      placeholder="Tu dirección (calle, número, piso)" placeholderTextColor="#AAAAAA" />
+                    <TouchableOpacity onPress={usarUbicacion} hitSlop={8} accessibilityLabel="Usar mi ubicación">
+                      {ubicando ? <ActivityIndicator size="small" color={VERDE} /> : <Ionicons name="locate" size={22} color={VERDE} />}
+                    </TouchableOpacity>
+                  </View>
+                  {radioKm != null && distanciaKm != null && (
+                    <View style={s.radioFila}>
+                      <Ionicons name={fueraDeRadio ? 'close-circle' : 'checkmark-circle'} size={16}
+                        color={fueraDeRadio ? ROJO : VERDE} />
+                      <Text style={[s.radioTxt, fueraDeRadio && { color: ROJO }]}>
+                        {fueraDeRadio
+                          ? `Tu dirección queda a ${kmTexto(distanciaKm)}: ${negocio.nombre} busca y lleva hasta ${radioKm} km.`
+                          : `Tu dirección queda a ${kmTexto(distanciaKm)} del local: llegan.`}
+                      </Text>
+                    </View>
+                  )}
+                  {radioKm != null && coords === null && direccion.trim().length >= 5 && (
+                    <Text style={s.radioAyuda}>
+                      No encontramos esa dirección en el mapa. Escribila con la localidad o tocá el ícono de ubicación.
+                    </Text>
+                  )}
+                </>
               )}
             </>
           )}
@@ -520,6 +578,9 @@ const s = StyleSheet.create({
     borderRadius: 16, paddingHorizontal: 14, marginTop: 10,
   },
   inputFlex: { flex: 1, paddingVertical: 14, fontSize: 15, color: TEXTO },
+  radioFila: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 8, paddingHorizontal: 4 },
+  radioTxt: { flex: 1, fontSize: 13, fontWeight: '700', color: VERDE, lineHeight: 18 },
+  radioAyuda: { fontSize: 13, color: TEXTO2, marginTop: 8, paddingHorizontal: 4, lineHeight: 18 },
   input: { backgroundColor: '#FFF', borderRadius: 16, padding: 14, fontSize: 15, color: TEXTO },
 
   resumenTitulo: { fontSize: 16, fontWeight: '900', color: TEXTO, marginBottom: 6 },

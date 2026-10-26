@@ -2,8 +2,10 @@
  * SolicitarPaseoScreen.jsx — El dueño contrata a un paseador de Zooni
  *
  * Se llega desde Comunidad (círculo del paseador en el mapa o lista de
- * Servicios) con { paseadorId }. Elige mascota, día, hora, duración (con el
- * precio que puso el paseador), dirección y notas. La solicitud queda
+ * Servicios) con { paseadorId }. Ve qué días y en qué horario pasea, y elige
+ * mascota, día, hora, duración (con el precio que puso el paseador),
+ * dirección y notas. Si elige un horario fuera de los del paseador se le
+ * avisa, pero puede pedirlo igual (el paseador decide si lo acepta). La solicitud queda
  * 'pendiente' y le llega al paseador en su pestaña Solicitudes ("Para vos").
  *
  * App de DUEÑOS: fondo menta, header centrado, botones pill.
@@ -21,6 +23,8 @@ import FechaPicker from '../components/FechaPicker';
 import HoraPicker from '../components/HoraPicker';
 import { useMisMascotas } from '../hooks/useMisMascotas';
 import { resolveMascotaVisual } from '../constants/petImages';
+import { DIAS_SEMANA, DIA_DE_JS } from '../constants/negocios';
+import { horarioDelDia, minutosDe } from '../services/negocioApi';
 import {
   MEDIOS_PAGO, crearSolicitudPaseo, direccionDe, fetchPaseadorPublico, formatoDuracion, formatoPlata, precioPara,
   serviciosDe,
@@ -41,6 +45,14 @@ function proximaHoraRedonda() {
 
 const fechaTexto = (d) => d.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
 const horaTexto = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+/** ¿El paseo (desde `fecha`, `duracion` minutos) cae fuera de los horarios del paseador? */
+function fueraDeHorario(horarios, fecha, duracion) {
+  const h = horarioDelDia(horarios, fecha);
+  if (!h.activo) return true;
+  const inicio = fecha.getHours() * 60 + fecha.getMinutes();
+  return inicio < minutosDe(h.desde) || inicio + (duracion ?? 0) > minutosDe(h.hasta);
+}
 
 export default function SolicitarPaseoScreen() {
   const navigation = useNavigation();
@@ -176,6 +188,20 @@ export default function SolicitarPaseoScreen() {
               </View>
             </View>
             {paseador.bio ? <Text style={s.bio}>{paseador.bio}</Text> : null}
+
+            <Text style={s.horariosTitulo}>Cuándo pasea</Text>
+            {DIAS_SEMANA.map((d) => {
+              const h = paseador.horarios?.[d.key];
+              const elegido = DIA_DE_JS[fecha.getDay()] === d.key;
+              return (
+                <View key={d.key} style={[s.horarioFila, elegido && s.horarioElegido]}>
+                  <Text style={[s.horarioDia, !h?.activo && s.horarioOff, elegido && { fontWeight: '800' }]}>{d.label}</Text>
+                  <Text style={[s.horarioHoras, !h?.activo && s.horarioOff, elegido && { fontWeight: '800' }]}>
+                    {h?.activo ? `${h.desde} a ${h.hasta}` : 'No pasea'}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
 
           {/* Mascota */}
@@ -209,6 +235,15 @@ export default function SolicitarPaseoScreen() {
               <Text style={s.campoTxt}>{horaTexto(fecha)}</Text>
             </TouchableOpacity>
           </View>
+
+          {fueraDeHorario(paseador.horarios, fecha, duracion) && (
+            <View style={s.aviso}>
+              <Ionicons name="alert-circle-outline" size={18} color="#B07A00" />
+              <Text style={s.avisoTxt}>
+                Ese horario está fuera de los horarios de {paseador.nombreCompleto}. Podés pedirlo igual, pero puede que no lo acepte.
+              </Text>
+            </View>
+          )}
 
           {/* Duración y precio */}
           <Text style={s.label}>¿Cuánto tiempo?</Text>
@@ -324,6 +359,19 @@ const s = StyleSheet.create({
   paseadorNombre: { fontSize: 18, fontWeight: '800', color: TEXTO },
   paseadorSub: { fontSize: 13, color: TEXTO2, marginTop: 2 },
   bio: { fontSize: 14, color: TEXTO, marginTop: 12, lineHeight: 20 },
+  horariosTitulo: { fontSize: 14, fontWeight: '800', color: TEXTO, marginTop: 14, marginBottom: 4 },
+  horarioFila: {
+    flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5, paddingHorizontal: 8, borderRadius: 8,
+  },
+  horarioElegido: { backgroundColor: MENTA },
+  horarioDia: { fontSize: 14, color: TEXTO },
+  horarioHoras: { fontSize: 14, color: TEXTO, fontVariant: ['tabular-nums'] },
+  horarioOff: { color: '#AAAAAA' },
+  aviso: {
+    flexDirection: 'row', gap: 8, alignItems: 'flex-start', backgroundColor: '#FFF1DC',
+    borderRadius: 12, padding: 12, marginTop: 10,
+  },
+  avisoTxt: { flex: 1, fontSize: 13, color: '#7A5500', lineHeight: 18 },
 
   label: { fontSize: 15, fontWeight: '800', color: TEXTO, marginTop: 22, marginBottom: 10 },
   ayuda: { fontSize: 13, color: TEXTO2 },

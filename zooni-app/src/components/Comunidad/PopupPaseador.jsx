@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import { formatoDuracion, formatoPlata, serviciosDe } from '../../services/paseadorApi';
+import { resumenHorarios } from '../../services/negocioApi';
 import ResenasPaseadorModal from '../resenas/ResenasPaseadorModal';
 
 const TAMANO = { chico: 'chicos', mediano: 'medianos', grande: 'grandes' };
@@ -72,6 +73,10 @@ export default function PopupPaseador({ paseador, onClose }) {
       <View style={st.infoRow}>
         <Ionicons name="location-outline" size={14} color="#6B6B6B" />
         <Text style={st.info}>{paseador.zona} · atiende a {paseador.radioKm} km a la redonda</Text>
+      </View>
+      <View style={[st.infoRow, { flexWrap: 'nowrap', alignItems: 'flex-start' }]}>
+        <Ionicons name="time-outline" size={14} color="#6B6B6B" style={{ marginTop: 2 }} />
+        <Text style={st.info}>{resumenHorarios(paseador.horarios, { inactivo: 'no pasea' })}</Text>
       </View>
       {tamanos.length > 0 && (
         <View style={st.infoRow}>

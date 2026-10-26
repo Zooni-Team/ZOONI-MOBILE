@@ -6,6 +6,8 @@
  * los turnos libres que ve el dueño y el "Abierto ahora" de la ficha.
  *
  * Props: valor { lun: { activo, desde, hasta }, … } · onCambio(valor) · error
+ * Opcionales (los usa el paseador): base (horarios por defecto) · inactivo
+ * (texto de un día sin horario) · etiquetas { desde, hasta } del selector.
  */
 
 import { useState } from 'react';
@@ -33,8 +35,10 @@ export function validarHorarios(horarios) {
   return malo ? `El ${malo.label.toLowerCase()} cierra antes de abrir` : null;
 }
 
-export default function HorariosEditor({ valor, onCambio, error }) {
-  const horarios = { ...HORARIOS_NEGOCIO_DEFAULT(), ...(valor ?? {}) };
+export default function HorariosEditor({
+  valor, onCambio, error, base, inactivo = 'Cerrado', etiquetas = { desde: 'abre', hasta: 'cierra' },
+}) {
+  const horarios = { ...(base ?? HORARIOS_NEGOCIO_DEFAULT()), ...(valor ?? {}) };
   const [picker, setPicker] = useState(null); // { dia, campo }
 
   const cambiar = (dia, cambios) => onCambio({ ...horarios, [dia]: { ...horarios[dia], ...cambios } });
@@ -55,7 +59,7 @@ export default function HorariosEditor({ valor, onCambio, error }) {
           <View key={d.key} style={s.fila}>
             <TouchableOpacity style={s.dia} onPress={() => cambiar(d.key, { activo: !h.activo })}
               accessibilityRole="switch" accessibilityState={{ checked: h.activo }}
-              accessibilityLabel={`${d.label}: ${h.activo ? 'abierto' : 'cerrado'}`}>
+              accessibilityLabel={`${d.label}: ${h.activo ? `${h.desde} a ${h.hasta}` : inactivo.toLowerCase()}`}>
               <Ionicons name={h.activo ? 'checkbox' : 'square-outline'} size={22} color={h.activo ? C.teal : C.gris} />
               <Text style={[s.diaTxt, !h.activo && { color: C.texto2 }]}>{d.corto}</Text>
             </TouchableOpacity>
@@ -70,7 +74,7 @@ export default function HorariosEditor({ valor, onCambio, error }) {
                 </TouchableOpacity>
               </View>
             ) : (
-              <Text style={s.cerrado}>Cerrado</Text>
+              <Text style={s.cerrado}>{inactivo}</Text>
             )}
           </View>
         );
@@ -83,7 +87,7 @@ export default function HorariosEditor({ valor, onCambio, error }) {
 
       <HoraPicker
         visible={!!picker}
-        titulo={picker ? `${DIAS_SEMANA.find((x) => x.key === picker.dia)?.label} · ${picker.campo === 'desde' ? 'abre' : 'cierra'}` : ''}
+        titulo={picker ? `${DIAS_SEMANA.find((x) => x.key === picker.dia)?.label} · ${etiquetas[picker.campo]}` : ''}
         valor={picker ? aFecha(horarios[picker.dia][picker.campo]) : new Date()}
         onConfirmar={(f) => { cambiar(picker.dia, { [picker.campo]: aTexto(f) }); setPicker(null); }}
         onCancelar={() => setPicker(null)}

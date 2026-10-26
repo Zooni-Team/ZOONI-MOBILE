@@ -378,7 +378,9 @@ export default function NegocioPublicoScreen() {
   if (negocio.tipo === 'peluqueria') {
     if (d.buscaYLleva) {
       sellos.push({
-        icono: 'car', texto: `Busca y lleva${Number(d.buscaYLlevaCosto) ? ` · ${formatoPlata(d.buscaYLlevaCosto)}` : ' gratis'}`,
+        icono: 'car',
+        texto: `Busca y lleva${Number(d.buscaYLlevaCosto) ? ` · ${formatoPlata(d.buscaYLlevaCosto)}` : ' gratis'}`
+          + (Number(d.buscaYLlevaRadioKm) > 0 ? ` · hasta ${d.buscaYLlevaRadioKm} km` : ''),
         color: '#2B6CB0', fondo: '#E6F0FA',
       });
     }

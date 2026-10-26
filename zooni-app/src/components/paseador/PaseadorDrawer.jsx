@@ -103,7 +103,7 @@ export default function PaseadorDrawer({
             )) : (
               <>
                 <Item icono="chatbubbles-outline" label="Chats" badge={chatsSinLeer} onPress={() => elegir(onChats)} />
-                <Item icono="map-outline" label="Zona de trabajo" onPress={() => elegir(onZona)} />
+                <Item icono="map-outline" label="Zona y horarios" onPress={() => elegir(onZona)} />
               </>
             )}
             {onModoDueno && (

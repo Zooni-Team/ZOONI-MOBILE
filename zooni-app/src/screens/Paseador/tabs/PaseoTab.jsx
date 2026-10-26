@@ -1,8 +1,14 @@
 /**
  * PaseoTab.jsx — Tab 3 de Zooni Paseadores
  *
- * CON paseo en curso: mapa a pantalla completa + card flotante blanca con la
- * mascota, el timer y la distancia en números grandes, y Pausar / Finalizar.
+ * CON paseos en curso: mapa a pantalla completa + card flotante blanca.
+ *   · Una mascota: su timer y su distancia en números grandes, y Pausar /
+ *     Finalizar.
+ *   · Un grupo: una fila por mascota con su tiempo, su distancia y sus propios
+ *     botones de pausar y finalizar (cada una es un paseo aparte, con su
+ *     dueño y su precio), más "Pausar todos". Tocar una fila marca su casa en
+ *     el mapa.
+ *   En los dos casos se puede sumar otra mascota de la agenda.
  *
  * SIN paseo en curso: los paseos aceptados listos para iniciar, o el resumen
  * del paseo que se acaba de terminar.
@@ -15,15 +21,14 @@
  * confirmación, y en el resumen hay "Retomar paseo" durante RETOMAR_MINUTOS
  * por si igual se finalizó por error.
  *
- * GPS: navigator.geolocation (web y, si existe, nativo). Sólo acumula
- * distancia mientras el timer corre; descarta lecturas imprecisas y el
- * "temblor" del GPS parado. Cada ~15 s / 30 m guarda un punto en PaseoTrack
- * para que el dueño vea el recorrido.
+ * Las acciones (pausar, finalizar…) y el GPS viven en PaseadorAppScreen /
+ * useSeguimientoPaseos, así Inicio puede usarlas igual y el recorrido se
+ * sigue registrando fuera de este tab.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View,
+  ActivityIndicator, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -33,187 +38,73 @@ import PaseoCard from '../../../components/paseador/PaseoCard';
 import PagoFormModal from '../../../components/paseador/PagoFormModal';
 import ModalidadCobro from '../../../components/paseador/ModalidadCobro';
 import {
-  COMISION_ZOONI, distanciaMetros, fetchCuentaCorriente, fetchMisPaseos, fetchRecorrido, finalizarPaseo,
-  formatoDistancia, formatoPlata, formatoTimer, guardarModalidadCobro, formatoTiempoPaseado, pausarPaseo,
-  reanudarPaseo, registrarPago, registrarPunto, RETOMAR_MINUTOS, retomarPaseo,
-  segundosDePaseo, sePuedeRetomar,
+  COMISION_ZOONI, fetchCuentaCorriente, fetchMisPaseos,
+  formatoDistancia, formatoPlata, formatoTimer, guardarModalidadCobro, formatoTiempoPaseado,
+  registrarPago, RETOMAR_MINUTOS, retomarPaseo, segundosDePaseo, sePuedeRetomar,
 } from '../../../services/paseadorApi';
 import { confirmar } from '../../../utils/dialogo';
 
-const PRECISION_MAX_M = 60;    // lecturas peores que esto se descartan
-const SALTO_MIN_M = 5;         // menos que esto es temblor del GPS
-const SALTO_MAX_M = 300;       // más que esto entre dos lecturas es un error
-const GUARDAR_CADA_MS = 15000;
-const GUARDAR_CADA_M = 30;
-
-function geolocalizacion() {
-  return typeof navigator !== 'undefined' ? navigator.geolocation : null;
-}
-
 export default function PaseoTab(props) {
-  const { paseoActivo } = props;
-  const [resumen, setResumen] = useState(null);
+  const { paseosActivos, resumen, setResumen, retomado } = props;
 
-  if (paseoActivo) return <PaseoEnCurso {...props} onFinalizado={setResumen} />;
-  if (resumen) {
-    const retomado = (paseo) => { setResumen(null); props.setPaseoActivo(paseo); };
+  // Con el grupo todavía en curso, el resumen se abre encima (PaseadorAppScreen)
+  if (resumen && !paseosActivos.length) {
     return <Resumen paseo={resumen} onCerrar={() => setResumen(null)} onRetomado={retomado} irA={props.irA} avisar={props.avisar} />;
   }
+  if (paseosActivos.length) return <PaseoEnCurso {...props} />;
   return <SinPaseo {...props} />;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PASEO EN CURSO
+// PASEO EN CURSO (una mascota o un grupo)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, abrirMenu, avisar, onFinalizado }) {
-  const [posicion, setPosicion] = useState(null);
-  const [ruta, setRuta] = useState([]);
-  const [distancia, setDistancia] = useState(paseo.distanciaMetros ?? 0);
-  const [gpsError, setGpsError] = useState(null);
-  const [ocupado, setOcupado] = useState(false);
+function PaseoEnCurso({
+  paseosActivos, perfil, seguimiento, ocupado, pausarOReanudar, pausarOReanudarTodos, finalizar,
+  empezarPaseo, abrirChat, abrirMenu,
+}) {
+  const { posicion, ruta, gpsError } = seguimiento;
+  const [elegidoId, setElegidoId] = useState(null);
+  const [verSumar, setVerSumar] = useState(false);
   const [, setTick] = useState(0);
   const mapaApi = useRef(null);
 
-  const corriendo = !!paseo.reanudadoEn;
+  const grupo = paseosActivos.length > 1;
+  // La mascota cuya casa se marca en el mapa (la primera si no se tocó ninguna)
+  const elegido = paseosActivos.find((p) => p.id === elegidoId) ?? paseosActivos[0];
+  const corriendo = paseosActivos.some((p) => p.reanudadoEn);
+  const enPausa = paseosActivos.filter((p) => !p.reanudadoEn).length;
+  const puedeSumar = paseosActivos.length < (perfil?.maxPerros ?? 3);
 
-  // Refs para el callback del GPS (no re-suscribirse en cada lectura)
-  const ultimo = useRef(null);
-  const distRef = useRef(distancia);
-  const guardado = useRef({ t: 0, d: distancia });
-
-  // Recorrido previo (si la app se recargó a mitad del paseo)
-  useEffect(() => {
-    let vivo = true;
-    fetchRecorrido(paseo.id).then((pts) => {
-      if (!vivo || !pts.length) return;
-      setRuta(pts);
-      ultimo.current = pts[pts.length - 1];
-    });
-    return () => { vivo = false; };
-  }, [paseo.id]);
-
-  // Timer: re-render cada segundo mientras corre
+  // Timer: re-render cada segundo mientras alguno corre
   useEffect(() => {
     if (!corriendo) return undefined;
     const t = setInterval(() => setTick((x) => x + 1), 1000);
     return () => clearInterval(t);
   }, [corriendo]);
 
-  // GPS
-  const onPosicion = useCallback((p) => {
-    const { latitude: lat, longitude: lng, accuracy } = p.coords;
-    const punto = { lat, lng };
-    setPosicion(punto);
-    setGpsError(null);
-    if (accuracy != null && accuracy > PRECISION_MAX_M) return;
-
-    const prev = ultimo.current;
-    if (!prev) {
-      ultimo.current = punto;
-      setRuta((r) => [...r, punto]);
-      return;
-    }
-    const salto = distanciaMetros(prev, punto);
-    if (salto < SALTO_MIN_M || salto > SALTO_MAX_M) return;
-
-    ultimo.current = punto;
-    distRef.current += salto;
-    setDistancia(distRef.current);
-    setRuta((r) => [...r, punto]);
-
-    const ahora = Date.now();
-    if (ahora - guardado.current.t > GUARDAR_CADA_MS || distRef.current - guardado.current.d > GUARDAR_CADA_M) {
-      guardado.current = { t: ahora, d: distRef.current };
-      registrarPunto(paseo.id, punto, distRef.current).catch(() => {});
-    }
-  }, [paseo.id]);
-
-  useEffect(() => {
-    const geo = geolocalizacion();
-    if (!geo) {
-      setGpsError('Este dispositivo no comparte la ubicación: el tiempo se cuenta igual.');
-      return undefined;
-    }
-    if (!corriendo) return undefined;
-    const id = geo.watchPosition(
-      onPosicion,
-      (err) => setGpsError(err?.code === 1
-        ? 'Activá el permiso de ubicación para registrar el recorrido.'
-        : 'Buscando señal de GPS…'),
-      { enableHighAccuracy: true, maximumAge: 3000, timeout: 20000 },
-    );
-    return () => geo.clearWatch(id);
-  }, [corriendo, onPosicion]);
-
-  // ── Acciones ───────────────────────────────────────────────────────────────
-  const pausarOReanudar = async () => {
-    setOcupado(true);
-    try {
-      const nuevo = corriendo ? await pausarPaseo(paseo) : await reanudarPaseo(paseo);
-      // Al reanudar, el primer punto nuevo no suma el tramo hecho en pausa
-      if (!corriendo) ultimo.current = null;
-      setPaseoActivo(nuevo);
-    } catch {
-      avisar('No se pudo actualizar el paseo. Probá de nuevo.', 'alert-circle');
-    } finally {
-      setOcupado(false);
-    }
-  };
-
-  const finalizar = async () => {
-    const seg = segundosDePaseo(paseo);
-    const aCobrar = formatoPlata(paseo.precio);
-    const corto = seg < paseo.duracionMin * 60;
-    const ok = await confirmar(
-      `¿Finalizar el paseo de ${paseo.mascota.nombre}?`,
-      corto
-        ? `Llevás ${formatoTiempoPaseado(seg)} de los ${paseo.duracionMin} minutos pactados. Se cobra lo pactado, ${aCobrar}.`
-        : `Cumpliste el tiempo pactado: se cobra ${aCobrar}. Le avisamos al dueño que ya está de vuelta.`,
-      { textoOk: `Finalizar · ${aCobrar}` },
-    );
-    if (!ok) return;
-    // Segunda confirmación si todavía no cumplió el tiempo: un toque sin
-    // querer deja a la mascota "de vuelta en casa" antes de tiempo
-    if (corto) {
-      const seguro = await confirmar(
-        '¿Seguro que querés finalizar?',
-        `Faltan ${formatoTiempoPaseado(paseo.duracionMin * 60 - seg)} para el tiempo pactado. Si lo finalizás ahora, ${paseo.mascota.nombre} figura de vuelta en casa.`,
-        { textoOk: 'Sí, finalizar', textoCancelar: 'Seguir paseando', destructivo: true },
-      );
-      if (!seguro) return;
-    }
-    setOcupado(true);
-    try {
-      const fin = await finalizarPaseo(paseo, distRef.current);
-      setPaseoActivo(null);
-      onFinalizado(fin);
-    } catch {
-      avisar('No se pudo finalizar. Probá de nuevo.', 'alert-circle');
-    } finally {
-      setOcupado(false);
-    }
-  };
-
   const centrar = () => {
     if (posicion) mapaApi.current?.centrar(posicion.lat, posicion.lng);
   };
 
   const comoLlegar = () => {
-    if (paseo.lat == null) return;
-    Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${paseo.lat},${paseo.lng}`).catch(() => {});
+    if (elegido.lat == null) return;
+    Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${elegido.lat},${elegido.lng}`).catch(() => {});
   };
 
-  const segundos = segundosDePaseo(paseo);
-  const progreso = Math.min(1, segundos / (paseo.duracionMin * 60));
+  const estadoTxt = !corriendo
+    ? (grupo ? 'Todos en pausa' : 'Paseo en pausa')
+    : grupo
+      ? `En vivo · ${paseosActivos.length} mascotas${enPausa ? ` (${enPausa} en pausa)` : ''}`
+      : 'En vivo · el dueño ve tu recorrido';
 
   return (
     <View style={{ flex: 1 }}>
       <MapaPaseo
         style={StyleSheet.absoluteFill}
         posicion={posicion}
-        destino={paseo.lat != null ? { lat: paseo.lat, lng: paseo.lng } : null}
-        centro={paseo.lat != null ? { lat: paseo.lat, lng: paseo.lng } : undefined}
+        destino={elegido.lat != null ? { lat: elegido.lat, lng: elegido.lng } : null}
+        centro={elegido.lat != null ? { lat: elegido.lat, lng: elegido.lng } : undefined}
         ruta={ruta}
         seguir={corriendo}
         apiRef={mapaApi}
@@ -227,14 +118,15 @@ function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, abrirMenu
         </TouchableOpacity>
         <View style={[s.vivo, !corriendo && { backgroundColor: '#F1F1F1' }]}>
           <View style={[s.vivoPunto, !corriendo && { backgroundColor: C.gris }]} />
-          <Text style={s.vivoTxt}>{corriendo ? 'En vivo · el dueño ve tu recorrido' : 'Paseo en pausa'}</Text>
+          <Text style={s.vivoTxt}>{estadoTxt}</Text>
         </View>
         <View style={{ gap: 10 }}>
           <TouchableOpacity style={s.mapBtn} onPress={centrar} accessibilityLabel="Centrar en mi ubicación">
             <Ionicons name="locate" size={22} color={C.teal} />
           </TouchableOpacity>
-          {paseo.lat != null && (
-            <TouchableOpacity style={s.mapBtn} onPress={comoLlegar} accessibilityLabel="Cómo llegar a la casa">
+          {elegido.lat != null && (
+            <TouchableOpacity style={s.mapBtn} onPress={comoLlegar}
+              accessibilityLabel={`Cómo llegar a la casa de ${elegido.mascota.nombre}`}>
               <Ionicons name="navigate" size={20} color={C.teal} />
             </TouchableOpacity>
           )}
@@ -250,53 +142,181 @@ function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, abrirMenu
 
       {/* Abajo: card flotante */}
       <View style={s.flotante}>
-        <View style={s.mascotaRow}>
-          <Avatar fuente={paseo.mascota.visual} nombre={paseo.mascota.nombre} size={48} borde />
-          <View style={{ flex: 1 }}>
-            <Text style={s.mascota}>{paseo.mascota.nombre}</Text>
-            <Text style={s.mascotaSub} numberOfLines={1}>
-              {paseo.duracionMin} minutos pactados · {formatoPlata(paseo.precio)}
-            </Text>
-          </View>
-          <TouchableOpacity style={s.chat} onPress={() => abrirChat(paseo)} accessibilityLabel="Chat con el dueño">
-            <Ionicons name="chatbubble-ellipses" size={22} color={C.teal} />
+        {grupo ? (
+          <>
+            <View style={s.grupoHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.grupoTitulo}>Paseando {paseosActivos.length} mascotas</Text>
+                <Text style={s.mascotaSub}>Cada una se pausa y se finaliza por separado</Text>
+              </View>
+              <PillButton titulo={corriendo ? 'Pausar todos' : 'Reanudar todos'} icono={corriendo ? 'pause' : 'play'}
+                variante="secundario" chico onPress={pausarOReanudarTodos} cargando={ocupado === 'todos'} />
+            </View>
+            <ScrollView style={s.grupoLista} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+              {paseosActivos.map((p) => (
+                <FilaPaseo key={p.id} paseo={p} elegido={p.id === elegido.id} onElegir={() => setElegidoId(p.id)}
+                  ocupado={ocupado === p.id || ocupado === 'todos'} onPausa={() => pausarOReanudar(p)}
+                  onFinalizar={() => finalizar(p)} onChat={() => abrirChat(p)} />
+              ))}
+            </ScrollView>
+          </>
+        ) : (
+          <PaseoUnico paseo={elegido} ocupado={ocupado === elegido.id} onPausa={() => pausarOReanudar(elegido)}
+            onFinalizar={() => finalizar(elegido)} onChat={() => abrirChat(elegido)} />
+        )}
+
+        {puedeSumar && (
+          <TouchableOpacity style={s.sumar} onPress={() => setVerSumar(true)} accessibilityRole="button">
+            <Ionicons name="add-circle-outline" size={18} color={C.teal} />
+            <Text style={s.sumarTxt}>Sumar otra mascota al paseo</Text>
           </TouchableOpacity>
-        </View>
+        )}
+      </View>
 
-        <View style={s.numeros}>
-          <View style={{ flex: 1.3 }}>
-            <Text style={[s.timer, !corriendo && { color: C.texto2 }]}>{formatoTimer(segundos)}</Text>
-            <Text style={s.numEtiqueta}>tiempo</Text>
-          </View>
-          <View style={s.numDivisor} />
-          <View style={{ flex: 1 }}>
-            <Text style={s.distancia}>{formatoDistancia(distancia)}</Text>
-            <Text style={s.numEtiqueta}>distancia</Text>
-          </View>
-        </View>
+      <SumarMascotaModal visible={verSumar} onCerrar={() => setVerSumar(false)}
+        onIniciar={async (p) => { setVerSumar(false); await empezarPaseo(p); }} ocupado={ocupado} />
+    </View>
+  );
+}
 
-        <View style={s.barra}>
-          <View style={[s.barraFill, { width: `${progreso * 100}%` }, progreso >= 1 && { backgroundColor: C.amarillo }]} />
+/** Card de una sola mascota: timer y distancia grandes, como siempre. */
+function PaseoUnico({ paseo, ocupado, onPausa, onFinalizar, onChat }) {
+  const corriendo = !!paseo.reanudadoEn;
+  const segundos = segundosDePaseo(paseo);
+  const progreso = Math.min(1, segundos / (paseo.duracionMin * 60));
+  return (
+    <>
+      <View style={s.mascotaRow}>
+        <Avatar fuente={paseo.mascota.visual} nombre={paseo.mascota.nombre} size={48} borde />
+        <View style={{ flex: 1 }}>
+          <Text style={s.mascota}>{paseo.mascota.nombre}</Text>
+          <Text style={s.mascotaSub} numberOfLines={1}>
+            {paseo.duracionMin} minutos pactados · {formatoPlata(paseo.precio)}
+          </Text>
         </View>
-        <Text style={s.barraTxt}>
-          {progreso >= 1
-            ? '¡Cumpliste el tiempo pactado!'
-            : `Faltan ${formatoTiempoPaseado(paseo.duracionMin * 60 - segundos)}`}
-        </Text>
+        <TouchableOpacity style={s.chat} onPress={onChat} accessibilityLabel="Chat con el dueño">
+          <Ionicons name="chatbubble-ellipses" size={22} color={C.teal} />
+        </TouchableOpacity>
+      </View>
 
-        <View style={s.acciones}>
-          <PillButton
-            titulo={corriendo ? 'Pausar' : 'Reanudar'}
-            icono={corriendo ? 'pause' : 'play'}
-            variante="secundario"
-            onPress={pausarOReanudar}
-            disabled={ocupado}
-            style={{ flex: 1 }}
-          />
-          <PillButton titulo="Finalizar" icono="flag" onPress={finalizar} cargando={ocupado} style={{ flex: 1.3 }} />
+      <View style={s.numeros}>
+        <View style={{ flex: 1.3 }}>
+          <Text style={[s.timer, !corriendo && { color: C.texto2 }]}>{formatoTimer(segundos)}</Text>
+          <Text style={s.numEtiqueta}>tiempo</Text>
+        </View>
+        <View style={s.numDivisor} />
+        <View style={{ flex: 1 }}>
+          <Text style={s.distancia}>{formatoDistancia(paseo.distanciaMetros)}</Text>
+          <Text style={s.numEtiqueta}>distancia</Text>
         </View>
       </View>
-    </View>
+
+      <View style={s.barra}>
+        <View style={[s.barraFill, { width: `${progreso * 100}%` }, progreso >= 1 && { backgroundColor: C.amarillo }]} />
+      </View>
+      <Text style={s.barraTxt}>
+        {progreso >= 1
+          ? '¡Cumpliste el tiempo pactado!'
+          : `Faltan ${formatoTiempoPaseado(paseo.duracionMin * 60 - segundos)}`}
+      </Text>
+
+      <View style={s.acciones}>
+        <PillButton
+          titulo={corriendo ? 'Pausar' : 'Reanudar'}
+          icono={corriendo ? 'pause' : 'play'}
+          variante="secundario"
+          onPress={onPausa}
+          disabled={ocupado}
+          style={{ flex: 1 }}
+        />
+        <PillButton titulo="Finalizar" icono="flag" onPress={onFinalizar} cargando={ocupado} style={{ flex: 1.3 }} />
+      </View>
+    </>
+  );
+}
+
+/** Una mascota del grupo: su tiempo, distancia, progreso y sus propios botones. */
+export function FilaPaseo({ paseo, elegido = false, onElegir, ocupado, onPausa, onFinalizar, onChat }) {
+  const corriendo = !!paseo.reanudadoEn;
+  const segundos = segundosDePaseo(paseo);
+  const progreso = Math.min(1, segundos / (paseo.duracionMin * 60));
+  // Sin onElegir (en Inicio) la fila es un View: un Touchable deshabilitado
+  // alrededor puede tragarse los toques de los botones en web
+  const Contenedor = onElegir ? TouchableOpacity : View;
+  const tocable = onElegir ? { onPress: onElegir, activeOpacity: 0.8 } : {};
+  return (
+    <Contenedor style={[s.fila, elegido && s.filaElegida]} {...tocable}
+      accessibilityLabel={`${paseo.mascota.nombre}: ${corriendo ? 'caminando' : 'en pausa'}`}>
+      <Avatar fuente={paseo.mascota.visual} nombre={paseo.mascota.nombre} size={40} />
+      <View style={{ flex: 1 }}>
+        <View style={s.filaTop}>
+          <Text style={s.filaNombre} numberOfLines={1}>{paseo.mascota.nombre}</Text>
+          {!corriendo && <Text style={s.filaPausa}>En pausa</Text>}
+        </View>
+        <Text style={[s.filaNumeros, !corriendo && { color: C.texto2 }]}>
+          {formatoTimer(segundos)} · {formatoDistancia(paseo.distanciaMetros)}
+        </Text>
+        <View style={s.filaBarra}>
+          <View style={[s.barraFill, { width: `${progreso * 100}%` }, progreso >= 1 && { backgroundColor: C.amarillo }]} />
+        </View>
+      </View>
+      {onChat && (
+        <TouchableOpacity style={s.filaBtn} onPress={onChat} accessibilityLabel={`Chat con el dueño de ${paseo.mascota.nombre}`}>
+          <Ionicons name="chatbubble-ellipses" size={18} color={C.teal} />
+        </TouchableOpacity>
+      )}
+      <TouchableOpacity style={s.filaBtn} onPress={onPausa} disabled={ocupado}
+        accessibilityLabel={`${corriendo ? 'Pausar' : 'Reanudar'} a ${paseo.mascota.nombre}`}>
+        {ocupado
+          ? <ActivityIndicator size="small" color={C.teal} />
+          : <Ionicons name={corriendo ? 'pause' : 'play'} size={18} color={C.teal} />}
+      </TouchableOpacity>
+      <TouchableOpacity style={[s.filaBtn, s.filaFin]} onPress={onFinalizar} disabled={ocupado}
+        accessibilityLabel={`Finalizar el paseo de ${paseo.mascota.nombre}`}>
+        <Ionicons name="flag" size={18} color={C.texto} />
+      </TouchableOpacity>
+    </Contenedor>
+  );
+}
+
+/** Lista de la agenda para sumar otra mascota al paseo que está en curso. */
+function SumarMascotaModal({ visible, onCerrar, onIniciar, ocupado }) {
+  const [agenda, setAgenda] = useState(null);
+
+  useEffect(() => {
+    if (!visible) return;
+    setAgenda(null);
+    fetchMisPaseos(['aceptado']).then(setAgenda).catch(() => setAgenda([]));
+  }, [visible]);
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCerrar}>
+      <TouchableOpacity style={s.sheetFondo} activeOpacity={1} onPress={onCerrar}>
+        <TouchableOpacity style={s.sheet} activeOpacity={1}>
+          <View style={s.sheetHeader}>
+            <Text style={s.sheetTitulo}>Sumar al paseo</Text>
+            <TouchableOpacity onPress={onCerrar} hitSlop={10} accessibilityLabel="Cerrar">
+              <Ionicons name="close" size={24} color={C.texto} />
+            </TouchableOpacity>
+          </View>
+          {agenda == null ? (
+            <ActivityIndicator color={C.teal} style={{ marginVertical: 30 }} />
+          ) : agenda.length ? (
+            <ScrollView contentContainerStyle={{ paddingBottom: 10 }}>
+              {agenda.map((p) => (
+                <PaseoCard key={p.id} paseo={p} mostrarNotas={false}>
+                  <PillButton titulo="Iniciar y sumar" icono="play" chico onPress={() => onIniciar(p)}
+                    cargando={ocupado === p.id} style={{ flex: 1 }} />
+                </PaseoCard>
+              ))}
+            </ScrollView>
+          ) : (
+            <Vacio icono="calendar-outline" titulo="No tenés otros paseos aceptados"
+              texto="Cuando aceptes otra solicitud, la vas a poder sumar acá." />
+          )}
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
   );
 }
 
@@ -304,7 +324,11 @@ function PaseoEnCurso({ paseoActivo: paseo, setPaseoActivo, abrirChat, abrirMenu
 // RESUMEN DEL PASEO TERMINADO
 // ─────────────────────────────────────────────────────────────────────────────
 
-function Resumen({ paseo, onCerrar, onRetomado, irA, avisar }) {
+/**
+ * `enGrupo` = cuántas mascotas siguen en curso (0 si era la única): en ese caso
+ * se muestra encima del paseo y el botón principal vuelve al grupo.
+ */
+export function Resumen({ paseo, onCerrar, onRetomado, irA, avisar, enGrupo = 0 }) {
   const [cuenta, setCuenta] = useState(null);
   const [retomando, setRetomando] = useState(false);
   const [puedeRetomar, setPuedeRetomar] = useState(() => sePuedeRetomar(paseo));
@@ -440,7 +464,12 @@ function Resumen({ paseo, onCerrar, onRetomado, irA, avisar }) {
         )}
       </Card>
 
-      <PillButton titulo="Volver al inicio" style={{ marginTop: 20 }} onPress={() => { onCerrar(); irA('inicio'); }} />
+      {enGrupo > 0 ? (
+        <PillButton titulo={`Seguir paseando · ${enGrupo} ${enGrupo === 1 ? 'mascota' : 'mascotas'}`} icono="walk"
+          style={{ marginTop: 20 }} onPress={() => { onCerrar(); irA('paseo'); }} />
+      ) : (
+        <PillButton titulo="Volver al inicio" style={{ marginTop: 20 }} onPress={() => { onCerrar(); irA('inicio'); }} />
+      )}
       <PillButton titulo="Ver cuenta corriente" variante="secundario" style={{ marginTop: 12 }}
         onPress={() => { onCerrar(); irA('pagos'); }} />
 
@@ -533,6 +562,37 @@ const s = StyleSheet.create({
   barraTxt: { fontSize: 12, color: C.texto2, fontWeight: '600', marginTop: 6 },
 
   acciones: { flexDirection: 'row', gap: 10, marginTop: 14 },
+
+  grupoHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  grupoTitulo: { fontSize: 18, fontWeight: '800', color: C.texto },
+  grupoLista: { maxHeight: 290 },
+  fila: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 8,
+    borderRadius: 14, borderBottomWidth: 1, borderBottomColor: '#F2F2F2',
+  },
+  filaElegida: { backgroundColor: '#F2FBF5' },
+  filaTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  filaNombre: { fontSize: 15, fontWeight: '800', color: C.texto, flexShrink: 1 },
+  filaPausa: {
+    fontSize: 11, fontWeight: '800', color: C.texto2, backgroundColor: '#F1F1F1',
+    borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1, overflow: 'hidden',
+  },
+  filaNumeros: { fontSize: 14, fontWeight: '800', color: C.teal, marginTop: 1, fontVariant: ['tabular-nums'] },
+  filaBarra: { height: 5, borderRadius: 3, backgroundColor: C.menta, marginTop: 5, overflow: 'hidden' },
+  filaBtn: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: C.menta,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  filaFin: { backgroundColor: C.amarillo },
+  sumar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12, minHeight: 32 },
+  sumarTxt: { fontSize: 14, fontWeight: '800', color: C.teal },
+
+  sheetFondo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: C.fondo, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '80%',
+  },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  sheetTitulo: { fontSize: 19, fontWeight: '800', color: C.texto },
 
   resumenTop: { alignItems: 'center', marginVertical: 18 },
   resumenTitulo: { fontSize: 22, fontWeight: '900', color: C.texto, marginTop: 14, textAlign: 'center' },

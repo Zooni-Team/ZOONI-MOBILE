@@ -1,11 +1,12 @@
 /**
- * PaseadorDisponibilidadScreen.jsx — Zona de trabajo
+ * PaseadorDisponibilidadScreen.jsx — Zona y horarios de trabajo
  *
  * Se abre desde Perfil y desde el menú. Define el radio que el paseador está
- * dispuesto a moverse y los barrios donde pasea. No hay días ni horarios
- * fijos: cuándo le llegan solicitudes lo decide el switch "Disponible" de la
- * home. Se guarda todo junto con "Guardar" (no hay autosave: son decisiones
- * de trabajo y es mejor confirmarlas).
+ * dispuesto a moverse, los barrios donde pasea y qué días y en qué horario
+ * pasea. Los horarios son informativos: los dueños los ven en su ficha y al
+ * pedir un paseo, pero cuándo le llegan solicitudes lo sigue decidiendo el
+ * switch "Disponible" de la home. Se guarda todo junto con "Guardar" (no hay
+ * autosave: son decisiones de trabajo y es mejor confirmarlas).
  */
 
 import { useEffect, useState } from 'react';
@@ -18,7 +19,10 @@ import { useNavigation } from '@react-navigation/native';
 
 import { C, Card, PillButton, Seccion } from '../../components/paseador/PaseadorUI';
 import ZonaMapaPicker from '../../components/paseador/ZonaMapaPicker';
-import { actualizarPerfilPaseador, fetchPerfilPaseador } from '../../services/paseadorApi';
+import HorariosEditor from '../../components/negocio/HorariosEditor';
+import { DIAS_SEMANA } from '../../constants/negocios';
+import { minutosDe } from '../../services/negocioApi';
+import { HORARIOS_DEFAULT, actualizarPerfilPaseador, fetchPerfilPaseador } from '../../services/paseadorApi';
 import { alerta } from '../../utils/dialogo';
 
 export default function PaseadorDisponibilidadScreen() {
@@ -30,6 +34,7 @@ export default function PaseadorDisponibilidadScreen() {
   const [coords, setCoords] = useState({ lat: null, lng: null });
   const [zonas, setZonas] = useState([]);
   const [nuevaZona, setNuevaZona] = useState('');
+  const [horarios, setHorarios] = useState(HORARIOS_DEFAULT);
 
   useEffect(() => {
     fetchPerfilPaseador().then((p) => {
@@ -38,6 +43,7 @@ export default function PaseadorDisponibilidadScreen() {
         setZona(p.zona);
         setCoords({ lat: p.lat, lng: p.lng });
         setZonas(p.zonas ?? []);
+        setHorarios(p.horarios);
       }
       setCargando(false);
     }).catch(() => setCargando(false));
@@ -60,10 +66,20 @@ export default function PaseadorDisponibilidadScreen() {
       alerta('Falta tu radio', 'Escribí hasta cuántos kilómetros vas a buscar perros.');
       return;
     }
+    const dias = DIAS_SEMANA.filter((d) => horarios[d.key]?.activo);
+    if (!dias.length) {
+      alerta('Faltan tus días', 'Marcá al menos un día en el que paseás.');
+      return;
+    }
+    const alReves = dias.find((d) => minutosDe(horarios[d.key].hasta) <= minutosDe(horarios[d.key].desde));
+    if (alReves) {
+      alerta('Revisá tus horarios', `El ${alReves.label.toLowerCase()} terminás antes de empezar.`);
+      return;
+    }
     setGuardando(true);
     try {
       await actualizarPerfilPaseador({
-        radioKm, zona: zona.trim() || 'Mi zona', zonas, lat: coords.lat, lng: coords.lng,
+        radioKm, zona: zona.trim() || 'Mi zona', zonas, lat: coords.lat, lng: coords.lng, horarios,
       });
       navigation.goBack();
     } catch {
@@ -81,8 +97,8 @@ export default function PaseadorDisponibilidadScreen() {
           <Ionicons name="chevron-back" size={26} color={C.teal} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={s.titulo}>Zona de trabajo</Text>
-          <Text style={s.sub}>Te llegan solicitudes sólo dentro de esta zona</Text>
+          <Text style={s.titulo}>Zona y horarios</Text>
+          <Text style={s.sub}>Dónde y cuándo paseás</Text>
         </View>
       </View>
 
@@ -125,6 +141,13 @@ export default function PaseadorDisponibilidadScreen() {
             </View>
           </Card>
 
+          <Seccion titulo="Días y horarios" />
+          <Card>
+            <Text style={s.ayuda}>Los dueños ven estos horarios en tu perfil y cuando te piden un paseo.</Text>
+            <HorariosEditor valor={horarios} onCambio={setHorarios} base={HORARIOS_DEFAULT()}
+              inactivo="No paseo" etiquetas={{ desde: 'empiezo', hasta: 'termino' }} />
+          </Card>
+
           <PillButton titulo="Guardar" onPress={guardar} cargando={guardando} style={{ marginTop: 24 }} />
         </ScrollView>
       )}
@@ -144,6 +167,7 @@ const s = StyleSheet.create({
   scroll: { padding: 20, paddingTop: 0, paddingBottom: 40 },
 
   label: { fontSize: 13, fontWeight: '700', color: C.texto, marginBottom: 6 },
+  ayuda: { fontSize: 13, color: C.texto2, lineHeight: 18, marginBottom: 4 },
   input: {
     borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
     fontSize: 15, color: C.texto, backgroundColor: '#FFFFFF',

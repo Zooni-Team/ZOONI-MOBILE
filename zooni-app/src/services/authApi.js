@@ -34,10 +34,19 @@ export async function fetchRazas(especie) {
     .from('razas')
     .select('id, nombre')
     .eq('especie', especie)
-    .eq('activo', true)
-    .order('orden', { ascending: true });
+    .eq('activo', true);
   if (error) throw error;
-  return { razas: data ?? [] };
+  return { razas: ordenarRazas(data ?? []) };
+}
+
+// Orden alfabético para que sea fácil encontrar la raza en el desplegable.
+// Las opciones comodín ("Mestizo / Sin raza definida", "Otro / Sin
+// especificar") van siempre al final, como en el catálogo original.
+const ES_COMODIN = /sin (raza|especificar)/i;
+function ordenarRazas(razas) {
+  return [...razas].sort((a, b) =>
+    ES_COMODIN.test(a.nombre) - ES_COMODIN.test(b.nombre)
+    || a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
 }
 
 // ─────────────────────────────────────────────

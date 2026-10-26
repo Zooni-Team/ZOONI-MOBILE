@@ -50,7 +50,8 @@ import {
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const TIPOS = ['Vacuna', 'Turno Veterinario', 'Desparasitación', 'Peluquería', 'Paseo', 'Medicación', 'Control', 'Otro'];
+// Orden alfabético en el desplegable; "Otro" queda último.
+const TIPOS = ['Control', 'Desparasitación', 'Medicación', 'Paseo', 'Peluquería', 'Turno Veterinario', 'Vacuna', 'Otro'];
 
 // Referencia visual opcional del evento: emoji + color, para diferenciarlo a simple vista.
 const EMOJIS = ['🐾', '💉', '🚶', '🛁', '💊', '🩺', '✂️', '🎉', '📌', '❤️'];

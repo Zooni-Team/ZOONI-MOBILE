@@ -282,7 +282,7 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
       {/* ── Configuración ──────────────────────────────────────────── */}
       <Seccion titulo="Configuración" />
       <Card style={{ paddingVertical: 4 }}>
-        <FilaMenu icono="map" titulo="Zona de trabajo"
+        <FilaMenu icono="map" titulo="Zona y horarios"
           sub={`${perfil.radioKm} km a la redonda · ${cantZonas} ${cantZonas === 1 ? 'zona' : 'zonas'}`}
           onPress={() => navigation.navigate('PaseadorDisponibilidad')} />
         {tieneMascotas && (

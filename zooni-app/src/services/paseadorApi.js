@@ -834,10 +834,13 @@ export async function fetchMisPaseos(estados, { desde } = {}) {
   return enriquecer(data ?? []);
 }
 
-/** El paseo que está en curso ahora (o null). */
-export async function fetchPaseoEnCurso() {
+/**
+ * Los paseos que están en curso ahora: uno por mascota, así que si el
+ * paseador saca a un grupo hay varios a la vez (en el orden en que arrancaron).
+ */
+export async function fetchPaseosEnCurso() {
   const lista = await fetchMisPaseos(['en_curso']);
-  return lista[0] ?? null;
+  return lista.sort((a, b) => String(a.horaInicio ?? '').localeCompare(String(b.horaInicio ?? '')));
 }
 
 export async function fetchPaseo(id) {
@@ -1730,6 +1733,38 @@ export const PREGUNTAS_RESENA = [
 
 export const MEDIA_RESENA_MAX = 6;
 
+/** Código de app para un error de Postgres al guardar una reseña (ver CalificarPaseoModal). */
+function codigoErrorResena(error) {
+  if (esEsquemaFaltante(error)) return 'migracion_pendiente';
+  if (error?.code === '42501' || /row-level security|permission denied/i.test(error?.message ?? '')) return 'sin_permiso';
+  if (error?.code === '23502' || error?.code === '23503') return 'sin_sesion'; // id_autor nulo o inexistente
+  return 'error_base';
+}
+
+/**
+ * Sube las fotos/videos de una reseña al bucket "resenas" (042). Si falla,
+ * tira un Error con código para que el formulario diga el motivo real:
+ *   bucket_faltante · archivo_pesado · tipo_no_admitido · error_subida
+ */
+async function subirMediaResena(media, carpeta) {
+  const subidos = [];
+  for (const m of media.slice(0, MEDIA_RESENA_MAX)) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      subidos.push(await subirArchivoPublico(m.uri, carpeta, { bucket: 'resenas', mimeHint: m.mimeType }));
+    } catch (e) {
+      const msg = String(e?.message ?? '');
+      const estado = String(e?.statusCode ?? e?.status ?? '');
+      const codigo = /bucket not found/i.test(msg) ? 'bucket_faltante'
+        : estado === '413' || /exceeded|too large|maximum allowed size/i.test(msg) ? 'archivo_pesado'
+        : estado === '415' || /mime type|not supported/i.test(msg) ? 'tipo_no_admitido'
+        : 'error_subida';
+      throw errorApp(codigo, e);
+    }
+  }
+  return subidos;
+}
+
 /**
  * Calificación del dueño al terminar. `media` son los archivos elegidos con
  * el picker ([{ uri, mimeType }]): se suben al bucket "resenas" y se guardan
@@ -1742,11 +1777,7 @@ export async function calificarPaseo(paseo, {
   rating, resena, aspectos = {}, respuestas = {}, media = [],
 }) {
   const texto = resena?.trim() || null;
-  const subidos = [];
-  for (const m of media.slice(0, MEDIA_RESENA_MAX)) {
-    // eslint-disable-next-line no-await-in-loop
-    subidos.push(await subirArchivoPublico(m.uri, `paseo-${paseo.id}`, { bucket: 'resenas', mimeHint: m.mimeType }));
-  }
+  const subidos = await subirMediaResena(media, `paseo-${paseo.id}`);
 
   let parcial = false;
   const { error } = await supabase.from('Paseo').update({
@@ -1758,12 +1789,12 @@ export async function calificarPaseo(paseo, {
     ResenaFecha: new Date().toISOString(),
   }).eq('Id_Paseo', paseo.id).eq('Estado', 'finalizado');
   if (error) {
-    if (!esEsquemaFaltante(error)) throw error;
+    if (!esEsquemaFaltante(error)) throw errorApp(codigoErrorResena(error), error);
     // Sin la 042: lo básico igual se guarda
     const { error: errBasico } = await supabase.from('Paseo')
       .update({ Rating: rating, Resena: texto })
       .eq('Id_Paseo', paseo.id).eq('Estado', 'finalizado');
-    if (errBasico) throw errBasico;
+    if (errBasico) throw errorApp(codigoErrorResena(errBasico), errBasico);
     parcial = true;
   }
 
@@ -1813,11 +1844,7 @@ export async function opinarPaseador(idWalker, {
   rating, resena, aspectos = {}, respuestas = {}, media = [],
 }) {
   const texto = resena?.trim() || null;
-  const subidos = [];
-  for (const m of media.slice(0, MEDIA_RESENA_MAX)) {
-    // eslint-disable-next-line no-await-in-loop
-    subidos.push(await subirArchivoPublico(m.uri, `opinion-${idWalker}`, { bucket: 'resenas', mimeHint: m.mimeType }));
-  }
+  const subidos = await subirMediaResena(media, `opinion-${idWalker}`);
   const yo = getCurrentUserId();
   const { error } = await supabase.from('paseador_opiniones').insert({
     id_walker: idWalker,
@@ -1828,7 +1855,7 @@ export async function opinarPaseador(idWalker, {
     respuestas: Object.keys(respuestas).length ? respuestas : null,
     media: subidos,
   });
-  if (error) throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
+  if (error) throw errorApp(codigoErrorResena(error), error);
   if (String(idWalker) !== String(yo)) {
     notificar(idWalker, `Nueva reseña: ${rating} ${rating === 1 ? 'estrella' : 'estrellas'}`,
       texto ? `"${texto.slice(0, 80)}"` : 'Te dejaron una opinión', 'perfil');
