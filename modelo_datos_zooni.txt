@@ -1,0 +1,636 @@
+MODELO DE DATOS DE ZOONI - SUPABASE
+Exportación en texto de la estructura compartida por el usuario.
+
+NOTA:
+Este archivo documenta tablas, columnas, tipos, restricciones y políticas RLS tal como fueron compartidos. No reemplaza un backup de la base de datos. Las relaciones FK no están enumeradas explícitamente en el listado original.
+
+__MigrationLog
+- Name: varchar (Primary)
+- ExecutedAt: timestamp (Nullable)
+
+Clinica
+- Id_Clinica: int4 (Primary Identity)
+- Nombre: varchar (Nullable)
+- Direccion: varchar (Nullable)
+- Telefono: varchar (Nullable)
+- Mail: varchar (Nullable)
+- Rating: numeric (Nullable)
+
+Role
+- Id_Role: int4 (Primary Identity)
+- Nombre: varchar (Unique)
+
+User
+- Id_User: int4 (Primary Identity)
+- Nombre: varchar (Nullable)
+- Apellido: varchar (Nullable)
+- Mail: varchar (Unique)
+- Telefono: varchar (Nullable)
+- FechaRegistro: timestamp (Nullable)
+- FotoPerfil: varchar (Nullable)
+- Ubicacion: varchar (Nullable)
+- Estado: bool (Nullable)
+- Lat: numeric (Nullable)
+- Lng: numeric (Nullable)
+- Genero: varchar (Nullable)
+- FechaNacimiento: date (Nullable)
+- Intereses: _text (Nullable)
+- Pais: varchar (Nullable)
+- PaisCodigo: varchar (Nullable)
+- Provincia: varchar (Nullable)
+- Ciudad: varchar (Nullable)
+- CodigoTelefono: varchar (Nullable)
+- NombreUsuario: varchar (Nullable)
+- Bio: varchar (Nullable)
+- NombreUsuarioCambiadoEn: timestamptz (Nullable)
+- UltimaConexion: timestamptz (Nullable)
+
+Mascota
+- Id_Mascota: int4 (Primary Identity)
+- Id_User: int4
+- Nombre: varchar (Nullable)
+- Especie: varchar (Nullable)
+- Raza: varchar (Nullable)
+- FechaNacimiento: date (Nullable)
+- Peso: numeric (Nullable)
+- Foto: varchar (Nullable)
+- EstadoSalud: varchar (Nullable)
+- ChipId: varchar (Nullable)
+- ImagenAsset: varchar (Nullable)
+- EsActiva: bool
+- Sexo: varchar (Nullable)
+- Estado: varchar
+- ArchivadaEn: timestamptz (Nullable)
+- MotivoArchivo: varchar (Nullable)
+- MotivoArchivoTexto: varchar (Nullable)
+- FechaFallecimiento: date (Nullable)
+- EliminadaEn: timestamptz (Nullable)
+- PurgarDespues: timestamptz (Nullable)
+- Tamano: varchar (Nullable)
+- Castrado: bool (Nullable)
+- Microchip: varchar (Nullable)
+- Descripcion: varchar (Nullable)
+- VisibleEnMatch: bool
+- SenasParticulares: varchar (Nullable)
+- PerfilMatchCreado: bool
+- MostrarFoto: bool
+
+Vacuna
+- Id_Vacuna: int4 (Primary Identity)
+- Nombre: varchar (Nullable)
+- Dosis: varchar (Nullable)
+- Especie: varchar (Nullable)
+- FrecuenciaDescripcion: varchar (Nullable)
+- EdadMinMeses: int4 (Nullable)
+- EdadMaxMeses: int4 (Nullable)
+- PesoMinKg: numeric (Nullable)
+- PesoMaxKg: numeric (Nullable)
+- Razas: _text (Nullable)
+
+MascotaVacuna
+- Id: int4 (Primary Identity)
+- Id_Mascota: int4
+- Id_Vacuna: int4 (Nullable)
+- FechaAplicacion: date (Nullable)
+- ProximaDosis: date (Nullable)
+- AplicadaPor: varchar (Nullable)
+- NombreLibre: varchar (Nullable)
+- Tipo: varchar (Nullable)
+- Descripcion: varchar (Nullable)
+
+Publicacion
+- Id_Publicacion: int4 (Primary Identity)
+- Id_User: int4
+- Id_Mascota: int4 (Nullable)
+- ImagenUrl: varchar (Nullable)
+- Descripcion: varchar (Nullable)
+- Fecha: timestamptz (Nullable)
+- Activo: bool
+
+Comentario
+- Id_Comentario: int4 (Primary Identity)
+- Id_Publicacion: int4
+- Id_User: int4
+- Contenido: varchar (Nullable)
+- Fecha: timestamp (Nullable)
+
+HistorialEvento
+- Id_Evento: int4 (Primary Identity)
+- Id_Mascota: int4
+- Tipo: varchar (Nullable)
+- Fecha: timestamp (Nullable)
+- Descripcion: varchar (Nullable)
+- Visibilidad: bool (Nullable)
+
+Tratamiento
+- Id_Tratamiento: int4 (Primary Identity)
+- Id_Mascota: int4
+- Nombre: varchar (Nullable)
+- Veterinario: varchar (Nullable)
+- FechaInicio: date (Nullable)
+- FechaFin: date (Nullable)
+- Observaciones: varchar (Nullable)
+
+Veterinario
+- Id_Vet: int4 (Primary Identity)
+- Id_Clinica: int4 (Nullable)
+- Nombre: varchar (Nullable)
+- Matricula: varchar (Nullable)
+- Especialidad: varchar (Nullable)
+
+Notificacion
+- Id: int4 (Primary Identity)
+- Id_User: int4
+- Titulo: varchar (Nullable)
+- Mensaje: varchar (Nullable)
+- Tipo: varchar (Nullable)
+- Leido: bool (Nullable)
+- Fecha: timestamptz (Nullable)
+- Id_Mascota: int4 (Nullable)
+- DataExtra: jsonb (Nullable)
+
+Paseo
+- Id_Paseo: int4 (Primary Identity)
+- Id_Mascota: int4
+- Id_Walker: int4 (Nullable)
+- HoraInicio: timestamptz (Nullable)
+- HoraFin: timestamptz (Nullable)
+- UbicacionInicio: varchar (Nullable)
+- UbicacionFin: varchar (Nullable)
+- Estado: varchar (Nullable)
+- Rating: int4 (Nullable)
+- Id_Dueno: int4 (Nullable)
+- FechaProgramada: timestamptz (Nullable)
+- DuracionMin: int4
+- Precio: numeric
+- Direccion: varchar (Nullable)
+- Lat: numeric (Nullable)
+- Lng: numeric (Nullable)
+- Notas: varchar (Nullable)
+- DistanciaMetros: int4
+- SegundosAcumulados: int4
+- ReanudadoEn: timestamptz (Nullable)
+- Resena: varchar (Nullable)
+- CreadoEn: timestamptz
+- ResenaAspectos: jsonb (Nullable)
+- ResenaRespuestas: jsonb (Nullable)
+- ResenaMedia: jsonb
+- ResenaFecha: timestamptz (Nullable)
+- MedioPago: varchar (Nullable)
+- PrecioPactado: numeric (Nullable)
+- Comision: numeric
+
+PaseoTrack
+- Id: int4 (Primary Identity)
+- Id_Paseo: int4
+- Lat: numeric (Nullable)
+- Lng: numeric (Nullable)
+- Timestamp: timestamptz (Nullable)
+
+Match
+- id: int4 (Primary Identity)
+- idMascotaUno: int4
+- idMascotaDos: int4
+- idUsuarioUno: int4
+- idUsuarioDos: int4
+- fecha: timestamp (Nullable)
+- activo: bool (Nullable)
+
+Mensaje
+- id: int4 (Primary Identity)
+- idMatch: int4 (Nullable)
+- idUsuario: int4
+- texto: varchar (Nullable)
+- fecha: timestamptz (Nullable)
+- leido: bool (Nullable)
+- idServicio: int4 (Nullable)
+- deNegocio: bool
+
+Voto
+- id: int4 (Primary Identity)
+- idMascotaOrigen: int4
+- idMascotaDestino: int4
+- leGusta: bool
+- fecha: timestamp (Nullable)
+
+UserRole
+- Id_User: int4 (Primary)
+- Id_Role: int4 (Primary)
+
+avatares_catalogo
+- id: int4 (Primary)
+- especie: varchar
+- asset_name: varchar
+- nombre: varchar
+- activo: bool
+- orden: int4
+- creado_en: timestamp
+- razas: _text (Nullable)
+
+organizadores_verificados
+- id: int4 (Primary)
+- nombre: varchar
+- descripcion: text (Nullable)
+- logo_url: varchar (Nullable)
+- es_oficial: bool (Nullable)
+- activo: bool (Nullable)
+- creado_en: timestamp (Nullable)
+
+eventos
+- id: int4 (Primary)
+- organizador_id: int4
+- titulo: varchar
+- descripcion: text (Nullable)
+- imagen_url: varchar (Nullable)
+- fecha_hora: timestamptz
+- ubicacion_nombre: varchar
+- lat: numeric (Nullable)
+- lng: numeric (Nullable)
+- ciudad: varchar
+- provincia: varchar (Nullable)
+- pais: varchar (Nullable)
+- categoria_tag: varchar (Nullable)
+- activo: bool (Nullable)
+- creado_en: timestamp (Nullable)
+
+eventos_calendario
+- id: int4 (Primary)
+- mascota_id: int4
+- titulo: varchar
+- descripcion: text (Nullable)
+- fecha_hora: timestamptz
+- tipo: varchar
+- emoji: varchar (Nullable)
+- color: varchar (Nullable)
+- origen: varchar
+- origen_evento_id: int4 (Nullable)
+- creado_en: timestamptz (Nullable)
+- actualizado_en: timestamptz (Nullable)
+
+consejos_catalogo
+- id: int4 (Primary)
+- especie: varchar
+- categoria: varchar
+- contenido: text
+- activo: bool (Nullable)
+- creado_en: timestamp (Nullable)
+- edad_min_meses: int4 (Nullable)
+- edad_max_meses: int4 (Nullable)
+- peso_min_kg: numeric (Nullable)
+- peso_max_kg: numeric (Nullable)
+- razas: _text (Nullable)
+
+tratamientos_catalogo
+- id: int4 (Primary)
+- especie: varchar
+- nombre: varchar
+- frecuencia_descripcion: varchar (Nullable)
+- activo: bool (Nullable)
+- edad_min_meses: int4 (Nullable)
+- edad_max_meses: int4 (Nullable)
+- peso_min_kg: numeric (Nullable)
+- peso_max_kg: numeric (Nullable)
+- razas: _text (Nullable)
+
+carteles
+- id: int4 (Primary)
+- usuario_id: int4
+- mascota_id: int4 (Nullable)
+- tipo: varchar
+- descripcion: varchar (Nullable)
+- telefono_contacto: varchar
+- foto_url: varchar (Nullable)
+- lat: numeric
+- lng: numeric
+- activo: bool
+- created_at: timestamp
+
+servicios
+- id: int4 (Primary)
+- tipo: varchar
+- nombre: varchar
+- direccion: varchar
+- telefono: varchar (Nullable)
+- descripcion: text (Nullable)
+- lat: numeric
+- lng: numeric
+- google_maps_url: varchar (Nullable)
+- verified: bool
+- id_negocio: int4 (Nullable)
+
+amistades
+- id: int4 (Primary)
+- usuario_a_id: int4
+- usuario_b_id: int4
+- estado: varchar
+- created_at: timestamp
+- updated_at: timestamp
+
+ubicaciones_usuarios
+- usuario_id: int4 (Primary)
+- lat: numeric
+- lng: numeric
+- compartir_ubicacion: bool
+- updated_at: timestamp
+
+razas
+- id: int4 (Primary)
+- especie: varchar
+- nombre: varchar
+- activo: bool (Nullable)
+- orden: int4 (Nullable)
+
+historial_peso
+- id: int4 (Primary)
+- mascota_id: int4
+- peso_kg: numeric
+- fecha: timestamptz (Nullable)
+
+consultas_veterinarias
+- id: int4 (Primary)
+- mascota_id: int4
+- fecha: date
+- motivo: varchar
+- notas: text (Nullable)
+- veterinario: varchar (Nullable)
+- creado_en: timestamp (Nullable)
+- imagen_url: text (Nullable)
+
+emergency_lines
+- id: int4 (Primary)
+- country_code: varchar
+- label: varchar
+- phone: varchar
+- kind: varchar
+- priority: int4
+- is_active: bool
+- schedule: varchar (Nullable)
+
+veterinary_clinics
+- id: int4 (Primary)
+- name: varchar
+- phone: varchar
+- whatsapp: varchar (Nullable)
+- address: varchar
+- neighborhood: varchar (Nullable)
+- city: varchar (Nullable)
+- province: varchar (Nullable)
+- lat: numeric (Nullable)
+- lng: numeric (Nullable)
+- logo_url: varchar (Nullable)
+- specialties: _text
+- services: _text
+- is_24h: bool
+- emergency_service: bool
+- opening_hours: jsonb (Nullable)
+- rating_avg: numeric (Nullable)
+- rating_count: int4
+- is_verified: bool
+- is_active: bool
+- created_at: timestamp
+- updated_at: timestamp
+
+sos_events
+- id: int4 (Primary)
+- user_id: int4
+- pet_id: int4 (Nullable)
+- clinic_id: int4 (Nullable)
+- status: varchar
+- origin: varchar (Nullable)
+- lat: numeric (Nullable)
+- lng: numeric (Nullable)
+- notes: text (Nullable)
+- started_at: timestamp
+- resolved_at: timestamp (Nullable)
+
+sos_call_logs
+- id: int4 (Primary)
+- user_id: int4 (Nullable)
+- clinic_id: int4 (Nullable)
+- line_id: int4 (Nullable)
+- phone_dialed: varchar
+- created_at: timestamp
+
+emergency_contacts
+- id: int4 (Primary)
+- user_id: int4
+- name: varchar
+- phone: varchar
+- relation: varchar (Nullable)
+- notify_on_sos: bool
+
+mascota_estado_historial
+- id: int8 (Primary)
+- id_mascota: int4
+- desde: varchar (Nullable)
+- hasta: varchar
+- motivo: varchar (Nullable)
+- cambiado_en: timestamptz
+- cambiado_por: int4 (Nullable)
+
+user_credentials
+- id_user: int4 (Primary)
+- hash: text
+- updated_at: timestamptz
+
+mascota_fotos
+- id: int8 (Primary)
+- id_mascota: int4
+- url: text
+- orden: int4
+- created_at: timestamptz
+
+usuarios_bloqueados
+- id: int8 (Primary)
+- usuario_id: int4
+- bloqueado_id: int4
+- created_at: timestamptz
+
+reportes
+- id: int8 (Primary)
+- usuario_id: int4
+- reportado_id: int4 (Nullable)
+- motivo: varchar
+- detalle: varchar (Nullable)
+- created_at: timestamptz
+
+zooni_politica_tablas
+- tabla: text (Primary)
+- categoria: text
+- motivo: text (Nullable)
+
+paseador_perfil
+- id_user: int4 (Primary)
+- bio: varchar (Nullable)
+- zona: varchar (Nullable)
+- zonas: _text
+- lat: numeric (Nullable)
+- lng: numeric (Nullable)
+- radio_km: numeric
+- precio_30: numeric
+- precio_60: numeric
+- max_perros: int4
+- tamanos: _text
+- experiencia_anios: int4
+- disponible: bool
+- horarios: jsonb
+- verificado: bool
+- creado_en: timestamptz
+- actualizado_en: timestamptz
+- servicios: jsonb
+
+paseo_rechazos
+- id_paseo: int4 (Primary)
+- id_walker: int4 (Primary)
+- fecha: timestamptz
+
+paseo_mensajes
+- id: int4 (Primary Identity)
+- id_paseo: int4
+- id_user: int4
+- texto: varchar
+- fecha: timestamptz
+- leido: bool
+
+paseo_pagos
+- id: int8 (Primary)
+- id_walker: int4
+- id_dueno: int4
+- monto: numeric
+- medio: varchar
+- fecha: timestamptz
+- nota: varchar (Nullable)
+- creado_en: timestamptz
+- actualizado_en: timestamptz
+
+paseo_cuenta_config
+- id_walker: int4 (Primary)
+- id_dueno: int4 (Primary)
+- modalidad: varchar
+- ultimo_recordatorio: date (Nullable)
+- creado_en: timestamptz
+- actualizado_en: timestamptz
+
+negocio_perfil
+- id: int4 (Primary)
+- id_user: int4
+- tipo: varchar
+- nombre: varchar
+- descripcion: varchar (Nullable)
+- direccion: varchar
+- barrio: varchar (Nullable)
+- lat: numeric
+- lng: numeric
+- telefono: varchar (Nullable)
+- logo: text (Nullable)
+- horarios: jsonb
+- abierto: bool
+- datos: jsonb
+- creado_en: timestamptz
+- actualizado_en: timestamptz
+
+negocio_items
+- id: int4 (Primary)
+- id_negocio: int4
+- clase: varchar
+- nombre: varchar
+- descripcion: varchar (Nullable)
+- categoria: varchar (Nullable)
+- precio: numeric
+- precios: jsonb (Nullable)
+- duracion_min: int4 (Nullable)
+- stock: int4 (Nullable)
+- foto: text (Nullable)
+- activo: bool
+- orden: int4
+- creado_en: timestamptz
+
+negocio_turnos
+- id: int4 (Primary)
+- id_negocio: int4
+- id_dueno: int4
+- id_mascota: int4 (Nullable)
+- id_item: int4 (Nullable)
+- servicio: varchar
+- fecha: timestamptz
+- duracion_min: int4
+- precio: numeric
+- urgencia: bool
+- a_domicilio: bool
+- direccion: varchar (Nullable)
+- estado: varchar
+- notas_dueno: varchar (Nullable)
+- informe: jsonb (Nullable)
+- creado_en: timestamptz
+- actualizado_en: timestamptz
+
+negocio_pedidos
+- id: int4 (Primary)
+- id_negocio: int4
+- id_dueno: int4
+- items: jsonb
+- subtotal: numeric
+- envio: numeric
+- total: numeric
+- entrega: varchar
+- direccion: varchar (Nullable)
+- medio_pago: varchar (Nullable)
+- notas: varchar (Nullable)
+- estado: varchar
+- creado_en: timestamptz
+- actualizado_en: timestamptz
+
+paseador_opiniones
+- id: int8 (Primary)
+- id_walker: int4
+- id_autor: int4
+- rating: int2
+- resena: varchar (Nullable)
+- aspectos: jsonb (Nullable)
+- respuestas: jsonb (Nullable)
+- media: jsonb
+- fecha: timestamptz
+
+POLÍTICAS RLS COMPARTIDAS
+
+Publicacion: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+Clinica: zooni_catalogo_lectura — SELECT — anon, authenticated — USING true
+Role: zooni_catalogo_lectura — SELECT — anon, authenticated — USING true
+Comentario: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+Paseo: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+PaseoTrack: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+Vacuna: zooni_catalogo_lectura — SELECT — anon, authenticated — USING true
+Veterinario: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+Mascota: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+Voto: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+User: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+Mensaje: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+UserRole: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+eventos: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+avatares_catalogo: zooni_catalogo_lectura — SELECT — anon, authenticated — USING true
+carteles: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+consejos_catalogo: zooni_catalogo_lectura — SELECT — anon, authenticated — USING true
+organizadores_verificados: zooni_catalogo_lectura — SELECT — anon, authenticated — USING true
+razas: zooni_catalogo_lectura — SELECT — anon, authenticated — USING true
+historial_peso: zooni_alta_insert — INSERT — anon, authenticated — WITH CHECK true; zooni_alta_lectura — SELECT — anon, authenticated — USING true
+consultas_veterinarias: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+emergency_contacts: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+emergency_lines: zooni_catalogo_lectura — SELECT — anon, authenticated — USING true
+mascota_estado_historial: zooni_alta_insert — INSERT — anon, authenticated — WITH CHECK true; zooni_alta_lectura — SELECT — anon, authenticated — USING true
+sos_call_logs: zooni_alta_insert — INSERT — anon, authenticated — WITH CHECK true; zooni_alta_lectura — SELECT — anon, authenticated — USING true
+reportes: zooni_alta_insert — INSERT — anon, authenticated — WITH CHECK true; zooni_alta_lectura — SELECT — anon, authenticated — USING true
+sos_events: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+tratamientos_catalogo: zooni_catalogo_lectura — SELECT — anon, authenticated — USING true
+servicios: zooni_catalogo_lectura — SELECT — anon, authenticated — USING true
+ubicaciones_usuarios: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+veterinary_clinics: zooni_catalogo_lectura — SELECT — anon, authenticated — USING true
+MascotaVacuna: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+Tratamiento: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+mascota_fotos: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+usuarios_bloqueados: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+amistades: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+Match: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+HistorialEvento: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+eventos_calendario: zooni_app_acceso — ALL — anon, authenticated — USING true — WITH CHECK true
+
+FIN DEL DOCUMENTO
