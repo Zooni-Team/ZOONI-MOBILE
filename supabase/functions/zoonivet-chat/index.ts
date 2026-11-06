@@ -6,9 +6,11 @@
 //   - La detección de emergencias (capa 1, determinística).
 //   - El filtro de salida (dosis, fuga de prompt, largo).
 //
-// El cliente solo manda { petId, mensaje, historial, usuario } y recibe
-// { texto, emergencia }. El contexto de la mascota se reconstruye en el servidor
-// con la RPC get_pet_chat_context (migracion_22.sql), única fuente del contexto.
+// El cliente (src/services/zoonivetApi.js) manda { petId, mensaje, historial,
+// usuario } con el JWT de su sesión y recibe { texto, emergencia }. Primero se
+// verifica que la mascota sea de quien pregunta; después el contexto se arma en
+// el servidor con la RPC get_pet_chat_context (051_contexto_zoonivet.sql), que
+// sólo puede ejecutar service_role.
 //
 // Secrets a configurar (supabase secrets set ...):
 //   GROQ_API_KEY           (obligatorio)
@@ -249,6 +251,23 @@ Deno.serve(async (req) => {
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
+  // ¿Quién pregunta? El JWT lo firmó Supabase Auth: no se puede inventar.
+  // Sin este chequeo, cualquiera podía pedir el contexto médico de una
+  // mascota ajena cambiando el petId.
+  const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  const { data: sesion } = await admin.auth.getUser(jwt);
+  if (!sesion?.user) {
+    return json({ error: "SIN_SESION", message: "Iniciá sesión para usar ZooniVet." }, 401);
+  }
+  const [{ data: yo }, { data: mascota }] = await Promise.all([
+    admin.from("User").select("Id_User").eq("auth_id", sesion.user.id).maybeSingle(),
+    admin.from("Mascota").select("Id_User").eq("Id_Mascota", petId).maybeSingle(),
+  ]);
+  if (!yo || !mascota || mascota.Id_User !== yo.Id_User) {
+    // Misma respuesta si no existe o si es ajena: no revelar mascotas de otros.
+    return json({ error: "PET_NOT_FOUND", message: "No encontré esa mascota." }, 404);
+  }
 
   const { data: ctx, error: ctxError } = await admin.rpc("get_pet_chat_context", {
     p_pet_id: petId,

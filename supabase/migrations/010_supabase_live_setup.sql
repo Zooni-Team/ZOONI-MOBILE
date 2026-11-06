@@ -425,53 +425,13 @@ SELECT * FROM (VALUES
 WHERE NOT EXISTS (SELECT 1 FROM servicios LIMIT 1);
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 7. SEED — Usuario y mascota demo (para que la app tenga datos reales id=1)
+-- 7. (Quitado) Usuarios y mascotas demo
 -- ─────────────────────────────────────────────────────────────────────────────
-INSERT INTO "User" ("Id_User", "Nombre", "Apellido", "Mail", "Contrasena", "Ubicacion", "Lat", "Lng", "Genero", "FechaNacimiento")
-SELECT 1, 'Sofía', 'García', 'sofia.demo@zooni.app', 'demo-sin-login', 'Caballito, CABA', -34.6190, -58.4413, 'femenino', '1996-03-10'
-WHERE NOT EXISTS (SELECT 1 FROM "User" WHERE "Id_User" = 1);
-SELECT setval(pg_get_serial_sequence('"User"', 'Id_User'), GREATEST((SELECT MAX("Id_User") FROM "User"), 1));
-
-INSERT INTO "Mascota" ("Id_Mascota", "Id_User", "Nombre", "Especie", "Raza", "FechaNacimiento", "Peso", "ImagenAsset", "EsActiva")
-SELECT 1, 1, 'Titán', 'perro', 'Labrador Retriever', '2022-02-15', 20.40, 'perro_default', TRUE
-WHERE NOT EXISTS (SELECT 1 FROM "Mascota" WHERE "Id_Mascota" = 1);
-SELECT setval(pg_get_serial_sequence('"Mascota"', 'Id_Mascota'), GREATEST((SELECT MAX("Id_Mascota") FROM "Mascota"), 1));
-
--- Segundo usuario + mascota, útil para probar Match/Chat/Comunidad con más de un perfil
-INSERT INTO "User" ("Id_User", "Nombre", "Apellido", "Mail", "Contrasena", "Ubicacion", "Lat", "Lng", "Genero", "FechaNacimiento")
-SELECT 2, 'Carlos', 'Beni', 'carlos.demo@zooni.app', 'demo-sin-login', 'Villa Crespo, CABA', -34.5997, -58.4372, 'masculino', '1994-07-22'
-WHERE NOT EXISTS (SELECT 1 FROM "User" WHERE "Id_User" = 2);
-
-INSERT INTO "Mascota" ("Id_Mascota", "Id_User", "Nombre", "Especie", "Raza", "FechaNacimiento", "Peso", "ImagenAsset", "EsActiva")
-SELECT 2, 2, 'Luna', 'gato', 'Siamés', '2021-11-01', 4.10, 'gato_default', TRUE
-WHERE NOT EXISTS (SELECT 1 FROM "Mascota" WHERE "Id_Mascota" = 2);
-SELECT setval(pg_get_serial_sequence('"Mascota"', 'Id_Mascota'), GREATEST((SELECT MAX("Id_Mascota") FROM "Mascota"), 1));
-SELECT setval(pg_get_serial_sequence('"User"', 'Id_User'), GREATEST((SELECT MAX("Id_User") FROM "User"), 1));
-
--- Seeds de Comunidad que dependen de los usuarios demo recién creados ─────────
-INSERT INTO ubicaciones_usuarios (usuario_id, lat, lng)
-SELECT 1, -34.6190, -58.4413
-WHERE NOT EXISTS (SELECT 1 FROM ubicaciones_usuarios WHERE usuario_id = 1);
-
-INSERT INTO ubicaciones_usuarios (usuario_id, lat, lng)
-SELECT 2, -34.5997, -58.4372
-WHERE NOT EXISTS (SELECT 1 FROM ubicaciones_usuarios WHERE usuario_id = 2);
-
-INSERT INTO amistades (usuario_a_id, usuario_b_id, estado)
-SELECT 1, 2, 'aceptada'
-WHERE NOT EXISTS (SELECT 1 FROM amistades LIMIT 1);
-
--- =============================================================================
--- NOTA DE SEGURIDAD IMPORTANTE
--- =============================================================================
--- RLS quedó DESACTIVADO en todas las tablas. Esto significa que CUALQUIERA con
--- la key pública (sb_publishable_...) puede leer y escribir TODO. Es aceptable
--- solo mientras la app no tiene login real ni datos de usuarios reales.
+-- Antes acá se insertaban dos usuarios "demo" con Id_User 1 y 2. En la base
+-- real esos ids ya eran cuentas de personas, así que el seed pisaba/mezclaba
+-- datos reales. El esquema ahora solo siembra catálogos; para datos de prueba
+-- creá una cuenta desde la app.
 --
--- Antes de llevar esto a producción con usuarios reales:
---   1. Migrar el login de la columna "Contrasena" a Supabase Auth.
---   2. Volver a activar RLS: ALTER TABLE "..." ENABLE ROW LEVEL SECURITY;
---   3. Escribir políticas basadas en auth.uid() (ej: un usuario solo puede
---      escribir sus propias Mascotas, Publicaciones, Mensajes, etc.)
--- Ver /prompts/ para instrucciones detalladas para el próximo agente.
--- =============================================================================
+-- RLS: este script lo desactivaba "mientras no hubiera login real". Ya no es
+-- el estado final: 060_auth_supabase.sql y 061_rls_por_usuario.sql lo vuelven a
+-- activar con políticas basadas en auth.uid().
