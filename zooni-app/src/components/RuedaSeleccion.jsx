@@ -8,6 +8,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { colores } from '../theme';
 
 // Alto fijo de cada opción: es lo que permite calcular a qué posición hay que
 // saltar para dejar la seleccionada en el medio.
@@ -72,25 +73,25 @@ export function Columna({ label, opciones, valor, onSelect, centrarToken, flex =
 
 export const rs = StyleSheet.create({
   overlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  container:    { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 36 },
-  titulo:       { fontSize: 16, fontWeight: '700', color: '#2C2C2C', textAlign: 'center', marginBottom: 16 },
+  container:    { backgroundColor: colores.blanco, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 36 },
+  titulo:       { fontSize: 16, fontWeight: '700', color: colores.texto, textAlign: 'center', marginBottom: 16 },
   // 5 opciones a la vista: la elegida al medio, con dos arriba y dos abajo
   row:          { flexDirection: 'row', gap: 8, height: 5 * ITEM_H + 26 },
   col:          { flex: 1 },
-  colLabel:     { fontSize: 12, fontWeight: '600', color: '#6B6B6B', textAlign: 'center', marginBottom: 6 },
-  listWrap:     { flex: 1, borderWidth: 1, borderColor: '#F0F0F0', borderRadius: 10, overflow: 'hidden' },
+  colLabel:     { fontSize: 12, fontWeight: '600', color: colores.textoSecundario, textAlign: 'center', marginBottom: 6 },
+  listWrap:     { flex: 1, borderWidth: 1, borderColor: colores.gris150, borderRadius: 10, overflow: 'hidden' },
   list:         { flex: 1 },
   item:         { height: ITEM_H, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
-  itemOn:       { backgroundColor: '#F0FFF6' },
-  itemTxt:      { fontSize: 14, color: '#2C2C2C' },
-  itemTxtOn:    { color: '#2DBD72', fontWeight: '700' },
+  itemOn:       { backgroundColor: colores.mentaFondo },
+  itemTxt:      { fontSize: 14, color: colores.texto },
+  itemTxtOn:    { color: colores.verde, fontWeight: '700' },
   bandaCentro: {
     position: 'absolute', left: 0, right: 0, height: ITEM_H,
-    borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#E8E8E8',
+    borderTopWidth: 1, borderBottomWidth: 1, borderColor: colores.gris300,
   },
   btns:         { flexDirection: 'row', gap: 12, marginTop: 20 },
-  btnCancel:    { flex: 1, paddingVertical: 13, borderRadius: 30, backgroundColor: '#F0F0F0', alignItems: 'center' },
-  btnCancelTxt: { fontSize: 15, fontWeight: '700', color: '#6B6B6B' },
-  btnOk:        { flex: 1, paddingVertical: 13, borderRadius: 30, backgroundColor: '#2DBD72', alignItems: 'center' },
-  btnOkTxt:     { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  btnCancel:    { flex: 1, paddingVertical: 13, borderRadius: 30, backgroundColor: colores.gris150, alignItems: 'center' },
+  btnCancelTxt: { fontSize: 15, fontWeight: '700', color: colores.textoSecundario },
+  btnOk:        { flex: 1, paddingVertical: 13, borderRadius: 30, backgroundColor: colores.verde, alignItems: 'center' },
+  btnOkTxt:     { fontSize: 15, fontWeight: '700', color: colores.blanco },
 });

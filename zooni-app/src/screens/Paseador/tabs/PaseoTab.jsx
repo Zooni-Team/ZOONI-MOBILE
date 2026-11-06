@@ -43,6 +43,7 @@ import {
   registrarPago, RETOMAR_MINUTOS, retomarPaseo, segundosDePaseo, sePuedeRetomar,
 } from '../../../services/paseadorApi';
 import { confirmar } from '../../../utils/dialogo';
+import { colores } from '../../../theme';
 
 export default function PaseoTab(props) {
   const { paseosActivos, resumen, setResumen, retomado } = props;
@@ -116,7 +117,7 @@ function PaseoEnCurso({
         <TouchableOpacity style={[s.mapBtn, { marginRight: 10 }]} onPress={abrirMenu} accessibilityLabel="Abrir menú">
           <Ionicons name="menu" size={24} color="#0A0A0A" />
         </TouchableOpacity>
-        <View style={[s.vivo, !corriendo && { backgroundColor: '#F1F1F1' }]}>
+        <View style={[s.vivo, !corriendo && { backgroundColor: colores.gris100 }]}>
           <View style={[s.vivoPunto, !corriendo && { backgroundColor: C.gris }]} />
           <Text style={s.vivoTxt}>{estadoTxt}</Text>
         </View>
@@ -526,13 +527,13 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'flex-start',
   },
   vivo: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF',
+    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colores.blanco,
     borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, flexShrink: 1, flex: 1, marginRight: 10, marginTop: 4, ...sombra,
   },
   vivoPunto: { width: 10, height: 10, borderRadius: 5, backgroundColor: C.rojo },
   vivoTxt: { fontSize: 12, fontWeight: '800', color: C.texto, flexShrink: 1 },
   mapBtn: {
-    width: 46, height: 46, borderRadius: 23, backgroundColor: '#FFFFFF',
+    width: 46, height: 46, borderRadius: 23, backgroundColor: colores.blanco,
     alignItems: 'center', justifyContent: 'center', ...sombra,
   },
   gps: {
@@ -543,8 +544,8 @@ const s = StyleSheet.create({
 
   flotante: {
     position: 'absolute', left: 12, right: 12, bottom: 12,
-    backgroundColor: '#FFFFFF', borderRadius: 24, padding: 18,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 16, elevation: 10,
+    backgroundColor: colores.blanco, borderRadius: 24, padding: 18,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 16, elevation: 10,
   },
   mascotaRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   mascota: { fontSize: 18, fontWeight: '800', color: C.texto },
@@ -555,7 +556,7 @@ const s = StyleSheet.create({
   timer: { fontSize: 44, fontWeight: '900', color: C.texto, fontVariant: ['tabular-nums'] },
   distancia: { fontSize: 30, fontWeight: '900', color: C.texto, fontVariant: ['tabular-nums'] },
   numEtiqueta: { fontSize: 12, fontWeight: '700', color: C.texto2, textTransform: 'uppercase', letterSpacing: 0.5 },
-  numDivisor: { width: 1, alignSelf: 'stretch', backgroundColor: '#EFEFEF', marginHorizontal: 14 },
+  numDivisor: { width: 1, alignSelf: 'stretch', backgroundColor: colores.gris200, marginHorizontal: 14 },
 
   barra: { height: 8, borderRadius: 4, backgroundColor: C.menta, marginTop: 14, overflow: 'hidden' },
   barraFill: { height: 8, borderRadius: 4, backgroundColor: C.teal },
@@ -568,13 +569,13 @@ const s = StyleSheet.create({
   grupoLista: { maxHeight: 290 },
   fila: {
     flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 8,
-    borderRadius: 14, borderBottomWidth: 1, borderBottomColor: '#F2F2F2',
+    borderRadius: 14, borderBottomWidth: 1, borderBottomColor: colores.gris75,
   },
   filaElegida: { backgroundColor: '#F2FBF5' },
   filaTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   filaNombre: { fontSize: 15, fontWeight: '800', color: C.texto, flexShrink: 1 },
   filaPausa: {
-    fontSize: 11, fontWeight: '800', color: C.texto2, backgroundColor: '#F1F1F1',
+    fontSize: 11, fontWeight: '800', color: C.texto2, backgroundColor: colores.gris100,
     borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1, overflow: 'hidden',
   },
   filaNumeros: { fontSize: 14, fontWeight: '800', color: C.teal, marginTop: 1, fontVariant: ['tabular-nums'] },
@@ -598,7 +599,7 @@ const s = StyleSheet.create({
   resumenTitulo: { fontSize: 22, fontWeight: '900', color: C.texto, marginTop: 14, textAlign: 'center' },
   resumenSub: { fontSize: 14, color: C.texto2, marginTop: 4 },
   retomar: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF', borderRadius: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colores.blanco, borderRadius: 16,
     borderWidth: 1.5, borderColor: C.teal, borderStyle: 'dashed', padding: 12, marginBottom: 14,
   },
   retomarTitulo: { fontSize: 14, fontWeight: '800', color: C.teal },
@@ -616,5 +617,5 @@ const s = StyleSheet.create({
   cobroBotones: { flexDirection: 'row', gap: 10, marginTop: 12 },
   cobroOk: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cobroOkTxt: { flex: 1, fontSize: 14, fontWeight: '700', color: C.texto },
-  stats: { flexDirection: 'row', marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
+  stats: { flexDirection: 'row', marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: colores.gris150 },
 });

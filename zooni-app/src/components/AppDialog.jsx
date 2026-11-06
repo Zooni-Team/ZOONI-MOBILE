@@ -18,15 +18,16 @@
 
 import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { colores } from '../theme';
 
 const C = {
-  text: '#2C2C2C',
-  textSoft: '#6B6B6B',
-  cta: '#F5C842',
-  brandText: '#177046',
-  sosRedText: '#B3121D',
-  surface: '#FFFFFF',
-  divider: '#E8EFE9',
+  text: colores.texto,
+  textSoft: colores.textoSecundario,
+  cta: colores.amarillo,
+  brandText: colores.verdeOscuro,
+  sosRedText: colores.rojoOscuro,
+  surface: colores.blanco,
+  divider: colores.mentaGris,
 };
 
 export default function AppDialog({ visible, titulo, mensaje, botones = [], onCerrar }) {
@@ -71,7 +72,7 @@ const s = StyleSheet.create({
   scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', paddingHorizontal: 28 },
   card: {
     backgroundColor: C.surface, borderRadius: 20, padding: 22,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 16, elevation: 10,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 16, elevation: 10,
   },
   titulo: { fontSize: 18, fontWeight: '800', color: C.text, textAlign: 'center' },
   mensaje: { fontSize: 14, color: C.textSoft, textAlign: 'center', lineHeight: 20, marginTop: 8 },

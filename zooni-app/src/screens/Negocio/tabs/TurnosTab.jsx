@@ -24,6 +24,7 @@ import {
   actualizarDatos, cambiarEstadoTurno, fetchTurnosNegocio, formatoPlata, guardarInforme, GALERIA_MAX,
 } from '../../../services/negocioApi';
 import { confirmar } from '../../../utils/dialogo';
+import { colores } from '../../../theme';
 
 const DIAS_AGENDA = 14;
 const mismoDia = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
@@ -213,7 +214,7 @@ export default function TurnosTab({ negocio, setNegocio, tipo, avisar, abrirChat
                     {i === 0 ? 'Hoy' : ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d.getDay()]}
                   </Text>
                   <Text style={[s.diaNum, on && s.diaTxtOn]}>{d.getDate()}</Text>
-                  {cant > 0 ? <View style={[s.diaPunto, on && { backgroundColor: '#FFF' }]} /> : <View style={s.diaPuntoVacio} />}
+                  {cant > 0 ? <View style={[s.diaPunto, on && { backgroundColor: colores.blanco }]} /> : <View style={s.diaPuntoVacio} />}
                 </TouchableOpacity>
               );
             })}
@@ -275,13 +276,13 @@ const s = StyleSheet.create({
   top: { paddingHorizontal: 20, paddingTop: 16, gap: 12 },
   dias: { gap: 8, paddingBottom: 4 },
   dia: {
-    width: 54, paddingVertical: 8, borderRadius: 16, alignItems: 'center', backgroundColor: '#FFFFFF',
+    width: 54, paddingVertical: 8, borderRadius: 16, alignItems: 'center', backgroundColor: colores.blanco,
     borderWidth: 1, borderColor: C.borde,
   },
   diaOn: { backgroundColor: C.teal, borderColor: C.teal },
   diaNombre: { fontSize: 12, fontWeight: '700', color: C.texto2 },
   diaNum: { fontSize: 18, fontWeight: '900', color: C.texto },
-  diaTxtOn: { color: '#FFFFFF' },
+  diaTxtOn: { color: colores.blanco },
   diaPunto: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.teal, marginTop: 3 },
   diaPuntoVacio: { width: 6, height: 6, marginTop: 3 },
   lista: { padding: 20, paddingBottom: 40 },

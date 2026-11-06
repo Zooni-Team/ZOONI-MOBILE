@@ -46,6 +46,7 @@ import { verificarDisponibilidad } from '../../services/authApi';
 import { volverOLogin } from '../../utils/volverOLogin';
 import { sanitizarDigitos } from '../../utils/sanitizar';
 import { alerta } from '../../utils/dialogo';
+import { colores } from '../../theme';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -410,8 +411,8 @@ const s = StyleSheet.create({
 
   label: { fontSize: 13, fontWeight: '700', color: C.texto, marginBottom: 6 },
   input: {
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: C.texto, backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: C.texto, backgroundColor: colores.blanco,
   },
   inputError: { borderColor: C.rojo },
   inputPassWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 0 },
@@ -434,11 +435,11 @@ const s = StyleSheet.create({
 
   errorGeneral: {
     fontSize: 13, color: C.rojo, marginTop: 14, padding: 12, borderRadius: 12,
-    backgroundColor: '#FDECEE', borderWidth: 1, borderColor: '#F5B7BD',
+    backgroundColor: colores.rojoFondo, borderWidth: 1, borderColor: colores.rojoBorde,
   },
   resumen: {
-    marginTop: 16, padding: 14, borderRadius: 14, backgroundColor: '#FDECEE',
-    borderWidth: 1, borderColor: '#F5B7BD',
+    marginTop: 16, padding: 14, borderRadius: 14, backgroundColor: colores.rojoFondo,
+    borderWidth: 1, borderColor: colores.rojoBorde,
   },
   resumenTitulo: { fontSize: 13, fontWeight: '800', color: C.rojo, marginBottom: 4 },
   resumenItem: { fontSize: 13, color: C.texto, marginTop: 2 },

@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import MapaPaseo from './MapaPaseo';
 import { C, sombra } from './PaseadorUI';
+import { colores } from '../../theme';
 
 export default function MapaPaseoModal({ visible, onCerrar, destino, direccion, mascota }) {
   if (!destino) return null;
@@ -48,7 +49,7 @@ export default function MapaPaseoModal({ visible, onCerrar, destino, direccion, 
         <View style={s.pie}>
           <View style={s.leyenda}>
             <View style={s.pinCasa}>
-              <Ionicons name="home" size={13} color="#FFFFFF" />
+              <Ionicons name="home" size={13} color={colores.blanco} />
             </View>
             <Text style={s.leyendaTxt}>
               Acá te espera {mascota ?? 'la mascota'}
@@ -56,7 +57,7 @@ export default function MapaPaseoModal({ visible, onCerrar, destino, direccion, 
           </View>
           <TouchableOpacity style={s.btnComoLlegar} onPress={comoLlegar}
             accessibilityRole="button" accessibilityLabel="Cómo llegar">
-            <Ionicons name="navigate" size={17} color="#FFFFFF" />
+            <Ionicons name="navigate" size={17} color={colores.blanco} />
             <Text style={s.btnComoLlegarTxt}>Cómo llegar</Text>
           </TouchableOpacity>
         </View>
@@ -83,14 +84,14 @@ const s = StyleSheet.create({
   // Misma pastilla ámbar que el marcador, para que se entienda qué es
   leyenda: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   pinCasa: {
-    width: 24, height: 24, borderRadius: 12, backgroundColor: '#F5A623',
+    width: 24, height: 24, borderRadius: 12, backgroundColor: colores.ambar,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: '#FFFFFF',
+    borderWidth: 2, borderColor: colores.blanco,
   },
   leyendaTxt: { flex: 1, fontSize: 13, color: C.texto2 },
   btnComoLlegar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     height: 48, borderRadius: 24, backgroundColor: C.teal,
   },
-  btnComoLlegarTxt: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
+  btnComoLlegarTxt: { fontSize: 15, fontWeight: '800', color: colores.blanco },
 });

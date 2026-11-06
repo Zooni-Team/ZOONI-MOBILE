@@ -19,6 +19,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 import AppDialog from '../AppDialog';
+import { colores } from '../../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.8, 320);
@@ -58,7 +59,7 @@ export default function PaseadorDrawer({
     <TouchableOpacity style={[st.item, activoItem && st.itemActivo]} onPress={onPress}
       accessibilityLabel={badge > 0 ? `${label}, ${badge} sin ver` : label}
       accessibilityState={{ selected: activoItem }}>
-      <Ionicons name={icono} size={22} color={rojo ? '#E63946' : activoItem ? '#2DBD72' : '#2C2C2C'} style={st.icono} />
+      <Ionicons name={icono} size={22} color={rojo ? colores.rojo : activoItem ? colores.verde : colores.texto} style={st.icono} />
       <Text style={[st.label, activoItem && st.labelActivo, rojo && st.labelRojo]}>{label}</Text>
       {punto && <View style={st.punto} />}
       {badge > 0 && (
@@ -133,31 +134,31 @@ const st = StyleSheet.create({
   root: { flex: 1 },
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
   drawer: {
-    position: 'absolute', top: 0, left: 0, bottom: 0, width: DRAWER_WIDTH, backgroundColor: '#FFFFFF',
+    position: 'absolute', top: 0, left: 0, bottom: 0, width: DRAWER_WIDTH, backgroundColor: colores.blanco,
     borderTopRightRadius: 20, borderBottomRightRadius: 20,
-    shadowColor: '#000', shadowOffset: { width: 4, height: 0 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10,
+    shadowColor: colores.negro, shadowOffset: { width: 4, height: 0 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 10,
     paddingTop: 50,
   },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingBottom: 16 },
-  avatar: { width: 48, height: 48, borderRadius: 24, borderWidth: 2, borderColor: '#2DBD72' },
+  avatar: { width: 48, height: 48, borderRadius: 24, borderWidth: 2, borderColor: colores.verde },
   avatarIni: {
-    width: 48, height: 48, borderRadius: 24, backgroundColor: '#C8F0D8',
-    borderWidth: 2, borderColor: '#2DBD72', alignItems: 'center', justifyContent: 'center',
+    width: 48, height: 48, borderRadius: 24, backgroundColor: colores.menta,
+    borderWidth: 2, borderColor: colores.verde, alignItems: 'center', justifyContent: 'center',
   },
-  avatarIniTxt: { fontSize: 16, fontWeight: '700', color: '#27AE60' },
-  nombre: { fontSize: 16, fontWeight: '700', color: '#2C2C2C' },
-  sub: { fontSize: 13, color: '#6B6B6B', marginTop: 2 },
-  divisor: { height: 1, backgroundColor: '#E0E0E0', marginVertical: 4 },
+  avatarIniTxt: { fontSize: 16, fontWeight: '700', color: colores.verdeExito },
+  nombre: { fontSize: 16, fontWeight: '700', color: colores.texto },
+  sub: { fontSize: 13, color: colores.textoSecundario, marginTop: 2 },
+  divisor: { height: 1, backgroundColor: colores.gris400, marginVertical: 4 },
   item: { flexDirection: 'row', alignItems: 'center', height: 52, paddingHorizontal: 20 },
   itemActivo: { backgroundColor: 'rgba(45, 189, 114, 0.12)' },
   icono: { marginRight: 14 },
-  label: { flex: 1, fontSize: 15, color: '#2C2C2C' },
-  labelActivo: { color: '#2DBD72', fontWeight: '700' },
-  labelRojo: { color: '#E63946' },
-  punto: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#E63946' },
+  label: { flex: 1, fontSize: 15, color: colores.texto },
+  labelActivo: { color: colores.verde, fontWeight: '700' },
+  labelRojo: { color: colores.rojo },
+  punto: { width: 10, height: 10, borderRadius: 5, backgroundColor: colores.rojo },
   badge: {
-    minWidth: 20, height: 20, borderRadius: 10, backgroundColor: '#F5A623',
+    minWidth: 20, height: 20, borderRadius: 10, backgroundColor: colores.ambar,
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5, marginLeft: 8,
   },
-  badgeTxt: { fontSize: 11, fontWeight: '700', color: '#FFFFFF', textAlign: 'center', lineHeight: 20 },
+  badgeTxt: { fontSize: 11, fontWeight: '700', color: colores.blanco, textAlign: 'center', lineHeight: 20 },
 });

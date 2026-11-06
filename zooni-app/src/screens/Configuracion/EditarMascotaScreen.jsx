@@ -25,11 +25,12 @@ import { resolveMascotaVisual } from '../../constants/petImages';
 import { parseFechaLocal, toISODateLocal } from '../../utils/fechaLocal';
 import FechaPicker from '../../components/FechaPicker';
 import { alerta } from '../../utils/dialogo';
+import { colores } from '../../theme';
 
 const P = {
-  bgTop: '#E4F9EA', text: '#2C2C2C', textSoft: '#6B6B6B', textSoftMint: '#5A6B60',
-  brandText: '#177046', cta: '#F5C842', divider: '#E8EFE9',
-  sosRedText: '#B3121D', neutral: '#EDF3EF',
+  bgTop: '#E4F9EA', text: colores.texto, textSoft: colores.textoSecundario, textSoftMint: colores.verdeGrisaceo,
+  brandText: colores.verdeOscuro, cta: colores.amarillo, divider: colores.mentaGris,
+  sosRedText: colores.rojoOscuro, neutral: '#EDF3EF',
 };
 
 function Chip({ label, activo, onPress }) {
@@ -334,7 +335,7 @@ export default function EditarMascotaScreen() {
                 {!f.esPortada && (
                   <TouchableOpacity style={e.fotoQuitar} onPress={() => quitarFoto(f)}
                     accessibilityLabel="Quitar foto">
-                    <Ionicons name="close" size={14} color="#FFF" />
+                    <Ionicons name="close" size={14} color={colores.blanco} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -456,8 +457,8 @@ const e = StyleSheet.create({
   content: { paddingHorizontal: 16, paddingBottom: 40, paddingTop: 8 },
 
   seccion: {
-    backgroundColor: '#FFF', borderRadius: 16, marginBottom: 12, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
+    backgroundColor: colores.blanco, borderRadius: 16, marginBottom: 12, overflow: 'hidden',
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
   },
   seccionHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -479,7 +480,7 @@ const e = StyleSheet.create({
   chip: { borderRadius: 16, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: P.neutral },
   chipActivo:    { backgroundColor: P.brandText },
   chipTxt:       { fontSize: 14, fontWeight: '600', color: P.brandText },
-  chipTxtActivo: { color: '#FFF' },
+  chipTxtActivo: { color: colores.blanco },
 
   toggleFila: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -499,8 +500,8 @@ const e = StyleSheet.create({
     flex: 1, alignItems: 'center', gap: 6, paddingVertical: 14, borderRadius: 16,
     backgroundColor: P.neutral, borderWidth: 2, borderColor: 'transparent',
   },
-  visualOpcionOn: { borderColor: P.brandText, backgroundColor: '#FFFFFF' },
-  visualImg: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#FFFFFF' },
+  visualOpcionOn: { borderColor: P.brandText, backgroundColor: colores.blanco },
+  visualImg: { width: 64, height: 64, borderRadius: 32, backgroundColor: colores.blanco },
   visualImgVacia: { alignItems: 'center', justifyContent: 'center' },
   visualTxt: { fontSize: 13, color: P.textSoft, fontWeight: '600' },
   visualTxtOn: { color: P.brandText, fontWeight: '700' },
@@ -511,14 +512,14 @@ const e = StyleSheet.create({
     position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.55)',
     paddingVertical: 3, alignItems: 'center',
   },
-  portadaBadgeTxt: { fontSize: 10, fontWeight: '700', color: '#FFF' },
+  portadaBadgeTxt: { fontSize: 10, fontWeight: '700', color: colores.blanco },
   fotoQuitar: {
     position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: 11,
     backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center',
   },
   fotoAgregar: {
     width: 92, height: 92, borderRadius: 12, borderWidth: 1.5, borderColor: P.brandText,
-    borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF',
+    borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: colores.blanco,
   },
 
   selectFila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -526,7 +527,7 @@ const e = StyleSheet.create({
 
   scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    backgroundColor: colores.blanco, borderTopLeftRadius: 24, borderTopRightRadius: 24,
     paddingTop: 8, paddingBottom: 24,
   },
   sheetHandle:  { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: P.divider, marginBottom: 8 },

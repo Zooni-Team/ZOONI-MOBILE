@@ -34,6 +34,7 @@ import {
 } from '../services/chatStore';
 import MatchInfoModal from '../components/chat/MatchInfoModal';
 import { etiquetaDia, horaCorta, mismoDia } from '../utils/tiempoRelativo';
+import { colores } from '../theme';
 
 const POLL_MS = 4000;
 
@@ -48,7 +49,7 @@ function TildesEstado({ leido }) {
   return (
     <View style={s.tildes} accessibilityLabel={leido ? 'Leído' : 'Enviado'}>
       <Ionicons name={leido ? 'checkmark-done' : 'checkmark'}
-        size={14} color={leido ? '#34B7F1' : '#9B9B9B'} />
+        size={14} color={leido ? '#34B7F1' : colores.textoDeshabilitado} />
     </View>
   );
 }
@@ -120,7 +121,7 @@ export default function ChatScreen() {
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}
           accessibilityLabel="Volver" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Ionicons name="arrow-back" size={24} color="#2C2C2C" />
+          <Ionicons name="arrow-back" size={24} color={colores.texto} />
         </TouchableOpacity>
 
         {/* Tocar foto+nombre abre la ficha de perfil del match (no en servicios) */}
@@ -137,7 +138,7 @@ export default function ChatScreen() {
         >
           {esServicio ? (
             <View style={s.avatarFallback}>
-              <Ionicons name="storefront-outline" size={18} color="#27AE60" />
+              <Ionicons name="storefront-outline" size={18} color={colores.verdeExito} />
             </View>
           ) : fotoPerfilUrl ? (
             <Image source={{ uri: fotoPerfilUrl }} style={s.avatar} />
@@ -158,7 +159,7 @@ export default function ChatScreen() {
 
       {esServicio && idNegocio === null && (
         <View style={s.avisoServicio}>
-          <Ionicons name="information-circle-outline" size={14} color="#6B6B6B" />
+          <Ionicons name="information-circle-outline" size={14} color={colores.textoSecundario} />
           <Text style={s.avisoServicioTxt}>
             Los negocios todavía no pueden responder por acá — tu mensaje les queda registrado.
           </Text>
@@ -219,7 +220,7 @@ export default function ChatScreen() {
           <TextInput
             style={s.input}
             placeholder="Escribí un mensaje..."
-            placeholderTextColor="#AAAAAA"
+            placeholderTextColor={colores.textoTenue}
             value={texto}
             onChangeText={setTexto}
             multiline
@@ -232,7 +233,7 @@ export default function ChatScreen() {
             disabled={!texto.trim() || enviando}
             accessibilityLabel="Enviar mensaje"
           >
-            <Ionicons name="send" size={18} color="#FFFFFF" />
+            <Ionicons name="send" size={18} color={colores.blanco} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -249,47 +250,47 @@ export default function ChatScreen() {
 }
 
 const s = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#C8F0D8' },
+  safeArea: { flex: 1, backgroundColor: colores.menta },
 
   header: {
     height: 60, flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, gap: 12, backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16, gap: 12, backgroundColor: colores.blanco,
   },
-  headerDivider: { height: 1, backgroundColor: '#EFEFEF' },
+  headerDivider: { height: 1, backgroundColor: colores.gris200 },
   backBtn: { width: 28, alignItems: 'center', justifyContent: 'center' },
   headerPerfil: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: { width: 38, height: 38, borderRadius: 19 },
   avatarFallback: {
-    width: 38, height: 38, borderRadius: 19, backgroundColor: '#C8F0D8',
+    width: 38, height: 38, borderRadius: 19, backgroundColor: colores.menta,
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarLetter: { fontSize: 15, fontWeight: '800', color: '#27AE60' },
-  nombre: { fontSize: 16, fontWeight: '700', color: '#2C2C2C' },
-  subNombre: { fontSize: 12, color: '#6B6B6B', marginTop: 1 },
+  avatarLetter: { fontSize: 15, fontWeight: '800', color: colores.verdeExito },
+  nombre: { fontSize: 16, fontWeight: '700', color: colores.texto },
+  subNombre: { fontSize: 12, color: colores.textoSecundario, marginTop: 1 },
 
   avisoServicio: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#F5F5F5',
+    paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colores.gris50,
   },
-  avisoServicioTxt: { flex: 1, fontSize: 11, color: '#6B6B6B' },
+  avisoServicioTxt: { flex: 1, fontSize: 11, color: colores.textoSecundario },
 
   scroll: { flex: 1 },
   scrollContent: { flexGrow: 1, padding: 16, paddingBottom: 8 },
 
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingTop: 60 },
   emptyEmoji: { fontSize: 40 },
-  emptyTxt: { fontSize: 15, color: '#6B6B6B', textAlign: 'center', paddingHorizontal: 30 },
+  emptyTxt: { fontSize: 15, color: colores.textoSecundario, textAlign: 'center', paddingHorizontal: 30 },
 
   burbujaWrap: { maxWidth: '78%', marginBottom: 12 },
   burbujaWrapYo: { alignSelf: 'flex-end', alignItems: 'flex-end' },
   burbujaWrapOtro: { alignSelf: 'flex-start', alignItems: 'flex-start' },
   burbuja: { borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10 },
-  burbujaYo: { backgroundColor: '#2DBD72', borderBottomRightRadius: 4 },
-  burbujaOtro: { backgroundColor: '#FFFFFF', borderBottomLeftRadius: 4 },
-  burbujaTxt: { fontSize: 14, color: '#2C2C2C', lineHeight: 20 },
-  burbujaTxtYo: { color: '#FFFFFF' },
+  burbujaYo: { backgroundColor: colores.verde, borderBottomRightRadius: 4 },
+  burbujaOtro: { backgroundColor: colores.blanco, borderBottomLeftRadius: 4 },
+  burbujaTxt: { fontSize: 14, color: colores.texto, lineHeight: 20 },
+  burbujaTxtYo: { color: colores.blanco },
   metaFila: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3, marginHorizontal: 4 },
-  hora:     { fontSize: 10, color: '#6B6B6B' },
+  hora:     { fontSize: 10, color: colores.textoSecundario },
 
   // Separador de día, centrado entre los mensajes (Hoy / Ayer / martes / 12 de agosto)
   separadorDia: {
@@ -298,23 +299,23 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.9)',
   },
   separadorDiaTxt: {
-    fontSize: 11, fontWeight: '700', color: '#5A6B60',
+    fontSize: 11, fontWeight: '700', color: colores.verdeGrisaceo,
     textTransform: 'uppercase', letterSpacing: 0.5,
   },
   tildes:   { flexDirection: 'row', alignItems: 'center' },
 
   inputRow: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 10,
-    paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#FFFFFF',
-    borderTopWidth: 1, borderTopColor: '#EFEFEF',
+    paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colores.blanco,
+    borderTopWidth: 1, borderTopColor: colores.gris200,
   },
   input: {
     flex: 1, maxHeight: 100, borderRadius: 22,
-    borderWidth: 1.5, borderColor: '#DDDDDD', backgroundColor: '#FAFAFA',
-    paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, color: '#2C2C2C',
+    borderWidth: 1.5, borderColor: colores.gris500, backgroundColor: '#FAFAFA',
+    paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, color: colores.texto,
   },
   btnEnviar: {
-    width: 42, height: 42, borderRadius: 21, backgroundColor: '#2DBD72',
+    width: 42, height: 42, borderRadius: 21, backgroundColor: colores.verde,
     alignItems: 'center', justifyContent: 'center',
   },
   btnEnviarDisabled: { backgroundColor: '#BEE8CE' },

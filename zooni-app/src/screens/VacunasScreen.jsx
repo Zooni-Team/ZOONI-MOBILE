@@ -44,6 +44,10 @@ import {
   editarVacunaAplicada,
   eliminarVacunaAplicada,
 } from '../services/fichaMedicaApi';
+import { colores } from '../theme';
+import Skeleton from '../components/ui/Skeleton';
+import Toast from '../components/ui/Toast';
+import { useToast } from '../hooks/useToast';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -74,73 +78,37 @@ function diasHasta(fechaISO) {
 
 /** Color de la línea "Próxima dosis" de un card aplicado. */
 function colorProximaDosis(fechaISO) {
-  if (!fechaISO) return '#6B6B6B';
+  if (!fechaISO) return colores.textoSecundario;
   const dias = diasHasta(fechaISO);
-  if (dias < 0) return '#E63946';
-  if (dias <= 30) return '#F5A623';
-  return '#6B6B6B';
+  if (dias < 0) return colores.rojo;
+  if (dias <= 30) return colores.ambar;
+  return colores.textoSecundario;
 }
 
 /** Estado + color de una vacuna sugerida (calendario). */
 function estadoSugerida(sugerida) {
-  if (!sugerida.applied) return { texto: 'Aún no corresponde', color: '#6B6B6B' };
+  if (!sugerida.applied) return { texto: 'Aún no corresponde', color: colores.textoSecundario };
   const dias = diasHasta(sugerida.proximo_refuerzo);
-  if (dias === null) return { texto: 'Al día', color: '#2DBD72' };
-  if (dias < 0) return { texto: 'Vencida', color: '#E63946' };
-  if (dias <= 30) return { texto: 'Refuerzo próximo', color: '#F5A623' };
-  return { texto: 'Al día', color: '#2DBD72' };
+  if (dias === null) return { texto: 'Al día', color: colores.verde };
+  if (dias < 0) return { texto: 'Vencida', color: colores.rojo };
+  if (dias <= 30) return { texto: 'Refuerzo próximo', color: colores.ambar };
+  return { texto: 'Al día', color: colores.verde };
 }
-
 
 // ─── COMPONENTE: SKELETON ─────────────────────────────────────────────────────
 
 function SkeletonCard() {
-  const shimmer = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const anim = Animated.loop(Animated.sequence([
-      Animated.timing(shimmer, { toValue: 1, duration: 900, useNativeDriver: true }),
-      Animated.timing(shimmer, { toValue: 0, duration: 900, useNativeDriver: true }),
-    ]));
-    anim.start();
-    return () => anim.stop();
-  }, [shimmer]);
-  const opacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.45, 1] });
   return (
-    <Animated.View style={[s.skeletonCard, { opacity }]}>
+    <Skeleton style={s.skeletonCard}>
       <View style={s.skeletonLine1} />
       <View style={s.skeletonLine2} />
       <View style={s.skeletonLine3} />
-    </Animated.View>
+    </Skeleton>
   );
 }
 
 // ─── COMPONENTE: TOAST ────────────────────────────────────────────────────────
 
-function Toast({ visible, mensaje, color }) {
-  const translateY = useRef(new Animated.Value(-12)).current;
-  const opacity    = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.timing(translateY, { toValue: 0,   duration: 220, useNativeDriver: true }),
-        Animated.timing(opacity,    { toValue: 1,   duration: 220, useNativeDriver: true }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(translateY, { toValue: -12, duration: 200, useNativeDriver: true }),
-        Animated.timing(opacity,    { toValue: 0,   duration: 200, useNativeDriver: true }),
-      ]).start();
-    }
-  }, [visible, translateY, opacity]);
-
-  return (
-    <Animated.View style={[s.toast, { backgroundColor: color, opacity, transform: [{ translateY }] }]}>
-      <Ionicons name="checkmark-circle" size={18} color="#FFF" />
-      <Text style={s.toastTxt}>{mensaje}</Text>
-    </Animated.View>
-  );
-}
 
 // ─── COMPONENTE: CARD VACUNA APLICADA ─────────────────────────────────────────
 
@@ -184,7 +152,7 @@ function CardAplicado({ vacuna, onEditar, onEliminar }) {
             onPress={() => onEditar(vacuna)}
             accessibilityLabel="Editar vacuna"
           >
-            <Ionicons name="create-outline" size={18} color="#FFF" />
+            <Ionicons name="create-outline" size={18} color={colores.blanco} />
           </Pressable>
         </Animated.View>
         <Animated.View style={{ transform: [{ scale: scaleDel }] }}>
@@ -195,7 +163,7 @@ function CardAplicado({ vacuna, onEditar, onEliminar }) {
             onPress={() => onEliminar(vacuna.id)}
             accessibilityLabel="Eliminar vacuna"
           >
-            <Ionicons name="trash-outline" size={18} color="#FFF" />
+            <Ionicons name="trash-outline" size={18} color={colores.blanco} />
           </Pressable>
         </Animated.View>
       </View>
@@ -240,7 +208,7 @@ function CardSugerido({ sugerido, index, onMarcar }) {
         <Text style={s.sugeridoFrec}>{sugerido.frecuencia_descripcion}</Text>
         {sugerido.applied ? (
           <View style={s.badgeAplicada}>
-            <Ionicons name="checkmark" size={12} color="#2DBD72" />
+            <Ionicons name="checkmark" size={12} color={colores.verde} />
             <Text style={s.badgeAplicadaTxt}>Aplicada</Text>
           </View>
         ) : (
@@ -254,7 +222,6 @@ function CardSugerido({ sugerido, index, onMarcar }) {
     </Animated.View>
   );
 }
-
 
 // ─── DATOS DEMO (sin backend de vacunas conectado) ───────────────────────────
 
@@ -320,10 +287,7 @@ export default function VacunasScreen() {
   const [guardando,        setGuardando]        = useState(false);
   const [showFechaPicker,  setShowFechaPicker]  = useState(false);
 
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMensaje, setToastMensaje] = useState('');
-  const [toastColor,   setToastColor]   = useState('#2DBD72');
-  const toastTimer = useRef(null);
+  const { toast, mostrarToast } = useToast();
 
   const heroScale   = useRef(new Animated.Value(0.88)).current;
   const heroOpacity = useRef(new Animated.Value(0)).current;
@@ -372,14 +336,6 @@ export default function VacunasScreen() {
     setRefreshing(false);
   }, [cargar]);
 
-  // ── Toast ────────────────────────────────────────────────────────────────
-  function mostrarToast(mensaje, color = '#2DBD72') {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToastMensaje(mensaje);
-    setToastColor(color);
-    setToastVisible(true);
-    toastTimer.current = setTimeout(() => setToastVisible(false), 2500);
-  }
 
   // ── Modal ────────────────────────────────────────────────────────────────
   // La fecha de aplicación arranca en el día de hoy (se calcula al abrir el
@@ -463,7 +419,7 @@ export default function VacunasScreen() {
         });
         setVacunasAplicadas((prev) => [nueva, ...prev]);
         cerrarModal();
-        mostrarToast('Vacuna registrada correctamente', '#2DBD72');
+        mostrarToast('Vacuna registrada correctamente', colores.verde);
       } else if (modalModo === 'marcar') {
         const nueva = await marcarVacunaSugerida(idMascota, vacunaPreseleccionada.id, {
           descripcion: formDescripcion.trim() || null,
@@ -479,7 +435,7 @@ export default function VacunasScreen() {
             : sg
         )));
         cerrarModal();
-        mostrarToast('Vacuna registrada correctamente', '#2DBD72');
+        mostrarToast('Vacuna registrada correctamente', colores.verde);
       } else {
         const editada = await editarVacunaAplicada(vacunaEnEdicion.id, {
           nombre: formTitulo.trim(),
@@ -490,10 +446,10 @@ export default function VacunasScreen() {
         });
         setVacunasAplicadas((prev) => prev.map((v) => (v.id === vacunaEnEdicion.id ? editada : v)));
         cerrarModal();
-        mostrarToast('Vacuna actualizada correctamente', '#2DBD72');
+        mostrarToast('Vacuna actualizada correctamente', colores.verde);
       }
     } catch {
-      mostrarToast('No se pudo guardar la vacuna', '#E63946');
+      mostrarToast('No se pudo guardar la vacuna', colores.rojo);
     } finally {
       setGuardando(false);
     }
@@ -532,9 +488,9 @@ export default function VacunasScreen() {
             : sg
         )));
       }
-      mostrarToast('Vacuna eliminada', '#E63946');
+      mostrarToast('Vacuna eliminada', colores.rojo);
     } catch {
-      mostrarToast('No se pudo eliminar la vacuna', '#E63946');
+      mostrarToast('No se pudo eliminar la vacuna', colores.rojo);
     }
   }
 
@@ -554,7 +510,7 @@ export default function VacunasScreen() {
     <SafeAreaView style={s.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      <Toast visible={toastVisible} mensaje={toastMensaje} color={toastColor} />
+      <Toast {...toast} />
 
       <View style={s.screenBg}>
 
@@ -562,7 +518,7 @@ export default function VacunasScreen() {
         <View style={s.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={s.headerBtn}
             accessibilityLabel="Volver" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Ionicons name="arrow-back" size={26} color="#2C2C2C" />
+            <Ionicons name="arrow-back" size={26} color={colores.texto} />
           </TouchableOpacity>
         </View>
 
@@ -572,7 +528,7 @@ export default function VacunasScreen() {
           showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh}
-              colors={['#2DBD72']} tintColor="#2DBD72" />
+              colors={[colores.verde]} tintColor={colores.verde} />
           }>
 
           {/* ── HERO ── (compartido con Tratamientos, Consultas y Curiosidades) */}
@@ -585,7 +541,7 @@ export default function VacunasScreen() {
             <View style={s.secRow}>
               <Text style={s.secTitulo}>Vacunas</Text>
               <TouchableOpacity style={s.btnAnadir} onPress={abrirModalAnadir}>
-                <Ionicons name="add" size={16} color="#FFF" />
+                <Ionicons name="add" size={16} color={colores.blanco} />
                 <Text style={s.btnAnadirTxt}>Añadir</Text>
               </TouchableOpacity>
             </View>
@@ -594,7 +550,7 @@ export default function VacunasScreen() {
               <View><SkeletonCard /><SkeletonCard /></View>
             ) : vacunasAplicadas.length === 0 ? (
               <View style={s.emptyRow}>
-                <Ionicons name="create-outline" size={14} color="#6B6B6B" />
+                <Ionicons name="create-outline" size={14} color={colores.textoSecundario} />
                 <Text style={s.emptyTxt}>No hay vacunas registradas</Text>
               </View>
             ) : (
@@ -605,7 +561,7 @@ export default function VacunasScreen() {
 
             {/* ── SECCIÓN CALENDARIO SUGERIDO ── */}
             <View style={s.secSugeridosRow}>
-              <Ionicons name="calendar-outline" size={16} color="#2C2C2C" />
+              <Ionicons name="calendar-outline" size={16} color={colores.texto} />
               <Text style={s.secSugeridosTitulo}>Vacunas sugeridas</Text>
             </View>
 
@@ -637,7 +593,7 @@ export default function VacunasScreen() {
                   <TextInput
                     style={[s.input, !tituloEditable && s.inputDisabled, formErrors.titulo && s.inputError]}
                     placeholder="Nombre de la vacuna"
-                    placeholderTextColor="#AAAAAA"
+                    placeholderTextColor={colores.textoTenue}
                     value={formTitulo}
                     editable={tituloEditable}
                     onChangeText={(v) => { setFormTitulo(v); if (formErrors.titulo) setFormErrors((p) => ({ ...p, titulo: null })); }}
@@ -649,7 +605,7 @@ export default function VacunasScreen() {
                   <TextInput
                     style={[s.input, s.inputMulti]}
                     placeholder="Descripción opcional"
-                    placeholderTextColor="#AAAAAA"
+                    placeholderTextColor={colores.textoTenue}
                     value={formDescripcion}
                     onChangeText={setFormDescripcion}
                     multiline
@@ -662,10 +618,10 @@ export default function VacunasScreen() {
                     style={[s.inputFecha, formErrors.fecha && s.inputError]}
                     onPress={() => setShowFechaPicker(true)}
                   >
-                    <Text style={[s.inputFechaTxt, !formFecha && { color: '#AAAAAA' }]}>
+                    <Text style={[s.inputFechaTxt, !formFecha && { color: colores.textoTenue }]}>
                       {formFecha ? toISO(formFecha).split('-').reverse().join('/').replace(/^(\d+)\/(\d+)\/(\d+)$/, (_, d, mo, y) => `${parseInt(d)}/${parseInt(mo)}/${y}`) : 'dd/mm/aaaa'}
                     </Text>
-                    <Ionicons name="calendar-outline" size={18} color="#6B6B6B" />
+                    <Ionicons name="calendar-outline" size={18} color={colores.textoSecundario} />
                   </TouchableOpacity>
                   {formErrors.fecha && <Text style={s.errorTxt}>{formErrors.fecha}</Text>}
 
@@ -680,7 +636,7 @@ export default function VacunasScreen() {
                   <TextInput
                     style={s.input}
                     placeholder="Veterinaria (opcional)"
-                    placeholderTextColor="#AAAAAA"
+                    placeholderTextColor={colores.textoTenue}
                     value={formVeterinaria}
                     onChangeText={setFormVeterinaria}
                     returnKeyType="done"
@@ -689,7 +645,7 @@ export default function VacunasScreen() {
                   {/* Botón Guardar */}
                   <TouchableOpacity style={s.btnGuardar} onPress={guardarVacuna} disabled={guardando}>
                     {guardando
-                      ? <ActivityIndicator size="small" color="#FFF" />
+                      ? <ActivityIndicator size="small" color={colores.blanco} />
                       : <Text style={s.btnGuardarTxt}>{modalModo === 'editar' ? 'Guardar cambios' : 'Guardar'}</Text>
                     }
                   </TouchableOpacity>
@@ -720,8 +676,8 @@ export default function VacunasScreen() {
 // ─── ESTILOS ─────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safeArea:      { flex: 1, backgroundColor: '#C8F0D8' },
-  screenBg:      { flex: 1, width: '100%', backgroundColor: '#C8F0D8' },
+  safeArea:      { flex: 1, backgroundColor: colores.menta },
+  screenBg:      { flex: 1, width: '100%', backgroundColor: colores.menta },
   scroll:        { flex: 1 },
   scrollContent: { flexGrow: 1 },
 
@@ -733,7 +689,7 @@ const s = StyleSheet.create({
 
   // Card blanco (mismo bottom sheet que Tratamientos y Consultas)
   whiteCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: colores.blanco,
     borderTopLeftRadius: 28, borderTopRightRadius: 28,
     paddingHorizontal: 20, paddingTop: 22, paddingBottom: 40,
     minHeight: 400,
@@ -741,56 +697,56 @@ const s = StyleSheet.create({
 
   // Sección row
   secRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  secTitulo: { fontSize: 18, fontWeight: '700', color: '#2C2C2C' },
+  secTitulo: { fontSize: 18, fontWeight: '700', color: colores.texto },
 
   // Botón Añadir
   btnAnadir: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#2DBD72', borderRadius: 20,
+    backgroundColor: colores.verde, borderRadius: 20,
     paddingVertical: 8, paddingHorizontal: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 3,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 3,
   },
-  btnAnadirTxt: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+  btnAnadirTxt: { fontSize: 14, fontWeight: '700', color: colores.blanco },
 
   // Empty
   emptyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 4, marginBottom: 18 },
-  emptyTxt: { fontSize: 14, color: '#6B6B6B', textAlign: 'center', marginTop: 4, marginBottom: 18 },
+  emptyTxt: { fontSize: 14, color: colores.textoSecundario, textAlign: 'center', marginTop: 4, marginBottom: 18 },
 
   // Card aplicado
   cardAplicado: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14, borderWidth: 1, borderColor: '#EFEFEF',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
+    backgroundColor: colores.blanco,
+    borderRadius: 14, borderWidth: 1, borderColor: colores.gris200,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
     paddingHorizontal: 14, paddingVertical: 12,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     marginBottom: 10,
   },
   cardLeft:   { flex: 1, paddingRight: 10, gap: 3 },
   cardRight:  { flexDirection: 'column', gap: 8, alignItems: 'center', justifyContent: 'center' },
-  cardNombre: { fontSize: 14, fontWeight: '700', color: '#2C2C2C', marginBottom: 4 },
-  cardDesc:   { fontSize: 12, color: '#2C2C2C', fontStyle: 'italic', marginBottom: 4 },
-  cardField:  { fontSize: 12, color: '#6B6B6B' },
+  cardNombre: { fontSize: 14, fontWeight: '700', color: colores.texto, marginBottom: 4 },
+  cardDesc:   { fontSize: 12, color: colores.texto, fontStyle: 'italic', marginBottom: 4 },
+  cardField:  { fontSize: 12, color: colores.textoSecundario },
 
   btnEditar: {
-    backgroundColor: '#5BC8D0', width: 36, height: 36, borderRadius: 10,
+    backgroundColor: colores.turquesa, width: 36, height: 36, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
   },
   btnEliminar: {
-    backgroundColor: '#E63946', width: 36, height: 36, borderRadius: 10,
+    backgroundColor: colores.rojo, width: 36, height: 36, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
   },
 
   // Sección sugeridos
   secSugeridosRow:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 24, marginBottom: 12 },
-  secSugeridosTitulo: { fontSize: 16, fontWeight: '700', color: '#2C2C2C' },
+  secSugeridosTitulo: { fontSize: 16, fontWeight: '700', color: colores.texto },
 
   // Card sugerido
   cardSugerido: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12, borderWidth: 1, borderColor: '#EFEFEF',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2,
+    backgroundColor: colores.blanco,
+    borderRadius: 12, borderWidth: 1, borderColor: colores.gris200,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2,
     paddingHorizontal: 14, paddingVertical: 12,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     marginBottom: 10,
@@ -801,74 +757,66 @@ const s = StyleSheet.create({
   // con una frecuencia larga).
   cardSugeridoLeft:  { flex: 1, minWidth: 0, paddingRight: 8 },
   cardSugeridoRight: { maxWidth: '45%', alignItems: 'flex-end', justifyContent: 'center', gap: 4 },
-  sugeridoNombre: { fontSize: 14, fontWeight: '700', color: '#2C2C2C' },
-  sugeridoDosis:  { fontSize: 11, color: '#177046', fontWeight: '700', marginTop: 2 },
+  sugeridoNombre: { fontSize: 14, fontWeight: '700', color: colores.texto },
+  sugeridoDosis:  { fontSize: 11, color: colores.verdeOscuro, fontWeight: '700', marginTop: 2 },
   sugeridoEstado: { fontSize: 12, textAlign: 'right' },
-  sugeridoFrec:   { fontSize: 12, color: '#6B6B6B', textAlign: 'right' },
+  sugeridoFrec:   { fontSize: 12, color: colores.textoSecundario, textAlign: 'right' },
 
   btnMarcar: {
-    backgroundColor: '#2DBD72', borderRadius: 14, paddingVertical: 5, paddingHorizontal: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
+    backgroundColor: colores.verde, borderRadius: 14, paddingVertical: 5, paddingHorizontal: 12,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
   },
-  btnMarcarTxt: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
+  btnMarcarTxt: { fontSize: 13, fontWeight: '700', color: colores.blanco },
 
   badgeAplicada: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
     backgroundColor: '#E8F8F0', borderRadius: 14, paddingVertical: 5, paddingHorizontal: 10,
   },
-  badgeAplicadaTxt: { fontSize: 12, fontWeight: '700', color: '#2DBD72' },
+  badgeAplicadaTxt: { fontSize: 12, fontWeight: '700', color: colores.verde },
 
   // Skeleton
-  skeletonCard:  { backgroundColor: '#E8E8E8', borderRadius: 12, padding: 16, marginBottom: 10, gap: 8 },
-  skeletonLine1: { height: 14, backgroundColor: '#D8D8D8', borderRadius: 6, width: '60%' },
-  skeletonLine2: { height: 11, backgroundColor: '#D8D8D8', borderRadius: 6, width: '80%' },
-  skeletonLine3: { height: 11, backgroundColor: '#D8D8D8', borderRadius: 6, width: '50%' },
+  skeletonCard:  { backgroundColor: colores.gris300, borderRadius: 12, padding: 16, marginBottom: 10, gap: 8 },
+  skeletonLine1: { height: 14, backgroundColor: colores.gris600, borderRadius: 6, width: '60%' },
+  skeletonLine2: { height: 11, backgroundColor: colores.gris600, borderRadius: 6, width: '80%' },
+  skeletonLine3: { height: 11, backgroundColor: colores.gris600, borderRadius: 6, width: '50%' },
 
   // Toast
-  toast: {
-    position: 'absolute', top: 56, alignSelf: 'center',
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8,
-    elevation: 8, zIndex: 100,
-  },
-  toastTxt: { fontSize: 14, fontWeight: '700', color: '#FFF' },
 
   // Modal
   overlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.50)', justifyContent: 'center', alignItems: 'center' },
   modalCard: {
-    backgroundColor: '#FFF', borderRadius: 20,
+    backgroundColor: colores.blanco, borderRadius: 20,
     width: Math.min(SCREEN_WIDTH * 0.88, 360),
     paddingHorizontal: 22, paddingTop: 24, paddingBottom: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 10,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 10,
     maxHeight: '90%',
   },
-  modalTitulo: { fontSize: 18, fontWeight: '700', color: '#2DBD72', textAlign: 'center', marginBottom: 20 },
+  modalTitulo: { fontSize: 18, fontWeight: '700', color: colores.verde, textAlign: 'center', marginBottom: 20 },
 
   input: {
-    borderWidth: 1.5, borderColor: '#DDDDDD', borderRadius: 10,
+    borderWidth: 1.5, borderColor: colores.gris500, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 14, color: '#2C2C2C', backgroundColor: '#FFF',
+    fontSize: 14, color: colores.texto, backgroundColor: colores.blanco,
     marginBottom: 12,
   },
-  inputDisabled: { backgroundColor: '#F5F5F5', color: '#2C2C2C' },
-  inputError:    { borderColor: '#E63946' },
+  inputDisabled: { backgroundColor: colores.gris50, color: colores.texto },
+  inputError:    { borderColor: colores.rojo },
   inputMulti:    { height: 80, textAlignVertical: 'top' },
   inputFecha: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    borderWidth: 1.5, borderColor: '#DDDDDD', borderRadius: 10,
+    borderWidth: 1.5, borderColor: colores.gris500, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
-    marginBottom: 12, backgroundColor: '#FFF',
+    marginBottom: 12, backgroundColor: colores.blanco,
   },
-  inputFechaTxt: { flex: 1, fontSize: 14, color: '#2C2C2C' },
-  errorTxt:      { fontSize: 11, color: '#E63946', marginTop: -8, marginBottom: 8, marginLeft: 4 },
+  inputFechaTxt: { flex: 1, fontSize: 14, color: colores.texto },
+  errorTxt:      { fontSize: 11, color: colores.rojo, marginTop: -8, marginBottom: 8, marginLeft: 4 },
 
   btnGuardar: {
     width: '100%', height: 48, borderRadius: 30,
-    backgroundColor: '#2DBD72', alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
+    backgroundColor: colores.verde, alignItems: 'center', justifyContent: 'center',
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
   },
-  btnGuardarTxt: { fontSize: 15, fontWeight: '700', color: '#FFF' },
-  btnCancelar:   { width: '100%', height: 44, borderRadius: 30, backgroundColor: '#E8E8E8', alignItems: 'center', justifyContent: 'center', marginTop: 10 },
-  btnCancelarTxt: { fontSize: 15, fontWeight: '700', color: '#2C2C2C' },
+  btnGuardarTxt: { fontSize: 15, fontWeight: '700', color: colores.blanco },
+  btnCancelar:   { width: '100%', height: 44, borderRadius: 30, backgroundColor: colores.gris300, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
+  btnCancelarTxt: { fontSize: 15, fontWeight: '700', color: colores.texto },
 });

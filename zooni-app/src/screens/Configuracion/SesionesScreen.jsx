@@ -9,6 +9,7 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { SettingsGroup, SettingsScreen, T } from '../../components/settings/SettingsKit';
+import { colores } from '../../theme';
 
 const SESIONES_DEMO = [
   { id: 1, dispositivo: 'Este dispositivo',  detalle: 'Windows · Buenos Aires',        actual: true },
@@ -73,7 +74,7 @@ const s = StyleSheet.create({
   nombre:  { fontSize: 16, fontWeight: '600', color: T.text },
   detalle: { fontSize: 13, color: T.textSoft, marginTop: 2 },
   chipActual: {
-    backgroundColor: '#E8F7EE', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4,
+    backgroundColor: colores.mentaBorde, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4,
   },
   chipActualTxt: { fontSize: 12, fontWeight: '700', color: T.brandText },
   cerrarTxt: { fontSize: 14, fontWeight: '700', color: T.sosRedText },

@@ -28,6 +28,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { ESPECIES } from '../constants/registroAssets';
 import { volverOLogin } from '../utils/volverOLogin';
 import BotonesSociales from '../components/BotonesSociales';
+import { colores } from '../theme';
 
 function EspecieTile({ especie, seleccionada, onPress }) {
   const scale = useRef(new Animated.Value(1)).current;
@@ -89,7 +90,7 @@ export default function RegisterStep1Screen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#C8F0D8" />
+      <StatusBar barStyle="dark-content" backgroundColor={colores.menta} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
@@ -106,7 +107,7 @@ export default function RegisterStep1Screen() {
             <View style={s.cardHeader}>
               <TouchableOpacity onPress={() => volverOLogin(navigation)} accessibilityLabel="Volver al login"
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Ionicons name="chevron-back" size={22} color="#2DBD72" />
+                <Ionicons name="chevron-back" size={22} color={colores.verde} />
               </TouchableOpacity>
               <Text style={s.cardHeaderTxt}>Contanos sobre tu mascota 🐾</Text>
             </View>
@@ -114,7 +115,7 @@ export default function RegisterStep1Screen() {
             <TextInput
               style={[s.input, focusNombre && s.inputFocus, errNombre && s.inputError]}
               placeholder="Nombre de tu mascota"
-              placeholderTextColor="#AAAAAA"
+              placeholderTextColor={colores.textoTenue}
               value={nombre}
               onChangeText={(v) => { setNombre(v); setErrNombre(false); }}
               onFocus={() => setFocusNombre(true)}
@@ -146,55 +147,55 @@ export default function RegisterStep1Screen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#C8F0D8' },
+  safe: { flex: 1, backgroundColor: colores.menta },
   scroll: { flexGrow: 1, paddingHorizontal: 20 },
 
-  zooni: { fontSize: 26, fontWeight: '800', color: '#5C3D1E', textAlign: 'center', marginTop: 16 },
-  registrate: { fontSize: 15, color: '#6B6B6B', textAlign: 'center', marginBottom: 20 },
+  zooni: { fontSize: 26, fontWeight: '800', color: colores.marron, textAlign: 'center', marginTop: 16 },
+  registrate: { fontSize: 15, color: colores.textoSecundario, textAlign: 'center', marginBottom: 20 },
   social: {
-    fontSize: 14, color: '#2C2C2C', textAlign: 'center', marginTop: -10, marginBottom: 16,
-    backgroundColor: '#FFFFFF', borderRadius: 14, padding: 12, fontWeight: '600',
+    fontSize: 14, color: colores.texto, textAlign: 'center', marginTop: -10, marginBottom: 16,
+    backgroundColor: colores.blanco, borderRadius: 14, padding: 12, fontWeight: '600',
   },
 
   card: {
-    backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, marginBottom: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 4,
+    backgroundColor: colores.blanco, borderRadius: 20, padding: 20, marginBottom: 20,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 4,
   },
   cardHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#F0F0F0', marginBottom: 14,
+    paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colores.gris150, marginBottom: 14,
   },
-  cardHeaderTxt: { flex: 1, fontSize: 15, fontWeight: '700', color: '#2DBD72' },
+  cardHeaderTxt: { flex: 1, fontSize: 15, fontWeight: '700', color: colores.verde },
 
   input: {
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: '#2C2C2C', marginBottom: 18,
+    fontSize: 15, color: colores.texto, marginBottom: 18,
   },
-  inputFocus: { borderColor: '#2DBD72' },
-  inputError: { borderColor: '#E63946' },
-  errorTxt: { fontSize: 11, color: '#E63946', marginTop: -12, marginBottom: 12, marginLeft: 4 },
+  inputFocus: { borderColor: colores.verde },
+  inputError: { borderColor: colores.rojo },
+  errorTxt: { fontSize: 11, color: colores.rojo, marginTop: -12, marginBottom: 12, marginLeft: 4 },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   tileWrap: { width: '47%', flexGrow: 1 },
   tile: {
-    backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14,
-    borderWidth: 1, borderColor: '#EFEFEF',
+    backgroundColor: colores.blanco, borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: colores.gris200,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2,
     minHeight: 92,
   },
-  tileOn: { backgroundColor: '#2DBD72', borderColor: '#2DBD72' },
+  tileOn: { backgroundColor: colores.verde, borderColor: colores.verde },
   tileEmoji: { fontSize: 32, marginBottom: 6 },
   tileImg: { width: 40, height: 40, marginBottom: 6 },
-  tileLabel: { fontSize: 14, fontWeight: '700', color: '#2C2C2C' },
-  tileLabelOn: { color: '#FFFFFF' },
+  tileLabel: { fontSize: 14, fontWeight: '700', color: colores.texto },
+  tileLabelOn: { color: colores.blanco },
 
   btnContinuar: {
-    backgroundColor: '#2DBD72', borderRadius: 30, height: 52,
+    backgroundColor: colores.verde, borderRadius: 30, height: 52,
     alignItems: 'center', justifyContent: 'center',
     marginHorizontal: 20, marginBottom: 32,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
   },
-  btnContinuarTxt: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  btnContinuarTxt: { fontSize: 16, fontWeight: '700', color: colores.blanco },
 });

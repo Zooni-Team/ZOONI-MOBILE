@@ -9,7 +9,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import { activarMascota, fetchHome, fetchHomeConfig, saveHomeConfig } from '../services/api';
 import { getSeccion } from '../services/secciones';
-import SkeletonLoader from '../components/SkeletonLoader';
+import { SkeletonBloque } from '../components/ui/Skeleton';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import NotificationsPanel from '../components/NotificationsPanel';
 import AddButtonModal from '../components/AddButtonModal';
@@ -18,7 +18,8 @@ import DraggableList from '../components/DraggableList';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
 import { resolveMascotaVisual } from '../constants/petImages';
 import { actualizarMascota } from '../services/petsApi';
-import { useTheme } from '../config/theme';
+import { useTheme } from '../theme';
+import { colores } from '../theme';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 const HERO_HEIGHT = Math.min(SCREEN_HEIGHT * 0.40, 340);
@@ -333,7 +334,7 @@ export default function HomeScreen() {
           accessibilityLabel="Notificaciones"
           style={styles.bellWrap}
         >
-          <Ionicons name="notifications" size={30} color="#F5C842" />
+          <Ionicons name="notifications" size={30} color={colores.amarillo} />
           {badge > 0 && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{badge > 9 ? '9+' : badge}</Text>
@@ -356,7 +357,7 @@ export default function HomeScreen() {
         scrollEnabled={!editMode}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh}
-            colors={['#2DBD72']} tintColor="#2DBD72" />
+            colors={[colores.verde]} tintColor={colores.verde} />
         }
       >
         {/* Sustituye al viejo fallback de datos demo: se avisa que no se pudo
@@ -374,7 +375,7 @@ export default function HomeScreen() {
           {(mascota || loading) && (
             <Animated.View style={[styles.petNameWrap, { opacity: petNameOpacity, transform: [{ translateX: petSwapX }] }]}>
               {loading ? (
-                <SkeletonLoader width={140} height={36} borderRadius={10} />
+                <SkeletonBloque width={140} height={36} borderRadius={10} />
               ) : (
                 <Text style={styles.petName} numberOfLines={1}>
                   {mascota.nombre.length > 20
@@ -392,7 +393,7 @@ export default function HomeScreen() {
             ]}
           >
             {loading ? (
-              <SkeletonLoader width={PET_IMAGE_SIZE} height={PET_IMAGE_SIZE} borderRadius={20} />
+              <SkeletonBloque width={PET_IMAGE_SIZE} height={PET_IMAGE_SIZE} borderRadius={20} />
             ) : (
               /*
                 Se toca la imagen para alternar entre la foto real y el avatar
@@ -504,7 +505,7 @@ export default function HomeScreen() {
                 accessibilityLabel="Mascota anterior"
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons name="chevron-back" size={26} color="#2C2C2C" />
+                <Ionicons name="chevron-back" size={26} color={colores.texto} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.petArrow, styles.petArrowRight]}
@@ -513,7 +514,7 @@ export default function HomeScreen() {
                 accessibilityLabel="Mascota siguiente"
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons name="chevron-forward" size={26} color="#2C2C2C" />
+                <Ionicons name="chevron-forward" size={26} color={colores.texto} />
               </TouchableOpacity>
             </>
           )}
@@ -535,10 +536,10 @@ export default function HomeScreen() {
             // Mismo orden demo, pero como skeleton — así no se ve el orden
             // "de mentira" ya con etiquetas mientras carga la config real.
             <View style={{ gap: 12 }}>
-              <SkeletonLoader width="100%" height={56} borderRadius={16} />
-              <SkeletonLoader width="100%" height={56} borderRadius={16} />
-              <SkeletonLoader width="100%" height={56} borderRadius={16} />
-              <SkeletonLoader width="100%" height={56} borderRadius={16} />
+              <SkeletonBloque width="100%" height={56} borderRadius={16} />
+              <SkeletonBloque width="100%" height={56} borderRadius={16} />
+              <SkeletonBloque width="100%" height={56} borderRadius={16} />
+              <SkeletonBloque width="100%" height={56} borderRadius={16} />
             </View>
           ) : (
             <>
@@ -594,14 +595,14 @@ export default function HomeScreen() {
           onPress={() => setEditMode((v) => !v)}
           accessibilityLabel="Personalizar orden de botones"
         >
-          <Ionicons name="grid-outline" size={22} color="#FFFFFF" />
+          <Ionicons name="grid-outline" size={22} color={colores.blanco} />
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.fab}
           onPress={() => setAddModalOpen(true)}
           accessibilityLabel="Agregar sección"
         >
-          <Ionicons name="add" size={26} color="#FFFFFF" />
+          <Ionicons name="add" size={26} color={colores.blanco} />
         </TouchableOpacity>
       </View>
       </ImageBackground>
@@ -679,7 +680,7 @@ function PetIllustration({ source, label, esFoto }) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#D4F5E2' },
+  safeArea: { flex: 1, backgroundColor: colores.mentaClara },
   screenBackground: { flex: 1, width: '100%' },
   screenBackgroundImage: { width: '100%', height: '100%' },
   header: {
@@ -693,11 +694,11 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: 'absolute', top: 0, right: 0,
-    backgroundColor: '#E63946', borderRadius: 8,
+    backgroundColor: colores.rojo, borderRadius: 8,
     minWidth: 16, height: 16, alignItems: 'center',
     justifyContent: 'center', paddingHorizontal: 3,
   },
-  badgeText: { color: '#FFFFFF', fontSize: 9, fontWeight: '700' },
+  badgeText: { color: colores.blanco, fontSize: 9, fontWeight: '700' },
   scroll: { flex: 1, backgroundColor: 'transparent' },
   scrollContent: { flexGrow: 1, backgroundColor: 'transparent' },
 
@@ -734,7 +735,7 @@ const styles = StyleSheet.create({
   petName: {
     fontSize: 40,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: colores.blanco,
     textAlign: 'center',
     letterSpacing: 0.2,
     textShadowColor: 'rgba(0, 0, 0, 0.28)',
@@ -811,7 +812,7 @@ const styles = StyleSheet.create({
     width: 7, height: 7, borderRadius: 3.5,
     backgroundColor: 'rgba(255,255,255,0.75)',
   },
-  puntoOn: { backgroundColor: '#2DBD72' },
+  puntoOn: { backgroundColor: colores.verde },
 
   petImageContainer: {
     width: PET_IMAGE_SIZE,
@@ -862,7 +863,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 4,
-    shadowColor: '#000',
+    shadowColor: colores.negro,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 5,
@@ -883,20 +884,20 @@ const styles = StyleSheet.create({
 
   // Save button — verde, arriba de los botones
   saveBtn: {
-    backgroundColor: '#2DBD72', borderRadius: 30, height: 54,
+    backgroundColor: colores.verde, borderRadius: 30, height: 54,
     alignItems: 'center', justifyContent: 'center', marginBottom: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15, shadowRadius: 10, elevation: 4,
   },
-  saveBtnText: { fontSize: 17, fontWeight: '700', color: '#FFFFFF' },
+  saveBtnText: { fontSize: 17, fontWeight: '700', color: colores.blanco },
 
   // FABs
   fabContainer: { position: 'absolute', bottom: 16, right: 16, flexDirection: 'row', gap: 10 },
   fab: {
-    width: 48, height: 48, borderRadius: 24, backgroundColor: '#2DBD72',
+    width: 48, height: 48, borderRadius: 24, backgroundColor: colores.verde,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2, shadowRadius: 12, elevation: 6,
   },
-  fabActive: { backgroundColor: '#27AE60' },
+  fabActive: { backgroundColor: colores.verdeExito },
 });

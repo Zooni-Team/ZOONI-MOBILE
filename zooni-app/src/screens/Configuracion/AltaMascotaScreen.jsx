@@ -42,6 +42,7 @@ import { calcularEdad } from '../../utils/calcularEdad';
 import { formatearPeso, pesoValido, rangoPeso, textoRangoPeso } from '../../constants/pesoPorEspecie';
 import { alerta } from '../../utils/dialogo';
 import AppDialog from '../../components/AppDialog';
+import { colores } from '../../theme';
 
 const SEXOS = ['Macho', 'Hembra'];
 
@@ -235,7 +236,7 @@ export default function AltaMascotaScreen() {
   if (paso === 1) {
     return (
       <SafeAreaView style={s.safe}>
-        <StatusBar barStyle="dark-content" backgroundColor="#C8F0D8" />
+        <StatusBar barStyle="dark-content" backgroundColor={colores.menta} />
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
@@ -247,7 +248,7 @@ export default function AltaMascotaScreen() {
               <View style={s.cardHeader}>
                 <TouchableOpacity onPress={() => navigation.goBack()} accessibilityLabel="Volver"
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <Ionicons name="chevron-back" size={22} color="#2DBD72" />
+                  <Ionicons name="chevron-back" size={22} color={colores.verde} />
                 </TouchableOpacity>
                 <Text style={s.cardHeaderTxt}>Contanos sobre tu mascota 🐾</Text>
               </View>
@@ -255,7 +256,7 @@ export default function AltaMascotaScreen() {
               <TextInput
                 style={[s.input, focusNombre && s.inputFocus, errNombre && s.inputError]}
                 placeholder="Nombre de tu mascota"
-                placeholderTextColor="#AAAAAA"
+                placeholderTextColor={colores.textoTenue}
                 value={nombre}
                 onChangeText={(v) => { setNombre(v); setErrNombre(false); }}
                 onFocus={() => setFocusNombre(true)}
@@ -284,7 +285,7 @@ export default function AltaMascotaScreen() {
   // ── PASO 2: datos (mismo layout que RegisterStep2) ──
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#C8F0D8" />
+      <StatusBar barStyle="dark-content" backgroundColor={colores.menta} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView contentContainerStyle={s.scrollPaso2} keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
@@ -292,7 +293,7 @@ export default function AltaMascotaScreen() {
           <View style={s.header}>
             <TouchableOpacity onPress={() => setPaso(1)} accessibilityLabel="Volver al paso anterior"
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="chevron-back" size={22} color="#2DBD72" />
+              <Ionicons name="chevron-back" size={22} color={colores.verde} />
             </TouchableOpacity>
             <Text style={s.headerTxt}>Completá los datos de tu {capitalizar(especie)} 🐾</Text>
           </View>
@@ -304,7 +305,7 @@ export default function AltaMascotaScreen() {
             {/* Sexo */}
             <TouchableOpacity style={[s.dropdown, errores.sexo && s.inputError]} onPress={() => setShowSexo(true)}>
               <Text style={[s.dropdownTxt, !sexo && s.placeholder]}>{sexo ?? 'Sexo'}</Text>
-              <Ionicons name="chevron-down" size={16} color="#6B6B6B" />
+              <Ionicons name="chevron-down" size={16} color={colores.textoSecundario} />
             </TouchableOpacity>
             {errores.sexo && <Text style={s.errorTxt}>{errores.sexo}</Text>}
 
@@ -314,9 +315,9 @@ export default function AltaMascotaScreen() {
               onPress={() => setShowRaza(true)}
             >
               {cargandoRazas
-                ? <ActivityIndicator size="small" color="#2DBD72" />
+                ? <ActivityIndicator size="small" color={colores.verde} />
                 : <Text style={[s.dropdownTxt, !raza && s.placeholder]}>{raza?.nombre ?? 'Seleccioná una opción'}</Text>}
-              <Ionicons name="chevron-down" size={16} color="#6B6B6B" />
+              <Ionicons name="chevron-down" size={16} color={colores.textoSecundario} />
             </TouchableOpacity>
             {errores.raza && <Text style={s.errorTxt}>{errores.raza}</Text>}
 
@@ -338,7 +339,7 @@ export default function AltaMascotaScreen() {
               <Text style={[s.dropdownTxt, !fechaNacimiento && s.placeholder]}>
                 {fechaFmt ?? 'Elegí la fecha de nacimiento'}
               </Text>
-              <Ionicons name="calendar-outline" size={16} color="#6B6B6B" />
+              <Ionicons name="calendar-outline" size={16} color={colores.textoSecundario} />
             </TouchableOpacity>
             {errores.fechaNacimiento && <Text style={[s.errorTxt, { textAlign: 'center' }]}>{errores.fechaNacimiento}</Text>}
             {fechaNacimiento && <Text style={s.sliderValor}>{calcularEdad(fechaNacimiento)}</Text>}
@@ -350,7 +351,7 @@ export default function AltaMascotaScreen() {
                 <Image source={{ uri: fotoUri }} style={s.preview} />
                 <TouchableOpacity style={s.previewQuitar} onPress={() => setFotoUri(null)}
                   accessibilityLabel="Quitar foto">
-                  <Ionicons name="close" size={14} color="#FFFFFF" />
+                  <Ionicons name="close" size={14} color={colores.blanco} />
                 </TouchableOpacity>
               </View>
             )}
@@ -368,7 +369,7 @@ export default function AltaMascotaScreen() {
         <TouchableOpacity style={[s.btnContinuar, guardando && { opacity: 0.6 }]}
           onPress={guardar} disabled={guardando} activeOpacity={0.85}>
           {guardando
-            ? <ActivityIndicator size="small" color="#FFFFFF" />
+            ? <ActivityIndicator size="small" color={colores.blanco} />
             : <Text style={s.btnContinuarTxt}>Guardar mascota</Text>}
         </TouchableOpacity>
       </KeyboardAvoidingView>
@@ -432,96 +433,96 @@ export default function AltaMascotaScreen() {
 
 // Estilos calcados de RegisterStep1 / RegisterStep2
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#C8F0D8' },
+  safe: { flex: 1, backgroundColor: colores.menta },
   scroll: { flexGrow: 1, paddingHorizontal: 20 },
   scrollPaso2: { flexGrow: 1, paddingBottom: 16 },
 
-  zooni: { fontSize: 26, fontWeight: '800', color: '#5C3D1E', textAlign: 'center', marginTop: 16 },
-  subtitulo: { fontSize: 15, color: '#6B6B6B', textAlign: 'center', marginBottom: 20 },
+  zooni: { fontSize: 26, fontWeight: '800', color: colores.marron, textAlign: 'center', marginTop: 16 },
+  subtitulo: { fontSize: 15, color: colores.textoSecundario, textAlign: 'center', marginBottom: 20 },
 
   card: {
-    backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, marginBottom: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 4,
+    backgroundColor: colores.blanco, borderRadius: 20, padding: 20, marginBottom: 20,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 4,
   },
   cardHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#F0F0F0', marginBottom: 14,
+    paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colores.gris150, marginBottom: 14,
   },
-  cardHeaderTxt: { flex: 1, fontSize: 15, fontWeight: '700', color: '#2DBD72' },
+  cardHeaderTxt: { flex: 1, fontSize: 15, fontWeight: '700', color: colores.verde },
 
   input: {
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: '#2C2C2C', marginBottom: 18,
+    fontSize: 15, color: colores.texto, marginBottom: 18,
   },
-  inputFocus: { borderColor: '#2DBD72' },
-  inputError: { borderColor: '#E63946' },
-  errorTxt: { fontSize: 11, color: '#E63946', marginTop: -12, marginBottom: 12, marginLeft: 4 },
+  inputFocus: { borderColor: colores.verde },
+  inputError: { borderColor: colores.rojo },
+  errorTxt: { fontSize: 11, color: colores.rojo, marginTop: -12, marginBottom: 12, marginLeft: 4 },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   tileWrap: { width: '47%', flexGrow: 1 },
   tile: {
-    backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14,
-    borderWidth: 1, borderColor: '#EFEFEF',
+    backgroundColor: colores.blanco, borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: colores.gris200,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2,
     minHeight: 92,
   },
-  tileOn: { backgroundColor: '#2DBD72', borderColor: '#2DBD72' },
+  tileOn: { backgroundColor: colores.verde, borderColor: colores.verde },
   tileEmoji: { fontSize: 32, marginBottom: 6 },
   tileImg: { width: 40, height: 40, marginBottom: 6 },
-  tileLabel: { fontSize: 14, fontWeight: '700', color: '#2C2C2C' },
-  tileLabelOn: { color: '#FFFFFF' },
+  tileLabel: { fontSize: 14, fontWeight: '700', color: colores.texto },
+  tileLabelOn: { color: colores.blanco },
 
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 20, marginTop: 16, marginBottom: 16,
   },
-  headerTxt: { flex: 1, fontSize: 16, fontWeight: '700', color: '#2DBD72' },
+  headerTxt: { flex: 1, fontSize: 16, fontWeight: '700', color: colores.verde },
 
   sorpresa: { width: 140, height: 140, alignSelf: 'center', marginBottom: 16 },
 
   cardPaso2: {
-    backgroundColor: '#FFFFFF', borderRadius: 20,
+    backgroundColor: colores.blanco, borderRadius: 20,
     paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24,
     marginHorizontal: 16, marginBottom: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 4,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 4,
   },
 
   dropdown: {
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     marginBottom: 12,
   },
-  dropdownSeleccionado: { borderColor: '#2DBD72', borderWidth: 1.5 },
-  dropdownTxt: { fontSize: 15, color: '#2C2C2C', flex: 1, textAlign: 'center' },
-  placeholder: { color: '#AAAAAA' },
+  dropdownSeleccionado: { borderColor: colores.verde, borderWidth: 1.5 },
+  dropdownTxt: { fontSize: 15, color: colores.texto, flex: 1, textAlign: 'center' },
+  placeholder: { color: colores.textoTenue },
 
-  sliderLabel: { fontSize: 14, fontWeight: '700', color: '#2DBD72', textAlign: 'center', marginTop: 8, marginBottom: 4 },
-  sliderValor: { fontSize: 16, fontWeight: '700', color: '#2C2C2C', textAlign: 'center' },
-  sliderAyuda: { fontSize: 11, color: '#9A9A9A', textAlign: 'center', marginTop: 2, marginBottom: 12 },
+  sliderLabel: { fontSize: 14, fontWeight: '700', color: colores.verde, textAlign: 'center', marginTop: 8, marginBottom: 4 },
+  sliderValor: { fontSize: 16, fontWeight: '700', color: colores.texto, textAlign: 'center' },
+  sliderAyuda: { fontSize: 11, color: colores.textoGris, textAlign: 'center', marginTop: 2, marginBottom: 12 },
 
-  fotoLabel: { fontSize: 14, color: '#2C2C2C', marginTop: 8, marginBottom: 10, textAlign: 'center', fontWeight: '600' },
+  fotoLabel: { fontSize: 14, color: colores.texto, marginTop: 8, marginBottom: 10, textAlign: 'center', fontWeight: '600' },
   previewWrap: { alignSelf: 'center', marginBottom: 10 },
   preview: { width: 80, height: 80, borderRadius: 10 },
   previewQuitar: {
     position: 'absolute', top: -6, right: -6,
-    width: 22, height: 22, borderRadius: 11, backgroundColor: '#E63946',
+    width: 22, height: 22, borderRadius: 11, backgroundColor: colores.rojo,
     alignItems: 'center', justifyContent: 'center',
   },
   btnFoto: {
-    backgroundColor: '#F5C842', borderRadius: 20,
+    backgroundColor: colores.amarillo, borderRadius: 20,
     paddingVertical: 10, paddingHorizontal: 20,
     alignSelf: 'center', marginBottom: 10, minWidth: 190, alignItems: 'center',
   },
-  btnFotoTxt: { fontSize: 14, fontWeight: '700', color: '#2C2C2C' },
+  btnFotoTxt: { fontSize: 14, fontWeight: '700', color: colores.texto },
 
   btnContinuar: {
-    backgroundColor: '#2DBD72', borderRadius: 30, height: 52,
+    backgroundColor: colores.verde, borderRadius: 30, height: 52,
     alignItems: 'center', justifyContent: 'center',
     marginHorizontal: 20, marginBottom: 32,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
   },
-  btnContinuarTxt: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  btnContinuarTxt: { fontSize: 16, fontWeight: '700', color: colores.blanco },
 });

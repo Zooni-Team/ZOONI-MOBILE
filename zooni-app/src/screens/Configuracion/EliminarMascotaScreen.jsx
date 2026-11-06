@@ -17,11 +17,12 @@ import { SettingsScreen } from '../../components/settings/SettingsKit';
 import { resolveMascotaVisual } from '../../constants/petImages';
 import { archivarMascota, eliminarMascota } from '../../services/petsApi';
 import { alerta } from '../../utils/dialogo';
+import { colores } from '../../theme';
 
 const P = {
-  text: '#2C2C2C', textSoft: '#6B6B6B', textSoftMint: '#5A6B60',
-  brandText: '#177046', sosRedText: '#B3121D', sosRedTint: '#FDECEE',
-  divider: '#E8EFE9', ringArchived: '#7E9089',
+  text: colores.texto, textSoft: colores.textoSecundario, textSoftMint: colores.verdeGrisaceo,
+  brandText: colores.verdeOscuro, sosRedText: colores.rojoOscuro, sosRedTint: colores.rojoFondo,
+  divider: colores.mentaGris, ringArchived: '#7E9089',
 };
 
 const SE_BORRA = [
@@ -109,7 +110,7 @@ export default function EliminarMascotaScreen() {
         </Text>
         <TouchableOpacity style={s.btnArchivar} onPress={archivarEnVez}
           accessibilityRole="button" accessibilityLabel="Archivar en vez de eliminar">
-          <Ionicons name="archive-outline" size={16} color="#FFF" />
+          <Ionicons name="archive-outline" size={16} color={colores.blanco} />
           <Text style={s.btnArchivarTxt}>Archivar en vez de eliminar</Text>
         </TouchableOpacity>
       </View>
@@ -174,8 +175,8 @@ const s = StyleSheet.create({
   bloqueFilaTxt:    { flex: 1, fontSize: 14, color: P.text },
 
   alternativa: {
-    backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginTop: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
+    backgroundColor: colores.blanco, borderRadius: 16, padding: 16, marginTop: 16,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
   },
   alternativaTitulo: { fontSize: 15, fontWeight: '700', color: P.text },
   alternativaTxt:    { fontSize: 13, color: P.textSoft, marginTop: 4, lineHeight: 18 },
@@ -183,12 +184,12 @@ const s = StyleSheet.create({
     height: 44, borderRadius: 22, backgroundColor: P.brandText, marginTop: 12,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
-  btnArchivarTxt: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  btnArchivarTxt: { fontSize: 15, fontWeight: '700', color: colores.blanco },
 
   confirmLabel: { fontSize: 14, fontWeight: '600', color: P.text, marginTop: 24, marginBottom: 8 },
   confirmInput: {
     height: 48, borderWidth: 1.5, borderColor: P.divider, borderRadius: 12,
-    paddingHorizontal: 14, fontSize: 15, color: P.text, backgroundColor: '#FFF',
+    paddingHorizontal: 14, fontSize: 15, color: P.text, backgroundColor: colores.blanco,
   },
 
   checkRow: {
@@ -198,7 +199,7 @@ const s = StyleSheet.create({
   checkTxt: { flex: 1, fontSize: 14, color: P.text },
 
   btnEliminar: {
-    height: 52, borderRadius: 26, backgroundColor: '#FFF',
+    height: 52, borderRadius: 26, backgroundColor: colores.blanco,
     borderWidth: 2, borderColor: P.sosRedText,
     alignItems: 'center', justifyContent: 'center', marginTop: 20,
   },

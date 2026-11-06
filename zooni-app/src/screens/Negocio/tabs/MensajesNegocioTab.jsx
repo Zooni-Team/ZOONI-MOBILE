@@ -18,6 +18,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Avatar, C, Vacio, sombra } from '../../../components/paseador/PaseadorUI';
 import { fetchConversacionesNegocio } from '../../../services/negocioApi';
 import { tiempoRelativoCorto } from '../../../utils/tiempoRelativo';
+import { colores } from '../../../theme';
 
 const POLL_MS = 15000;
 const normalizar = (t) => String(t ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -125,7 +126,7 @@ export default function MensajesNegocioTab({ negocio, cfg, abrirChat, refrescarB
 const s = StyleSheet.create({
   top: { paddingHorizontal: 20, paddingTop: 16, gap: 8 },
   buscador: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF', borderRadius: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colores.blanco, borderRadius: 14,
     borderWidth: 1, borderColor: C.borde, paddingHorizontal: 12,
   },
   buscadorInput: { flex: 1, fontSize: 15, color: C.texto, paddingVertical: 11 },
@@ -145,5 +146,5 @@ const s = StyleSheet.create({
     minWidth: 20, height: 20, borderRadius: 10, backgroundColor: C.teal,
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5,
   },
-  badgeTxt: { fontSize: 11, fontWeight: '800', color: '#FFFFFF', lineHeight: 20 },
+  badgeTxt: { fontSize: 11, fontWeight: '800', color: colores.blanco, lineHeight: 20 },
 });

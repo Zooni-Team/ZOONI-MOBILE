@@ -23,6 +23,7 @@ import {
   marcarNotificacionesLeidas, marcarNotificacionPaseadorLeida,
 } from '../../services/paseadorApi';
 import { tiempoRelativoCorto } from '../../utils/tiempoRelativo';
+import { colores } from '../../theme';
 
 export default function PaseadorHeader({
   perfil, subtitulo, mostrarEstado = true, titulo, onMenu, onChatsSinLeer, onIrASeccion,
@@ -106,7 +107,7 @@ export default function PaseadorHeader({
             texto={chip.texto}
             icono={chip.on ? 'radio-button-on' : 'radio-button-off'}
             color={chip.on ? C.teal : C.texto2}
-            fondo={chip.on ? C.menta : '#EFEFEF'}
+            fondo={chip.on ? C.menta : colores.gris200}
             style={{ marginTop: 3 }}
           />
         ) : mostrarEstado && perfil ? (
@@ -114,7 +115,7 @@ export default function PaseadorHeader({
             texto={perfil.disponible ? 'Disponible' : 'No disponible'}
             icono={perfil.disponible ? 'radio-button-on' : 'radio-button-off'}
             color={perfil.disponible ? C.teal : C.texto2}
-            fondo={perfil.disponible ? C.menta : '#EFEFEF'}
+            fondo={perfil.disponible ? C.menta : colores.gris200}
             style={{ marginTop: 3 }}
           />
         ) : subtitulo ? (
@@ -181,7 +182,7 @@ const s = StyleSheet.create({
     position: 'absolute', top: 4, right: 4, minWidth: 18, height: 18, borderRadius: 9,
     backgroundColor: C.ambar, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4,
   },
-  badgeTxt: { color: '#FFFFFF', fontSize: 10, fontWeight: '800' },
+  badgeTxt: { color: colores.blanco, fontSize: 10, fontWeight: '800' },
 
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.25)', paddingTop: 70, paddingHorizontal: 14 },
   panel: { backgroundColor: C.card, borderRadius: 18, padding: 16, maxHeight: '70%', ...sombra },
@@ -189,7 +190,7 @@ const s = StyleSheet.create({
   panelVacio: { fontSize: 14, color: C.texto2, paddingVertical: 16, textAlign: 'center' },
   notif: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F1F1',
+    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colores.gris100,
   },
   punto: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.ambar, marginTop: 6 },
   notifTitulo: { fontSize: 14, fontWeight: '700', color: C.texto },

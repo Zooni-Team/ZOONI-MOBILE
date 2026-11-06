@@ -18,6 +18,7 @@ import { C } from '../paseador/PaseadorUI';
 import HoraPicker from '../HoraPicker';
 import { DIAS_SEMANA, HORARIOS_NEGOCIO_DEFAULT } from '../../constants/negocios';
 import { minutosDe } from '../../services/negocioApi';
+import { colores } from '../../theme';
 
 const aFecha = (hhmm) => {
   const d = new Date();
@@ -99,14 +100,14 @@ export default function HorariosEditor({
 const s = StyleSheet.create({
   fila: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F2F2F2',
+    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colores.gris75,
   },
   dia: { flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 80, minHeight: 40 },
   diaTxt: { fontSize: 15, fontWeight: '800', color: C.texto },
   horas: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   hora: {
     borderWidth: 1.5, borderColor: C.menta, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colores.blanco,
   },
   horaMal: { borderColor: C.rojo },
   horaTxt: { fontSize: 15, fontWeight: '800', color: C.texto, fontVariant: ['tabular-nums'] },

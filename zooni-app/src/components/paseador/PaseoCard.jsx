@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Avatar, C, Card, Chip } from './PaseadorUI';
 import { cuandoDe, formatoPlata } from '../../services/paseadorApi';
+import { colores } from '../../theme';
 
 const DIEZ_MIN = 10 * 60 * 1000;
 
@@ -26,7 +27,7 @@ export default function PaseoCard({ paseo, onChat, mostrarNotas = true, compacto
         <View style={s.info}>
           <View style={s.nombreRow}>
             <Text style={s.nombre} numberOfLines={1}>{paseo.mascota.nombre}</Text>
-            {nueva && <Chip texto="Nueva" fondo="#FFF1DC" color={C.ambar} />}
+            {nueva && <Chip texto="Nueva" fondo={colores.ambarFondo} color={C.ambar} />}
             {paraVos && <Chip texto="Para vos" icono="star" />}
           </View>
           <Text style={s.raza} numberOfLines={1}>

@@ -31,6 +31,7 @@ import { clearCurrentUserId, getCurrentUserId, setModo, MODO_DUENO } from '../..
 import { supabase } from '../../../lib/supabase';
 import { alerta, confirmar } from '../../../utils/dialogo';
 import { tiempoRelativo } from '../../../utils/tiempoRelativo';
+import { colores } from '../../../theme';
 
 const TAMANO_LABEL = { chico: 'Chicos', mediano: 'Medianos', grande: 'Grandes' };
 
@@ -48,7 +49,7 @@ function Estrellas({ valor, size = 14 }) {
 function FilaMenu({ icono, titulo, sub, onPress, color = C.texto }) {
   return (
     <TouchableOpacity style={s.menuFila} onPress={onPress} activeOpacity={0.8}>
-      <View style={[s.menuIcono, color === C.rojo && { backgroundColor: '#FDECEE' }]}>
+      <View style={[s.menuIcono, color === C.rojo && { backgroundColor: colores.rojoFondo }]}>
         <Ionicons name={icono} size={20} color={color === C.rojo ? C.rojo : C.teal} />
       </View>
       <View style={{ flex: 1 }}>
@@ -197,7 +198,7 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
       <View style={s.cabecera}>
         <TouchableOpacity onPress={abrirEditorPerfil} activeOpacity={0.85} accessibilityLabel="Cambiar foto de perfil">
           <Avatar uri={perfil.foto} nombre={nombre} size={76} borde />
-          <View style={s.fotoBadge}><Ionicons name="camera" size={14} color="#FFFFFF" /></View>
+          <View style={s.fotoBadge}><Ionicons name="camera" size={14} color={colores.blanco} /></View>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={s.nombre}>{nombre || 'Paseador'}</Text>
@@ -207,7 +208,7 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
           </View>
           {perfil.verificado
             ? <Chip texto="Verificado" icono="shield-checkmark" style={{ marginTop: 6 }} />
-            : <Chip texto="Verificación pendiente" icono="time-outline" color={C.texto2} fondo="#F1F1F1" style={{ marginTop: 6 }} />}
+            : <Chip texto="Verificación pendiente" icono="time-outline" color={C.texto2} fondo={colores.gris100} style={{ marginTop: 6 }} />}
         </View>
       </View>
       <TouchableOpacity style={s.editarPerfil} onPress={abrirEditorPerfil} activeOpacity={0.85}
@@ -368,24 +369,24 @@ const s = StyleSheet.create({
   zona: { fontSize: 13, color: C.texto2, fontWeight: '600' },
   fotoBadge: {
     position: 'absolute', right: 0, bottom: 0, width: 26, height: 26, borderRadius: 13,
-    backgroundColor: C.teal, borderWidth: 2, borderColor: '#FFFFFF',
+    backgroundColor: C.teal, borderWidth: 2, borderColor: colores.blanco,
     alignItems: 'center', justifyContent: 'center',
   },
   editarPerfil: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     marginTop: 14, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: C.teal,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colores.blanco,
   },
   editarPerfilTxt: { fontSize: 14, fontWeight: '800', color: C.teal },
 
   stats: { flexDirection: 'row', alignItems: 'center', marginTop: 18 },
   rating: { fontSize: 30, fontWeight: '900', color: C.texto },
   statEtiqueta: { fontSize: 12, color: C.texto2, fontWeight: '600', marginTop: 2 },
-  divisor: { width: 1, alignSelf: 'stretch', backgroundColor: '#F0F0F0', marginHorizontal: 12 },
+  divisor: { width: 1, alignSelf: 'stretch', backgroundColor: colores.gris150, marginHorizontal: 12 },
   bio: { fontSize: 14, color: C.texto, lineHeight: 20, marginTop: 14 },
 
   servicio: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
-  servicioBorde: { borderTopWidth: 1, borderTopColor: '#F0F0F0' },
+  servicioBorde: { borderTopWidth: 1, borderTopColor: colores.gris150 },
   servicioIcono: { width: 40, height: 40, borderRadius: 12, backgroundColor: C.menta, alignItems: 'center', justifyContent: 'center' },
   servicioTitulo: { fontSize: 15, fontWeight: '800', color: C.texto },
   servicioSub: { fontSize: 12, color: C.texto2, marginTop: 1 },
@@ -405,7 +406,7 @@ const s = StyleSheet.create({
 
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
   sheet: {
-    backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    backgroundColor: colores.blanco, borderTopLeftRadius: 24, borderTopRightRadius: 24,
     padding: 20, paddingBottom: 30,
   },
   // El editor de perfil trae el mapa de la zona: alto tope y scroll adentro
@@ -417,11 +418,11 @@ const s = StyleSheet.create({
     borderRadius: 20, backgroundColor: C.menta,
   },
   fotoBtnTxt: { fontSize: 14, fontWeight: '700', color: C.texto },
-  sheetHandle: { width: 44, height: 5, borderRadius: 3, backgroundColor: '#E0E0E0', alignSelf: 'center', marginBottom: 14 },
+  sheetHandle: { width: 44, height: 5, borderRadius: 3, backgroundColor: colores.gris400, alignSelf: 'center', marginBottom: 14 },
   sheetTitulo: { fontSize: 19, fontWeight: '900', color: C.texto, marginBottom: 14 },
   sheetLabel: { fontSize: 13, fontWeight: '700', color: C.texto, marginTop: 16, marginBottom: 8 },
   bioInput: {
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 12, padding: 12, minHeight: 80,
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12, padding: 12, minHeight: 80,
     fontSize: 14, color: C.texto, textAlignVertical: 'top',
   },
 });

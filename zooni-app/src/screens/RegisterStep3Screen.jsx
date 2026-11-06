@@ -27,6 +27,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { resolveMascotaBasicoImage } from '../constants/registroImages';
 import { verificarDisponibilidad } from '../services/authApi';
+import { colores } from '../theme';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_MIN = 7;
@@ -130,7 +131,7 @@ export default function RegisterStep3Screen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#C8F0D8" />
+      <StatusBar barStyle="dark-content" backgroundColor={colores.menta} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
@@ -142,7 +143,7 @@ export default function RegisterStep3Screen() {
             <View style={s.cardHeader}>
               <TouchableOpacity onPress={() => navigation.goBack()} accessibilityLabel="Volver al paso anterior"
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Ionicons name="chevron-back" size={22} color="#2DBD72" />
+                <Ionicons name="chevron-back" size={22} color={colores.verde} />
               </TouchableOpacity>
               <Text style={s.mascotaNombre}>{datosPrevios.nombre}</Text>
               <View style={{ width: 22 }} />
@@ -156,12 +157,12 @@ export default function RegisterStep3Screen() {
 
             <Text style={s.subtitulo}>¡Ahora ingresá tus datos!</Text>
 
-            <TextInput style={inputStyle('nombre')} placeholder="Nombre" placeholderTextColor="#AAAAAA"
+            <TextInput style={inputStyle('nombre')} placeholder="Nombre" placeholderTextColor={colores.textoTenue}
               value={nombre} onChangeText={(v) => { setNombre(v); setErrores((p) => ({ ...p, nombre: null })); }}
               onFocus={() => setFocus('nombre')} onBlur={() => setFocus(null)} returnKeyType="next" />
             {errores.nombre && <Text style={s.errorTxt}>{errores.nombre}</Text>}
 
-            <TextInput style={inputStyle('apellido')} placeholder="Apellido" placeholderTextColor="#AAAAAA"
+            <TextInput style={inputStyle('apellido')} placeholder="Apellido" placeholderTextColor={colores.textoTenue}
               value={apellido} onChangeText={(v) => { setApellido(v); setErrores((p) => ({ ...p, apellido: null })); }}
               onFocus={() => setFocus('apellido')} onBlur={() => setFocus(null)} returnKeyType="next" />
             {errores.apellido && <Text style={s.errorTxt}>{errores.apellido}</Text>}
@@ -169,7 +170,7 @@ export default function RegisterStep3Screen() {
             {/* @usuario — se pide en el registro; después se cambia desde Configuración */}
             <View style={[s.inputRow, focus === 'usuario' && s.inputFocus, mostrarErrorUsuario && s.inputError]}>
               <Text style={s.arroba}>@</Text>
-              <TextInput style={s.inputPass} placeholder="nombre de usuario" placeholderTextColor="#AAAAAA"
+              <TextInput style={s.inputPass} placeholder="nombre de usuario" placeholderTextColor={colores.textoTenue}
                 value={usuario}
                 onChangeText={(v) => {
                   setUsuario(v.replace(/[^a-zA-Z0-9._@-]/g, ''));
@@ -186,7 +187,7 @@ export default function RegisterStep3Screen() {
 
             {social ? (
               <View style={s.socialInfo}>
-                <Ionicons name="shield-checkmark" size={18} color="#2DBD72" />
+                <Ionicons name="shield-checkmark" size={18} color={colores.verde} />
                 <Text style={s.socialInfoTxt}>
                   Vas a entrar con {social.proveedor}: <Text style={{ fontWeight: '800' }}>{social.email}</Text>. No hace falta contraseña.
                 </Text>
@@ -194,7 +195,7 @@ export default function RegisterStep3Screen() {
             ) : (
               <>
               <TextInput style={[s.input, focus === 'mail' && s.inputFocus, mostrarErrorMail && s.inputError]}
-                placeholder="Mail" placeholderTextColor="#AAAAAA"
+                placeholder="Mail" placeholderTextColor={colores.textoTenue}
                 value={mail}
                 // Al corregir el mail se borra el "ya existe una cuenta": si no,
                 // el cartel quedaba pegado aunque ya hubiera escrito otro.
@@ -206,7 +207,7 @@ export default function RegisterStep3Screen() {
               {!!errores.mail && <Text style={s.errorTxt}>{errores.mail}</Text>}
 
               <View style={[s.inputRow, focus === 'password' && s.inputFocus, mostrarErrorPassword && s.inputError]}>
-                <TextInput style={s.inputPass} placeholder="Contraseña" placeholderTextColor="#AAAAAA"
+                <TextInput style={s.inputPass} placeholder="Contraseña" placeholderTextColor={colores.textoTenue}
                   value={password} onChangeText={setPassword}
                   secureTextEntry={!verPassword} autoCapitalize="none"
                   autoComplete="new-password" textContentType="newPassword"
@@ -214,7 +215,7 @@ export default function RegisterStep3Screen() {
                 <TouchableOpacity onPress={() => setVerPassword((v) => !v)}
                   accessibilityLabel={verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons name={verPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#6B6B6B" />
+                  <Ionicons name={verPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colores.textoSecundario} />
                 </TouchableOpacity>
               </View>
               {mostrarErrorPassword && (
@@ -222,7 +223,7 @@ export default function RegisterStep3Screen() {
               )}
 
               <View style={[s.inputRow, focus === 'confirmar' && s.inputFocus, mostrarErrorConfirmar && s.inputError]}>
-                <TextInput style={s.inputPass} placeholder="Confirmar contraseña" placeholderTextColor="#AAAAAA"
+                <TextInput style={s.inputPass} placeholder="Confirmar contraseña" placeholderTextColor={colores.textoTenue}
                   value={confirmar} onChangeText={setConfirmar}
                   secureTextEntry={!verConfirmar} autoCapitalize="none"
                   autoComplete="new-password" textContentType="newPassword"
@@ -230,7 +231,7 @@ export default function RegisterStep3Screen() {
                 <TouchableOpacity onPress={() => setVerConfirmar((v) => !v)}
                   accessibilityLabel={verConfirmar ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons name={verConfirmar ? 'eye-off-outline' : 'eye-outline'} size={20} color="#6B6B6B" />
+                  <Ionicons name={verConfirmar ? 'eye-off-outline' : 'eye-outline'} size={20} color={colores.textoSecundario} />
                 </TouchableOpacity>
               </View>
               {mostrarErrorConfirmar && <Text style={s.errorTxt}>Las contraseñas no coinciden</Text>}
@@ -248,7 +249,7 @@ export default function RegisterStep3Screen() {
           {/* La comprobación va contra la base: sin indicador, el botón parecía
               trabado durante ese momento. */}
           {verificando
-            ? <ActivityIndicator size="small" color="#FFFFFF" />
+            ? <ActivityIndicator size="small" color={colores.blanco} />
             : <Text style={s.btnContinuarTxt}>Continuar</Text>}
         </TouchableOpacity>
       </KeyboardAvoidingView>
@@ -257,53 +258,53 @@ export default function RegisterStep3Screen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#C8F0D8' },
+  safe: { flex: 1, backgroundColor: colores.menta },
   scroll: { flexGrow: 1, paddingHorizontal: 16, paddingBottom: 16 },
 
-  zooni: { fontSize: 26, fontWeight: '800', color: '#5C3D1E', textAlign: 'center', marginTop: 16 },
-  registrate: { fontSize: 15, color: '#6B6B6B', textAlign: 'center', marginBottom: 16 },
+  zooni: { fontSize: 26, fontWeight: '800', color: colores.marron, textAlign: 'center', marginTop: 16 },
+  registrate: { fontSize: 15, color: colores.textoSecundario, textAlign: 'center', marginBottom: 16 },
 
   card: {
-    backgroundColor: '#FFFFFF', borderRadius: 20,
+    backgroundColor: colores.blanco, borderRadius: 20,
     paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 4,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 4,
   },
   socialInfo: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#E8F5EC',
+    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colores.mentaSuave,
     borderRadius: 12, padding: 12, marginTop: 4,
   },
-  socialInfoTxt: { flex: 1, fontSize: 13, color: '#2C2C2C', lineHeight: 18 },
+  socialInfoTxt: { flex: 1, fontSize: 13, color: colores.texto, lineHeight: 18 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  mascotaNombre: { fontSize: 18, fontWeight: '700', color: '#2C2C2C', textAlign: 'center' },
+  mascotaNombre: { fontSize: 18, fontWeight: '700', color: colores.texto, textAlign: 'center' },
 
   petWrap: { width: 140, height: 140, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  petCircle: { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: '#A8E6C0', opacity: 0.35 },
+  petCircle: { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: colores.verdeBurbuja, opacity: 0.35 },
   petImg: { width: 120, height: 120 },
 
-  subtitulo: { fontSize: 16, fontWeight: '700', color: '#2C2C2C', textAlign: 'center', marginBottom: 20 },
+  subtitulo: { fontSize: 16, fontWeight: '700', color: colores.texto, textAlign: 'center', marginBottom: 20 },
 
   input: {
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 13,
-    fontSize: 15, color: '#2C2C2C', marginBottom: 10, textAlign: 'center',
+    fontSize: 15, color: colores.texto, marginBottom: 10, textAlign: 'center',
   },
   inputRow: {
     flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
     paddingHorizontal: 14, marginBottom: 10,
   },
-  inputPass: { flex: 1, paddingVertical: 13, fontSize: 15, color: '#2C2C2C', textAlign: 'center' },
-  arroba: { fontSize: 15, fontWeight: '700', color: '#6B6B6B' },
-  inputFocus: { borderColor: '#2DBD72' },
-  inputError: { borderColor: '#E63946' },
-  errorTxt: { fontSize: 11, color: '#E63946', marginTop: -6, marginBottom: 8, marginLeft: 4 },
+  inputPass: { flex: 1, paddingVertical: 13, fontSize: 15, color: colores.texto, textAlign: 'center' },
+  arroba: { fontSize: 15, fontWeight: '700', color: colores.textoSecundario },
+  inputFocus: { borderColor: colores.verde },
+  inputError: { borderColor: colores.rojo },
+  errorTxt: { fontSize: 11, color: colores.rojo, marginTop: -6, marginBottom: 8, marginLeft: 4 },
 
   btnContinuar: {
-    backgroundColor: '#2DBD72', borderRadius: 30, height: 52,
+    backgroundColor: colores.verde, borderRadius: 30, height: 52,
     alignItems: 'center', justifyContent: 'center',
     marginHorizontal: 20, marginBottom: 32,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
   },
   btnContinuarOff: { backgroundColor: '#A8D8B8', shadowOpacity: 0, elevation: 0 },
-  btnContinuarTxt: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  btnContinuarTxt: { fontSize: 16, fontWeight: '700', color: colores.blanco },
 });

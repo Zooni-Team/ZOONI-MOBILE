@@ -32,6 +32,7 @@ import { setCurrentUserId, setModo, MODO_DUENO } from '../config/session';
 import { alerta } from '../utils/dialogo';
 import { PAISES } from '../constants/registroAssets';
 import { resolveMascotaBasicoImage } from '../constants/registroImages';
+import { colores } from '../theme';
 
 function PaisPicker({ visible, valor, onSeleccionar, onCerrar }) {
   return (
@@ -47,7 +48,7 @@ function PaisPicker({ visible, valor, onSeleccionar, onCerrar }) {
                 <Text style={pp.itemTxt}>
                   {pais.bandera}  <Text style={pp.itemCodigo}>{pais.codigo}</Text>  {pais.nombre}
                 </Text>
-                {valor?.codigo === pais.codigo && <Ionicons name="checkmark" size={16} color="#2DBD72" />}
+                {valor?.codigo === pais.codigo && <Ionicons name="checkmark" size={16} color={colores.verde} />}
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -79,12 +80,12 @@ function digitos(v) {
 
 const pp = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', alignItems: 'center' },
-  container: { backgroundColor: '#FFF', borderRadius: 16, width: '82%', paddingVertical: 12 },
-  titulo: { fontSize: 15, fontWeight: '700', color: '#2C2C2C', textAlign: 'center', marginBottom: 6 },
+  container: { backgroundColor: colores.blanco, borderRadius: 16, width: '82%', paddingVertical: 12 },
+  titulo: { fontSize: 15, fontWeight: '700', color: colores.texto, textAlign: 'center', marginBottom: 6 },
   item: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 18 },
-  itemOn: { backgroundColor: '#F0FFF6' },
-  itemTxt: { fontSize: 15, color: '#2C2C2C' },
-  itemCodigo: { fontSize: 12, color: '#6B6B6B' },
+  itemOn: { backgroundColor: colores.mentaFondo },
+  itemTxt: { fontSize: 15, color: colores.texto },
+  itemCodigo: { fontSize: 12, color: colores.textoSecundario },
 });
 
 export default function RegisterStep4Screen() {
@@ -192,7 +193,7 @@ export default function RegisterStep4Screen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#C8F0D8" />
+      <StatusBar barStyle="dark-content" backgroundColor={colores.menta} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
@@ -204,7 +205,7 @@ export default function RegisterStep4Screen() {
             <View style={s.cardHeader}>
               <TouchableOpacity onPress={() => navigation.goBack()} accessibilityLabel="Volver al paso anterior"
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Ionicons name="chevron-back" size={22} color="#2DBD72" />
+                <Ionicons name="chevron-back" size={22} color={colores.verde} />
               </TouchableOpacity>
               <Text style={s.mascotaNombre}>{datos.nombre}</Text>
               <View style={{ width: 22 }} />
@@ -231,14 +232,14 @@ export default function RegisterStep4Screen() {
 
             <TextInput
               style={[s.input, focus === 'provincia' && s.inputFocus]}
-              placeholder="Provincia" placeholderTextColor="#AAAAAA"
+              placeholder="Provincia" placeholderTextColor={colores.textoTenue}
               value={provincia} onChangeText={setProvincia}
               onFocus={() => setFocus('provincia')} onBlur={() => setFocus(null)} returnKeyType="next"
             />
 
             <TextInput
               style={[s.input, focus === 'ciudad' && s.inputFocus]}
-              placeholder="Ciudad / Barrio" placeholderTextColor="#AAAAAA"
+              placeholder="Ciudad / Barrio" placeholderTextColor={colores.textoTenue}
               value={ciudad} onChangeText={setCiudad}
               onFocus={() => setFocus('ciudad')} onBlur={() => setFocus(null)} returnKeyType="next"
             />
@@ -257,7 +258,7 @@ export default function RegisterStep4Screen() {
             ]}>
               <TextInput
                 style={[s.telefonoCodigo, codigoAuto && s.inputCodigoAuto]}
-                placeholder="+54" placeholderTextColor="#AAAAAA"
+                placeholder="+54" placeholderTextColor={colores.textoTenue}
                 value={codigo}
                 onChangeText={(v) => { setCodigo(limpiarCodigo(v)); setCodigoAuto(false); }}
                 keyboardType="phone-pad"
@@ -268,7 +269,7 @@ export default function RegisterStep4Screen() {
               <View style={s.telefonoSep} />
               <TextInput
                 style={s.telefonoNumero}
-                placeholder="Teléfono (opcional)" placeholderTextColor="#AAAAAA"
+                placeholder="Teléfono (opcional)" placeholderTextColor={colores.textoTenue}
                 value={telefono}
                 onChangeText={(v) => { setTelefono(limpiarTelefono(v)); setErrTelefono(null); }}
                 keyboardType="phone-pad"
@@ -284,7 +285,7 @@ export default function RegisterStep4Screen() {
 
         <TouchableOpacity style={s.btnContinuar} onPress={handleContinuar} disabled={cargando} activeOpacity={0.85}>
           {cargando
-            ? <ActivityIndicator size="small" color="#FFFFFF" />
+            ? <ActivityIndicator size="small" color={colores.blanco} />
             : <Text style={s.btnContinuarTxt}>Continuar</Text>}
         </TouchableOpacity>
       </KeyboardAvoidingView>
@@ -295,60 +296,60 @@ export default function RegisterStep4Screen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#C8F0D8' },
+  safe: { flex: 1, backgroundColor: colores.menta },
   scroll: { flexGrow: 1, paddingHorizontal: 16, paddingBottom: 16 },
 
-  zooni: { fontSize: 26, fontWeight: '800', color: '#5C3D1E', textAlign: 'center', marginTop: 16 },
-  registrate: { fontSize: 15, color: '#6B6B6B', textAlign: 'center', marginBottom: 16 },
+  zooni: { fontSize: 26, fontWeight: '800', color: colores.marron, textAlign: 'center', marginTop: 16 },
+  registrate: { fontSize: 15, color: colores.textoSecundario, textAlign: 'center', marginBottom: 16 },
 
   card: {
-    backgroundColor: '#FFFFFF', borderRadius: 20,
+    backgroundColor: colores.blanco, borderRadius: 20,
     paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 4,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 4,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  mascotaNombre: { fontSize: 18, fontWeight: '700', color: '#2C2C2C', textAlign: 'center' },
+  mascotaNombre: { fontSize: 18, fontWeight: '700', color: colores.texto, textAlign: 'center' },
 
   petWrap: { width: 140, height: 140, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  petCircle: { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: '#A8E6C0', opacity: 0.35 },
+  petCircle: { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: colores.verdeBurbuja, opacity: 0.35 },
   petImg: { width: 120, height: 120 },
 
-  subtitulo: { fontSize: 16, fontWeight: '700', color: '#2C2C2C', textAlign: 'center', marginBottom: 20 },
+  subtitulo: { fontSize: 16, fontWeight: '700', color: colores.texto, textAlign: 'center', marginBottom: 20 },
 
   input: {
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 13,
-    fontSize: 15, color: '#2C2C2C', marginBottom: 10, textAlign: 'center',
+    fontSize: 15, color: colores.texto, marginBottom: 10, textAlign: 'center',
   },
   inputPais: { justifyContent: 'center' },
-  inputPaisOn: { borderColor: '#2DBD72', borderWidth: 1.5 },
-  paisTxt: { fontSize: 15, color: '#2C2C2C', textAlign: 'center' },
-  placeholder: { color: '#AAAAAA' },
-  inputCodigoAuto: { color: '#2DBD72', fontWeight: '700' },
+  inputPaisOn: { borderColor: colores.verde, borderWidth: 1.5 },
+  paisTxt: { fontSize: 15, color: colores.texto, textAlign: 'center' },
+  placeholder: { color: colores.textoTenue },
+  inputCodigoAuto: { color: colores.verde, fontWeight: '700' },
 
   // Código + número en una sola caja: se ve como un campo de teléfono entero
   telefonoRow: {
     flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
     marginBottom: 10, overflow: 'hidden',
   },
   telefonoCodigo: {
     width: 68, paddingVertical: 13, paddingHorizontal: 10,
-    fontSize: 15, color: '#2C2C2C', textAlign: 'center',
+    fontSize: 15, color: colores.texto, textAlign: 'center',
   },
-  telefonoSep:    { width: 1, alignSelf: 'stretch', marginVertical: 8, backgroundColor: '#DDDDDD' },
-  telefonoNumero: { flex: 1, paddingVertical: 13, paddingHorizontal: 12, fontSize: 15, color: '#2C2C2C', textAlign: 'center' },
+  telefonoSep:    { width: 1, alignSelf: 'stretch', marginVertical: 8, backgroundColor: colores.gris500 },
+  telefonoNumero: { flex: 1, paddingVertical: 13, paddingHorizontal: 12, fontSize: 15, color: colores.texto, textAlign: 'center' },
 
-  inputFocus: { borderColor: '#2DBD72' },
-  inputError: { borderColor: '#E63946' },
-  errorTxt: { fontSize: 11, color: '#E63946', marginTop: -6, marginBottom: 8, marginLeft: 4 },
-  ayudaTxt: { fontSize: 11, color: '#9A9A9A', textAlign: 'center', marginTop: -2, marginBottom: 4 },
+  inputFocus: { borderColor: colores.verde },
+  inputError: { borderColor: colores.rojo },
+  errorTxt: { fontSize: 11, color: colores.rojo, marginTop: -6, marginBottom: 8, marginLeft: 4 },
+  ayudaTxt: { fontSize: 11, color: colores.textoGris, textAlign: 'center', marginTop: -2, marginBottom: 4 },
 
   btnContinuar: {
-    backgroundColor: '#2DBD72', borderRadius: 30, height: 52,
+    backgroundColor: colores.verde, borderRadius: 30, height: 52,
     alignItems: 'center', justifyContent: 'center',
     marginHorizontal: 20, marginBottom: 32,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
   },
-  btnContinuarTxt: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  btnContinuarTxt: { fontSize: 16, fontWeight: '700', color: colores.blanco },
 });

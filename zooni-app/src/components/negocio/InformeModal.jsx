@@ -25,6 +25,7 @@ import { cuandoTexto } from '../../services/negocioApi';
 import { subirImagenPublica } from '../../utils/imagenStorage';
 import { parseDecimal, sanitizarDecimal } from '../../utils/sanitizar';
 import { alerta } from '../../utils/dialogo';
+import { colores } from '../../theme';
 
 const FOTOS_MAX = 4;
 const fechaLarga = (d) => new Date(d).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -202,7 +203,7 @@ export default function InformeModal({ visible, tipo, turno, editar = false, onG
                         <Image source={{ uri: u }} style={s.foto} />
                         <TouchableOpacity style={s.fotoQuitar} onPress={() => setFotos((x) => x.filter((y) => y !== u))}
                           accessibilityLabel="Quitar foto">
-                          <Ionicons name="close" size={14} color="#FFF" />
+                          <Ionicons name="close" size={14} color={colores.blanco} />
                         </TouchableOpacity>
                       </View>
                     ))}
@@ -258,19 +259,19 @@ export default function InformeModal({ visible, tipo, turno, editar = false, onG
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.fondo },
   header: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFFFFF',
+    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colores.blanco,
     paddingHorizontal: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.borde,
   },
   cerrar: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
   titulo: { fontSize: 19, fontWeight: '800', color: C.texto },
   scroll: { padding: 20, paddingBottom: 40 },
-  paciente: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFFFFF', borderRadius: 16, padding: 12 },
+  paciente: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colores.blanco, borderRadius: 16, padding: 12 },
   nombre: { fontSize: 17, fontWeight: '900', color: C.texto },
   sub: { fontSize: 13, color: C.texto2, marginTop: 1 },
   label: { fontSize: 13, fontWeight: '700', color: C.texto, marginBottom: 6 },
   input: {
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: C.texto, backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 15, color: C.texto, backgroundColor: colores.blanco,
   },
   textarea: { minHeight: 80, textAlignVertical: 'top' },
   fila: { flexDirection: 'row', gap: 10, alignItems: 'center' },
@@ -282,7 +283,7 @@ const s = StyleSheet.create({
   foto: { width: 78, height: 78, borderRadius: 12 },
   fotoAgregar: {
     borderWidth: 1.5, borderColor: C.teal, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colores.blanco,
   },
   fotoQuitar: {
     position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: 11,

@@ -43,6 +43,7 @@ import GaleriaTab from './tabs/GaleriaTab';
 import ClientesPetshopTab from './tabs/ClientesPetshopTab';
 import MensajesNegocioTab from './tabs/MensajesNegocioTab';
 import MiNegocioTab from './tabs/MiNegocioTab';
+import { colores } from '../../theme';
 
 const POLL_MS = 30000;
 
@@ -177,7 +178,7 @@ export default function NegocioAppScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={colores.blanco} />
       <PaseadorHeader
         perfil={{ nombre: negocio.nombre, apellido: '', foto: negocio.logo }}
         chip={{ texto: negocio.abierto ? cfg.abierto.on : cfg.abierto.off, on: negocio.abierto }}
@@ -237,7 +238,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: C.card, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16,
     borderWidth: 1.5, borderColor: C.menta,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 6,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 6,
   },
   toastTxt: { flex: 1, fontSize: 14, fontWeight: '700', color: C.texto },
 });

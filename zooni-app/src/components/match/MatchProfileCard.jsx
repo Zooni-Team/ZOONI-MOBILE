@@ -9,6 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { especieIcono } from '../../data/matchDemo';
 import { resolveMascotaVisual } from '../../constants/petImages';
+import { colores } from '../../theme';
 
 export default function MatchProfileCard({ perfil, cardHeight, cardWidth, onPress }) {
   const { nombre, edad, barrio, ciudad, foto_perfil_url, mascota, intereses } = perfil;
@@ -75,7 +76,7 @@ export default function MatchProfileCard({ perfil, cardHeight, cardWidth, onPres
           {!!(mascota.nombre || mascota.raza) && (
             <View style={styles.petRow}>
               <View style={styles.petIconWrap}>
-                <Ionicons name={especieIcono(mascota.especie)} size={16} color="#27AE60" />
+                <Ionicons name={especieIcono(mascota.especie)} size={16} color={colores.verdeExito} />
               </View>
               <View style={styles.petTextBlock}>
                 {!!mascota.nombre && (
@@ -140,10 +141,10 @@ export default function MatchProfileCard({ perfil, cardHeight, cardWidth, onPres
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colores.blanco,
     borderRadius: 24,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: colores.negro,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.14,
     shadowRadius: 24,
@@ -163,18 +164,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'center', gap: 4, paddingHorizontal: 12,
   },
   dot: { flex: 1, maxWidth: 40, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.4)' },
-  dotOn: { backgroundColor: '#FFFFFF' },
+  dotOn: { backgroundColor: colores.blanco },
   ownerPhotoWrap: { position: 'absolute', top: 14, left: 14, zIndex: 2 },
   ownerPhoto: {
     width: 68, height: 68, borderRadius: 34,
-    borderWidth: 3, borderColor: '#FFFFFF',
+    borderWidth: 3, borderColor: colores.blanco,
   },
   ownerPhotoFallback: {
     width: 68, height: 68, borderRadius: 34,
-    borderWidth: 3, borderColor: '#FFFFFF',
-    backgroundColor: '#C8F0D8', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 3, borderColor: colores.blanco,
+    backgroundColor: colores.menta, alignItems: 'center', justifyContent: 'center',
   },
-  ownerInitial: { fontSize: 26, fontWeight: '800', color: '#27AE60' },
+  ownerInitial: { fontSize: 26, fontWeight: '800', color: colores.verdeExito },
   infoOverlay: {
     position: 'absolute',
     left: 0,
@@ -187,7 +188,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 14,
   },
-  nameText: { fontSize: 20, fontWeight: '800', color: '#FFFFFF' },
+  nameText: { fontSize: 20, fontWeight: '800', color: colores.blanco },
   // 6 y no 2: ya no va pegada al nombre sino debajo de la pastilla de la
   // mascota, que necesita aire propio.
   locationText: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 6 },
@@ -205,8 +206,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#E4F9EC', alignItems: 'center', justifyContent: 'center',
   },
   petTextBlock: { flexShrink: 1 },
-  petName: { fontSize: 14, fontWeight: '800', color: '#27AE60' },
-  petBreed: { fontSize: 12, fontWeight: '600', color: '#2C2C2C' },
+  petName: { fontSize: 14, fontWeight: '800', color: colores.verdeExito },
+  petBreed: { fontSize: 12, fontWeight: '600', color: colores.texto },
 
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   tag: {
@@ -216,5 +217,5 @@ const styles = StyleSheet.create({
     borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3,
     maxWidth: '48%',
   },
-  tagText: { fontSize: 11, fontWeight: '700', color: '#FFFFFF' },
+  tagText: { fontSize: 11, fontWeight: '700', color: colores.blanco },
 });

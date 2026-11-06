@@ -26,6 +26,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import MatchProfileCard from './MatchProfileCard';
 import { fetchMiTarjetaMatch } from '../../services/matchApi';
+import { colores } from '../../theme';
 
 export default function MiTarjetaMatchModal({ visible, onClose, onEditarPerfil }) {
   const { width, height } = useWindowDimensions();
@@ -71,16 +72,16 @@ export default function MiTarjetaMatchModal({ visible, onClose, onEditarPerfil }
             <Text style={s.titulo}>Así te ven</Text>
             <TouchableOpacity onPress={onClose} style={s.cerrar} accessibilityLabel="Cerrar"
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="close" size={24} color="#6B6B6B" />
+              <Ionicons name="close" size={24} color={colores.textoSecundario} />
             </TouchableOpacity>
           </View>
 
           <ScrollView contentContainerStyle={s.cuerpo} showsVerticalScrollIndicator={false}>
             {cargando ? (
-              <View style={s.centro}><ActivityIndicator size="large" color="#2DBD72" /></View>
+              <View style={s.centro}><ActivityIndicator size="large" color={colores.verde} /></View>
             ) : error ? (
               <View style={s.centro}>
-                <Ionicons name="cloud-offline-outline" size={44} color="#AAAAAA" />
+                <Ionicons name="cloud-offline-outline" size={44} color={colores.textoTenue} />
                 <Text style={s.vacioTxt}>No pudimos cargar tu tarjeta.</Text>
                 <TouchableOpacity style={s.btnSecundario} onPress={cargar}>
                   <Text style={s.btnSecundarioTxt}>Reintentar</Text>
@@ -88,7 +89,7 @@ export default function MiTarjetaMatchModal({ visible, onClose, onEditarPerfil }
               </View>
             ) : !tarjeta ? (
               <View style={s.centro}>
-                <Ionicons name="paw-outline" size={44} color="#AAAAAA" />
+                <Ionicons name="paw-outline" size={44} color={colores.textoTenue} />
                 <Text style={s.vacioTxt}>
                   Todavía no hay una mascota activa para mostrar en tu tarjeta.
                 </Text>
@@ -135,7 +136,7 @@ export default function MiTarjetaMatchModal({ visible, onClose, onEditarPerfil }
             {onEditarPerfil ? (
               <TouchableOpacity style={s.btnEditar} onPress={onEditarPerfil}
                 accessibilityRole="button" accessibilityLabel="Editar mi perfil">
-                <Ionicons name="create-outline" size={18} color="#177046" />
+                <Ionicons name="create-outline" size={18} color={colores.verdeOscuro} />
                 <Text style={s.btnEditarTxt}>Editar perfil</Text>
               </TouchableOpacity>
             ) : null}
@@ -153,7 +154,7 @@ export default function MiTarjetaMatchModal({ visible, onClose, onEditarPerfil }
 function Fila({ icono, label, valor }) {
   return (
     <View style={s.fila}>
-      <Ionicons name={icono} size={16} color="#2DBD72" style={{ marginTop: 2 }} />
+      <Ionicons name={icono} size={16} color={colores.verde} style={{ marginTop: 2 }} />
       <View style={{ flex: 1 }}>
         <Text style={s.filaLabel}>{label}</Text>
         <Text style={s.filaValor}>{valor}</Text>
@@ -173,38 +174,38 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: 16, paddingBottom: 10,
   },
-  titulo: { fontSize: 18, fontWeight: '800', color: '#2C2C2C' },
+  titulo: { fontSize: 18, fontWeight: '800', color: colores.texto },
   cerrar: { width: 32, alignItems: 'flex-end' },
 
   cuerpo: { alignItems: 'center', paddingHorizontal: 20, paddingBottom: 12 },
-  ayuda: { fontSize: 13, color: '#6B6B6B', textAlign: 'center', marginBottom: 14, lineHeight: 19 },
+  ayuda: { fontSize: 13, color: colores.textoSecundario, textAlign: 'center', marginBottom: 14, lineHeight: 19 },
 
   centro: { alignItems: 'center', paddingVertical: 48, gap: 10 },
-  vacioTxt: { fontSize: 14, color: '#6B6B6B', textAlign: 'center', lineHeight: 20 },
+  vacioTxt: { fontSize: 14, color: colores.textoSecundario, textAlign: 'center', lineHeight: 20 },
 
   detalle: {
-    alignSelf: 'stretch', backgroundColor: '#FFFFFF', borderRadius: 16,
+    alignSelf: 'stretch', backgroundColor: colores.blanco, borderRadius: 16,
     padding: 14, marginTop: 16, gap: 12,
   },
   fila: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
-  filaLabel: { fontSize: 11, color: '#9A9A9A', textTransform: 'uppercase', letterSpacing: 0.5 },
-  filaValor: { fontSize: 14, color: '#2C2C2C', fontWeight: '600', marginTop: 1 },
+  filaLabel: { fontSize: 11, color: colores.textoGris, textTransform: 'uppercase', letterSpacing: 0.5 },
+  filaValor: { fontSize: 14, color: colores.texto, fontWeight: '600', marginTop: 1 },
 
   pie: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 14, gap: 10 },
   btnEditar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    height: 48, borderRadius: 25, backgroundColor: '#FFFFFF',
-    borderWidth: 1.5, borderColor: '#2DBD72',
+    height: 48, borderRadius: 25, backgroundColor: colores.blanco,
+    borderWidth: 1.5, borderColor: colores.verde,
   },
-  btnEditarTxt: { fontSize: 15, fontWeight: '700', color: '#177046' },
+  btnEditarTxt: { fontSize: 15, fontWeight: '700', color: colores.verdeOscuro },
   btnPrincipal: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    height: 50, borderRadius: 25, backgroundColor: '#2DBD72',
+    height: 50, borderRadius: 25, backgroundColor: colores.verde,
   },
-  btnPrincipalTxt: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
+  btnPrincipalTxt: { fontSize: 15, fontWeight: '700', color: colores.blanco },
   btnSecundario: {
     paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20,
-    borderWidth: 1.5, borderColor: '#2DBD72',
+    borderWidth: 1.5, borderColor: colores.verde,
   },
-  btnSecundarioTxt: { fontSize: 14, fontWeight: '700', color: '#2DBD72' },
+  btnSecundarioTxt: { fontSize: 14, fontWeight: '700', color: colores.verde },
 });

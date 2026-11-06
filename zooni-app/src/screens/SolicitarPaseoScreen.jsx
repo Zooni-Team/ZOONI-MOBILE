@@ -29,13 +29,7 @@ import {
   MEDIOS_PAGO, crearSolicitudPaseo, direccionDe, fetchPaseadorPublico, formatoDuracion, formatoPlata, precioPara,
   serviciosDe,
 } from '../services/paseadorApi';
-
-const VERDE = '#2DBD72';
-const MENTA = '#C8F0D8';
-const AMARILLO = '#F5C842';
-const ROJO = '#E63946';
-const TEXTO = '#2C2C2C';
-const TEXTO2 = '#6B6B6B';
+import { colores, sombras } from '../theme';
 
 function proximaHoraRedonda() {
   const d = new Date(Date.now() + 2 * 3600 * 1000);
@@ -145,12 +139,12 @@ export default function SolicitarPaseoScreen() {
   };
 
   if (cargando) {
-    return <View style={[s.safe, s.centro]}><ActivityIndicator size="large" color={VERDE} /></View>;
+    return <View style={[s.safe, s.centro]}><ActivityIndicator size="large" color={colores.verde} /></View>;
   }
   if (!paseador) {
     return (
       <SafeAreaView style={[s.safe, s.centro]}>
-        <Ionicons name="alert-circle-outline" size={40} color={TEXTO2} />
+        <Ionicons name="alert-circle-outline" size={40} color={colores.textoSecundario} />
         <Text style={s.vacioTxt}>Este paseador ya no está disponible.</Text>
         <TouchableOpacity style={[s.btn, { alignSelf: 'stretch', marginHorizontal: 24 }]} onPress={() => navigation.goBack()}>
           <Text style={s.btnTxt}>Volver</Text>
@@ -161,10 +155,10 @@ export default function SolicitarPaseoScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={MENTA} />
+      <StatusBar barStyle="dark-content" backgroundColor={colores.menta} />
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={10} accessibilityLabel="Volver">
-          <Ionicons name="arrow-back" size={24} color={TEXTO} />
+          <Ionicons name="arrow-back" size={24} color={colores.texto} />
         </TouchableOpacity>
         <Text style={s.titulo}>Pedir un paseo</Text>
         <View style={{ width: 24 }} />
@@ -177,7 +171,7 @@ export default function SolicitarPaseoScreen() {
             <View style={s.paseadorFila}>
               {paseador.foto
                 ? <Image source={{ uri: paseador.foto }} style={s.avatar} />
-                : <View style={[s.avatar, s.avatarIni]}><Ionicons name="walk" size={26} color={VERDE} /></View>}
+                : <View style={[s.avatar, s.avatarIni]}><Ionicons name="walk" size={26} color={colores.verde} /></View>}
               <View style={{ flex: 1 }}>
                 <Text style={s.paseadorNombre}>{paseador.nombreCompleto}</Text>
                 <Text style={s.paseadorSub}>
@@ -206,7 +200,7 @@ export default function SolicitarPaseoScreen() {
 
           {/* Mascota */}
           <Text style={s.label}>¿Quién sale a pasear?</Text>
-          {cargandoMascotas ? <ActivityIndicator color={VERDE} /> : mascotas.length === 0 ? (
+          {cargandoMascotas ? <ActivityIndicator color={colores.verde} /> : mascotas.length === 0 ? (
             <Text style={s.ayuda}>No tenés mascotas cargadas. Agregá una desde Mis Mascotas.</Text>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
@@ -216,7 +210,7 @@ export default function SolicitarPaseoScreen() {
                   <TouchableOpacity key={m.id} style={[s.mascota, on && s.mascotaOn]} onPress={() => setMascotaId(m.id)}
                     accessibilityRole="radio" accessibilityState={{ selected: on }}>
                     <Image source={resolveMascotaVisual(m)} style={s.mascotaFoto} />
-                    <Text style={[s.mascotaNombre, on && { color: '#FFF' }]} numberOfLines={1}>{m.nombre}</Text>
+                    <Text style={[s.mascotaNombre, on && { color: colores.blanco }]} numberOfLines={1}>{m.nombre}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -227,18 +221,18 @@ export default function SolicitarPaseoScreen() {
           <Text style={s.label}>¿Cuándo?</Text>
           <View style={s.fila}>
             <TouchableOpacity style={[s.campo, { flex: 1.6 }]} onPress={() => setPicker('fecha')}>
-              <Ionicons name="calendar-outline" size={18} color={VERDE} />
+              <Ionicons name="calendar-outline" size={18} color={colores.verde} />
               <Text style={s.campoTxt} numberOfLines={1}>{fechaTexto(fecha)}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[s.campo, { flex: 1 }]} onPress={() => setPicker('hora')}>
-              <Ionicons name="time-outline" size={18} color={VERDE} />
+              <Ionicons name="time-outline" size={18} color={colores.verde} />
               <Text style={s.campoTxt}>{horaTexto(fecha)}</Text>
             </TouchableOpacity>
           </View>
 
           {fueraDeHorario(paseador.horarios, fecha, duracion) && (
             <View style={s.aviso}>
-              <Ionicons name="alert-circle-outline" size={18} color="#B07A00" />
+              <Ionicons name="alert-circle-outline" size={18} color={colores.ambarOscuro} />
               <Text style={s.avisoTxt}>
                 Ese horario está fuera de los horarios de {paseador.nombreCompleto}. Podés pedirlo igual, pero puede que no lo acepte.
               </Text>
@@ -253,8 +247,8 @@ export default function SolicitarPaseoScreen() {
               return (
                 <TouchableOpacity key={minutos} style={[s.duracion, on && s.duracionOn]} onPress={() => setDuracion(minutos)}
                   accessibilityRole="radio" accessibilityState={{ selected: on }}>
-                  <Text style={[s.duracionTxt, on && { color: '#FFF' }]}>{formatoDuracion(minutos)}</Text>
-                  <Text style={[s.duracionPrecio, on && { color: '#FFF' }]}>{formatoPlata(p)}</Text>
+                  <Text style={[s.duracionTxt, on && { color: colores.blanco }]}>{formatoDuracion(minutos)}</Text>
+                  <Text style={[s.duracionPrecio, on && { color: colores.blanco }]}>{formatoPlata(p)}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -269,8 +263,8 @@ export default function SolicitarPaseoScreen() {
               return (
                 <TouchableOpacity key={m.key} style={[s.medio, on && s.medioOn]} onPress={() => setMedioPago(m.key)}
                   accessibilityRole="radio" accessibilityState={{ selected: on }}>
-                  <Ionicons name={m.icono} size={16} color={on ? '#FFF' : VERDE} />
-                  <Text style={[s.medioTxt, on && { color: '#FFF' }]}>{m.label}</Text>
+                  <Ionicons name={m.icono} size={16} color={on ? colores.blanco : colores.verde} />
+                  <Text style={[s.medioTxt, on && { color: colores.blanco }]}>{m.label}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -280,16 +274,16 @@ export default function SolicitarPaseoScreen() {
           <Text style={s.label}>¿Dónde lo busca?</Text>
           <View style={s.inputFila}>
             <TextInput style={s.inputFlex} value={direccion} onChangeText={(v) => { setDireccion(v.slice(0, 200)); setCoords(null); }}
-              placeholder="Calle, número y piso/depto" placeholderTextColor="#AAAAAA" />
+              placeholder="Calle, número y piso/depto" placeholderTextColor={colores.textoTenue} />
             <TouchableOpacity onPress={usarUbicacion} hitSlop={8} accessibilityLabel="Usar mi ubicación">
-              {ubicando ? <ActivityIndicator size="small" color={VERDE} /> : <Ionicons name="locate" size={22} color={VERDE} />}
+              {ubicando ? <ActivityIndicator size="small" color={colores.verde} /> : <Ionicons name="locate" size={22} color={colores.verde} />}
             </TouchableOpacity>
           </View>
 
           {/* Notas */}
           <Text style={s.label}>Notas para el paseador (opcional)</Text>
           <TextInput style={[s.input, { minHeight: 80, textAlignVertical: 'top' }]} value={notas} onChangeText={setNotas}
-            multiline maxLength={500} placeholderTextColor="#AAAAAA"
+            multiline maxLength={500} placeholderTextColor={colores.textoTenue}
             placeholder="Ej: tira un poco de la correa, las llaves están con el portero." />
 
           {errores.length > 0 && (
@@ -301,7 +295,7 @@ export default function SolicitarPaseoScreen() {
           {errorGeneral && <Text style={s.errorGeneral}>{errorGeneral}</Text>}
 
           <TouchableOpacity style={[s.btn, enviando && { opacity: 0.6 }]} onPress={enviar} disabled={enviando} activeOpacity={0.85}>
-            {enviando ? <ActivityIndicator color={TEXTO} /> : (
+            {enviando ? <ActivityIndicator color={colores.texto} /> : (
               <Text style={s.btnTxt}>Enviar solicitud · {formatoPlata(precio)}</Text>
             )}
           </TouchableOpacity>
@@ -339,89 +333,85 @@ export default function SolicitarPaseoScreen() {
   );
 }
 
-const sombra = {
-  shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 3,
-};
-
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: MENTA },
+  safe: { flex: 1, backgroundColor: colores.menta },
   centro: { alignItems: 'center', justifyContent: 'center', gap: 12 },
   header: {
     height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16,
   },
-  titulo: { fontSize: 20, fontWeight: '800', color: VERDE },
+  titulo: { fontSize: 20, fontWeight: '800', color: colores.verde },
   scroll: { padding: 20, paddingTop: 4, paddingBottom: 40 },
 
-  card: { backgroundColor: '#FFF', borderRadius: 20, padding: 16, ...sombra },
+  card: { backgroundColor: colores.blanco, borderRadius: 20, padding: 16, ...sombras.tarjeta },
   paseadorFila: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: { width: 58, height: 58, borderRadius: 29, borderWidth: 2.5, borderColor: VERDE },
-  avatarIni: { backgroundColor: MENTA, alignItems: 'center', justifyContent: 'center' },
-  paseadorNombre: { fontSize: 18, fontWeight: '800', color: TEXTO },
-  paseadorSub: { fontSize: 13, color: TEXTO2, marginTop: 2 },
-  bio: { fontSize: 14, color: TEXTO, marginTop: 12, lineHeight: 20 },
-  horariosTitulo: { fontSize: 14, fontWeight: '800', color: TEXTO, marginTop: 14, marginBottom: 4 },
+  avatar: { width: 58, height: 58, borderRadius: 29, borderWidth: 2.5, borderColor: colores.verde },
+  avatarIni: { backgroundColor: colores.menta, alignItems: 'center', justifyContent: 'center' },
+  paseadorNombre: { fontSize: 18, fontWeight: '800', color: colores.texto },
+  paseadorSub: { fontSize: 13, color: colores.textoSecundario, marginTop: 2 },
+  bio: { fontSize: 14, color: colores.texto, marginTop: 12, lineHeight: 20 },
+  horariosTitulo: { fontSize: 14, fontWeight: '800', color: colores.texto, marginTop: 14, marginBottom: 4 },
   horarioFila: {
     flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5, paddingHorizontal: 8, borderRadius: 8,
   },
-  horarioElegido: { backgroundColor: MENTA },
-  horarioDia: { fontSize: 14, color: TEXTO },
-  horarioHoras: { fontSize: 14, color: TEXTO, fontVariant: ['tabular-nums'] },
-  horarioOff: { color: '#AAAAAA' },
+  horarioElegido: { backgroundColor: colores.menta },
+  horarioDia: { fontSize: 14, color: colores.texto },
+  horarioHoras: { fontSize: 14, color: colores.texto, fontVariant: ['tabular-nums'] },
+  horarioOff: { color: colores.textoTenue },
   aviso: {
-    flexDirection: 'row', gap: 8, alignItems: 'flex-start', backgroundColor: '#FFF1DC',
+    flexDirection: 'row', gap: 8, alignItems: 'flex-start', backgroundColor: colores.ambarFondo,
     borderRadius: 12, padding: 12, marginTop: 10,
   },
   avisoTxt: { flex: 1, fontSize: 13, color: '#7A5500', lineHeight: 18 },
 
-  label: { fontSize: 15, fontWeight: '800', color: TEXTO, marginTop: 22, marginBottom: 10 },
-  ayuda: { fontSize: 13, color: TEXTO2 },
+  label: { fontSize: 15, fontWeight: '800', color: colores.texto, marginTop: 22, marginBottom: 10 },
+  ayuda: { fontSize: 13, color: colores.textoSecundario },
   fila: { flexDirection: 'row', gap: 10 },
 
   mascota: {
     alignItems: 'center', width: 86, paddingVertical: 10, borderRadius: 18,
-    backgroundColor: '#FFF', borderWidth: 2, borderColor: '#FFF',
+    backgroundColor: colores.blanco, borderWidth: 2, borderColor: colores.blanco,
   },
-  mascotaOn: { backgroundColor: VERDE, borderColor: VERDE },
-  mascotaFoto: { width: 52, height: 52, borderRadius: 26, backgroundColor: MENTA },
-  mascotaNombre: { fontSize: 13, fontWeight: '800', color: TEXTO, marginTop: 6, maxWidth: 74 },
+  mascotaOn: { backgroundColor: colores.verde, borderColor: colores.verde },
+  mascotaFoto: { width: 52, height: 52, borderRadius: 26, backgroundColor: colores.menta },
+  mascotaNombre: { fontSize: 13, fontWeight: '800', color: colores.texto, marginTop: 6, maxWidth: 74 },
 
   campo: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF',
+    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colores.blanco,
     borderRadius: 16, paddingHorizontal: 14, height: 52,
   },
-  campoTxt: { flex: 1, fontSize: 14, fontWeight: '700', color: TEXTO },
+  campoTxt: { flex: 1, fontSize: 14, fontWeight: '700', color: colores.texto },
 
-  duracion: { flexGrow: 1, flexBasis: '40%', backgroundColor: '#FFF', borderRadius: 18, paddingVertical: 14, alignItems: 'center' },
-  duracionOn: { backgroundColor: VERDE },
-  duracionTxt: { fontSize: 14, fontWeight: '700', color: TEXTO2 },
-  duracionPrecio: { fontSize: 22, fontWeight: '900', color: TEXTO, marginTop: 2 },
+  duracion: { flexGrow: 1, flexBasis: '40%', backgroundColor: colores.blanco, borderRadius: 18, paddingVertical: 14, alignItems: 'center' },
+  duracionOn: { backgroundColor: colores.verde },
+  duracionTxt: { fontSize: 14, fontWeight: '700', color: colores.textoSecundario },
+  duracionPrecio: { fontSize: 22, fontWeight: '900', color: colores.texto, marginTop: 2 },
   medios: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   medio: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF', borderRadius: 18,
+    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colores.blanco, borderRadius: 18,
     paddingHorizontal: 14, paddingVertical: 10,
   },
-  medioOn: { backgroundColor: VERDE },
-  medioTxt: { fontSize: 14, fontWeight: '700', color: TEXTO },
-  medioAyuda: { fontSize: 12, color: TEXTO2, marginTop: 8 },
+  medioOn: { backgroundColor: colores.verde },
+  medioTxt: { fontSize: 14, fontWeight: '700', color: colores.texto },
+  medioAyuda: { fontSize: 12, color: colores.textoSecundario, marginTop: 8 },
 
   inputFila: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF',
+    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colores.blanco,
     borderRadius: 16, paddingHorizontal: 14,
   },
-  inputFlex: { flex: 1, paddingVertical: 14, fontSize: 15, color: TEXTO },
-  input: { backgroundColor: '#FFF', borderRadius: 16, padding: 14, fontSize: 15, color: TEXTO },
+  inputFlex: { flex: 1, paddingVertical: 14, fontSize: 15, color: colores.texto },
+  input: { backgroundColor: colores.blanco, borderRadius: 16, padding: 14, fontSize: 15, color: colores.texto },
 
-  errores: { marginTop: 18, padding: 14, borderRadius: 14, backgroundColor: '#FDECEE', borderWidth: 1, borderColor: '#F5B7BD' },
-  erroresTitulo: { fontSize: 13, fontWeight: '800', color: ROJO, marginBottom: 4 },
-  errorItem: { fontSize: 13, color: TEXTO, marginTop: 2 },
-  errorGeneral: { marginTop: 14, padding: 12, borderRadius: 12, backgroundColor: '#FDECEE', fontSize: 13, color: ROJO },
+  errores: { marginTop: 18, padding: 14, borderRadius: 14, backgroundColor: colores.rojoFondo, borderWidth: 1, borderColor: colores.rojoBorde },
+  erroresTitulo: { fontSize: 13, fontWeight: '800', color: colores.rojo, marginBottom: 4 },
+  errorItem: { fontSize: 13, color: colores.texto, marginTop: 2 },
+  errorGeneral: { marginTop: 14, padding: 12, borderRadius: 12, backgroundColor: colores.rojoFondo, fontSize: 13, color: colores.rojo },
 
   btn: {
-    marginTop: 22, height: 56, borderRadius: 30, backgroundColor: AMARILLO,
+    marginTop: 22, height: 56, borderRadius: 30, backgroundColor: colores.amarillo,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 3,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 3,
   },
-  btnTxt: { fontSize: 16, fontWeight: '800', color: TEXTO },
-  pie: { fontSize: 12, color: TEXTO2, textAlign: 'center', marginTop: 10 },
-  vacioTxt: { fontSize: 15, color: TEXTO2, textAlign: 'center' },
+  btnTxt: { fontSize: 16, fontWeight: '800', color: colores.texto },
+  pie: { fontSize: 12, color: colores.textoSecundario, textAlign: 'center', marginTop: 10 },
+  vacioTxt: { fontSize: 15, color: colores.textoSecundario, textAlign: 'center' },
 });

@@ -25,6 +25,7 @@ import {
 } from '../config/session';
 import { fetchRolesCuenta } from '../services/paseadorApi';
 import { configNegocio } from '../constants/negocios';
+import { colores } from '../theme';
 
 const OPCIONES = [
   {
@@ -93,7 +94,7 @@ export default function ElegirModoScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={colores.blanco} />
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         <Text style={s.marca}>Zooni</Text>
         <Image source={MASCOTAS_BIENVENIDA} style={s.ilustracion} resizeMode="contain" />
@@ -135,9 +136,9 @@ export default function ElegirModoScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  safe: { flex: 1, backgroundColor: colores.blanco },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
-  marca: { fontSize: 36, fontWeight: '800', color: '#5C3D1E', textAlign: 'center' },
+  marca: { fontSize: 36, fontWeight: '800', color: colores.marron, textAlign: 'center' },
   ilustracion: { width: '100%', height: 140, marginVertical: 18 },
   titulo: { fontSize: 22, fontWeight: '800', color: C.texto, textAlign: 'center' },
   subtitulo: { fontSize: 14, color: C.texto2, textAlign: 'center', marginTop: 6, marginBottom: 22 },

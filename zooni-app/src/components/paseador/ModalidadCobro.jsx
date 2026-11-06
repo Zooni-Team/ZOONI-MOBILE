@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { C } from './PaseadorUI';
 import { MODALIDADES_COBRO, proximoCierre as calcularCierre } from '../../services/paseadorApi';
+import { colores } from '../../theme';
 
 const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 const diaDe = (d) => `el ${DIAS[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
@@ -44,8 +45,8 @@ export default function ModalidadCobro({
           return (
             <TouchableOpacity key={m.key} style={[s.opcion, on && s.opcionOn]} onPress={() => elegir(m.key)}
               accessibilityRole="radio" accessibilityState={{ selected: on }}>
-              <Ionicons name={m.icono} size={15} color={on ? '#FFF' : C.teal} />
-              <Text style={[s.opcionTxt, on && { color: '#FFF' }]}>{m.label}</Text>
+              <Ionicons name={m.icono} size={15} color={on ? colores.blanco : C.teal} />
+              <Text style={[s.opcionTxt, on && { color: colores.blanco }]}>{m.label}</Text>
             </TouchableOpacity>
           );
         })}
@@ -65,7 +66,7 @@ const s = StyleSheet.create({
   opciones: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   opcion: {
     flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 18, borderWidth: 1.5, borderColor: C.menta,
-    paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colores.blanco,
   },
   opcionOn: { backgroundColor: C.teal, borderColor: C.teal },
   opcionTxt: { fontSize: 13, fontWeight: '700', color: C.texto },

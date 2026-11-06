@@ -25,22 +25,15 @@ import {
   formatoPlata, formatoTimer, segundosDePaseo,
 } from '../services/paseadorApi';
 import { confirmar } from '../utils/dialogo';
-
-const VERDE = '#2DBD72';
-const MENTA = '#C8F0D8';
-const AMARILLO = '#F5C842';
-const ROJO = '#E63946';
-const AMBAR = '#F5A623';
-const TEXTO = '#2C2C2C';
-const TEXTO2 = '#6B6B6B';
+import { colores } from '../theme';
 
 const ESTADOS = {
-  pendiente: { txt: 'Esperando respuesta', icono: 'hourglass-outline', color: AMBAR, fondo: '#FFF1DC' },
-  aceptado: { txt: 'Aceptado', icono: 'checkmark-circle', color: VERDE, fondo: MENTA },
-  en_curso: { txt: 'Paseando ahora', icono: 'walk', color: ROJO, fondo: '#FDECEE' },
-  finalizado: { txt: 'Finalizado', icono: 'flag', color: TEXTO2, fondo: '#F1F1F1' },
-  rechazado: { txt: 'Rechazado', icono: 'close-circle', color: ROJO, fondo: '#FDECEE' },
-  cancelado: { txt: 'Cancelado', icono: 'ban', color: TEXTO2, fondo: '#F1F1F1' },
+  pendiente: { txt: 'Esperando respuesta', icono: 'hourglass-outline', color: colores.ambar, fondo: colores.ambarFondo },
+  aceptado: { txt: 'Aceptado', icono: 'checkmark-circle', color: colores.verde, fondo: colores.menta },
+  en_curso: { txt: 'Paseando ahora', icono: 'walk', color: colores.rojo, fondo: colores.rojoFondo },
+  finalizado: { txt: 'Finalizado', icono: 'flag', color: colores.textoSecundario, fondo: colores.gris100 },
+  rechazado: { txt: 'Rechazado', icono: 'close-circle', color: colores.rojo, fondo: colores.rojoFondo },
+  cancelado: { txt: 'Cancelado', icono: 'ban', color: colores.textoSecundario, fondo: colores.gris100 },
 };
 
 function Estrellas({ valor, onCambio, size = 30 }) {
@@ -49,7 +42,7 @@ function Estrellas({ valor, onCambio, size = 30 }) {
       {[1, 2, 3, 4, 5].map((i) => (
         <TouchableOpacity key={i} onPress={() => onCambio?.(i)} disabled={!onCambio} hitSlop={4}
           accessibilityLabel={`${i} ${i === 1 ? 'estrella' : 'estrellas'}`}>
-          <Ionicons name={valor >= i ? 'star' : 'star-outline'} size={size} color={AMARILLO} />
+          <Ionicons name={valor >= i ? 'star' : 'star-outline'} size={size} color={colores.amarillo} />
         </TouchableOpacity>
       ))}
     </View>
@@ -163,18 +156,18 @@ export default function MisPaseosScreen() {
         <View style={s.acciones}>
           {puedeChatear && (
             <TouchableOpacity style={s.btnSec} onPress={() => navigation.navigate('PaseadorChat', { paseoId: p.id })}>
-              <Ionicons name="chatbubble-ellipses-outline" size={16} color={VERDE} />
+              <Ionicons name="chatbubble-ellipses-outline" size={16} color={colores.verde} />
               <Text style={s.btnSecTxt}>Chat</Text>
             </TouchableOpacity>
           )}
           {puedeCancelar && (
-            <TouchableOpacity style={[s.btnSec, { borderColor: ROJO }]} onPress={() => cancelar(p)}>
-              <Text style={[s.btnSecTxt, { color: ROJO }]}>Cancelar</Text>
+            <TouchableOpacity style={[s.btnSec, { borderColor: colores.rojo }]} onPress={() => cancelar(p)}>
+              <Text style={[s.btnSecTxt, { color: colores.rojo }]}>Cancelar</Text>
             </TouchableOpacity>
           )}
           {p.estado === 'finalizado' && p.rating == null && (
             <TouchableOpacity style={s.btnPri} onPress={() => setCalificando(p)}>
-              <Ionicons name="star" size={16} color={TEXTO} />
+              <Ionicons name="star" size={16} color={colores.texto} />
               <Text style={s.btnPriTxt}>Calificar</Text>
             </TouchableOpacity>
           )}
@@ -185,38 +178,38 @@ export default function MisPaseosScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={MENTA} />
+      <StatusBar barStyle="dark-content" backgroundColor={colores.menta} />
       <View style={s.header}>
         <TouchableOpacity onPress={() => setDrawerOpen(true)} hitSlop={10} accessibilityLabel="Abrir menú">
           <Ionicons name="menu" size={28} color="#0A0A0A" />
         </TouchableOpacity>
         <Text style={s.titulo}>Mis paseos</Text>
         <TouchableOpacity onPress={() => navigation.navigate('Comunidad')} hitSlop={10} accessibilityLabel="Buscar paseador">
-          <Ionicons name="search" size={24} color={TEXTO} />
+          <Ionicons name="search" size={24} color={colores.texto} />
         </TouchableOpacity>
       </View>
 
       {aviso && (
         <View style={s.aviso}>
-          <Ionicons name="checkmark-circle" size={18} color={VERDE} />
+          <Ionicons name="checkmark-circle" size={18} color={colores.verde} />
           <Text style={s.avisoTxt}>{aviso}</Text>
         </View>
       )}
       {error && <Text style={s.error}>{error}</Text>}
 
       {paseos === null ? (
-        <ActivityIndicator color={VERDE} style={{ marginTop: 30 }} />
+        <ActivityIndicator color={colores.verde} style={{ marginTop: 30 }} />
       ) : (
         <FlatList
           data={paseos}
           keyExtractor={(p) => String(p.id)}
           renderItem={renderPaseo}
           contentContainerStyle={s.lista}
-          refreshControl={<RefreshControl refreshing={refrescando} tintColor={VERDE}
+          refreshControl={<RefreshControl refreshing={refrescando} tintColor={colores.verde}
             onRefresh={async () => { setRefrescando(true); await cargar(); setRefrescando(false); }} />}
           ListEmptyComponent={
             <View style={s.vacio}>
-              <Ionicons name="walk-outline" size={44} color={VERDE} />
+              <Ionicons name="walk-outline" size={44} color={colores.verde} />
               <Text style={s.vacioTitulo}>Todavía no pediste paseos</Text>
               <Text style={s.vacioTxt}>Buscá paseadores de Zooni en el mapa de Comunidad: cada uno muestra su zona con un círculo.</Text>
               <TouchableOpacity style={[s.btnPri, { marginTop: 14, paddingHorizontal: 22 }]} onPress={() => navigation.navigate('Comunidad')}>
@@ -241,23 +234,23 @@ export default function MisPaseosScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: MENTA },
+  safe: { flex: 1, backgroundColor: colores.menta },
   header: {
     height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16,
   },
-  titulo: { fontSize: 20, fontWeight: '800', color: VERDE },
+  titulo: { fontSize: 20, fontWeight: '800', color: colores.verde },
   lista: { padding: 16, paddingBottom: 32, flexGrow: 1 },
 
   aviso: {
     flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, marginBottom: 4,
-    backgroundColor: '#FFF', borderRadius: 14, padding: 12, borderWidth: 1.5, borderColor: VERDE,
+    backgroundColor: colores.blanco, borderRadius: 14, padding: 12, borderWidth: 1.5, borderColor: colores.verde,
   },
-  avisoTxt: { flex: 1, fontSize: 13, fontWeight: '700', color: TEXTO },
-  error: { marginHorizontal: 16, padding: 12, borderRadius: 12, backgroundColor: '#FDECEE', color: ROJO, fontSize: 13 },
+  avisoTxt: { flex: 1, fontSize: 13, fontWeight: '700', color: colores.texto },
+  error: { marginHorizontal: 16, padding: 12, borderRadius: 12, backgroundColor: colores.rojoFondo, color: colores.rojo, fontSize: 13 },
 
   card: {
-    backgroundColor: '#FFF', borderRadius: 20, padding: 16, marginBottom: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 3,
+    backgroundColor: colores.blanco, borderRadius: 20, padding: 16, marginBottom: 12,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 3,
   },
   estado: {
     flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start',
@@ -265,34 +258,34 @@ const s = StyleSheet.create({
   },
   estadoTxt: { fontSize: 12, fontWeight: '800' },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  foto: { width: 52, height: 52, borderRadius: 26, backgroundColor: MENTA },
-  nombre: { fontSize: 16, fontWeight: '800', color: TEXTO },
-  sub: { fontSize: 13, color: TEXTO2, marginTop: 2 },
-  precio: { fontSize: 19, fontWeight: '900', color: TEXTO },
+  foto: { width: 52, height: 52, borderRadius: 26, backgroundColor: colores.menta },
+  nombre: { fontSize: 16, fontWeight: '800', color: colores.texto },
+  sub: { fontSize: 13, color: colores.textoSecundario, marginTop: 2 },
+  precio: { fontSize: 19, fontWeight: '900', color: colores.texto },
 
   vivo: {
     flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12,
-    backgroundColor: '#FDECEE', borderRadius: 12, padding: 10,
+    backgroundColor: colores.rojoFondo, borderRadius: 12, padding: 10,
   },
-  vivoPunto: { width: 10, height: 10, borderRadius: 5, backgroundColor: ROJO },
-  vivoTxt: { fontSize: 14, fontWeight: '800', color: TEXTO },
-  resumen: { fontSize: 13, color: TEXTO2, marginTop: 10 },
-  resenaTxt: { fontSize: 13, color: TEXTO, fontStyle: 'italic', marginTop: 4 },
+  vivoPunto: { width: 10, height: 10, borderRadius: 5, backgroundColor: colores.rojo },
+  vivoTxt: { fontSize: 14, fontWeight: '800', color: colores.texto },
+  resumen: { fontSize: 13, color: colores.textoSecundario, marginTop: 10 },
+  resenaTxt: { fontSize: 13, color: colores.texto, fontStyle: 'italic', marginTop: 4 },
 
   acciones: { flexDirection: 'row', gap: 8, marginTop: 14, flexWrap: 'wrap' },
   btnSec: {
     flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 16,
-    borderRadius: 20, borderWidth: 2, borderColor: VERDE,
+    borderRadius: 20, borderWidth: 2, borderColor: colores.verde,
   },
-  btnSecTxt: { fontSize: 14, fontWeight: '800', color: VERDE },
+  btnSecTxt: { fontSize: 14, fontWeight: '800', color: colores.verde },
   btnPri: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 40,
-    paddingHorizontal: 16, borderRadius: 20, backgroundColor: AMARILLO,
+    paddingHorizontal: 16, borderRadius: 20, backgroundColor: colores.amarillo,
   },
-  btnPriTxt: { fontSize: 14, fontWeight: '800', color: TEXTO },
+  btnPriTxt: { fontSize: 14, fontWeight: '800', color: colores.texto },
 
   vacio: { alignItems: 'center', marginTop: 50, paddingHorizontal: 30, gap: 6 },
-  vacioTitulo: { fontSize: 17, fontWeight: '800', color: TEXTO, marginTop: 6 },
-  vacioTxt: { fontSize: 14, color: TEXTO2, textAlign: 'center', lineHeight: 20 },
+  vacioTitulo: { fontSize: 17, fontWeight: '800', color: colores.texto, marginTop: 6 },
+  vacioTxt: { fontSize: 14, color: colores.textoSecundario, textAlign: 'center', lineHeight: 20 },
 
 });

@@ -21,6 +21,7 @@ import { Platform, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { C } from './PaseadorUI';
+import { colores } from '../../theme';
 
 const CENTRO_DEFAULT = { lat: -34.6189, lng: -58.4380 }; // Caballito
 
@@ -129,9 +130,9 @@ export default function MapaPaseo({
 }
 
 const s = StyleSheet.create({
-  wrap: { overflow: 'hidden', backgroundColor: '#E8F5EC' },
+  wrap: { overflow: 'hidden', backgroundColor: colores.mentaSuave },
   fallback: {
-    backgroundColor: '#E8F5EC', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: colores.mentaSuave, alignItems: 'center', justifyContent: 'center', gap: 8,
   },
   fallbackTxt: { fontSize: 13, color: C.texto2, fontWeight: '600' },
 });

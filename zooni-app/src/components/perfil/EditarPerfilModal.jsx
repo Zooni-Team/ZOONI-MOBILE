@@ -26,6 +26,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import { fetchMiPerfil, actualizarMiPerfil } from '../../services/perfilApi';
+import { colores } from '../../theme';
 
 const { height: SH } = Dimensions.get('window');
 
@@ -222,7 +223,7 @@ export default function EditarPerfilModal({ visible, perfil, onCerrar, onGuardad
 
         <TouchableOpacity style={s.btnGuardar} onPress={() => guardar(pendiente)} disabled={guardando}>
           {guardando
-            ? <ActivityIndicator size="small" color="#FFF" />
+            ? <ActivityIndicator size="small" color={colores.blanco} />
             : (
               <Text style={s.btnGuardarTxt}>
                 {pendiente === 'usuario' ? 'Guardar y continuar' : 'Guardar y salir'}
@@ -244,14 +245,14 @@ export default function EditarPerfilModal({ visible, perfil, onCerrar, onGuardad
       <Text style={s.modalTitulo}>Editar perfil</Text>
 
       {cargando ? (
-        <View style={s.cargando}><ActivityIndicator size="large" color="#2DBD72" /></View>
+        <View style={s.cargando}><ActivityIndicator size="large" color={colores.verde} /></View>
       ) : (
         <>
-          <FocusInput placeholder="Nombre" placeholderTextColor="#AAAAAA"
+          <FocusInput placeholder="Nombre" placeholderTextColor={colores.textoTenue}
             value={nombre} onChangeText={(v) => { setNombre(v); setErr(''); }}
             style={[{ marginBottom: err ? 4 : 12 }, !!err && s.inputErr]} />
           {!!err && <Text style={s.errTxt}>{err}</Text>}
-          <FocusInput placeholder="Apellido" placeholderTextColor="#AAAAAA"
+          <FocusInput placeholder="Apellido" placeholderTextColor={colores.textoTenue}
             value={apellido} onChangeText={setApellido} style={{ marginBottom: 12 }} />
 
           {/* El @usuario se cambia desde Configuración (con bloqueo de 30 días) */}
@@ -268,15 +269,15 @@ export default function EditarPerfilModal({ visible, perfil, onCerrar, onGuardad
             </View>
           </TouchableOpacity>
 
-          <FocusInput placeholder="Contá algo sobre vos y tu mascota..." placeholderTextColor="#AAAAAA"
+          <FocusInput placeholder="Contá algo sobre vos y tu mascota..." placeholderTextColor={colores.textoTenue}
             value={bio} onChangeText={setBio}
             multiline numberOfLines={3} maxLength={150} textAlignVertical="top"
             style={{ marginBottom: 12 }} />
-          <FocusInput placeholder="País o ciudad (ej: Argentina)" placeholderTextColor="#AAAAAA"
+          <FocusInput placeholder="País o ciudad (ej: Argentina)" placeholderTextColor={colores.textoTenue}
             value={ubicacion} onChangeText={setUbicacion} style={{ marginBottom: 20 }} />
 
           <TouchableOpacity style={s.btnGuardar} onPress={() => guardar('cerrar')} disabled={guardando}>
-            {guardando ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={s.btnGuardarTxt}>Guardar</Text>}
+            {guardando ? <ActivityIndicator size="small" color={colores.blanco} /> : <Text style={s.btnGuardarTxt}>Guardar</Text>}
           </TouchableOpacity>
           <TouchableOpacity style={s.btnCancelar} onPress={cerrar}>
             <Text style={s.btnCancelarTxt}>Cancelar</Text>
@@ -291,42 +292,42 @@ const s = StyleSheet.create({
   modalKAV:    { flex:1 },
   overlay:     { flex:1, backgroundColor:'rgba(0,0,0,0.50)', justifyContent:'center', alignItems:'center', paddingHorizontal:20 },
   modalCardWrap: { width:'100%', maxHeight: SH * 0.75 },
-  modalCard:   { backgroundColor:'#FFF', borderRadius:20, width:'100%',
+  modalCard:   { backgroundColor:colores.blanco, borderRadius:20, width:'100%',
                  paddingHorizontal:22, paddingTop:24, paddingBottom:20,
-                 shadowColor:'#000', shadowOffset:{width:0,height:8}, shadowOpacity:0.18, shadowRadius:20, elevation:10 },
-  modalTitulo: { fontSize:18, fontWeight:'700', color:'#2DBD72', textAlign:'center', marginBottom:20 },
+                 shadowColor:colores.negro, shadowOffset:{width:0,height:8}, shadowOpacity:0.18, shadowRadius:20, elevation:10 },
+  modalTitulo: { fontSize:18, fontWeight:'700', color:colores.verde, textAlign:'center', marginBottom:20 },
   cargando:    { paddingVertical:40 },
 
   // Aviso de cambios sin guardar
   avisoIconoWrap: { alignItems:'center', marginBottom:10 },
-  avisoTitulo: { fontSize:18, fontWeight:'800', color:'#2C2C2C', textAlign:'center' },
-  avisoTxt:    { fontSize:14, color:'#6B6B6B', textAlign:'center', lineHeight:20,
+  avisoTitulo: { fontSize:18, fontWeight:'800', color:colores.texto, textAlign:'center' },
+  avisoTxt:    { fontSize:14, color:colores.textoSecundario, textAlign:'center', lineHeight:20,
                  marginTop:8, marginBottom:20 },
   btnDescartar:{ width:'100%', height:44, borderRadius:30, alignItems:'center',
                  justifyContent:'center', marginTop:10 },
-  btnDescartarTxt: { fontSize:15, fontWeight:'700', color:'#B3121D' },
+  btnDescartarTxt: { fontSize:15, fontWeight:'700', color:colores.rojoOscuro },
 
   usuarioRow:    { flexDirection:'row', alignItems:'center', justifyContent:'space-between',
-                   borderWidth:1.5, borderColor:'#EEE', borderRadius:10, backgroundColor:'#FAFAFA',
+                   borderWidth:1.5, borderColor:colores.gris250, borderRadius:10, backgroundColor:'#FAFAFA',
                    paddingHorizontal:14, paddingVertical:10, marginBottom:12 },
   usuarioRowLbl: { fontSize:12, color:'#8A8A8A' },
-  usuarioRowVal: { fontSize:15, fontWeight:'700', color:'#2C2C2C', marginTop:2 },
+  usuarioRowVal: { fontSize:15, fontWeight:'700', color:colores.texto, marginTop:2 },
   usuarioRowRight:{ flexDirection:'row', alignItems:'center', gap:4 },
-  usuarioRowCfg: { fontSize:13, fontWeight:'700', color:'#177046' },
+  usuarioRowCfg: { fontSize:13, fontWeight:'700', color:colores.verdeOscuro },
 
-  input:       { borderWidth:1.5, borderColor:'#DDDDDD', borderRadius:10,
+  input:       { borderWidth:1.5, borderColor:colores.gris500, borderRadius:10,
                  paddingHorizontal:14, paddingVertical:12,
-                 fontSize:14, color:'#2C2C2C', backgroundColor:'#FFF', marginBottom:12 },
+                 fontSize:14, color:colores.texto, backgroundColor:colores.blanco, marginBottom:12 },
   inputMulti:  { height:80, textAlignVertical:'top' },
-  inputFocus:  { borderColor:'#2DBD72' },
-  inputErr:    { borderColor:'#E63946' },
-  errTxt:      { fontSize:11, color:'#E63946', marginBottom:8, marginLeft:4 },
+  inputFocus:  { borderColor:colores.verde },
+  inputErr:    { borderColor:colores.rojo },
+  errTxt:      { fontSize:11, color:colores.rojo, marginBottom:8, marginLeft:4 },
 
-  btnGuardar:      { width:'100%', height:48, borderRadius:30, backgroundColor:'#2DBD72',
+  btnGuardar:      { width:'100%', height:48, borderRadius:30, backgroundColor:colores.verde,
                      alignItems:'center', justifyContent:'center',
-                     shadowColor:'#000', shadowOffset:{width:0,height:3}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
-  btnGuardarTxt:   { fontSize:15, fontWeight:'700', color:'#FFF' },
-  btnCancelar:     { width:'100%', height:44, borderRadius:30, backgroundColor:'#E8E8E8',
+                     shadowColor:colores.negro, shadowOffset:{width:0,height:3}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
+  btnGuardarTxt:   { fontSize:15, fontWeight:'700', color:colores.blanco },
+  btnCancelar:     { width:'100%', height:44, borderRadius:30, backgroundColor:colores.gris300,
                      alignItems:'center', justifyContent:'center', marginTop:10 },
-  btnCancelarTxt:  { fontSize:15, fontWeight:'700', color:'#2C2C2C' },
+  btnCancelarTxt:  { fontSize:15, fontWeight:'700', color:colores.texto },
 });

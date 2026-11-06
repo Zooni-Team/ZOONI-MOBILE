@@ -25,6 +25,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { C } from './PaseadorUI';
 import { barrioDe, buscarLugar } from '../../services/paseadorApi';
+import { colores } from '../../theme';
 
 const BASE_DEFAULT = { lat: -34.6189, lng: -58.4380 }; // Caballito
 // Mismos límites que el CHECK paseador_radio_ok (035): NUMERIC(4,1) entre 0.5 y 30
@@ -309,12 +310,12 @@ export default function ZonaMapaPicker({ valor, onCambio, baseTexto, conRadio = 
 
 const s = StyleSheet.create({
   buscador: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: '#DDDDDD',
-    borderRadius: 12, paddingHorizontal: 12, backgroundColor: '#FFFFFF', marginBottom: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: colores.gris500,
+    borderRadius: 12, paddingHorizontal: 12, backgroundColor: colores.blanco, marginBottom: 10,
   },
   buscadorInput: { flex: 1, paddingVertical: 11, fontSize: 15, color: C.texto },
   error: { fontSize: 12, color: C.rojo, marginTop: -4, marginBottom: 8 },
-  mapa: { height: 260, borderRadius: 16, overflow: 'hidden', backgroundColor: '#E8F5EC' },
+  mapa: { height: 260, borderRadius: 16, overflow: 'hidden', backgroundColor: colores.mentaSuave },
   sinMapa: { alignItems: 'center', justifyContent: 'center', gap: 8, padding: 20 },
   sinMapaTxt: { fontSize: 13, color: C.texto2, textAlign: 'center' },
   ayuda: { fontSize: 12, color: C.texto2, marginTop: 6, textAlign: 'center' },
@@ -331,7 +332,7 @@ const s = StyleSheet.create({
   },
   radioInputWrap: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, height: 46,
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 12, backgroundColor: '#FFFFFF', paddingHorizontal: 12,
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12, backgroundColor: colores.blanco, paddingHorizontal: 12,
   },
   radioInput: { flex: 1, fontSize: 20, fontWeight: '900', color: C.texto, textAlign: 'center', minWidth: 0 },
   radioUnidad: { fontSize: 15, fontWeight: '700', color: C.texto2 },

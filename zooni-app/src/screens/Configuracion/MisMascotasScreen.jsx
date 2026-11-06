@@ -30,25 +30,26 @@ import {
   labelMotivo, marcarPrincipal, recuperarMascota,
 } from '../../services/petsApi';
 import { alerta } from '../../utils/dialogo';
+import { colores } from '../../theme';
 
 // ─── TOKENS (§3.1) ───────────────────────────────────────────────────────────
 const P = {
   bgTop: '#E4F9EA',
-  surface: '#FFFFFF',
+  surface: colores.blanco,
   surfaceArchived: '#F1F7F3',
-  text: '#2C2C2C',
-  textSoft: '#6B6B6B',
-  textSoftMint: '#5A6B60',
-  brand: '#2DBD72',
-  brandText: '#177046',
+  text: colores.texto,
+  textSoft: colores.textoSecundario,
+  textSoftMint: colores.verdeGrisaceo,
+  brand: colores.verde,
+  brandText: colores.verdeOscuro,
   ringArchived: '#7E9089',
   chipArchivedBg: '#E2EAE5',
   chipArchivedText: '#4A5550',
-  cta: '#F5C842',
+  cta: colores.amarillo,
   neutralBtn: '#EDF3EF',
-  sosRedText: '#B3121D',
+  sosRedText: colores.rojoOscuro,
   toastBg: '#C9EBD4',
-  divider: '#E8EFE9',
+  divider: colores.mentaGris,
   amberText: '#A05F00',
   ringMemorial: '#E8D9A8',
 };
@@ -107,7 +108,7 @@ function CardActiva({ m, onPress, onEditar, onArchivar, onMenu, disabled }) {
 
       {m.esPrincipal && (
         <View style={s.cintaPrincipal}>
-          <Ionicons name="star" size={11} color="#FFF" />
+          <Ionicons name="star" size={11} color={colores.blanco} />
           <Text style={s.cintaPrincipalTxt}>Principal</Text>
         </View>
       )}
@@ -189,7 +190,7 @@ function CardArchivada({ m, onPress, onRecuperar, onMenu, disabled }) {
 
       <TouchableOpacity style={[s.btnRecuperar, disabled && s.btnDisabled]} onPress={onRecuperar}
         disabled={disabled} accessibilityRole="button" accessibilityLabel={`Recuperar a ${m.nombre}`}>
-        <Ionicons name="refresh-circle-outline" size={17} color="#FFF" />
+        <Ionicons name="refresh-circle-outline" size={17} color={colores.blanco} />
         <Text style={s.btnRecuperarTxt}>Recuperar</Text>
       </TouchableOpacity>
     </Pressable>
@@ -644,7 +645,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: P.toastBg, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12,
     minHeight: 48, marginBottom: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.10, shadowRadius: 6, elevation: 3,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.10, shadowRadius: 6, elevation: 3,
   },
   toastTxt:  { flex: 1, fontSize: 14, fontWeight: '600', color: P.text },
   toastUndo: { fontSize: 14, fontWeight: '700', color: P.brandText },
@@ -658,7 +659,7 @@ const s = StyleSheet.create({
   cta: {
     height: 52, borderRadius: 30, backgroundColor: P.cta,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
   },
   ctaTxt:    { fontSize: 16, fontWeight: '700', color: P.text },
   limiteTxt: { fontSize: 13, color: P.amberText, textAlign: 'center', marginTop: 8 },
@@ -673,7 +674,7 @@ const s = StyleSheet.create({
     backgroundColor: P.surface, borderRadius: 20, padding: 16,
     marginBottom: 12,
     borderWidth: 2, borderColor: 'transparent',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
   },
   // Outline de la mascota principal (§ pedido): borde verde + fondo apenas
   // teñido, para que se reconozca sin depender solo del texto del chip.
@@ -685,7 +686,7 @@ const s = StyleSheet.create({
     borderBottomLeftRadius: 8, borderBottomRightRadius: 8,
     paddingHorizontal: 10, paddingVertical: 3,
   },
-  cintaPrincipalTxt: { fontSize: 11, fontWeight: '700', color: '#FFF' },
+  cintaPrincipalTxt: { fontSize: 11, fontWeight: '700', color: colores.blanco },
 
   cardMenu: { position: 'absolute', top: 10, right: 10, width: 44, height: 44, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
 
@@ -726,7 +727,7 @@ const s = StyleSheet.create({
     backgroundColor: P.surfaceArchived, borderRadius: 20, padding: 16, paddingTop: 44,
     marginBottom: 12,
     borderWidth: 2, borderColor: 'transparent',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
   },
   chipArchivada: {
     position: 'absolute', top: 12, left: 12,
@@ -751,10 +752,10 @@ const s = StyleSheet.create({
     alignSelf: 'stretch', height: 40, borderRadius: 20, backgroundColor: P.brandText,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 14,
   },
-  btnRecuperarTxt: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  btnRecuperarTxt: { fontSize: 15, fontWeight: '700', color: colores.blanco },
 
   btnRecuerdos: {
-    alignSelf: 'stretch', height: 40, borderRadius: 20, backgroundColor: '#FFF',
+    alignSelf: 'stretch', height: 40, borderRadius: 20, backgroundColor: colores.blanco,
     borderWidth: 1.5, borderColor: P.ringMemorial,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 14,
   },
@@ -775,13 +776,13 @@ const s = StyleSheet.create({
 
   buscador: {
     flexDirection: 'row', alignItems: 'center', gap: 8, height: 44,
-    backgroundColor: '#FFF', borderRadius: 22, paddingHorizontal: 16, marginBottom: 12,
+    backgroundColor: colores.blanco, borderRadius: 22, paddingHorizontal: 16, marginBottom: 12,
   },
   buscadorInput: { flex: 1, fontSize: 14, color: P.text },
 
   scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    backgroundColor: colores.blanco, borderTopLeftRadius: 24, borderTopRightRadius: 24,
     padding: 20, paddingBottom: 28,
   },
   sheetHandle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: P.divider, marginBottom: 12 },
@@ -803,7 +804,7 @@ const s = StyleSheet.create({
   },
   motivoChipActivo:    { backgroundColor: P.brandText },
   motivoChipTxt:       { fontSize: 13, color: P.brandText, fontWeight: '600' },
-  motivoChipTxtActivo: { color: '#FFF' },
+  motivoChipTxtActivo: { color: colores.blanco },
   motivoInput: {
     borderWidth: 1, borderColor: P.divider, borderRadius: 12, marginTop: 10,
     paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: P.text,
@@ -814,7 +815,7 @@ const s = StyleSheet.create({
     height: 52, borderRadius: 26, backgroundColor: P.brandText,
     alignItems: 'center', justifyContent: 'center', marginTop: 16,
   },
-  sheetBtnArchivarTxt: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+  sheetBtnArchivarTxt: { fontSize: 16, fontWeight: '700', color: colores.blanco },
   sheetBtnCancelar:    { alignItems: 'center', paddingVertical: 14 },
   sheetBtnCancelarTxt: { fontSize: 16, fontWeight: '700', color: P.textSoft },
 

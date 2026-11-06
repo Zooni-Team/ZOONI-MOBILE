@@ -31,6 +31,7 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useEffect } from 'react';
 
 import { useMisMascotas } from '../hooks/useMisMascotas';
+import { colores } from '../theme';
 
 export default function SelectorMascota({
   valor,
@@ -97,13 +98,13 @@ const s = StyleSheet.create({
     // overflow oculto) se recorta a nada: quedan bloques vacíos.
     flexShrink: 0,
   },
-  pastillaOn: { backgroundColor: '#FFFFFF', borderColor: '#2DBD72' },
+  pastillaOn: { backgroundColor: colores.blanco, borderColor: colores.verde },
   // pointerEvents/userSelect 'none': en web el nombre es un elemento propio que
   // se quedaba con el clic (o arrancaba una selección de texto) y solo
   // respondía el borde de la pastilla. Así el toque siempre le llega a ella.
   txt: {
-    fontSize: 13, color: '#6B6B6B', fontWeight: '600', maxWidth: 130,
+    fontSize: 13, color: colores.textoSecundario, fontWeight: '600', maxWidth: 130,
     pointerEvents: 'none', userSelect: 'none',
   },
-  txtOn: { color: '#2DBD72', fontWeight: '700' },
+  txtOn: { color: colores.verde, fontWeight: '700' },
 });

@@ -30,6 +30,7 @@ import {
 import { clearToken } from '../../services/api';
 import { clearCurrentUserId } from '../../config/session';
 import { alerta } from '../../utils/dialogo';
+import { colores } from '../../theme';
 
 // ─── MODAL DE EDICIÓN DE UN CAMPO (uno o dos inputs) ─────────────────────────
 
@@ -361,7 +362,7 @@ const s = StyleSheet.create({
 
 const m = StyleSheet.create({
   scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', paddingHorizontal: 24 },
-  card: { backgroundColor: '#FFF', borderRadius: 18, padding: 20 },
+  card: { backgroundColor: colores.blanco, borderRadius: 18, padding: 20 },
   titulo: { fontSize: 17, fontWeight: '800', color: T.text, marginBottom: 14 },
   label: { fontSize: 13, fontWeight: '600', color: T.textSoft, marginBottom: 6 },
   input: {

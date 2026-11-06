@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { View, Animated, StyleSheet } from 'react-native';
+import { colores } from '../theme';
 
 export default function DraggableList({ items, onReorder, renderItem, itemHeight = 66, disabled = false }) {
   const [draggingIndex, setDraggingIndex] = useState(null);
@@ -95,5 +96,5 @@ export default function DraggableList({ items, onReorder, renderItem, itemHeight
 }
 
 const styles = StyleSheet.create({
-  hoverTarget: { borderTopWidth: 2, borderTopColor: '#2DBD72' },
+  hoverTarget: { borderTopWidth: 2, borderTopColor: colores.verde },
 });

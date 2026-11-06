@@ -5,6 +5,7 @@
 import React, { useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { colores } from '../../theme';
 
 export default function MatchActionButtons({
   canUndo,
@@ -30,7 +31,7 @@ export default function MatchActionButtons({
         disabled={!canUndo}
         accessibilityLabel="Volver al anterior"
       >
-        <Ionicons name="arrow-undo" size={22} color={canUndo ? '#AAAAAA' : '#DDDDDD'} />
+        <Ionicons name="arrow-undo" size={22} color={canUndo ? colores.textoTenue : colores.gris500} />
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -38,7 +39,7 @@ export default function MatchActionButtons({
         onPress={onSkip}
         accessibilityLabel="Saltear perfil"
       >
-        <Ionicons name="close" size={28} color="#E63946" />
+        <Ionicons name="close" size={28} color={colores.rojo} />
       </TouchableOpacity>
 
       <Animated.View style={{ transform: [{ scale: likeScale }] }}>
@@ -47,7 +48,7 @@ export default function MatchActionButtons({
           onPress={pulseLike}
           accessibilityLabel="Dar like"
         >
-          <Ionicons name="heart" size={32} color="#FFFFFF" />
+          <Ionicons name="heart" size={32} color={colores.blanco} />
         </TouchableOpacity>
       </Animated.View>
 
@@ -56,7 +57,7 @@ export default function MatchActionButtons({
         disabled
         accessibilityLabel="Favorito (próximamente)"
       >
-        <Ionicons name="star" size={22} color="#F5C842" />
+        <Ionicons name="star" size={22} color={colores.amarillo} />
       </TouchableOpacity>
     </View>
   );
@@ -68,21 +69,21 @@ const styles = StyleSheet.create({
     gap: 16, paddingVertical: 8, paddingBottom: 10,
   },
   btnSmall: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF',
+    width: 44, height: 44, borderRadius: 22, backgroundColor: colores.blanco,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12, shadowRadius: 12, elevation: 4,
   },
   btnMedium: {
-    width: 56, height: 56, borderRadius: 28, backgroundColor: '#FFFFFF',
+    width: 56, height: 56, borderRadius: 28, backgroundColor: colores.blanco,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12, shadowRadius: 12, elevation: 4,
   },
   btnLike: {
-    width: 68, height: 68, borderRadius: 34, backgroundColor: '#2DBD72',
+    width: 68, height: 68, borderRadius: 34, backgroundColor: colores.verde,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12, shadowRadius: 12, elevation: 6,
   },
   btnStar: { opacity: 0.5 },

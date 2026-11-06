@@ -46,6 +46,7 @@ import {
   urlComoLlegar,
 } from '../services/sosApi';
 import { alerta } from '../utils/dialogo';
+import { colores } from '../theme';
 
 // Ícono de cada tipo de línea de emergencia (emergency_lines.kind)
 const ICONO_LINEA = {
@@ -75,9 +76,9 @@ function VetCard({ vet }) {
   const semana  = horarioSemanal(vet);
   const distancia = formatearDistancia(vet.distanciaM);
 
-  const colorEstado = horario.abierta === null ? '#9B9B9B'
-    : horario.abierta ? (horario.porCerrar ? '#F5A623' : '#2DBD72')
-    : '#E63946';
+  const colorEstado = horario.abierta === null ? colores.textoDeshabilitado
+    : horario.abierta ? (horario.porCerrar ? colores.ambar : colores.verde)
+    : colores.rojo;
 
   return (
     <View style={st.vetCard}>
@@ -85,7 +86,7 @@ function VetCard({ vet }) {
         <Text style={st.vetNombre}>{vet.nombre}</Text>
         {vet.ratingAvg != null && (
           <View style={st.vetRating}>
-            <Ionicons name="star" size={16} color="#F5C842" />
+            <Ionicons name="star" size={16} color={colores.amarillo} />
             <Text style={st.vetRatingTxt}>{vet.ratingAvg}</Text>
             {vet.ratingCount > 0 && <Text style={st.vetRatingCount}>({vet.ratingCount})</Text>}
           </View>
@@ -99,7 +100,7 @@ function VetCard({ vet }) {
         {distancia && (
           <>
             <Text style={st.vetSep}>·</Text>
-            <Ionicons name="navigate-outline" size={12} color="#6B6B6B" />
+            <Ionicons name="navigate-outline" size={12} color={colores.textoSecundario} />
             <Text style={st.vetDistancia}>{distancia}</Text>
           </>
         )}
@@ -121,7 +122,7 @@ function VetCard({ vet }) {
           <TouchableOpacity style={st.verHorariosBtn} onPress={() => setVerHorarios((v) => !v)}
             accessibilityRole="button"
             accessibilityLabel={`${verHorarios ? 'Ocultar' : 'Ver'} horarios de ${vet.nombre}`}>
-            <Ionicons name={verHorarios ? 'chevron-up' : 'chevron-down'} size={14} color="#6B6B6B" />
+            <Ionicons name={verHorarios ? 'chevron-up' : 'chevron-down'} size={14} color={colores.textoSecundario} />
             <Text style={st.verHorariosTxt}>{verHorarios ? 'Ocultar horarios' : 'Ver horarios'}</Text>
           </TouchableOpacity>
           {verHorarios && (
@@ -140,13 +141,13 @@ function VetCard({ vet }) {
       <View style={st.vetBadges}>
         {vet.is24h && (
           <View style={st.badge24}>
-            <Ionicons name="time-outline" size={13} color="#2DBD72" />
+            <Ionicons name="time-outline" size={13} color={colores.verde} />
             <Text style={st.badge24Txt}>24 hs</Text>
           </View>
         )}
         {vet.urgencias && (
           <View style={st.badgeUrgencias}>
-            <Ionicons name="pulse" size={13} color="#E63946" />
+            <Ionicons name="pulse" size={13} color={colores.rojo} />
             <Text style={st.badgeUrgenciasTxt}>Urgencias</Text>
           </View>
         )}
@@ -155,7 +156,7 @@ function VetCard({ vet }) {
       <View style={st.vetFooter}>
         <TouchableOpacity style={st.vetMapsBtn} onPress={() => abrirMaps(urlComoLlegar(vet))}
           accessibilityRole="button" accessibilityLabel={`Cómo llegar a ${vet.nombre}`}>
-          <Ionicons name="map-outline" size={15} color="#2C2C2C" />
+          <Ionicons name="map-outline" size={15} color={colores.texto} />
           <Text style={st.vetMapsTxt}>Cómo llegar</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -164,7 +165,7 @@ function VetCard({ vet }) {
           accessibilityRole="button"
           accessibilityLabel={`Llamar a ${vet.nombre}`}
         >
-          <Ionicons name="call" size={15} color="#FFF" />
+          <Ionicons name="call" size={15} color={colores.blanco} />
           <Text style={st.vetLlamarTxt}>{vet.telefono}</Text>
         </TouchableOpacity>
       </View>
@@ -240,7 +241,7 @@ function ChipFiltro({ label, icono, activo, onPress }) {
       accessibilityState={{ selected: activo }}
       accessibilityLabel={label}
     >
-      {icono ? <Ionicons name={icono} size={14} color={activo ? '#FFF' : '#2C2C2C'} /> : null}
+      {icono ? <Ionicons name={icono} size={14} color={activo ? colores.blanco : colores.texto} /> : null}
       <Text style={[st.chipTxt, activo && st.chipTxtOn]}>{label}</Text>
     </TouchableOpacity>
   );
@@ -366,7 +367,7 @@ export default function SosScreen() {
       <View style={st.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={st.headerBtn}
           accessibilityLabel="Volver" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="arrow-back" size={24} color="#2C2C2C" />
+          <Ionicons name="arrow-back" size={24} color={colores.texto} />
         </TouchableOpacity>
       </View>
 
@@ -374,7 +375,7 @@ export default function SosScreen() {
         showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl refreshing={refrescando} onRefresh={onRefresh}
-            colors={['#E63946']} tintColor="#E63946" />
+            colors={[colores.rojo]} tintColor={colores.rojo} />
         }>
 
         {/* Banner de emergencia */}
@@ -388,7 +389,7 @@ export default function SosScreen() {
         {/* Líneas de emergencia (emergency_lines, con fallback local) */}
         <View style={st.cardLineas}>
           <View style={st.lineasTituloFila}>
-            <Ionicons name="call" size={18} color="#FFF" />
+            <Ionicons name="call" size={18} color={colores.blanco} />
             <Text style={st.lineasTitulo}>Líneas de Emergencia</Text>
           </View>
           <Text style={st.lineasSubtitulo}>Para orientarte mientras vas a una veterinaria con guardia</Text>
@@ -398,7 +399,7 @@ export default function SosScreen() {
               onPress={() => llamar(linea.telefono, { lineId: linea.id })}
               accessibilityRole="button"
               accessibilityLabel={`Llamar a ${linea.label}, ${linea.telefono}`}>
-              <Ionicons name={ICONO_LINEA[linea.kind] ?? 'call'} size={18} color="#E63946" />
+              <Ionicons name={ICONO_LINEA[linea.kind] ?? 'call'} size={18} color={colores.rojo} />
               <View style={st.lineaTextos}>
                 <Text style={st.lineaBtnTxt}>{linea.label}: {linea.telefono}</Text>
                 {linea.horario ? <Text style={st.lineaHorario}>{linea.horario}</Text> : null}
@@ -409,18 +410,18 @@ export default function SosScreen() {
 
         {/* Buscador */}
         <View style={st.searchBox}>
-          <Ionicons name="search" size={18} color="#9B9B9B" />
+          <Ionicons name="search" size={18} color={colores.textoDeshabilitado} />
           <TextInput
             style={st.searchInput}
             placeholder="Buscar veterinario por nombre, especialidad..."
-            placeholderTextColor="#9B9B9B"
+            placeholderTextColor={colores.textoDeshabilitado}
             value={busqueda}
             onChangeText={setBusqueda}
             returnKeyType="search"
           />
           {busqueda.length > 0 && (
             <TouchableOpacity onPress={() => setBusqueda('')} accessibilityLabel="Limpiar búsqueda">
-              <Ionicons name="close-circle" size={18} color="#9B9B9B" />
+              <Ionicons name="close-circle" size={18} color={colores.textoDeshabilitado} />
             </TouchableOpacity>
           )}
         </View>
@@ -440,10 +441,10 @@ export default function SosScreen() {
                 accessibilityState={{ selected: activo }}
                 accessibilityLabel={`Ordenar por ${o.label}${conFlecha ? '. Tocá de nuevo para invertir' : ''}`}>
                 {pidiendoUbicacion && o.key === 'cercania'
-                  ? <ActivityIndicator size="small" color={activo ? '#FFF' : '#E63946'} />
-                  : <Ionicons name={o.icono} size={14} color={activo ? '#FFF' : '#2C2C2C'} />}
+                  ? <ActivityIndicator size="small" color={activo ? colores.blanco : colores.rojo} />
+                  : <Ionicons name={o.icono} size={14} color={activo ? colores.blanco : colores.texto} />}
                 <Text style={[st.chipTxt, activo && st.chipTxtOn]}>{o.label}</Text>
-                {conFlecha && <Ionicons name={invertido ? 'arrow-up' : 'arrow-down'} size={13} color="#FFF" />}
+                {conFlecha && <Ionicons name={invertido ? 'arrow-up' : 'arrow-down'} size={13} color={colores.blanco} />}
               </TouchableOpacity>
             );
           })}
@@ -488,14 +489,14 @@ export default function SosScreen() {
         )}
 
         {cargando ? (
-          <ActivityIndicator color="#E63946" style={{ marginTop: 24 }} />
+          <ActivityIndicator color={colores.rojo} style={{ marginTop: 24 }} />
         ) : (
           vetsFiltrados.map((vet) => <VetCard key={vet.id} vet={vet} />)
         )}
 
         {!cargando && vetsFiltrados.length === 0 && (
           <View style={st.emptyBox}>
-            <Ionicons name="search-outline" size={32} color="#9B9B9B" />
+            <Ionicons name="search-outline" size={32} color={colores.textoDeshabilitado} />
             <Text style={st.emptyTxt}>
               {busqueda.trim()
                 ? `No encontramos veterinarias para "${busqueda.trim()}"`
@@ -513,7 +514,7 @@ export default function SosScreen() {
             para el resto, Google Maps ya sabe cuáles hay alrededor. */}
         <TouchableOpacity style={st.buscarMapsBtn} onPress={() => abrirMaps(urlBuscarEnMaps(coords))}
           accessibilityRole="button" accessibilityLabel="Buscar más veterinarias en Google Maps">
-          <Ionicons name="map" size={16} color="#2C2C2C" />
+          <Ionicons name="map" size={16} color={colores.texto} />
           <Text style={st.buscarMapsTxt}>Buscar más veterinarias en Google Maps</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -525,20 +526,20 @@ export default function SosScreen() {
 
 const st = StyleSheet.create({
   lineasTituloFila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  filtrosLabel: { fontSize: 12, fontWeight: '700', color: '#6B6B6B', marginTop: 14, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
+  filtrosLabel: { fontSize: 12, fontWeight: '700', color: colores.textoSecundario, marginTop: 14, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
   chipsFila: { gap: 8, paddingBottom: 10, paddingRight: 8 },
   chip: {
     flexDirection: 'row', alignItems: 'center', gap: 5, height: 38, paddingHorizontal: 14,
-    borderRadius: 19, backgroundColor: '#FFF', borderWidth: 1.5, borderColor: '#F3C9CD',
+    borderRadius: 19, backgroundColor: colores.blanco, borderWidth: 1.5, borderColor: '#F3C9CD',
   },
-  chipOn: { backgroundColor: '#E63946', borderColor: '#E63946' },
-  chipTxt: { fontSize: 13, fontWeight: '700', color: '#2C2C2C' },
-  chipTxtOn: { color: '#FFF' },
-  seccionCuenta: { fontSize: 15, fontWeight: '600', color: '#6B6B6B' },
-  seccionSentido: { fontSize: 12, color: '#6B6B6B', marginTop: -6, marginBottom: 10 },
-  limpiarTxt: { fontSize: 14, fontWeight: '700', color: '#E63946' },
-  emptyBtn: { marginTop: 12, borderRadius: 20, borderWidth: 1.5, borderColor: '#E63946', paddingHorizontal: 16, paddingVertical: 8 },
-  emptyBtnTxt: { fontSize: 14, fontWeight: '700', color: '#E63946' },
+  chipOn: { backgroundColor: colores.rojo, borderColor: colores.rojo },
+  chipTxt: { fontSize: 13, fontWeight: '700', color: colores.texto },
+  chipTxtOn: { color: colores.blanco },
+  seccionCuenta: { fontSize: 15, fontWeight: '600', color: colores.textoSecundario },
+  seccionSentido: { fontSize: 12, color: colores.textoSecundario, marginTop: -6, marginBottom: 10 },
+  limpiarTxt: { fontSize: 14, fontWeight: '700', color: colores.rojo },
+  emptyBtn: { marginTop: 12, borderRadius: 20, borderWidth: 1.5, borderColor: colores.rojo, paddingHorizontal: 16, paddingVertical: 8 },
+  emptyBtnTxt: { fontSize: 14, fontWeight: '700', color: colores.rojo },
   safeArea: { flex: 1, backgroundColor: '#F7F7F7' },
 
   header: {
@@ -551,36 +552,36 @@ const st = StyleSheet.create({
   scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
 
   bannerEmergencia: {
-    backgroundColor: '#E63946', borderRadius: 16, padding: 18, marginTop: 8,
-    shadowColor: '#E63946', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5,
+    backgroundColor: colores.rojo, borderRadius: 16, padding: 18, marginTop: 8,
+    shadowColor: colores.rojo, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5,
   },
-  bannerTitulo: { fontSize: 17, fontWeight: '800', color: '#FFF', textAlign: 'center', marginBottom: 6 },
+  bannerTitulo: { fontSize: 17, fontWeight: '800', color: colores.blanco, textAlign: 'center', marginBottom: 6 },
   bannerTexto:  { fontSize: 13, color: '#FFE0E3', textAlign: 'center', lineHeight: 19 },
 
   cardLineas: {
-    backgroundColor: '#E63946', borderRadius: 16, padding: 18, marginTop: 14,
-    shadowColor: '#E63946', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5,
+    backgroundColor: colores.rojo, borderRadius: 16, padding: 18, marginTop: 14,
+    shadowColor: colores.rojo, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5,
   },
-  lineasTitulo:    { fontSize: 16, fontWeight: '800', color: '#FFF', textAlign: 'center' },
+  lineasTitulo:    { fontSize: 16, fontWeight: '800', color: colores.blanco, textAlign: 'center' },
   lineasSubtitulo: { fontSize: 13, color: '#FFE0E3', textAlign: 'center', marginTop: 4, marginBottom: 14 },
   lineaBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: '#FFF', borderRadius: 24, paddingVertical: 10, paddingHorizontal: 16, marginBottom: 10,
+    backgroundColor: colores.blanco, borderRadius: 24, paddingVertical: 10, paddingHorizontal: 16, marginBottom: 10,
   },
-  lineaBtnTxt: { fontSize: 15, fontWeight: '700', color: '#E63946', textAlign: 'center' },
+  lineaBtnTxt: { fontSize: 15, fontWeight: '700', color: colores.rojo, textAlign: 'center' },
   lineaTextos: { alignItems: 'center', flexShrink: 1 },
-  lineaHorario: { fontSize: 12, color: '#6B6B6B', marginTop: 1 },
+  lineaHorario: { fontSize: 12, color: colores.textoSecundario, marginTop: 1 },
 
   searchBox: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#FFF', borderRadius: 24, paddingHorizontal: 16, paddingVertical: 4,
+    backgroundColor: colores.blanco, borderRadius: 24, paddingHorizontal: 16, paddingVertical: 4,
     marginTop: 20, borderWidth: 1, borderColor: '#EAEAEA',
   },
-  searchInput: { flex: 1, fontSize: 14, color: '#2C2C2C', paddingVertical: 10 },
+  searchInput: { flex: 1, fontSize: 14, color: colores.texto, paddingVertical: 10 },
 
   seccionFila:   { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 22, marginBottom: 12 },
-  seccionTitulo: { fontSize: 18, fontWeight: '800', color: '#2C2C2C' },
-  seccionSub:    { fontSize: 12, color: '#9B9B9B' },
+  seccionTitulo: { fontSize: 18, fontWeight: '800', color: colores.texto },
+  seccionSub:    { fontSize: 12, color: colores.textoDeshabilitado },
 
   avisoDemo: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -589,63 +590,63 @@ const st = StyleSheet.create({
   avisoDemoTxt: { flex: 1, fontSize: 12, color: '#A05F00', lineHeight: 17 },
 
   vetCard: {
-    backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+    backgroundColor: colores.blanco, borderRadius: 16, padding: 16, marginBottom: 12,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
   },
   vetHead:        { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 6 },
-  vetNombre:      { flex: 1, fontSize: 16, fontWeight: '800', color: '#2C2C2C' },
+  vetNombre:      { flex: 1, fontSize: 16, fontWeight: '800', color: colores.texto },
   vetRating:      { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  vetRatingTxt:   { fontSize: 14, fontWeight: '700', color: '#F5A623' },
-  vetRatingCount: { fontSize: 11, color: '#9B9B9B' },
+  vetRatingTxt:   { fontSize: 14, fontWeight: '700', color: colores.ambar },
+  vetRatingCount: { fontSize: 11, color: colores.textoDeshabilitado },
 
   vetEstadoFila: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 },
   puntoEstado:   { width: 7, height: 7, borderRadius: 4 },
   vetEstadoTxt:  { fontSize: 13, fontWeight: '700' },
   vetSep:        { fontSize: 13, color: '#CCCCCC' },
-  vetDistancia:  { fontSize: 12, color: '#6B6B6B', fontWeight: '600' },
+  vetDistancia:  { fontSize: 12, color: colores.textoSecundario, fontWeight: '600' },
 
-  vetDato:      { fontSize: 13, color: '#6B6B6B', lineHeight: 20, marginBottom: 2 },
-  vetDatoLabel: { fontWeight: '700', color: '#2C2C2C' },
+  vetDato:      { fontSize: 13, color: colores.textoSecundario, lineHeight: 20, marginBottom: 2 },
+  vetDatoLabel: { fontWeight: '700', color: colores.texto },
 
   verHorariosBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, alignSelf: 'flex-start' },
-  verHorariosTxt: { fontSize: 12, fontWeight: '600', color: '#6B6B6B' },
+  verHorariosTxt: { fontSize: 12, fontWeight: '600', color: colores.textoSecundario },
   horariosBox:    { backgroundColor: '#F7F7F7', borderRadius: 10, padding: 10, marginTop: 8, gap: 3 },
   horarioFila:    { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  horarioDia:     { fontSize: 12, color: '#6B6B6B', width: 78 },
-  horarioRango:   { flex: 1, fontSize: 12, color: '#6B6B6B', textAlign: 'right' },
-  horarioHoy:     { color: '#2C2C2C', fontWeight: '700' },
+  horarioDia:     { fontSize: 12, color: colores.textoSecundario, width: 78 },
+  horarioRango:   { flex: 1, fontSize: 12, color: colores.textoSecundario, textAlign: 'right' },
+  horarioHoy:     { color: colores.texto, fontWeight: '700' },
 
   vetBadges: { flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' },
   badge24: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: '#E8F8EF', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5,
   },
-  badge24Txt: { fontSize: 12, fontWeight: '700', color: '#2DBD72' },
+  badge24Txt: { fontSize: 12, fontWeight: '700', color: colores.verde },
   badgeUrgencias: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: '#FDE7E9', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5,
   },
-  badgeUrgenciasTxt: { fontSize: 12, fontWeight: '700', color: '#E63946' },
+  badgeUrgenciasTxt: { fontSize: 12, fontWeight: '700', color: colores.rojo },
 
   vetFooter: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
   vetMapsBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#F0F0F0', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
+    backgroundColor: colores.gris150, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
   },
-  vetMapsTxt: { fontSize: 13, fontWeight: '700', color: '#2C2C2C' },
+  vetMapsTxt: { fontSize: 13, fontWeight: '700', color: colores.texto },
   vetLlamarBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 'auto',
-    backgroundColor: '#E63946', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
+    backgroundColor: colores.rojo, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
   },
-  vetLlamarTxt: { fontSize: 13, fontWeight: '700', color: '#FFF' },
+  vetLlamarTxt: { fontSize: 13, fontWeight: '700', color: colores.blanco },
 
   buscarMapsBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: '#FFF', borderRadius: 24, paddingVertical: 13, marginTop: 8,
+    backgroundColor: colores.blanco, borderRadius: 24, paddingVertical: 13, marginTop: 8,
     borderWidth: 1.5, borderColor: '#EAEAEA',
   },
-  buscarMapsTxt: { fontSize: 14, fontWeight: '700', color: '#2C2C2C' },
+  buscarMapsTxt: { fontSize: 14, fontWeight: '700', color: colores.texto },
 
   emptyBox: { alignItems: 'center', gap: 10, paddingVertical: 30 },
-  emptyTxt: { fontSize: 14, color: '#9B9B9B', textAlign: 'center' },
+  emptyTxt: { fontSize: 14, color: colores.textoDeshabilitado, textAlign: 'center' },
 });

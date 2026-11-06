@@ -1,3 +1,4 @@
+import { colores } from '../theme';
 /**
  * negocios.js — Qué cambia entre una veterinaria, una peluquería y un pet shop
  *
@@ -28,8 +29,8 @@ export const TIPOS_NEGOCIO = {
     label: 'Veterinaria',
     app: 'Zooni Veterinarias',
     icono: 'medkit',
-    color: '#E63946',
-    fondoIcono: '#FDECEE',
+    color: colores.rojo,
+    fondoIcono: colores.rojoFondo,
     clase: 'servicio',
     usaTurnos: true,
     secciones: [S.inicio, S.turnos, S.pacientes, S.servicios, S.mensajes, S.perfil],
@@ -70,7 +71,7 @@ export const TIPOS_NEGOCIO = {
     label: 'Peluquería',
     app: 'Zooni Peluquerías',
     icono: 'cut',
-    color: '#9B59B6',
+    color: colores.violeta,
     fondoIcono: '#F3E8F8',
     clase: 'servicio',
     usaTurnos: true,
@@ -108,7 +109,7 @@ export const TIPOS_NEGOCIO = {
     label: 'Pet shop',
     app: 'Zooni Pet shops',
     icono: 'storefront',
-    color: '#F5A623',
+    color: colores.ambar,
     fondoIcono: '#FFF4DE',
     clase: 'producto',
     usaPedidos: true,
@@ -176,22 +177,22 @@ export function HORARIOS_NEGOCIO_DEFAULT() {
 
 // ─── Estados de turnos y pedidos (los ven el negocio y el dueño) ────────────
 export const ESTADOS_TURNO = {
-  pendiente: { label: 'Por confirmar', color: '#B07A00', fondo: '#FFF1DC', icono: 'hourglass-outline' },
-  confirmado: { label: 'Confirmado', color: '#2DBD72', fondo: '#E3F7EC', icono: 'checkmark-circle-outline' },
-  completado: { label: 'Atendido', color: '#2B6CB0', fondo: '#E6F0FA', icono: 'ribbon-outline' },
-  rechazado: { label: 'Rechazado', color: '#E63946', fondo: '#FDECEE', icono: 'close-circle-outline' },
-  cancelado: { label: 'Cancelado', color: '#6B6B6B', fondo: '#F1F1F1', icono: 'close-circle-outline' },
-  ausente: { label: 'No vino', color: '#6B6B6B', fondo: '#F1F1F1', icono: 'person-remove-outline' },
+  pendiente: { label: 'Por confirmar', color: colores.ambarOscuro, fondo: colores.ambarFondo, icono: 'hourglass-outline' },
+  confirmado: { label: 'Confirmado', color: colores.verde, fondo: colores.mentaTarjeta, icono: 'checkmark-circle-outline' },
+  completado: { label: 'Atendido', color: colores.azul, fondo: colores.azulFondo, icono: 'ribbon-outline' },
+  rechazado: { label: 'Rechazado', color: colores.rojo, fondo: colores.rojoFondo, icono: 'close-circle-outline' },
+  cancelado: { label: 'Cancelado', color: colores.textoSecundario, fondo: colores.gris100, icono: 'close-circle-outline' },
+  ausente: { label: 'No vino', color: colores.textoSecundario, fondo: colores.gris100, icono: 'person-remove-outline' },
 };
 
 export const ESTADOS_PEDIDO = {
-  nuevo: { label: 'Nuevo', color: '#B07A00', fondo: '#FFF1DC', icono: 'sparkles-outline' },
-  preparando: { label: 'En preparación', color: '#2B6CB0', fondo: '#E6F0FA', icono: 'cube-outline' },
-  listo: { label: 'Listo para retirar', color: '#2DBD72', fondo: '#E3F7EC', icono: 'bag-check-outline' },
-  en_camino: { label: 'En camino', color: '#2DBD72', fondo: '#E3F7EC', icono: 'bicycle-outline' },
-  entregado: { label: 'Entregado', color: '#2B6CB0', fondo: '#E6F0FA', icono: 'checkmark-done-outline' },
-  cancelado: { label: 'Cancelado', color: '#6B6B6B', fondo: '#F1F1F1', icono: 'close-circle-outline' },
-  rechazado: { label: 'Rechazado', color: '#E63946', fondo: '#FDECEE', icono: 'close-circle-outline' },
+  nuevo: { label: 'Nuevo', color: colores.ambarOscuro, fondo: colores.ambarFondo, icono: 'sparkles-outline' },
+  preparando: { label: 'En preparación', color: colores.azul, fondo: colores.azulFondo, icono: 'cube-outline' },
+  listo: { label: 'Listo para retirar', color: colores.verde, fondo: colores.mentaTarjeta, icono: 'bag-check-outline' },
+  en_camino: { label: 'En camino', color: colores.verde, fondo: colores.mentaTarjeta, icono: 'bicycle-outline' },
+  entregado: { label: 'Entregado', color: colores.azul, fondo: colores.azulFondo, icono: 'checkmark-done-outline' },
+  cancelado: { label: 'Cancelado', color: colores.textoSecundario, fondo: colores.gris100, icono: 'close-circle-outline' },
+  rechazado: { label: 'Rechazado', color: colores.rojo, fondo: colores.rojoFondo, icono: 'close-circle-outline' },
 };
 
 export const MEDIOS_PAGO_NEGOCIO = [

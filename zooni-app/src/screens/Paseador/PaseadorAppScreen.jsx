@@ -46,6 +46,7 @@ import PaseoTab, { Resumen } from './tabs/PaseoTab';
 import GananciasTab from './tabs/GananciasTab';
 import PagosTab from './tabs/PagosTab';
 import PerfilTab from './tabs/PerfilTab';
+import { colores } from '../../theme';
 
 const POLL_SOLICITUDES_MS = 20000;
 
@@ -346,7 +347,7 @@ export default function PaseadorAppScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={colores.blanco} />
       {!pantallaCompleta && (
         <PaseadorHeader
           perfil={perfil}
@@ -428,7 +429,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: C.card, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16,
     borderWidth: 1.5, borderColor: C.menta,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 6,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 6,
   },
   toastTxt: { flex: 1, fontSize: 14, fontWeight: '700', color: C.texto },
   aviso: {

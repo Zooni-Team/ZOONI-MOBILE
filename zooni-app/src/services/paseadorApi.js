@@ -1159,7 +1159,6 @@ export async function fetchGanancias(periodo) {
   return lista.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 }
 
-
 export async function fetchResenas() {
   const yo = getCurrentUserId();
   const [lista, opiniones] = await Promise.all([fetchMisPaseos(['finalizado']), leerOpiniones(yo)]);

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MatchProfileCard from './MatchProfileCard';
+import { colores } from '../../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.28;
@@ -150,10 +151,10 @@ const MatchSwipeStack = forwardRef(function MatchSwipeStack({
         />
 
         <Animated.View style={[styles.overlayLike, { opacity: likeOpacity }]} pointerEvents="none">
-          <Ionicons name="heart" size={64} color="#2DBD72" />
+          <Ionicons name="heart" size={64} color={colores.verde} />
         </Animated.View>
         <Animated.View style={[styles.overlayNope, { opacity: nopeOpacity }]} pointerEvents="none">
-          <Ionicons name="close" size={64} color="#E63946" />
+          <Ionicons name="close" size={64} color={colores.rojo} />
         </Animated.View>
       </Animated.View>
     </View>
@@ -174,10 +175,10 @@ const styles = StyleSheet.create({
   // (swipe derecha = like), X a la IZQUIERDA (swipe izquierda = rechazo).
   overlayLike: {
     position: 'absolute', top: 36, right: 20,
-    borderWidth: 4, borderColor: '#2DBD72', borderRadius: 12, padding: 6,
+    borderWidth: 4, borderColor: colores.verde, borderRadius: 12, padding: 6,
   },
   overlayNope: {
     position: 'absolute', top: 36, left: 20,
-    borderWidth: 4, borderColor: '#E63946', borderRadius: 12, padding: 6,
+    borderWidth: 4, borderColor: colores.rojo, borderRadius: 12, padding: 6,
   },
 });

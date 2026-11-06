@@ -41,7 +41,6 @@ function normalizar(txt) {
   return String(txt ?? '').toLowerCase();
 }
 
-
 // ─── CONSTRUCCIÓN DEL CONTEXTO DE LA MASCOTA ─────────────────────────────────
 
 const HOY_ISO = () => new Date().toISOString().slice(0, 10);

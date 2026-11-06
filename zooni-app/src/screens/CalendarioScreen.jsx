@@ -47,6 +47,10 @@ import {
   actualizarEventoCalendario,
   eliminarEventoCalendario,
 } from '../services/calendarioStore';
+import { colores } from '../theme';
+import Skeleton from '../components/ui/Skeleton';
+import Toast from '../components/ui/Toast';
+import { useToast } from '../hooks/useToast';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -55,7 +59,7 @@ const TIPOS = ['Control', 'Desparasitación', 'Medicación', 'Paseo', 'Peluquer�
 
 // Referencia visual opcional del evento: emoji + color, para diferenciarlo a simple vista.
 const EMOJIS = ['🐾', '💉', '🚶', '🛁', '💊', '🩺', '✂️', '🎉', '📌', '❤️'];
-const COLORES = ['#2DBD72', '#5BC8D0', '#F5A623', '#E63946', '#9B59B6', '#3498DB'];
+const COLORES = [colores.verde, colores.turquesa, colores.ambar, colores.rojo, colores.violeta, '#3498DB'];
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
@@ -92,39 +96,11 @@ function confirmarAccion(titulo, mensaje, onConfirmar) {
 // ─── COMPONENTE: SKELETON ─────────────────────────────────────────────────────
 
 function SkeletonCard() {
-  const shimmer = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const anim = Animated.loop(Animated.sequence([
-      Animated.timing(shimmer, { toValue: 1, duration: 900, useNativeDriver: true }),
-      Animated.timing(shimmer, { toValue: 0, duration: 900, useNativeDriver: true }),
-    ]));
-    anim.start();
-    return () => anim.stop();
-  }, [shimmer]);
-  const opacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] });
-  return <Animated.View style={[s.skeletonCard, { opacity }]} />;
+  return <Skeleton style={s.skeletonCard} min={0.5} />;
 }
 
 // ─── COMPONENTE: TOAST ────────────────────────────────────────────────────────
 
-function Toast({ visible, mensaje, color }) {
-  const translateY = useRef(new Animated.Value(-12)).current;
-  const opacity    = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(translateY, { toValue: visible ? 0 : -12, duration: visible ? 220 : 200, useNativeDriver: true }),
-      Animated.timing(opacity,    { toValue: visible ? 1 : 0,   duration: visible ? 220 : 200, useNativeDriver: true }),
-    ]).start();
-  }, [visible, translateY, opacity]);
-
-  return (
-    <Animated.View style={[s.toast, { backgroundColor: color, opacity, transform: [{ translateY }] }]}>
-      <Ionicons name="checkmark-circle" size={18} color="#FFF" />
-      <Text style={s.toastTxt}>{mensaje}</Text>
-    </Animated.View>
-  );
-}
 
 // ─── COMPONENTE: CARD EVENTO ───────────────────────────────────────────────────
 
@@ -165,7 +141,7 @@ function EventoCard({ evento, index, onEditar, onEliminar, onVerDetalle }) {
             {esEditable && (
               <TouchableOpacity onPress={detener(() => onEditar(evento))} accessibilityLabel="Editar evento"
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="create-outline" size={22} color="#F5A623" />
+                <Ionicons name="create-outline" size={22} color={colores.ambar} />
               </TouchableOpacity>
             )}
             <TouchableOpacity onPress={detener(() => onEliminar(evento.id))} accessibilityLabel="Eliminar evento"
@@ -217,7 +193,7 @@ function EventoDetalleModal({ visible, evento, onCerrar }) {
             </View>
             <TouchableOpacity onPress={onCerrar} accessibilityLabel="Cerrar detalle"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close" size={22} color="#6B6B6B" />
+              <Ionicons name="close" size={22} color={colores.textoSecundario} />
             </TouchableOpacity>
           </View>
 
@@ -230,7 +206,7 @@ function EventoDetalleModal({ visible, evento, onCerrar }) {
             </View>
 
             <View style={dt.filaFecha}>
-              <Ionicons name="calendar-outline" size={16} color="#6B6B6B" />
+              <Ionicons name="calendar-outline" size={16} color={colores.textoSecundario} />
               <Text style={dt.fecha}>{formatFechaHora(evento.fecha_hora)}</Text>
             </View>
 
@@ -251,30 +227,30 @@ function EventoDetalleModal({ visible, evento, onCerrar }) {
 const dt = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.50)', justifyContent: 'center', alignItems: 'center', padding: 24 },
   card: {
-    backgroundColor: '#FFF', borderRadius: 20, width: '100%', maxWidth: 380, maxHeight: '80%',
+    backgroundColor: colores.blanco, borderRadius: 20, width: '100%', maxWidth: 380, maxHeight: '80%',
     paddingHorizontal: 20, paddingTop: 20, paddingBottom: 18,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 10,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 10,
     overflow: 'hidden',
   },
   borde: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, paddingLeft: 6 },
   tituloRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, marginRight: 10 },
-  badge: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F0F0F0', alignItems: 'center', justifyContent: 'center' },
+  badge: { width: 36, height: 36, borderRadius: 18, backgroundColor: colores.gris150, alignItems: 'center', justifyContent: 'center' },
   badgeTxt: { fontSize: 19 },
-  titulo: { flex: 1, fontSize: 19, fontWeight: '800', color: '#2C2C2C' },
+  titulo: { flex: 1, fontSize: 19, fontWeight: '800', color: colores.texto },
   scroll: { paddingLeft: 6 },
   filaTipo: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   tipo: { fontSize: 14, fontWeight: '700' },
   badgeDias: { borderRadius: 10, paddingVertical: 3, paddingHorizontal: 10 },
   badgeDiasTxt: { fontSize: 12, fontWeight: '700' },
   filaFecha: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 14 },
-  fecha: { fontSize: 14, color: '#6B6B6B' },
-  descripcion: { fontSize: 14, color: '#2C2C2C', lineHeight: 21 },
+  fecha: { fontSize: 14, color: colores.textoSecundario },
+  descripcion: { fontSize: 14, color: colores.texto, lineHeight: 21 },
   btnCerrar: {
     marginTop: 16, width: '100%', height: 44, borderRadius: 30,
-    backgroundColor: '#E8E8E8', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colores.gris300, alignItems: 'center', justifyContent: 'center',
   },
-  btnCerrarTxt: { fontSize: 15, fontWeight: '700', color: '#2C2C2C' },
+  btnCerrarTxt: { fontSize: 15, fontWeight: '700', color: colores.texto },
 });
 
 // ─── COMPONENTE: SELECTOR DE TIPO (dropdown propio) ──────────────────────────
@@ -288,7 +264,7 @@ function TipoPicker({ visible, valor, onSeleccionar, onCerrar }) {
             {TIPOS.map((t) => (
               <TouchableOpacity key={t} style={[tp.item, valor === t && tp.itemOn]} onPress={() => onSeleccionar(t)}>
                 <Text style={[tp.itemTxt, valor === t && tp.itemTxtOn]}>{t}</Text>
-                {valor === t && <Ionicons name="checkmark" size={16} color="#2DBD72" />}
+                {valor === t && <Ionicons name="checkmark" size={16} color={colores.verde} />}
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -300,11 +276,11 @@ function TipoPicker({ visible, valor, onSeleccionar, onCerrar }) {
 
 const tp = StyleSheet.create({
   overlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', alignItems: 'center' },
-  container: { backgroundColor: '#FFF', borderRadius: 16, width: '75%', maxHeight: '60%', paddingVertical: 8 },
+  container: { backgroundColor: colores.blanco, borderRadius: 16, width: '75%', maxHeight: '60%', paddingVertical: 8 },
   item:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 18 },
-  itemOn:    { backgroundColor: '#F0FFF6' },
-  itemTxt:   { fontSize: 15, color: '#2C2C2C' },
-  itemTxtOn: { color: '#2DBD72', fontWeight: '700' },
+  itemOn:    { backgroundColor: colores.mentaFondo },
+  itemTxt:   { fontSize: 15, color: colores.texto },
+  itemTxtOn: { color: colores.verde, fontWeight: '700' },
 });
 
 // ─── DATOS DEMO (sin backend de calendario conectado) ────────────────────────
@@ -318,7 +294,7 @@ const DEMO_EVENTOS = [
     fecha_hora: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
     tipo: 'Turno Veterinario',
     emoji: '🩺',
-    color: '#5BC8D0',
+    color: colores.turquesa,
   },
 ];
 
@@ -362,10 +338,7 @@ export default function CalendarioScreen() {
   const [showTipoPicker,  setShowTipoPicker]  = useState(false);
   const [fechaTemporal,   setFechaTemporal]   = useState(null);
 
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMensaje, setToastMensaje] = useState('');
-  const [toastColor,   setToastColor]   = useState('#2DBD72');
-  const toastTimer = useRef(null);
+  const { toast, mostrarToast } = useToast();
 
   const modalScale   = useRef(new Animated.Value(0.92)).current;
   const modalOpacity = useRef(new Animated.Value(0)).current;
@@ -429,14 +402,6 @@ export default function CalendarioScreen() {
     ]).start();
   }, [loading, fabScale, fabFade]);
 
-  // ── Toast ────────────────────────────────────────────────────────────────
-  function mostrarToast(mensaje, color = '#2DBD72') {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToastMensaje(mensaje);
-    setToastColor(color);
-    setToastVisible(true);
-    toastTimer.current = setTimeout(() => setToastVisible(false), 2500);
-  }
 
   // ── Modal ────────────────────────────────────────────────────────────────
   function abrirModalAnadir() {
@@ -516,7 +481,7 @@ export default function CalendarioScreen() {
     // El evento va a la mascota elegida en el modal, no siempre a la activa.
     const idMascota = formMascota ?? mascotaSel;
     if (!idMascota) {
-      mostrarToast('Elegí una mascota para el evento', '#E63946');
+      mostrarToast('Elegí una mascota para el evento', colores.rojo);
       return;
     }
     setGuardando(true);
@@ -541,7 +506,7 @@ export default function CalendarioScreen() {
           setEventos([...eventos, nuevo].sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora)));
         }
         cerrarModal();
-        mostrarToast('Evento registrado correctamente', '#2DBD72');
+        mostrarToast('Evento registrado correctamente', colores.verde);
       } else {
         const editado = await actualizarEventoCalendario(eventoEnEdicion.id, datos);
         const actualizados = eventos
@@ -549,10 +514,10 @@ export default function CalendarioScreen() {
           .sort((a, b) => new Date(a.fecha_hora) - new Date(b.fecha_hora));
         setEventos(actualizados);
         cerrarModal();
-        mostrarToast('Evento actualizado correctamente', '#2DBD72');
+        mostrarToast('Evento actualizado correctamente', colores.verde);
       }
     } catch {
-      mostrarToast('No se pudo guardar el evento', '#E63946');
+      mostrarToast('No se pudo guardar el evento', colores.rojo);
     } finally {
       setGuardando(false);
     }
@@ -571,9 +536,9 @@ export default function CalendarioScreen() {
     try {
       await eliminarEventoCalendario(eventoId);
       setEventos((prev) => prev.filter((e) => e.id !== eventoId));
-      mostrarToast('Evento eliminado', '#E63946');
+      mostrarToast('Evento eliminado', colores.rojo);
     } catch {
-      mostrarToast('No se pudo eliminar el evento', '#E63946');
+      mostrarToast('No se pudo eliminar el evento', colores.rojo);
     }
   }
 
@@ -584,7 +549,7 @@ export default function CalendarioScreen() {
     <SafeAreaView style={s.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      <Toast visible={toastVisible} mensaje={toastMensaje} color={toastColor} />
+      <Toast {...toast} />
 
       <ImageBackground source={HOME_BACKGROUND} style={s.screenBg} imageStyle={s.screenBgImage} resizeMode="cover">
 
@@ -611,7 +576,7 @@ export default function CalendarioScreen() {
           showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh}
-              colors={['#2DBD72']} tintColor="#2DBD72" />
+              colors={[colores.verde]} tintColor={colores.verde} />
           }>
 
           {loading ? (
@@ -637,7 +602,7 @@ export default function CalendarioScreen() {
           { opacity: fabFade, transform: [{ scale: fabScale }] },
         ]}>
           <Pressable style={s.fabBtn} onPress={abrirModalAnadir} accessibilityLabel="Añadir evento">
-            <Ionicons name="add" size={28} color="#FFFFFF" />
+            <Ionicons name="add" size={28} color={colores.blanco} />
           </Pressable>
         </Animated.View>
       </ImageBackground>
@@ -662,7 +627,7 @@ export default function CalendarioScreen() {
                   <TextInput
                     style={[s.input, formErrors.titulo && s.inputError]}
                     placeholder="Título del evento"
-                    placeholderTextColor="#AAAAAA"
+                    placeholderTextColor={colores.textoTenue}
                     value={formTitulo}
                     onChangeText={(v) => { setFormTitulo(v); if (formErrors.titulo) setFormErrors((p) => ({ ...p, titulo: null })); }}
                     returnKeyType="next"
@@ -673,7 +638,7 @@ export default function CalendarioScreen() {
                   <TextInput
                     style={[s.input, s.inputMulti]}
                     placeholder="Descripción opcional"
-                    placeholderTextColor="#AAAAAA"
+                    placeholderTextColor={colores.textoTenue}
                     value={formDescripcion}
                     onChangeText={setFormDescripcion}
                     multiline
@@ -686,17 +651,17 @@ export default function CalendarioScreen() {
                     style={[s.inputFecha, formErrors.fechaHora && s.inputError]}
                     onPress={() => setShowDatePicker(true)}
                   >
-                    <Text style={[s.inputFechaTxt, !formFechaHora && { color: '#AAAAAA' }]}>
+                    <Text style={[s.inputFechaTxt, !formFechaHora && { color: colores.textoTenue }]}>
                       {formFechaHora ? formatFechaHora(formFechaHora) : 'dd/mm/aaaa --:--'}
                     </Text>
-                    <Ionicons name="calendar-outline" size={18} color="#6B6B6B" />
+                    <Ionicons name="calendar-outline" size={18} color={colores.textoSecundario} />
                   </TouchableOpacity>
                   {formErrors.fechaHora && <Text style={s.errorTxt}>{formErrors.fechaHora}</Text>}
 
                   {/* Tipo */}
                   <TouchableOpacity style={s.inputFecha} onPress={() => setShowTipoPicker(true)}>
                     <Text style={s.inputFechaTxt}>{formTipo}</Text>
-                    <Ionicons name="chevron-down" size={16} color="#6B6B6B" />
+                    <Ionicons name="chevron-down" size={16} color={colores.textoSecundario} />
                   </TouchableOpacity>
 
                   {/* Referencia visual: emoji + color (opcional) */}
@@ -761,7 +726,7 @@ export default function CalendarioScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity style={s.btnGuardar} onPress={guardarEvento} disabled={guardando}>
                     {guardando
-                      ? <ActivityIndicator size="small" color="#FFF" />
+                      ? <ActivityIndicator size="small" color={colores.blanco} />
                       : <Text style={s.btnGuardarTxt}>{modalModo === 'editar' ? 'Guardar cambios' : 'Guardar'}</Text>
                     }
                   </TouchableOpacity>
@@ -816,7 +781,7 @@ export default function CalendarioScreen() {
 // ─── ESTILOS ─────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#C8F0D8' },
+  safeArea: { flex: 1, backgroundColor: colores.menta },
   screenBg: { flex: 1, width: '100%' },
   screenBgImage: { width: '100%', height: '100%' },
   scroll:   { flex: 1 },
@@ -826,17 +791,17 @@ const s = StyleSheet.create({
   header:    { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, backgroundColor: 'transparent' },
   headerBtn: { width: 32, alignItems: 'center', justifyContent: 'center' },
 
-  titulo: { fontSize: 22, fontWeight: '800', color: '#2C2C2C', textAlign: 'center', marginTop: 8, marginBottom: 20, paddingHorizontal: 20 },
+  titulo: { fontSize: 22, fontWeight: '800', color: colores.texto, textAlign: 'center', marginTop: 8, marginBottom: 20, paddingHorizontal: 20 },
 
-  emptyTxt: { fontSize: 15, color: '#6B6B6B', textAlign: 'center', marginTop: 60 },
+  emptyTxt: { fontSize: 15, color: colores.textoSecundario, textAlign: 'center', marginTop: 60 },
 
   // Card evento
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colores.blanco,
     borderRadius: 14,
     marginBottom: 12,
     paddingHorizontal: 16, paddingVertical: 14, paddingLeft: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.09, shadowRadius: 8, elevation: 4,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.09, shadowRadius: 8, elevation: 4,
     overflow: 'hidden',
   },
   cardBorde: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
@@ -844,17 +809,17 @@ const s = StyleSheet.create({
   cardTituloRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, marginRight: 8 },
   cardBadge: {
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: '#F0F0F0', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colores.gris150, alignItems: 'center', justifyContent: 'center',
   },
   cardBadgeTxt: { fontSize: 15 },
-  cardTitulo: { flex: 1, fontSize: 16, fontWeight: '700', color: '#2C2C2C' },
+  cardTitulo: { flex: 1, fontSize: 16, fontWeight: '700', color: colores.texto },
   cardAcciones: { flexDirection: 'row', gap: 14, alignItems: 'center' },
   cardFila2: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   cardTipo: { fontSize: 13, fontWeight: '600' },
   badgeDias: { borderRadius: 10, paddingVertical: 2, paddingHorizontal: 8 },
   badgeDiasTxt: { fontSize: 11, fontWeight: '700' },
-  cardFecha: { fontSize: 13, color: '#6B6B6B', marginTop: 4 },
-  cardDescripcion: { fontSize: 13, color: '#6B6B6B', marginTop: 2 },
+  cardFecha: { fontSize: 13, color: colores.textoSecundario, marginTop: 4 },
+  cardDescripcion: { fontSize: 13, color: colores.textoSecundario, marginTop: 2 },
 
   // Skeleton
   skeletonCard: { backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 14, height: 90, marginBottom: 12 },
@@ -865,19 +830,11 @@ const s = StyleSheet.create({
   fabCorner: { bottom: 32, right: 20 },
   fabBtn: {
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: '#2DBD72', alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.20, shadowRadius: 8, elevation: 6,
+    backgroundColor: colores.verde, alignItems: 'center', justifyContent: 'center',
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.20, shadowRadius: 8, elevation: 6,
   },
 
   // Toast
-  toast: {
-    position: 'absolute', top: 56, alignSelf: 'center',
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8,
-    elevation: 8, zIndex: 100,
-  },
-  toastTxt: { fontSize: 14, fontWeight: '700', color: '#FFF' },
 
   // Modal
   overlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.50)', justifyContent: 'center', alignItems: 'center' },
@@ -894,10 +851,10 @@ const s = StyleSheet.create({
     pero en un teléfono normal ya no tiene nada que desplazar.
   */
   modalCard: {
-    backgroundColor: '#FFF', borderRadius: 20,
+    backgroundColor: colores.blanco, borderRadius: 20,
     width: Math.min(SCREEN_WIDTH * 0.90, 380),
     paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 10,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 10,
     // Alto máximo en PÍXELES, no en '%'. El porcentaje se resolvía contra un
     // padre de alto automático (el wrapper que capta el tap), o sea contra
     // nada: Yoga lo descartaba y la tarjeta terminaba recortando el final del
@@ -907,67 +864,67 @@ const s = StyleSheet.create({
   // El scroll queda solo como red de seguridad para pantallas muy bajas.
   modalScroll: { flexGrow: 0, flexShrink: 1 },
   modalScrollContent: { flexGrow: 1 },
-  modalTitulo: { fontSize: 18, fontWeight: '700', color: '#2DBD72', textAlign: 'center', marginBottom: 14 },
+  modalTitulo: { fontSize: 18, fontWeight: '700', color: colores.verde, textAlign: 'center', marginBottom: 14 },
 
   input: {
-    borderWidth: 1.5, borderColor: '#DDDDDD', borderRadius: 10,
+    borderWidth: 1.5, borderColor: colores.gris500, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 14, color: '#2C2C2C', backgroundColor: '#FFF',
+    fontSize: 14, color: colores.texto, backgroundColor: colores.blanco,
     marginBottom: 11,
   },
-  inputError: { borderColor: '#E63946' },
+  inputError: { borderColor: colores.rojo },
   inputMulti: { height: 66, textAlignVertical: 'top' },
   inputFecha: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    borderWidth: 1.5, borderColor: '#DDDDDD', borderRadius: 10,
+    borderWidth: 1.5, borderColor: colores.gris500, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
-    marginBottom: 11, backgroundColor: '#FFF',
+    marginBottom: 11, backgroundColor: colores.blanco,
   },
-  inputFechaTxt: { flex: 1, fontSize: 14, color: '#2C2C2C' },
-  errorTxt: { fontSize: 11, color: '#E63946', marginTop: -7, marginBottom: 7, marginLeft: 4 },
+  inputFechaTxt: { flex: 1, fontSize: 14, color: colores.texto },
+  errorTxt: { fontSize: 11, color: colores.rojo, marginTop: -7, marginBottom: 7, marginLeft: 4 },
 
-  pickerLabel: { fontSize: 12.5, color: '#6B6B6B', marginBottom: 7 },
+  pickerLabel: { fontSize: 12.5, color: colores.textoSecundario, marginBottom: 7 },
   emojiRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 11 },
   emojiChip: {
     // 30 px con 4 de separación: 10*30 + 9*4 = 336 sobre 339 útiles, así que
     // los 10 emojis entran en UNA fila. Es lo que más alto ocupaba: a 40 px
     // entraban 7 por fila y se comía dos filas enteras.
     width: 30, height: 30, borderRadius: 15,
-    borderWidth: 1.5, borderColor: '#DDDDDD',
-    alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF',
+    borderWidth: 1.5, borderColor: colores.gris500,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: colores.blanco,
   },
-  emojiChipOn: { borderColor: '#2DBD72', backgroundColor: '#F0FFF6' },
+  emojiChipOn: { borderColor: colores.verde, backgroundColor: colores.mentaFondo },
   emojiChipTxt: { fontSize: 15, lineHeight: 19 },
   colorRow: { flexDirection: 'row', gap: 10, marginBottom: 13 },
   colorSwatch: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: 'transparent' },
-  colorSwatchOn: { borderColor: '#2C2C2C' },
+  colorSwatchOn: { borderColor: colores.texto },
 
   // Pie fijo del modal, siempre visible sin scrollear
   modalPie: {
     flexDirection: 'row', gap: 10, alignItems: 'center',
     paddingTop: 12, marginTop: 2,
-    borderTopWidth: 1, borderTopColor: '#F0F0F0',
+    borderTopWidth: 1, borderTopColor: colores.gris150,
   },
   btnGuardar: {
     flex: 1, height: 46, borderRadius: 30,
-    backgroundColor: '#2DBD72', alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
+    backgroundColor: colores.verde, alignItems: 'center', justifyContent: 'center',
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
   },
-  btnGuardarTxt: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  btnGuardarTxt: { fontSize: 15, fontWeight: '700', color: colores.blanco },
   btnCancelar: {
-    paddingHorizontal: 22, height: 46, borderRadius: 30, backgroundColor: '#EFEFEF',
+    paddingHorizontal: 22, height: 46, borderRadius: 30, backgroundColor: colores.gris200,
     alignItems: 'center', justifyContent: 'center',
   },
-  btnCancelarTxt: { fontSize: 15, fontWeight: '700', color: '#6B6B6B' },
+  btnCancelarTxt: { fontSize: 15, fontWeight: '700', color: colores.textoSecundario },
 
   // Chips del modal para asignar el evento a una mascota. La tira de la
   // pantalla ya no vive acá: es el componente SelectorMascota, compartido.
   petPickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
   petPick: {
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18,
-    backgroundColor: '#F5F5F5', borderWidth: 1.5, borderColor: 'transparent',
+    backgroundColor: colores.gris50, borderWidth: 1.5, borderColor: 'transparent',
   },
-  petPickOn: { backgroundColor: '#F0FFF6', borderColor: '#2DBD72' },
-  petPickTxt: { fontSize: 13, color: '#6B6B6B', fontWeight: '600', maxWidth: 130 },
-  petPickTxtOn: { color: '#2DBD72', fontWeight: '700' },
+  petPickOn: { backgroundColor: colores.mentaFondo, borderColor: colores.verde },
+  petPickTxt: { fontSize: 13, color: colores.textoSecundario, fontWeight: '600', maxWidth: 130 },
+  petPickTxtOn: { color: colores.verde, fontWeight: '700' },
 });

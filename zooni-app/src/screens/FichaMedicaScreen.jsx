@@ -35,7 +35,7 @@ import jsPDF from 'jspdf';
 import { calcularEdad } from '../utils/calcularEdad';
 import { parseFechaLocal, toISODateLocal } from '../utils/fechaLocal';
 import { resolveMascotaVisual } from '../constants/petImages';
-import SkeletonLoader from '../components/SkeletonLoader';
+import { SkeletonBloque } from '../components/ui/Skeleton';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import { useMisMascotas } from '../hooks/useMisMascotas';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
@@ -51,6 +51,7 @@ import OpcionPicker from '../components/OpcionPicker';
 import FechaPicker from '../components/FechaPicker';
 import { formatearPeso, pesoValido, textoRangoPeso } from '../constants/pesoPorEspecie';
 import { imagenADataUri } from '../utils/imagenBase64';
+import { colores } from '../theme';
 
 // ─── DATOS DEMO (sin backend conectado — mismos datos que Vacunas/Tratamientos) ──
 
@@ -79,7 +80,7 @@ function FilaDato({ icono, label, valor, onEditar, editando, children }) {
     <View style={s.dataCard}>
       <View style={s.dataRow}>
         <View style={s.dataLeft}>
-          <Ionicons name={icono} size={18} color="#2DBD72" />
+          <Ionicons name={icono} size={18} color={colores.verde} />
           <Text style={s.dataLabel}>{label}</Text>
         </View>
         <View style={s.dataRight}>
@@ -88,7 +89,7 @@ function FilaDato({ icono, label, valor, onEditar, editando, children }) {
               <Text style={s.dataValor}>{valor}</Text>
               {onEditar && (
                 <TouchableOpacity onPress={onEditar} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons name="create-outline" size={16} color="#6B6B6B" />
+                  <Ionicons name="create-outline" size={16} color={colores.textoSecundario} />
                 </TouchableOpacity>
               )}
             </>
@@ -382,18 +383,18 @@ export default function FichaMedicaScreen() {
           showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh}
-              colors={['#2DBD72']} tintColor="#2DBD72" />
+              colors={[colores.verde]} tintColor={colores.verde} />
           }>
 
           {/* Hero */}
           <View style={s.heroSection}>
             {loading ? (
-              <SkeletonLoader width={140} height={30} borderRadius={8} style={{ marginBottom: 12 }} />
+              <SkeletonBloque width={140} height={30} borderRadius={8} style={{ marginBottom: 12 }} />
             ) : (
               <Text style={s.heroNombre}>{m.nombre}</Text>
             )}
             {loading ? (
-              <SkeletonLoader width={110} height={110} borderRadius={20} />
+              <SkeletonBloque width={110} height={110} borderRadius={20} />
             ) : (
               <PetIllustration source={petImg} label={`Ilustración de ${m.nombre}`} />
             )}
@@ -409,7 +410,7 @@ export default function FichaMedicaScreen() {
                   accessibilityLabel="Mascota anterior"
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <Ionicons name="chevron-back" size={24} color="#2C2C2C" />
+                  <Ionicons name="chevron-back" size={24} color={colores.texto} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[s.petArrow, s.petArrowRight]}
@@ -418,7 +419,7 @@ export default function FichaMedicaScreen() {
                   accessibilityLabel="Mascota siguiente"
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <Ionicons name="chevron-forward" size={24} color="#2C2C2C" />
+                  <Ionicons name="chevron-forward" size={24} color={colores.texto} />
                 </TouchableOpacity>
               </>
             )}
@@ -429,7 +430,7 @@ export default function FichaMedicaScreen() {
 
           {demoMascota && (
             <View style={s.demoBanner}>
-              <Ionicons name="alert-circle-outline" size={14} color="#F5A623" />
+              <Ionicons name="alert-circle-outline" size={14} color={colores.ambar} />
               <Text style={s.demoBannerTxt}>Vista previa — conectá el backend para ver datos reales</Text>
             </View>
           )}
@@ -447,16 +448,16 @@ export default function FichaMedicaScreen() {
             <View style={s.editRow}>
               <TextInput ref={pesoInputRef} style={s.editInput} value={pesoBorrador}
                 onChangeText={setPesoBorrador} keyboardType="decimal-pad"
-                placeholder="Ej: 20,5" placeholderTextColor="#AAAAAA" />
+                placeholder="Ej: 20,5" placeholderTextColor={colores.textoTenue} />
               <Text style={s.editUnidad}>kg</Text>
               {guardandoPeso
-                ? <ActivityIndicator size="small" color="#2DBD72" style={{ marginLeft: 6 }} />
+                ? <ActivityIndicator size="small" color={colores.verde} style={{ marginLeft: 6 }} />
                 : <>
                     <TouchableOpacity onPress={confirmarPeso} style={s.btnOk}>
-                      <Ionicons name="checkmark" size={16} color="#FFF" />
+                      <Ionicons name="checkmark" size={16} color={colores.blanco} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setEditandoPeso(false)} style={s.btnCancel}>
-                      <Ionicons name="close" size={16} color="#FFF" />
+                      <Ionicons name="close" size={16} color={colores.blanco} />
                     </TouchableOpacity>
                   </>
               }
@@ -468,7 +469,7 @@ export default function FichaMedicaScreen() {
             <>
               <TouchableOpacity style={s.histToggle} onPress={toggleHistorial}
                 accessibilityLabel={historialVisible ? 'Ocultar historial de peso' : 'Ver historial de peso'}>
-                <Ionicons name={historialVisible ? 'chevron-up' : 'chevron-down'} size={14} color="#2DBD72" />
+                <Ionicons name={historialVisible ? 'chevron-up' : 'chevron-down'} size={14} color={colores.verde} />
                 <Text style={s.histToggleTxt}>
                   {historialVisible ? 'Ocultar historial de peso' : 'Ver historial de peso'}
                 </Text>
@@ -477,7 +478,7 @@ export default function FichaMedicaScreen() {
               {historialVisible && (
                 <View style={s.histCard}>
                   {cargandoHistorial ? (
-                    <ActivityIndicator size="small" color="#2DBD72" style={{ paddingVertical: 12 }} />
+                    <ActivityIndicator size="small" color={colores.verde} style={{ paddingVertical: 12 }} />
                   ) : !historialPeso?.length ? (
                     <Text style={s.histEmpty}>
                       Todavía no hay registros — se guarda uno cada vez que actualizás el peso.
@@ -527,22 +528,22 @@ export default function FichaMedicaScreen() {
 
           <Text style={[s.secTitulo, { marginTop: 24 }]}>Secciones</Text>
 
-          <BotonNav icono="hardware-chip-outline" iconoColor="#2DBD72" texto="Virtual Vet"
+          <BotonNav icono="hardware-chip-outline" iconoColor={colores.verde} texto="Virtual Vet"
             onPress={() => navigation.navigate('VirtualVet', { petId })} />
-          <BotonNav icono="medical-outline"       iconoColor="#2DBD72" texto="Vacunas"
+          <BotonNav icono="medical-outline"       iconoColor={colores.verde} texto="Vacunas"
             onPress={() => navigation.navigate('Vacunas', { petId: petId ?? 0 })} />
-          <BotonNav icono="medkit-outline"        iconoColor="#E63946" texto="Tratamientos"
+          <BotonNav icono="medkit-outline"        iconoColor={colores.rojo} texto="Tratamientos"
             onPress={() => navigation.navigate('Tratamientos', { petId: petId ?? 0 })} />
-          <BotonNav icono="clipboard-outline"     iconoColor="#5BC8D0" texto="Consultas veterinarias"
+          <BotonNav icono="clipboard-outline"     iconoColor={colores.turquesa} texto="Consultas veterinarias"
             onPress={() => navigation.navigate('Consultas', { petId: petId ?? 0 })} />
-          <BotonNav icono="bulb-outline"          iconoColor="#F5C842" texto="Consejos y curiosidades"
+          <BotonNav icono="bulb-outline"          iconoColor={colores.amarillo} texto="Consejos y curiosidades"
             onPress={() => navigation.navigate('Consejos', { petId: petId ?? 0 })} />
 
           <TouchableOpacity style={s.pdfBtn} onPress={generarPDF} disabled={generandoPdf || loading}
             accessibilityLabel="Descargar ficha médica en PDF">
             {generandoPdf
-              ? <ActivityIndicator size="small" color="#FFF" />
-              : <Ionicons name="document-text-outline" size={18} color="#FFF" />
+              ? <ActivityIndicator size="small" color={colores.blanco} />
+              : <Ionicons name="document-text-outline" size={18} color={colores.blanco} />
             }
             <Text style={s.pdfBtnTxt}>{generandoPdf ? 'Generando...' : 'Descargar PDF'}</Text>
           </TouchableOpacity>
@@ -565,8 +566,8 @@ export default function FichaMedicaScreen() {
 // ─── ESTILOS ─────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safeArea:    { flex: 1, backgroundColor: '#C8F0D8' },
-  screenBackground: { flex: 1, width: '100%', backgroundColor: '#C8F0D8' },
+  safeArea:    { flex: 1, backgroundColor: colores.menta },
+  screenBackground: { flex: 1, width: '100%', backgroundColor: colores.menta },
   scroll:      { flex: 1, backgroundColor: 'transparent' },
   scrollContent: { flexGrow: 1 },
 
@@ -574,8 +575,8 @@ const s = StyleSheet.create({
   headerBtn:   { width: 36, alignItems: 'center', justifyContent: 'center' },
 
   heroSection:  { alignItems: 'center', paddingTop: 12, paddingBottom: 0, backgroundColor: 'transparent' },
-  heroNombre:   { fontSize: 24, fontWeight: '800', color: '#2C2C2C', marginBottom: 12, zIndex: 2 },
-  bubble:       { backgroundColor: '#2DBD72' },
+  heroNombre:   { fontSize: 24, fontWeight: '800', color: colores.texto, marginBottom: 12, zIndex: 2 },
+  bubble:       { backgroundColor: colores.verde },
   heroPetShadow: {
     shadowColor: '#1a7a45',
     shadowOffset: { width: 0, height: 12 },
@@ -593,51 +594,51 @@ const s = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.85)',
     alignItems: 'center', justifyContent: 'center', zIndex: 4,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15, shadowRadius: 6, elevation: 4,
   },
   petArrowLeft:  { left: 18 },
   petArrowRight: { right: 18 },
 
-  whiteCard: { backgroundColor: '#FFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 40, marginTop: 16 },
+  whiteCard: { backgroundColor: colores.blanco, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 40, marginTop: 16 },
 
   demoBanner:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFF8E1', borderRadius: 10, padding: 10, marginBottom: 16 },
-  demoBannerTxt: { fontSize: 12, color: '#F5A623', textAlign: 'center' },
+  demoBannerTxt: { fontSize: 12, color: colores.ambar, textAlign: 'center' },
 
-  secTitulo: { fontSize: 13, fontWeight: '700', color: '#6B6B6B', letterSpacing: 0.8, marginBottom: 10, textTransform: 'uppercase' },
+  secTitulo: { fontSize: 13, fontWeight: '700', color: colores.textoSecundario, letterSpacing: 0.8, marginBottom: 10, textTransform: 'uppercase' },
 
-  dataCard:  { backgroundColor: '#FFF', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 14, marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
+  dataCard:  { backgroundColor: colores.blanco, borderRadius: 16, paddingHorizontal: 18, paddingVertical: 14, marginBottom: 10, shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
   dataRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   dataLeft:  { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
   dataRight: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   dataIcon:  { fontSize: 18 },
-  dataLabel: { fontSize: 14, color: '#6B6B6B' },
-  dataValor: { fontSize: 15, fontWeight: '600', color: '#2C2C2C', textAlign: 'right', flexShrink: 1 },
+  dataLabel: { fontSize: 14, color: colores.textoSecundario },
+  dataValor: { fontSize: 15, fontWeight: '600', color: colores.texto, textAlign: 'right', flexShrink: 1 },
   editIcon:  { fontSize: 16 },
 
   editRow:     { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  editInput:   { borderWidth: 1.5, borderColor: '#2DBD72', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, fontSize: 14, color: '#2C2C2C', minWidth: 60, textAlign: 'center' },
-  editUnidad:  { fontSize: 13, color: '#6B6B6B' },
-  btnOk:       { backgroundColor: '#2DBD72', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 6 },
-  btnCancel:   { backgroundColor: '#AAAAAA', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 6 },
+  editInput:   { borderWidth: 1.5, borderColor: colores.verde, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, fontSize: 14, color: colores.texto, minWidth: 60, textAlign: 'center' },
+  editUnidad:  { fontSize: 13, color: colores.textoSecundario },
+  btnOk:       { backgroundColor: colores.verde, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 6 },
+  btnCancel:   { backgroundColor: colores.textoTenue, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 6 },
 
-  navCard:   { backgroundColor: '#FFF', borderRadius: 16, height: 54, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
-  navTexto:  { flex: 1, fontSize: 15, fontWeight: '700', color: '#2C2C2C' },
-  navFlecha: { fontSize: 22, color: '#AAAAAA', lineHeight: 26 },
+  navCard:   { backgroundColor: colores.blanco, borderRadius: 16, height: 54, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10, shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
+  navTexto:  { flex: 1, fontSize: 15, fontWeight: '700', color: colores.texto },
+  navFlecha: { fontSize: 22, color: colores.textoTenue, lineHeight: 26 },
 
-  pdfBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#2DBD72', borderRadius: 30, height: 48, width: '65%', alignSelf: 'center', marginTop: 28, marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4 },
-  pdfBtnTxt: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  pdfBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colores.verde, borderRadius: 30, height: 48, width: '65%', alignSelf: 'center', marginTop: 28, marginBottom: 10, shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4 },
+  pdfBtnTxt: { fontSize: 15, fontWeight: '700', color: colores.blanco },
 
   // Historial de peso (desplegable bajo la fila Peso)
   histToggle:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 6, marginTop: -4, marginBottom: 8 },
-  histToggleTxt: { fontSize: 12, fontWeight: '700', color: '#2DBD72' },
-  histCard:      { backgroundColor: '#FFF', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 6, marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
-  histRow:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: '#F5F5F5' },
+  histToggleTxt: { fontSize: 12, fontWeight: '700', color: colores.verde },
+  histCard:      { backgroundColor: colores.blanco, borderRadius: 16, paddingHorizontal: 18, paddingVertical: 6, marginBottom: 10, shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },
+  histRow:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: colores.gris50 },
   histRowLast:   { borderBottomWidth: 0 },
-  histFecha:     { flex: 1, fontSize: 13, color: '#6B6B6B' },
-  histPeso:      { fontSize: 14, fontWeight: '600', color: '#2C2C2C', marginRight: 12 },
-  histDelta:     { fontSize: 12, fontWeight: '700', color: '#AAAAAA', width: 64, textAlign: 'right' },
-  histDeltaUp:   { color: '#F5A623' },
-  histDeltaDown: { color: '#5BC8D0' },
-  histEmpty:     { fontSize: 12, color: '#9A9A9A', textAlign: 'center', paddingVertical: 12, lineHeight: 18 },
+  histFecha:     { flex: 1, fontSize: 13, color: colores.textoSecundario },
+  histPeso:      { fontSize: 14, fontWeight: '600', color: colores.texto, marginRight: 12 },
+  histDelta:     { fontSize: 12, fontWeight: '700', color: colores.textoTenue, width: 64, textAlign: 'right' },
+  histDeltaUp:   { color: colores.ambar },
+  histDeltaDown: { color: colores.turquesa },
+  histEmpty:     { fontSize: 12, color: colores.textoGris, textAlign: 'center', paddingVertical: 12, lineHeight: 18 },
 });

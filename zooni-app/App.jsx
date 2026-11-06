@@ -9,7 +9,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, ActivityIndicator, AppState, StyleSheet } from 'react-native';
 
 import { restaurarSesion, loadStoredModo, esperarSesion, haySesion, setModo, MODO_PASEADOR } from './src/config/session';
-import { ThemeProvider, useTheme } from './src/config/theme';
+import { ThemeProvider, useTheme } from './src/theme';
 import { iniciarLatidoPresencia, marcarPresencia } from './src/services/presenciaApi';
 import HomeScreen        from './src/screens/HomeScreen';
 import LoginScreen       from './src/screens/LoginScreen';
@@ -72,6 +72,7 @@ import MisTurnosScreen          from './src/screens/MisTurnosScreen';
 import { fetchRolesCuenta }     from './src/services/paseadorApi';
 import { rutaSegunRoles }       from './src/utils/rutaSegunRoles';
 import { completarRetornoSocial, hayRetornoSocial } from './src/services/socialAuthApi';
+import { colores } from './src/theme';
 
 const Stack = createNativeStackNavigator();
 
@@ -169,7 +170,7 @@ export default function App() {
   if (!initialRoute) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color="#2DBD72" />
+        <ActivityIndicator size="large" color={colores.verde} />
       </View>
     );
   }
@@ -271,6 +272,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#C8F0D8',
+    backgroundColor: colores.menta,
   },
 });

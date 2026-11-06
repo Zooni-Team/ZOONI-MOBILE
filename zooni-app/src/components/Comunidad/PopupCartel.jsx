@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Animated, Alert, Image, Platf
 import { Ionicons } from '@expo/vector-icons';
 import { eliminarCartel } from '../../api/comunidad';
 import PersonaProfileModal from '../PersonaProfileModal';
+import { colores } from '../../theme';
 
 const LABELS = {
   perdida: 'Mascota Perdida', encontrada: 'Mascota Encontrada',
@@ -27,7 +28,7 @@ export default function PopupCartel({ cartel, userId, onClose, onEliminado }) {
   const fecha = cartel.created_at
     ? new Date(cartel.created_at).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })
     : '';
-  const color = cartel.tipo === 'perdida' ? '#E63946' : '#6B6B6B';
+  const color = cartel.tipo === 'perdida' ? colores.rojo : colores.textoSecundario;
 
   const confirmarEliminar = async () => {
     try { await eliminarCartel(cartel.id); onEliminado(cartel.id); onClose(); }
@@ -62,7 +63,7 @@ export default function PopupCartel({ cartel, userId, onClose, onEliminado }) {
           <View style={[styles.badge, { backgroundColor: color }]} />
           <Text style={styles.tipoText}>{LABELS[cartel.tipo] || cartel.tipo}</Text>
         </View>
-        <TouchableOpacity onPress={onClose}><Ionicons name="close" size={18} color="#6B6B6B" /></TouchableOpacity>
+        <TouchableOpacity onPress={onClose}><Ionicons name="close" size={18} color={colores.textoSecundario} /></TouchableOpacity>
       </View>
       <ScrollView showsVerticalScrollIndicator={false}>
         {cartel.foto_url && (
@@ -70,7 +71,7 @@ export default function PopupCartel({ cartel, userId, onClose, onEliminado }) {
         )}
         {cartel.mascota_nombre && (
           <View style={styles.infoRow}>
-            <Ionicons name="paw-outline" size={13} color="#2C2C2C" />
+            <Ionicons name="paw-outline" size={13} color={colores.texto} />
             <Text style={styles.mascota}>{cartel.mascota_nombre}</Text>
           </View>
         )}
@@ -89,7 +90,7 @@ export default function PopupCartel({ cartel, userId, onClose, onEliminado }) {
         )}
         {cartel.telefono_contacto && (
           <View style={styles.infoRow}>
-            <Ionicons name="call-outline" size={13} color="#6B6B6B" />
+            <Ionicons name="call-outline" size={13} color={colores.textoSecundario} />
             <Text style={styles.info}>{cartel.telefono_contacto}</Text>
           </View>
         )}
@@ -102,7 +103,7 @@ export default function PopupCartel({ cartel, userId, onClose, onEliminado }) {
         </TouchableOpacity>
         {parseInt(cartel.usuario_id) === userId && (
           <TouchableOpacity style={styles.btnElim} onPress={handleEliminar}>
-            <Ionicons name="trash-outline" size={16} color="#FFF" />
+            <Ionicons name="trash-outline" size={16} color={colores.blanco} />
             <Text style={styles.btnElimText}>Eliminar Cartel</Text>
           </TouchableOpacity>
         )}
@@ -120,21 +121,21 @@ export default function PopupCartel({ cartel, userId, onClose, onEliminado }) {
 const styles = StyleSheet.create({
   popup: {
     position: 'absolute', bottom: 160, alignSelf: 'center', width: '82%', maxHeight: 380,
-    backgroundColor: '#fff', borderRadius: 16, padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 6 },
+    backgroundColor: colores.blanco, borderRadius: 16, padding: 16,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.15, shadowRadius: 20, elevation: 10, zIndex: 200,
   },
   header:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   tipoRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
   badge:    { width: 10, height: 10, borderRadius: 5 },
-  tipoText: { fontWeight: '700', fontSize: 14, color: '#2C2C2C' },
-  foto:     { width: '100%', height: 140, borderRadius: 12, marginBottom: 10, backgroundColor: '#EFEFEF' },
+  tipoText: { fontWeight: '700', fontSize: 14, color: colores.texto },
+  foto:     { width: '100%', height: 140, borderRadius: 12, marginBottom: 10, backgroundColor: colores.gris200 },
   infoRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  mascota:  { fontSize: 15, fontWeight: '700', color: '#2C2C2C' },
-  info:     { fontSize: 13, color: '#6B6B6B' },
-  verMas:   { fontSize: 12, color: '#2DBD72', fontWeight: '600', marginBottom: 4 },
-  meta:     { fontSize: 11, color: '#AAAAAA', marginTop: 6 },
-  metaLink: { color: '#2DBD72', fontWeight: '700' },
-  btnElim:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#E63946', borderRadius: 20, paddingVertical: 10, marginTop: 12 },
-  btnElimText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  mascota:  { fontSize: 15, fontWeight: '700', color: colores.texto },
+  info:     { fontSize: 13, color: colores.textoSecundario },
+  verMas:   { fontSize: 12, color: colores.verde, fontWeight: '600', marginBottom: 4 },
+  meta:     { fontSize: 11, color: colores.textoTenue, marginTop: 6 },
+  metaLink: { color: colores.verde, fontWeight: '700' },
+  btnElim:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colores.rojo, borderRadius: 20, paddingVertical: 10, marginTop: 12 },
+  btnElimText: { color: colores.blanco, fontWeight: '700', fontSize: 14 },
 });

@@ -14,6 +14,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { colores } from '../theme';
 
 export default function PlaceholderScreen() {
   const navigation = useNavigation();
@@ -38,17 +39,17 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#C8F0D8', // Verde menta — fondo principal de Zooni
+    backgroundColor: colores.menta, // Verde menta — fondo principal de Zooni
     gap: 12,
   },
-  title: { fontSize: 24, fontWeight: '800', color: '#27AE60' },
-  subtitle: { fontSize: 16, color: '#6B6B6B' },
+  title: { fontSize: 24, fontWeight: '800', color: colores.verdeExito },
+  subtitle: { fontSize: 16, color: colores.textoSecundario },
   btn: {
     marginTop: 16,
-    backgroundColor: '#F5C842', // Amarillo dorado — botón primario
+    backgroundColor: colores.amarillo, // Amarillo dorado — botón primario
     borderRadius: 30,
     paddingHorizontal: 28,
     paddingVertical: 14,
   },
-  btnText: { fontSize: 16, fontWeight: '700', color: '#2C2C2C' },
+  btnText: { fontSize: 16, fontWeight: '700', color: colores.texto },
 });

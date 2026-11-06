@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { C, sombra } from '../../components/paseador/PaseadorUI';
 import { MASCOTAS_BIENVENIDA } from '../../constants/registroImages';
 import { TIPOS_NEGOCIO } from '../../constants/negocios';
+import { colores } from '../../theme';
 
 const TIPOS = [
   {
@@ -38,7 +39,7 @@ export default function ProveedorTipoScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={colores.blanco} />
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.volver} accessibilityLabel="Volver">
           <Ionicons name="chevron-back" size={26} color={C.teal} />
@@ -66,7 +67,7 @@ export default function ProveedorTipoScreen() {
             accessibilityState={{ disabled: !t.activo }}
             accessibilityLabel={t.activo ? t.titulo : `${t.titulo}, próximamente`}
           >
-            <View style={[s.icono, { backgroundColor: t.activo ? t.fondo : '#F0F0F0' }]}>
+            <View style={[s.icono, { backgroundColor: t.activo ? t.fondo : colores.gris150 }]}>
               <Ionicons name={t.icono} size={26} color={t.activo ? t.color : C.gris} />
             </View>
             <View style={{ flex: 1 }}>
@@ -86,12 +87,12 @@ export default function ProveedorTipoScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  safe: { flex: 1, backgroundColor: colores.blanco },
   scroll: { padding: 24, paddingBottom: 40 },
   volver: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', marginBottom: 8, minHeight: 44 },
   volverTxt: { fontSize: 15, fontWeight: '700', color: C.teal },
 
-  marca: { fontSize: 34, fontWeight: '800', color: '#5C3D1E', textAlign: 'center' },
+  marca: { fontSize: 34, fontWeight: '800', color: colores.marron, textAlign: 'center' },
   submarca: { fontSize: 14, fontWeight: '700', color: C.teal, textAlign: 'center', marginTop: -2 },
   ilustracion: { width: '100%', height: 120, marginVertical: 16 },
 
@@ -103,10 +104,10 @@ const s = StyleSheet.create({
     backgroundColor: C.card, borderRadius: 18, padding: 16, marginBottom: 12,
     borderWidth: 1.5, borderColor: C.menta, ...sombra,
   },
-  opcionOff: { borderColor: '#F0F0F0', shadowOpacity: 0, elevation: 0 },
+  opcionOff: { borderColor: colores.gris150, shadowOpacity: 0, elevation: 0 },
   icono: { width: 52, height: 52, borderRadius: 16, backgroundColor: C.menta, alignItems: 'center', justifyContent: 'center' },
   opcionTitulo: { fontSize: 17, fontWeight: '800', color: C.texto },
   opcionTexto: { fontSize: 13, color: C.texto2, marginTop: 2 },
-  pronto: { backgroundColor: '#F2F2F2', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 },
+  pronto: { backgroundColor: colores.gris75, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 },
   prontoTxt: { fontSize: 11, fontWeight: '700', color: C.texto2 },
 });

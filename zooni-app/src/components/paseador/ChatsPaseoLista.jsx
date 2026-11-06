@@ -17,6 +17,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Avatar, C } from './PaseadorUI';
 import { fetchConversacionesPaseo } from '../../services/paseadorApi';
 import { tiempoRelativoCorto } from '../../utils/tiempoRelativo';
+import { colores } from '../../theme';
 
 const ESTADO = {
   pendiente: { txt: 'Solicitud', color: C.ambar },
@@ -102,8 +103,8 @@ export default function ChatsPaseoLista({ rol = 'paseador', vacioTexto }) {
 const st = StyleSheet.create({
   lista: { padding: 16, flexGrow: 1 },
   item: {
-    flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFFFFF',
-    borderRadius: 16, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: '#F0F0F0',
+    flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colores.blanco,
+    borderRadius: 16, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: colores.gris150,
   },
   info: { flex: 1, minWidth: 0, gap: 2 },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -117,7 +118,7 @@ const st = StyleSheet.create({
     minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 6,
     backgroundColor: C.ambar, alignItems: 'center', justifyContent: 'center',
   },
-  badgeTxt: { fontSize: 11, fontWeight: '800', color: '#FFFFFF' },
+  badgeTxt: { fontSize: 11, fontWeight: '800', color: colores.blanco },
   vacio: { alignItems: 'center', gap: 10, marginTop: 50, paddingHorizontal: 30 },
   vacioTxt: { fontSize: 14, color: C.texto2, textAlign: 'center', lineHeight: 20 },
 });

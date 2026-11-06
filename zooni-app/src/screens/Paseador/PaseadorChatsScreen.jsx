@@ -19,6 +19,7 @@ import { C } from '../../components/paseador/PaseadorUI';
 import ChatsPaseoLista from '../../components/paseador/ChatsPaseoLista';
 import PaseadorDrawer from '../../components/paseador/PaseadorDrawer';
 import { clearCurrentUserId, setModo, MODO_DUENO } from '../../config/session';
+import { colores } from '../../theme';
 
 export default function PaseadorChatsScreen() {
   const navigation = useNavigation();
@@ -44,7 +45,7 @@ export default function PaseadorChatsScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={colores.blanco} />
       <View style={s.header}>
         <TouchableOpacity onPress={() => setMenuAbierto(true)} style={s.menu}
           accessibilityLabel="Abrir menú" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -75,7 +76,7 @@ export default function PaseadorChatsScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.fondo },
   header: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFFFFF',
+    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colores.blanco,
     paddingHorizontal: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.borde,
   },
   menu: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },

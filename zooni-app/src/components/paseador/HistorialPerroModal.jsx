@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Avatar, C, Stat, Vacio } from './PaseadorUI';
 import { fetchMisPaseos, formatoDistancia, formatoTiempoPaseado, formatoPlata } from '../../services/paseadorApi';
+import { colores } from '../../theme';
 
 const duracionDe = (p) => (p.segundosAcumulados ? formatoTiempoPaseado(p.segundosAcumulados) : `${p.duracionMin} minutos`);
 const fechaLarga = (iso) => new Date(iso).toLocaleDateString('es-AR', {
@@ -128,7 +129,7 @@ export default function HistorialPerroModal({ visible, mascota, dueno, onCerrar 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.fondo },
   header: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFFFFF',
+    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colores.blanco,
     paddingHorizontal: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.borde,
   },
   volver: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
@@ -143,7 +144,7 @@ const s = StyleSheet.create({
 
   paseo: {
     backgroundColor: C.card, borderRadius: 16, padding: 14, marginBottom: 10,
-    borderWidth: 1, borderColor: '#F0F0F0',
+    borderWidth: 1, borderColor: colores.gris150,
   },
   paseoTop: { flexDirection: 'row', alignItems: 'center' },
   paseoNum: { fontSize: 12, fontWeight: '800', color: C.teal },

@@ -3,6 +3,7 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView, Activit
 import { Ionicons } from '@expo/vector-icons';
 import { areaBuscable } from '../../services/lugaresApi';
 import { formatoPlata, serviciosDe } from '../../services/paseadorApi';
+import { colores } from '../../theme';
 
 const FILTROS = [
   { v: 'todos', l: 'Todos' }, { v: 'veterinaria', l: 'Veterinaria' },
@@ -10,7 +11,7 @@ const FILTROS = [
   { v: 'peluqueria', l: 'Peluquería' },
 ];
 const ICONOS  = { veterinaria: 'medkit-outline', paseador: 'walk-outline', petshop: 'bag-outline', peluqueria: 'cut-outline' };
-const COLORES = { veterinaria: '#E63946', paseador: '#F5A623', petshop: '#F5C842', peluqueria: '#9B59B6' };
+const COLORES = { veterinaria: colores.rojo, paseador: colores.ambar, petshop: colores.amarillo, peluqueria: colores.violeta };
 
 // La foto de perfil del paseador (la misma del marcador del mapa); la huella
 // queda sólo si no tiene o no carga.
@@ -23,8 +24,8 @@ function AvatarPaseador({ foto }) {
     );
   }
   return (
-    <View style={[styles.iconCircle, { backgroundColor: '#2DBD72' }]}>
-      <Ionicons name="paw" size={16} color="#FFF" />
+    <View style={[styles.iconCircle, { backgroundColor: colores.verde }]}>
+      <Ionicons name="paw" size={16} color={colores.blanco} />
     </View>
   );
 }
@@ -79,7 +80,7 @@ export default function TabServicios({
                     {p.rating != null ? ` · ★ ${p.rating.toFixed(1).replace('.', ',')}` : ''}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#2DBD72" />
+                <Ionicons name="chevron-forward" size={18} color={colores.verde} />
               </TouchableOpacity>
             ))}
           </View>
@@ -89,7 +90,7 @@ export default function TabServicios({
         renderItem={({ item: s }) => (
           <TouchableOpacity style={styles.item} onPress={() => onSeleccionar(s)}>
             <View style={[styles.iconCircle, { backgroundColor: COLORES[s.tipo] || '#888' }]}>
-              <Ionicons name={ICONOS[s.tipo] || 'location-outline'} size={16} color="#FFF" />
+              <Ionicons name={ICONOS[s.tipo] || 'location-outline'} size={16} color={colores.blanco} />
             </View>
             <View style={styles.info}>
               <Text style={styles.nombre} numberOfLines={1}>{s.nombre}</Text>
@@ -99,14 +100,14 @@ export default function TabServicios({
                 <View style={styles.metaRow}>
                   {s.rating != null && (
                     <View style={styles.metaItem}>
-                      <Ionicons name="star" size={11} color="#F5A623" />
+                      <Ionicons name="star" size={11} color={colores.ambar} />
                       <Text style={styles.meta}>
                         {s.rating.toFixed(1)}{s.ratingCount ? ` (${s.ratingCount})` : ''}
                       </Text>
                     </View>
                   )}
                   {s.abiertoAhora != null && (
-                    <Text style={[styles.meta, { color: s.abiertoAhora ? '#2DBD72' : '#E63946', fontWeight: '600' }]}>
+                    <Text style={[styles.meta, { color: s.abiertoAhora ? colores.verde : colores.rojo, fontWeight: '600' }]}>
                       {s.abiertoAhora ? 'Abierto ahora' : 'Cerrado'}
                     </Text>
                   )}
@@ -118,7 +119,7 @@ export default function TabServicios({
         ListEmptyComponent={
           cargando ? (
             <View style={styles.vacioBox}>
-              <ActivityIndicator size="small" color="#2DBD72" />
+              <ActivityIndicator size="small" color={colores.verde} />
               <Text style={styles.vacio}>Buscando lugares en esta zona…</Text>
             </View>
           ) : hayPaseadoresZooni ? null : (
@@ -137,22 +138,22 @@ export default function TabServicios({
 
 const styles = StyleSheet.create({
   zooniBox: { paddingHorizontal: 4, marginBottom: 4 },
-  zooniTitulo: { fontSize: 12, fontWeight: '800', color: '#2DBD72', marginBottom: 4, marginLeft: 10 },
+  zooniTitulo: { fontSize: 12, fontWeight: '800', color: colores.verde, marginBottom: 4, marginLeft: 10 },
   // flexGrow/flexShrink 0: alto fijo, que la lista de abajo no la aplaste
   chips:       { flexDirection: 'row', paddingVertical: 8, height: 50, flexGrow: 0, flexShrink: 0 },
-  chip:        { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#F5F5F5', marginRight: 8 },
-  chipOn:      { backgroundColor: '#2DBD72' },
-  chipText:    { fontSize: 13, color: '#6B6B6B' },
-  chipTextOn:  { color: '#fff', fontWeight: '700' },
-  item:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  chip:        { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: colores.gris50, marginRight: 8 },
+  chipOn:      { backgroundColor: colores.verde },
+  chipText:    { fontSize: 13, color: colores.textoSecundario },
+  chipTextOn:  { color: colores.blanco, fontWeight: '700' },
+  item:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colores.gris150 },
   iconCircle:  { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  avatar:      { borderWidth: 2, borderColor: '#2DBD72', backgroundColor: '#EEE' },
+  avatar:      { borderWidth: 2, borderColor: colores.verde, backgroundColor: colores.gris250 },
   info:        { flex: 1 },
-  nombre:      { fontWeight: '700', fontSize: 14, color: '#2C2C2C' },
-  dir:         { fontSize: 12, color: '#6B6B6B', marginTop: 2 },
+  nombre:      { fontWeight: '700', fontSize: 14, color: colores.texto },
+  dir:         { fontSize: 12, color: colores.textoSecundario, marginTop: 2 },
   metaRow:     { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 3 },
   metaItem:    { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  meta:        { fontSize: 11, color: '#6B6B6B' },
-  vacio:       { textAlign: 'center', color: '#AAAAAA', marginTop: 20, fontSize: 12, lineHeight: 18, paddingHorizontal: 16 },
+  meta:        { fontSize: 11, color: colores.textoSecundario },
+  vacio:       { textAlign: 'center', color: colores.textoTenue, marginTop: 20, fontSize: 12, lineHeight: 18, paddingHorizontal: 16 },
   vacioBox:    { alignItems: 'center', marginTop: 20, gap: 4 },
 });

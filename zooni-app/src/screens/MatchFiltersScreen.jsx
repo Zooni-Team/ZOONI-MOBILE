@@ -27,6 +27,7 @@ import {
   resetDemoMatchState,
 } from '../services/matchApi';
 import { markMatchReloadFromFilters } from '../utils/matchNavigation';
+import { colores } from '../theme';
 
 function formatPetAgeMonths(months) {
   if (months <= 6) return 'Cachorro';
@@ -140,7 +141,7 @@ export default function MatchFiltersScreen() {
           accessibilityLabel="Volver sin aplicar"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="arrow-back" size={24} color="#2C2C2C" />
+          <Ionicons name="arrow-back" size={24} color={colores.texto} />
         </TouchableOpacity>
         <View style={styles.headerTitleRow}>
           <Text style={styles.headerIcon}>🐾</Text>
@@ -172,8 +173,8 @@ export default function MatchFiltersScreen() {
             <Switch
               value={filtros.solo_cercanos}
               onValueChange={(solo_cercanos) => update({ solo_cercanos })}
-              trackColor={{ false: '#DDDDDD', true: '#A8E6C0' }}
-              thumbColor={filtros.solo_cercanos ? '#2DBD72' : '#FFFFFF'}
+              trackColor={{ false: colores.gris500, true: colores.verdeBurbuja }}
+              thumbColor={filtros.solo_cercanos ? colores.verde : colores.blanco}
             />
           </View>
         </View>
@@ -271,36 +272,36 @@ export default function MatchFiltersScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  safe: { flex: 1, backgroundColor: colores.blanco },
   header: {
     height: 56,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colores.blanco,
   },
   headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   headerIcon: { fontSize: 18 },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#2C2C2C' },
-  resetText: { fontSize: 14, fontWeight: '600', color: '#E63946' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: colores.texto },
+  resetText: { fontSize: 14, fontWeight: '600', color: colores.rojo },
   headerDivider: { height: 1, backgroundColor: 'rgba(0,0,0,0.06)' },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
   sectionLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#6B6B6B',
+    color: colores.textoSecundario,
     letterSpacing: 0.5,
     marginBottom: 8,
     marginTop: 8,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colores.blanco,
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: colores.negro,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -315,8 +316,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 4,
   },
-  toggleLabel: { fontSize: 14, color: '#2C2C2C', fontWeight: '600', flex: 1 },
-  subLabel: { fontSize: 14, color: '#6B6B6B', marginBottom: 8, marginTop: 8 },
+  toggleLabel: { fontSize: 14, color: colores.texto, fontWeight: '600', flex: 1 },
+  subLabel: { fontSize: 14, color: colores.textoSecundario, marginBottom: 8, marginTop: 8 },
   footer: {
     position: 'absolute',
     bottom: 0,
@@ -328,16 +329,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.95)',
   },
   applyBtn: {
-    backgroundColor: '#2DBD72',
+    backgroundColor: colores.verde,
     borderRadius: 30,
     height: 56,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#2DBD72',
+    shadowColor: colores.verde,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 4,
   },
-  applyBtnText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  applyBtnText: { fontSize: 16, fontWeight: '700', color: colores.blanco },
 });

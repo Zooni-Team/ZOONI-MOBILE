@@ -37,6 +37,7 @@ import { configNegocio } from '../constants/negocios';
 import { contarMensajesNoLeidos } from '../services/chatStore';
 import { fetchRolesCuenta } from '../services/paseadorApi';
 import AppDialog from './AppDialog';
+import { colores } from '../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // El drawer ocupa el 80% del ancho, con un máximo de 320px
@@ -250,7 +251,7 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
                   );
                 }),
                 <TouchableOpacity key={item.key} style={styles.menuItem} onPress={handleLogout} accessibilityLabel={item.label}>
-                  <Ionicons name={item.icono} size={22} color="#E63946" style={styles.menuIcon} />
+                  <Ionicons name={item.icono} size={22} color={colores.rojo} style={styles.menuIcon} />
                   <Text style={[styles.menuLabel, styles.menuLabelLogout]}>{item.label}</Text>
                 </TouchableOpacity>,
               ];
@@ -271,7 +272,7 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
                   name={item.icono}
                   size={22}
                   // Rojo para logout, verde para activo, gris oscuro para el resto
-                  color={item.isLogout ? '#E63946' : isActive ? '#2DBD72' : '#2C2C2C'}
+                  color={item.isLogout ? colores.rojo : isActive ? colores.verde : colores.texto}
                   style={styles.menuIcon}
                 />
                 <Text style={[
@@ -313,34 +314,34 @@ const styles = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
   drawer: {
     position: 'absolute', top: 0, left: 0, bottom: 0,
-    width: DRAWER_WIDTH, backgroundColor: '#FFFFFF',
+    width: DRAWER_WIDTH, backgroundColor: colores.blanco,
     borderTopRightRadius: 20, borderBottomRightRadius: 20,
-    shadowColor: '#000', shadowOffset: { width: 4, height: 0 },
+    shadowColor: colores.negro, shadowOffset: { width: 4, height: 0 },
     shadowOpacity: 0.15, shadowRadius: 20, elevation: 10,
     paddingTop: 50, // Espacio para la status bar
   },
   drawerHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16 },
-  avatar: { width: 48, height: 48, borderRadius: 24, borderWidth: 2, borderColor: '#2DBD72', marginRight: 12 },
+  avatar: { width: 48, height: 48, borderRadius: 24, borderWidth: 2, borderColor: colores.verde, marginRight: 12 },
   avatarFallback: {
-    width: 48, height: 48, borderRadius: 24, backgroundColor: '#C8F0D8',
-    borderWidth: 2, borderColor: '#2DBD72', alignItems: 'center', justifyContent: 'center', marginRight: 12,
+    width: 48, height: 48, borderRadius: 24, backgroundColor: colores.menta,
+    borderWidth: 2, borderColor: colores.verde, alignItems: 'center', justifyContent: 'center', marginRight: 12,
   },
-  avatarInitials: { fontSize: 16, fontWeight: '700', color: '#27AE60' },
+  avatarInitials: { fontSize: 16, fontWeight: '700', color: colores.verdeExito },
   headerInfo: { flex: 1 },
-  headerNombre: { fontSize: 16, fontWeight: '700', color: '#2C2C2C' },
-  headerMascota: { fontSize: 13, color: '#6B6B6B', marginTop: 2 },
-  dividerLine: { height: 1, backgroundColor: '#E0E0E0', marginVertical: 4 },
+  headerNombre: { fontSize: 16, fontWeight: '700', color: colores.texto },
+  headerMascota: { fontSize: 13, color: colores.textoSecundario, marginTop: 2 },
+  dividerLine: { height: 1, backgroundColor: colores.gris400, marginVertical: 4 },
   menuItem: { flexDirection: 'row', alignItems: 'center', height: 52, paddingHorizontal: 20 },
   menuItemActive: { backgroundColor: 'rgba(45, 189, 114, 0.12)' }, // Verde suave para ítem activo
   menuIcon: { marginRight: 14 },
-  menuLabel: { flex: 1, fontSize: 15, color: '#2C2C2C' },
-  menuLabelActive: { color: '#2DBD72', fontWeight: '700' },
+  menuLabel: { flex: 1, fontSize: 15, color: colores.texto },
+  menuLabelActive: { color: colores.verde, fontWeight: '700' },
   badge: {
-    minWidth: 20, height: 20, borderRadius: 10, backgroundColor: '#E63946',
+    minWidth: 20, height: 20, borderRadius: 10, backgroundColor: colores.rojo,
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5, marginLeft: 8,
   },
   // lineHeight igual al alto del círculo: es lo que realmente centra el
   // número verticalmente (alignItems/justifyContent solos no alcanzan acá).
-  badgeTxt: { fontSize: 11, fontWeight: '700', color: '#FFFFFF', textAlign: 'center', lineHeight: 20 },
-  menuLabelLogout: { color: '#E63946' }, // Rojo para cerrar sesión
+  badgeTxt: { fontSize: 11, fontWeight: '700', color: colores.blanco, textAlign: 'center', lineHeight: 20 },
+  menuLabelLogout: { color: colores.rojo }, // Rojo para cerrar sesión
 });

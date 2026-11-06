@@ -14,6 +14,7 @@ import { Animated, Image, StyleSheet, Text, View } from 'react-native';
 import { calcularEdad } from '../utils/calcularEdad';
 import { resolveMascotaVisual } from '../constants/petImages';
 import { formatearPeso } from '../constants/pesoPorEspecie';
+import { colores } from '../theme';
 
 // El formato del peso vive en constants/pesoPorEspecie.js: debajo del kilo se
 // muestra en gramos, así un canario dice "35 g" y no "0,04 kg".
@@ -69,9 +70,9 @@ export default function PetHero({ mascota, titulo, anim }) {
 
 const h = StyleSheet.create({
   hero:      { alignItems: 'center', paddingTop: 12, paddingBottom: 0, backgroundColor: 'transparent' },
-  petCircle: { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: '#A8E6C0', opacity: 0.45, top: -15, alignSelf: 'center' },
+  petCircle: { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: colores.verdeBurbuja, opacity: 0.45, top: -15, alignSelf: 'center' },
   petImg:    { width: 110, height: 110, zIndex: 1 },
-  titulo:    { fontSize: 24, fontWeight: '800', color: '#2C2C2C', textAlign: 'center', marginTop: 10, paddingHorizontal: 20 },
+  titulo:    { fontSize: 24, fontWeight: '800', color: colores.texto, textAlign: 'center', marginTop: 10, paddingHorizontal: 20 },
   info:      { alignItems: 'center', marginTop: 6, marginBottom: 22, gap: 2 },
-  infoTxt:   { fontSize: 13, color: '#6B6B6B' },
+  infoTxt:   { fontSize: 13, color: colores.textoSecundario },
 });

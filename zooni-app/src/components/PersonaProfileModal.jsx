@@ -17,10 +17,11 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { fetchPerfilPublico } from '../services/perfilApi';
 import { resolveMascotaVisual } from '../constants/petImages';
+import { colores } from '../theme';
 
 const C = {
-  bg: '#F4FBF6', surface: '#FFFFFF', text: '#2C2C2C', textSoft: '#6B6B6B',
-  brand: '#2DBD72', brandText: '#177046', cta: '#F5C842', divider: '#E8EFE9', chipBg: '#E8F7EE',
+  bg: '#F4FBF6', surface: colores.blanco, text: colores.texto, textSoft: colores.textoSecundario,
+  brand: colores.verde, brandText: colores.verdeOscuro, cta: colores.amarillo, divider: colores.mentaGris, chipBg: colores.mentaBorde,
 };
 
 export default function PersonaProfileModal({ visible, usuarioId, onClose, onAbrirChat }) {
@@ -134,7 +135,7 @@ export default function PersonaProfileModal({ visible, usuarioId, onClose, onAbr
         <Modal visible={fotoFull} transparent animationType="fade" onRequestClose={() => setFotoFull(false)}>
           <Pressable style={s.fullScrim} onPress={() => setFotoFull(false)}>
             <TouchableOpacity style={s.fullClose} onPress={() => setFotoFull(false)} accessibilityLabel="Cerrar foto">
-              <Ionicons name="close" size={30} color="#FFF" />
+              <Ionicons name="close" size={30} color={colores.blanco} />
             </TouchableOpacity>
             {tieneFoto && <Image source={{ uri: persona.fotoPerfil }} style={s.fullFoto} resizeMode="contain" />}
           </Pressable>
@@ -171,7 +172,7 @@ const s = StyleSheet.create({
 
   card: {
     alignSelf: 'stretch', backgroundColor: C.surface, borderRadius: 18, padding: 16, marginTop: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
   },
   cardTitulo: { fontSize: 14, fontWeight: '800', color: C.text, marginBottom: 12 },
   petRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },

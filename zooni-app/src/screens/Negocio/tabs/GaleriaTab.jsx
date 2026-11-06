@@ -23,6 +23,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { C, Card, PillButton, Vacio } from '../../../components/paseador/PaseadorUI';
 import { agregarFotoGaleria, borrarFotoGaleria, GALERIA_MAX } from '../../../services/negocioApi';
 import { alerta, confirmar } from '../../../utils/dialogo';
+import { colores } from '../../../theme';
 
 const GAP = 8;
 const PADDING = 20;
@@ -95,7 +96,7 @@ export default function GaleriaTab({ negocio, setNegocio, avisar }) {
         ListHeaderComponent={(
           <>
             <Card style={s.intro}>
-              <View style={s.introIcono}><Ionicons name="images" size={22} color="#9B59B6" /></View>
+              <View style={s.introIcono}><Ionicons name="images" size={22} color={colores.violeta} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={s.introTitulo}>{fotos.length} de {GALERIA_MAX} fotos</Text>
                 <Text style={s.introTxt}>Tus mejores trabajos se ven en tu ficha. Es lo que más ayuda a que te elijan.</Text>
@@ -146,7 +147,7 @@ export default function GaleriaTab({ negocio, setNegocio, avisar }) {
       <Modal visible={!!abierta} transparent animationType="fade" onRequestClose={() => setAbierta(null)}>
         <View style={s.visor}>
           <TouchableOpacity style={s.visorCerrar} onPress={() => setAbierta(null)} accessibilityLabel="Cerrar">
-            <Ionicons name="close" size={30} color="#FFF" />
+            <Ionicons name="close" size={30} color={colores.blanco} />
           </TouchableOpacity>
           {abierta ? <Image source={{ uri: abierta.url }} style={s.visorImg} resizeMode="contain" /> : null}
           <View style={s.visorPie}>
@@ -155,7 +156,7 @@ export default function GaleriaTab({ negocio, setNegocio, avisar }) {
               {abierta?.fecha ? <Text style={s.visorFecha}>{fechaCorta(abierta.fecha)}</Text> : null}
             </View>
             <TouchableOpacity style={s.visorBorrar} onPress={borrar} disabled={borrando} accessibilityLabel="Borrar foto">
-              {borrando ? <ActivityIndicator color="#FFF" /> : <Ionicons name="trash-outline" size={20} color="#FFF" />}
+              {borrando ? <ActivityIndicator color={colores.blanco} /> : <Ionicons name="trash-outline" size={20} color={colores.blanco} />}
               <Text style={s.visorBorrarTxt}>Borrar</Text>
             </TouchableOpacity>
           </View>
@@ -175,11 +176,11 @@ const s = StyleSheet.create({
   miniatura: { width: LADO, height: LADO, borderRadius: 14, backgroundColor: C.menta },
 
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 24 },
-  dialogo: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20 },
+  dialogo: { backgroundColor: colores.blanco, borderRadius: 20, padding: 20 },
   dialogoTitulo: { fontSize: 18, fontWeight: '900', color: C.texto, marginBottom: 12 },
   previa: { width: '100%', aspectRatio: 1, borderRadius: 16, backgroundColor: C.menta },
   input: {
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
     marginTop: 12, fontSize: 15, color: C.texto,
   },
 
@@ -187,11 +188,11 @@ const s = StyleSheet.create({
   visorCerrar: { position: 'absolute', top: 40, right: 20, zIndex: 2, padding: 6 },
   visorImg: { width: '100%', height: '70%' },
   visorPie: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 20 },
-  visorNota: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  visorNota: { fontSize: 15, fontWeight: '700', color: colores.blanco },
   visorFecha: { fontSize: 12, color: '#CCC', marginTop: 2 },
   visorBorrar: {
     flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, height: 40, borderRadius: 20,
     backgroundColor: C.rojo,
   },
-  visorBorrarTxt: { fontSize: 14, fontWeight: '800', color: '#FFF' },
+  visorBorrarTxt: { fontSize: 14, fontWeight: '800', color: colores.blanco },
 });

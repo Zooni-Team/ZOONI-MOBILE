@@ -43,6 +43,10 @@ import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { haySesion } from '../config/session';
 import { MASCOTA_VACIA } from '../constants/mascotaVacia';
 import FechaPicker from '../components/FechaPicker';
+import { colores } from '../theme';
+import Skeleton from '../components/ui/Skeleton';
+import Toast from '../components/ui/Toast';
+import { useToast } from '../hooks/useToast';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -81,61 +85,26 @@ function formatearContadorDias(dias) {
 }
 
 function colorContador(dias) {
-  if (dias === null) return '#2C2C2C';
-  if (dias < 0)   return '#E63946';  // vencido
-  if (dias === 0) return '#F5A623';  // vence hoy
-  return '#2C2C2C';
+  if (dias === null) return colores.texto;
+  if (dias < 0)   return colores.rojo;  // vencido
+  if (dias === 0) return colores.ambar;  // vence hoy
+  return colores.texto;
 }
 
 // ─── COMPONENTE: SKELETON ─────────────────────────────────────────────────────
 
 function SkeletonCard() {
-  const shimmer = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const anim = Animated.loop(Animated.sequence([
-      Animated.timing(shimmer, { toValue: 1, duration: 900, useNativeDriver: true }),
-      Animated.timing(shimmer, { toValue: 0, duration: 900, useNativeDriver: true }),
-    ]));
-    anim.start();
-    return () => anim.stop();
-  }, [shimmer]);
-  const opacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.45, 1] });
   return (
-    <Animated.View style={[s.skeletonCard, { opacity }]}>
+    <Skeleton style={s.skeletonCard}>
       <View style={s.skeletonLine1} />
       <View style={s.skeletonLine2} />
       <View style={s.skeletonLine3} />
-    </Animated.View>
+    </Skeleton>
   );
 }
 
 // ─── COMPONENTE: TOAST ────────────────────────────────────────────────────────
 
-function Toast({ visible, mensaje, color }) {
-  const translateY = useRef(new Animated.Value(-12)).current;
-  const opacity    = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.timing(translateY, { toValue: 0,   duration: 220, useNativeDriver: true }),
-        Animated.timing(opacity,    { toValue: 1,   duration: 220, useNativeDriver: true }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(translateY, { toValue: -12, duration: 200, useNativeDriver: true }),
-        Animated.timing(opacity,    { toValue: 0,   duration: 200, useNativeDriver: true }),
-      ]).start();
-    }
-  }, [visible, translateY, opacity]);
-
-  return (
-    <Animated.View style={[s.toast, { backgroundColor: color, opacity, transform: [{ translateY }] }]}>
-      <Ionicons name="checkmark-circle" size={18} color="#FFF" />
-      <Text style={s.toastTxt}>{mensaje}</Text>
-    </Animated.View>
-  );
-}
 
 // ─── COMPONENTE: CARD TRATAMIENTO APLICADO ────────────────────────────────────
 
@@ -154,13 +123,13 @@ function CardAplicado({ tratamiento, onEditar, onEliminar }) {
 
   const dias   = calcularDiasRestantes(tratamiento.proximo_control);
   const cuenta = formatearContadorDias(dias);
-  const colDias = dias !== null && dias <= 0 ? '#E63946' : dias === 0 ? '#F5A623' : '#2C2C2C';
+  const colDias = dias !== null && dias <= 0 ? colores.rojo : dias === 0 ? colores.ambar : colores.texto;
 
   const colorProxControl = () => {
-    if (!tratamiento.proximo_control) return '#6B6B6B';
-    if (dias !== null && dias < 0) return '#E63946';
-    if (dias !== null && dias <= 7) return '#F5A623';
-    return '#6B6B6B';
+    if (!tratamiento.proximo_control) return colores.textoSecundario;
+    if (dias !== null && dias < 0) return colores.rojo;
+    if (dias !== null && dias <= 7) return colores.ambar;
+    return colores.textoSecundario;
   };
 
   const pressInElim  = () => Animated.timing(scale, { toValue: 0.90, duration: 100, useNativeDriver: true }).start();
@@ -195,7 +164,7 @@ function CardAplicado({ tratamiento, onEditar, onEliminar }) {
             onPress={() => onEditar(tratamiento)}
             accessibilityLabel="Editar tratamiento"
           >
-            <Ionicons name="create-outline" size={18} color="#FFF" />
+            <Ionicons name="create-outline" size={18} color={colores.blanco} />
           </Pressable>
         </Animated.View>
         <Animated.View style={{ transform: [{ scale }] }}>
@@ -206,7 +175,7 @@ function CardAplicado({ tratamiento, onEditar, onEliminar }) {
             onPress={() => onEliminar(tratamiento.id)}
             accessibilityLabel="Eliminar tratamiento"
           >
-            <Ionicons name="trash-outline" size={18} color="#FFF" />
+            <Ionicons name="trash-outline" size={18} color={colores.blanco} />
           </Pressable>
         </Animated.View>
       </View>
@@ -235,7 +204,7 @@ function CardSugerido({ sugerido, index, onRegistrar }) {
       </View>
       {sugerido.applied ? (
         <View style={s.badgeAplicada}>
-          <Ionicons name="checkmark" size={12} color="#2DBD72" />
+          <Ionicons name="checkmark" size={12} color={colores.verde} />
           <Text style={s.badgeAplicadaTxt}>Aplicada</Text>
         </View>
       ) : (
@@ -286,9 +255,7 @@ export default function TratamientosScreen() {
   const [focusNombre,           setFocusNombre]           = useState(false);
   const [focusVet,              setFocusVet]              = useState(false);
   const [focusDesc,             setFocusDesc]             = useState(false);
-  const [toastVisible,          setToastVisible]          = useState(false);
-  const [toastMensaje,          setToastMensaje]          = useState('');
-  const [toastColor,            setToastColor]            = useState('#2DBD72');
+  const { toast, mostrarToast } = useToast();
 
   // Animaciones del modal
   const modalScale   = useRef(new Animated.Value(0.92)).current;
@@ -296,7 +263,6 @@ export default function TratamientosScreen() {
   const heroScale    = useRef(new Animated.Value(0.88)).current;
   const heroOpacity  = useRef(new Animated.Value(0)).current;
   const btnScale     = useRef(new Animated.Value(1)).current;
-  const toastTimer   = useRef(null);
 
   // ── Datos hardcodeados para preview visual ───────────────────────────────
   const DEMO_MASCOTA = {
@@ -389,14 +355,6 @@ export default function TratamientosScreen() {
     ]).start();
   }
 
-  // ── Toast ────────────────────────────────────────────────────────────────
-  function mostrarToast(mensaje, color = '#2DBD72') {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToastMensaje(mensaje);
-    setToastColor(color);
-    setToastVisible(true);
-    toastTimer.current = setTimeout(() => setToastVisible(false), 2500);
-  }
 
   // ── Modal ────────────────────────────────────────────────────────────────
   // nombrePrefill: al tocar "Registrar" en un tratamiento sugerido, se abre
@@ -466,7 +424,7 @@ export default function TratamientosScreen() {
         const editado = await editarTratamientoApi(tratamientoEnEdicion.id, datos);
         setTratamientosAplicados((prev) => prev.map((t) => (t.id === tratamientoEnEdicion.id ? editado : t)));
         cerrarModal();
-        mostrarToast('Tratamiento actualizado correctamente', '#2DBD72');
+        mostrarToast('Tratamiento actualizado correctamente', colores.verde);
       } else {
         const nuevo = await crearTratamiento(idMascota, datos);
         setTratamientosAplicados((prev) => [nuevo, ...prev]);
@@ -478,10 +436,10 @@ export default function TratamientosScreen() {
           )));
         }
         cerrarModal();
-        mostrarToast('Tratamiento registrado correctamente', '#2DBD72');
+        mostrarToast('Tratamiento registrado correctamente', colores.verde);
       }
     } catch {
-      mostrarToast('No se pudo guardar el tratamiento', '#E63946');
+      mostrarToast('No se pudo guardar el tratamiento', colores.rojo);
     } finally {
       setGuardando(false);
     }
@@ -521,9 +479,9 @@ export default function TratamientosScreen() {
           ? { ...sg, applied: false, tratamiento_aplicado_id: null }
           : sg
       )));
-      mostrarToast('Tratamiento eliminado', '#E63946');
+      mostrarToast('Tratamiento eliminado', colores.rojo);
     } catch {
-      mostrarToast('No se pudo eliminar el tratamiento', '#E63946');
+      mostrarToast('No se pudo eliminar el tratamiento', colores.rojo);
     }
   }
 
@@ -544,7 +502,7 @@ export default function TratamientosScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       {/* Toast */}
-      <Toast visible={toastVisible} mensaje={toastMensaje} color={toastColor} />
+      <Toast {...toast} />
 
       <View style={s.screenBg}>
 
@@ -552,7 +510,7 @@ export default function TratamientosScreen() {
         <View style={s.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={s.headerBtn}
             accessibilityLabel="Volver" hitSlop={{ top:12, bottom:12, left:12, right:12 }}>
-            <Ionicons name="arrow-back" size={26} color="#2C2C2C" />
+            <Ionicons name="arrow-back" size={26} color={colores.texto} />
           </TouchableOpacity>
           <View style={{ flex: 1 }} />
         </View>
@@ -563,7 +521,7 @@ export default function TratamientosScreen() {
           showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh}
-              colors={['#2DBD72']} tintColor="#2DBD72" />
+              colors={[colores.verde]} tintColor={colores.verde} />
           }>
 
           {/* ── HERO ── (compartido con Vacunas, Consultas y Curiosidades) */}
@@ -575,7 +533,7 @@ export default function TratamientosScreen() {
             {/* Banner demo */}
             {esDemo && (
               <View style={s.demoBanner}>
-                <Ionicons name="alert-circle-outline" size={14} color="#F5A623" />
+                <Ionicons name="alert-circle-outline" size={14} color={colores.ambar} />
                 <Text style={s.demoBannerTxt}>Vista previa — conectá el backend para ver datos reales</Text>
               </View>
             )}
@@ -586,7 +544,7 @@ export default function TratamientosScreen() {
               <Animated.View style={{ transform: [{ scale: btnScale }] }}>
                 <Pressable style={s.btnAnadir}
                   onPressIn={pressInBtn} onPressOut={pressOutBtn} onPress={() => abrirModal()}>
-                  <Ionicons name="add" size={16} color="#FFF" />
+                  <Ionicons name="add" size={16} color={colores.blanco} />
                   <Text style={s.btnAnadirTxt}>Añadir</Text>
                 </Pressable>
               </Animated.View>
@@ -606,7 +564,7 @@ export default function TratamientosScreen() {
 
             {/* ── Sección sugeridos ── */}
             <View style={s.secSugeridosRow}>
-              <Ionicons name="clipboard-outline" size={16} color="#2C2C2C" />
+              <Ionicons name="clipboard-outline" size={16} color={colores.texto} />
               <Text style={s.secSugeridosTitulo}>Tratamientos sugeridos</Text>
             </View>
 
@@ -638,7 +596,7 @@ export default function TratamientosScreen() {
                   <TextInput
                     style={[s.input, focusNombre && s.inputFocus, formErrors.nombre && s.inputError]}
                     placeholder="Nombre del tratamiento"
-                    placeholderTextColor="#AAAAAA"
+                    placeholderTextColor={colores.textoTenue}
                     value={formNombre}
                     onChangeText={(v) => { setFormNombre(v); if (formErrors.nombre) setFormErrors((p) => ({ ...p, nombre: null })); }}
                     onFocus={() => setFocusNombre(true)}
@@ -652,11 +610,11 @@ export default function TratamientosScreen() {
                     style={[s.inputFecha, formErrors.fechaInicio && s.inputError]}
                     onPress={() => setShowPickerInicio(true)}
                   >
-                    <Text style={[s.inputFechaTxt, !formFechaInicio && { color: '#AAAAAA' }]}>
+                    <Text style={[s.inputFechaTxt, !formFechaInicio && { color: colores.textoTenue }]}>
                       {formFechaInicio ? toISO(formFechaInicio).split('-').reverse().join('/').replace(/^(\d+)\/(\d+)\/(\d+)$/, (_, d, m, y) => `${parseInt(d)}/${parseInt(m)}/${y}`) : 'dd/mm/aaaa'}
                     </Text>
                     <Text style={s.inputFechaLabel}>Inicio</Text>
-                    <Ionicons name="calendar-outline" size={18} color="#6B6B6B" />
+                    <Ionicons name="calendar-outline" size={18} color={colores.textoSecundario} />
                   </TouchableOpacity>
                   {formErrors.fechaInicio && <Text style={s.errorTxt}>{formErrors.fechaInicio}</Text>}
 
@@ -665,17 +623,17 @@ export default function TratamientosScreen() {
                     style={s.inputFecha}
                     onPress={() => setShowPickerControl(true)}
                   >
-                    <Text style={[s.inputFechaTxt, !formProximoControl && { color: '#AAAAAA' }]}>
+                    <Text style={[s.inputFechaTxt, !formProximoControl && { color: colores.textoTenue }]}>
                       {formProximoControl ? toISO(formProximoControl).split('-').reverse().join('/').replace(/^(\d+)\/(\d+)\/(\d+)$/, (_, d, m, y) => `${parseInt(d)}/${parseInt(m)}/${y}`) : 'Próximo control (opcional)'}
                     </Text>
-                    <Ionicons name="calendar-outline" size={18} color="#6B6B6B" />
+                    <Ionicons name="calendar-outline" size={18} color={colores.textoSecundario} />
                   </TouchableOpacity>
 
                   {/* Veterinaria */}
                   <TextInput
                     style={[s.input, focusVet && s.inputFocus]}
                     placeholder="Veterinaria (opcional)"
-                    placeholderTextColor="#AAAAAA"
+                    placeholderTextColor={colores.textoTenue}
                     value={formVeterinaria}
                     onChangeText={setFormVeterinaria}
                     onFocus={() => setFocusVet(true)}
@@ -687,7 +645,7 @@ export default function TratamientosScreen() {
                   <TextInput
                     style={[s.input, s.inputMulti, focusDesc && s.inputFocus]}
                     placeholder="Descripción (opcional)"
-                    placeholderTextColor="#AAAAAA"
+                    placeholderTextColor={colores.textoTenue}
                     value={formDescripcion}
                     onChangeText={setFormDescripcion}
                     onFocus={() => setFocusDesc(true)}
@@ -700,7 +658,7 @@ export default function TratamientosScreen() {
                   {/* Botón Guardar */}
                   <TouchableOpacity style={s.btnGuardar} onPress={guardarTratamiento} disabled={guardando}>
                     {guardando
-                      ? <ActivityIndicator size="small" color="#FFF" />
+                      ? <ActivityIndicator size="small" color={colores.blanco} />
                       : <Text style={s.btnGuardarTxt}>{tratamientoEnEdicion ? 'Guardar cambios' : 'Guardar'}</Text>
                     }
                   </TouchableOpacity>
@@ -736,8 +694,8 @@ export default function TratamientosScreen() {
 // ─── ESTILOS ─────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safeArea:      { flex: 1, backgroundColor: '#C8F0D8' },
-  screenBg:      { flex: 1, width: '100%', backgroundColor: '#C8F0D8' },
+  safeArea:      { flex: 1, backgroundColor: colores.menta },
+  screenBg:      { flex: 1, width: '100%', backgroundColor: colores.menta },
   scroll:        { flex: 1, backgroundColor: 'transparent' },
   scrollContent: { flexGrow: 1 },
 
@@ -749,7 +707,7 @@ const s = StyleSheet.create({
 
   // Card blanco
   whiteCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: colores.blanco,
     borderTopLeftRadius: 28, borderTopRightRadius: 28,
     paddingHorizontal: 20, paddingTop: 22, paddingBottom: 40,
     minHeight: 400,
@@ -757,135 +715,127 @@ const s = StyleSheet.create({
 
   // Demo banner
   demoBanner:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFF8E1', borderRadius: 10, padding: 10, marginBottom: 16 },
-  demoBannerTxt: { fontSize: 12, color: '#F5A623', textAlign: 'center' },
+  demoBannerTxt: { fontSize: 12, color: colores.ambar, textAlign: 'center' },
 
   // Sección row
   secRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  secTitulo: { fontSize: 18, fontWeight: '700', color: '#2C2C2C' },
+  secTitulo: { fontSize: 18, fontWeight: '700', color: colores.texto },
 
   // Botón Añadir
   btnAnadir: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#2DBD72', borderRadius: 20,
+    backgroundColor: colores.verde, borderRadius: 20,
     paddingVertical: 8, paddingHorizontal: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 3,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 3,
   },
-  btnAnadirTxt: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+  btnAnadirTxt: { fontSize: 14, fontWeight: '700', color: colores.blanco },
 
   // Empty
-  emptyTxt: { fontSize: 14, color: '#6B6B6B', textAlign: 'center', marginTop: 4, marginBottom: 18 },
+  emptyTxt: { fontSize: 14, color: colores.textoSecundario, textAlign: 'center', marginTop: 4, marginBottom: 18 },
 
   // Card aplicado (ámbar)
   cardAplicado: {
     backgroundColor: '#FFFBE6',
     borderRadius: 14,
     borderWidth: 1, borderColor: '#F5E6A3',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
     paddingHorizontal: 14, paddingVertical: 12,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     marginBottom: 10,
   },
   cardLeft:     { flex: 1, paddingRight: 10, gap: 3 },
   cardRight:    { flexDirection: 'column', gap: 8, alignItems: 'center', justifyContent: 'center' },
-  cardNombre:   { fontSize: 14, fontWeight: '700', color: '#2C2C2C', marginBottom: 4 },
-  cardDesc:     { fontSize: 12, color: '#2C2C2C', fontStyle: 'italic', marginBottom: 4 },
-  cardField:    { fontSize: 12, color: '#6B6B6B' },
+  cardNombre:   { fontSize: 14, fontWeight: '700', color: colores.texto, marginBottom: 4 },
+  cardDesc:     { fontSize: 12, color: colores.texto, fontStyle: 'italic', marginBottom: 4 },
+  cardField:    { fontSize: 12, color: colores.textoSecundario },
   cardContador: { fontSize: 13, fontWeight: '700', marginTop: 4 },
 
   // Botones editar / eliminar
   btnEditar: {
-    backgroundColor: '#5BC8D0', width: 36, height: 36, borderRadius: 10,
+    backgroundColor: colores.turquesa, width: 36, height: 36, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
   },
   btnEliminar: {
-    backgroundColor: '#E63946', width: 36, height: 36, borderRadius: 10,
+    backgroundColor: colores.rojo, width: 36, height: 36, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
   },
 
   // Sección sugeridos
   secSugeridosRow:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 24, marginBottom: 12 },
-  secSugeridosTitulo: { fontSize: 16, fontWeight: '700', color: '#2C2C2C' },
+  secSugeridosTitulo: { fontSize: 16, fontWeight: '700', color: colores.texto },
 
   // Card sugerido (blanco)
   cardSugerido: {
-    backgroundColor: '#FFF',
-    borderRadius: 12, borderWidth: 1, borderColor: '#EFEFEF',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2,
+    backgroundColor: colores.blanco,
+    borderRadius: 12, borderWidth: 1, borderColor: colores.gris200,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2,
     paddingHorizontal: 14, paddingVertical: 12,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     marginBottom: 10,
   },
   cardSugeridoInfo:   { flex: 1, minWidth: 0, paddingRight: 8 },
-  sugeridoNombre:     { fontSize: 14, fontWeight: '700', color: '#2C2C2C' },
-  sugeridoFrecInline: { fontSize: 12, color: '#6B6B6B', marginTop: 2 },
+  sugeridoNombre:     { fontSize: 14, fontWeight: '700', color: colores.texto },
+  sugeridoFrecInline: { fontSize: 12, color: colores.textoSecundario, marginTop: 2 },
   btnRegistrar: {
-    backgroundColor: '#2DBD72', borderRadius: 14, paddingVertical: 7, paddingHorizontal: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
+    backgroundColor: colores.verde, borderRadius: 14, paddingVertical: 7, paddingHorizontal: 14,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
   },
-  btnRegistrarTxt: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
+  btnRegistrarTxt: { fontSize: 13, fontWeight: '700', color: colores.blanco },
 
   badgeAplicada: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
     backgroundColor: '#E8F8F0', borderRadius: 14, paddingVertical: 5, paddingHorizontal: 10,
   },
-  badgeAplicadaTxt: { fontSize: 12, fontWeight: '700', color: '#2DBD72' },
+  badgeAplicadaTxt: { fontSize: 12, fontWeight: '700', color: colores.verde },
 
   // Skeleton
-  skeletonCard:  { backgroundColor: '#E8E8E8', borderRadius: 12, padding: 16, marginBottom: 10, gap: 8 },
-  skeletonLine1: { height: 14, backgroundColor: '#D8D8D8', borderRadius: 6, width: '60%' },
-  skeletonLine2: { height: 11, backgroundColor: '#D8D8D8', borderRadius: 6, width: '80%' },
-  skeletonLine3: { height: 11, backgroundColor: '#D8D8D8', borderRadius: 6, width: '50%' },
+  skeletonCard:  { backgroundColor: colores.gris300, borderRadius: 12, padding: 16, marginBottom: 10, gap: 8 },
+  skeletonLine1: { height: 14, backgroundColor: colores.gris600, borderRadius: 6, width: '60%' },
+  skeletonLine2: { height: 11, backgroundColor: colores.gris600, borderRadius: 6, width: '80%' },
+  skeletonLine3: { height: 11, backgroundColor: colores.gris600, borderRadius: 6, width: '50%' },
 
   // Toast
-  toast: {
-    position: 'absolute', top: 56, alignSelf: 'center',
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8,
-    elevation: 8, zIndex: 100,
-  },
-  toastTxt: { fontSize: 14, fontWeight: '700', color: '#FFF' },
 
   // Overlay modal
   overlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.50)', justifyContent: 'center', alignItems: 'center' },
   modalCard: {
-    backgroundColor: '#FFF', borderRadius: 20,
+    backgroundColor: colores.blanco, borderRadius: 20,
     width: Math.min(SCREEN_WIDTH * 0.88, 360),
     paddingHorizontal: 22, paddingTop: 24, paddingBottom: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 10,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 10,
     maxHeight: '90%',
   },
-  modalTitulo: { fontSize: 18, fontWeight: '700', color: '#2DBD72', textAlign: 'center', marginBottom: 20 },
+  modalTitulo: { fontSize: 18, fontWeight: '700', color: colores.verde, textAlign: 'center', marginBottom: 20 },
 
   // Inputs del modal
   input: {
-    borderWidth: 1.5, borderColor: '#DDDDDD', borderRadius: 10,
+    borderWidth: 1.5, borderColor: colores.gris500, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 14, color: '#2C2C2C', backgroundColor: '#FFF',
+    fontSize: 14, color: colores.texto, backgroundColor: colores.blanco,
     marginBottom: 12,
   },
-  inputFocus:   { borderColor: '#2DBD72' },
-  inputError:   { borderColor: '#E63946' },
+  inputFocus:   { borderColor: colores.verde },
+  inputError:   { borderColor: colores.rojo },
   inputMulti:   { height: 72, textAlignVertical: 'top', marginBottom: 20 },
   inputFecha: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    borderWidth: 1.5, borderColor: '#DDDDDD', borderRadius: 10,
+    borderWidth: 1.5, borderColor: colores.gris500, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
-    marginBottom: 12, backgroundColor: '#FFF',
+    marginBottom: 12, backgroundColor: colores.blanco,
   },
-  inputFechaTxt:   { flex: 1, fontSize: 14, color: '#2C2C2C' },
-  inputFechaLabel: { fontSize: 11, color: '#AAAAAA', marginRight: 6 },
-  errorTxt:  { fontSize: 11, color: '#E63946', marginTop: -8, marginBottom: 8, marginLeft: 4 },
+  inputFechaTxt:   { flex: 1, fontSize: 14, color: colores.texto },
+  inputFechaLabel: { fontSize: 11, color: colores.textoTenue, marginRight: 6 },
+  errorTxt:  { fontSize: 11, color: colores.rojo, marginTop: -8, marginBottom: 8, marginLeft: 4 },
 
   // Botones del modal
   btnGuardar: {
     width: '100%', height: 48, borderRadius: 30,
-    backgroundColor: '#2DBD72', alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
+    backgroundColor: colores.verde, alignItems: 'center', justifyContent: 'center',
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
   },
-  btnGuardarTxt: { fontSize: 15, fontWeight: '700', color: '#FFF' },
-  btnCancelar:   { width: '100%', height: 44, borderRadius: 30, backgroundColor: '#E8E8E8', alignItems: 'center', justifyContent: 'center', marginTop: 10 },
-  btnCancelarTxt: { fontSize: 15, fontWeight: '700', color: '#2C2C2C' },
+  btnGuardarTxt: { fontSize: 15, fontWeight: '700', color: colores.blanco },
+  btnCancelar:   { width: '100%', height: 44, borderRadius: 30, backgroundColor: colores.gris300, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
+  btnCancelarTxt: { fontSize: 15, fontWeight: '700', color: colores.texto },
 });

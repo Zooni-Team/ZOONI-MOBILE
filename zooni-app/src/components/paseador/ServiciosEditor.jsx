@@ -21,6 +21,7 @@ import {
   SERVICIOS_MAX, SERVICIO_MAX_MINUTOS, SERVICIO_MIN_MINUTOS, formatoPlata,
 } from '../../services/paseadorApi';
 import { sanitizarDigitos } from '../../utils/sanitizar';
+import { colores } from '../../theme';
 
 let siguienteId = 1;
 const filaVacia = () => ({ id: siguienteId++, minutos: '', precio: '' });
@@ -103,7 +104,7 @@ export default function ServiciosEditor({ filas, onCambio, error }) {
 const s = StyleSheet.create({
   fila: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   caja: {
-    flex: 1, borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 14, padding: 12, backgroundColor: C.fondo,
+    flex: 1, borderWidth: 1, borderColor: colores.gris500, borderRadius: 14, padding: 12, backgroundColor: C.fondo,
   },
   cajaError: { borderColor: C.rojo },
   cajaLabel: { fontSize: 12, fontWeight: '700', color: C.teal },

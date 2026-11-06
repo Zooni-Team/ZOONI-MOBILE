@@ -10,7 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import SelectorMascota from '../components/SelectorMascota';
-import SkeletonLoader from '../components/SkeletonLoader';
+import { SkeletonBloque } from '../components/ui/Skeleton';
 import MatchSwipeStack from '../components/match/MatchSwipeStack';
 import MatchActionButtons from '../components/match/MatchActionButtons';
 import MatchCelebrationOverlay from '../components/match/MatchCelebrationOverlay';
@@ -37,6 +37,7 @@ import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
 import { getMatchCardLayout } from '../utils/matchLayout';
 import { consumeMatchReloadFromFilters } from '../utils/matchNavigation';
+import { colores } from '../theme';
 
 export default function MatchScreen() {
   const navigation = useNavigation();
@@ -269,7 +270,7 @@ export default function MatchScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.checking}>
-          <ActivityIndicator size="large" color="#2DBD72" />
+          <ActivityIndicator size="large" color={colores.verde} />
         </View>
       </SafeAreaView>
     );
@@ -350,7 +351,7 @@ export default function MatchScreen() {
               ? <Image source={{ uri: perfilMatch.fotoPerfilUrl }} style={styles.miPerfilFoto} />
               : (
                 <View style={[styles.miPerfilFoto, styles.miPerfilFotoVacia]}>
-                  <Ionicons name="person" size={16} color="#6B6B6B" />
+                  <Ionicons name="person" size={16} color={colores.textoSecundario} />
                 </View>
               )}
             <Text style={styles.miPerfilTxt}>Mi perfil</Text>
@@ -362,7 +363,7 @@ export default function MatchScreen() {
             onPress={() => navigation.navigate('MatchFilters')}
             accessibilityLabel="Abrir filtros"
           >
-            <Ionicons name="funnel-outline" size={16} color="#2C2C2C" />
+            <Ionicons name="funnel-outline" size={16} color={colores.texto} />
             <Text style={styles.filtersText}>Filtros</Text>
           </TouchableOpacity>
         </View>
@@ -413,7 +414,7 @@ export default function MatchScreen() {
                   imageStyle={{ borderRadius: 60, opacity: 0.5 }}
                 />
                 <View style={styles.camaraBadge}>
-                  <Ionicons name="camera" size={22} color="#FFFFFF" />
+                  <Ionicons name="camera" size={22} color={colores.blanco} />
                 </View>
               </View>
               <Text style={styles.emptyTitle}>
@@ -427,12 +428,12 @@ export default function MatchScreen() {
                 accessibilityLabel={`Subir foto real de ${mascotaActivaMatch.nombre}`}
               >
                 {subiendoFoto
-                  ? <ActivityIndicator size="small" color="#FFFFFF" />
+                  ? <ActivityIndicator size="small" color={colores.blanco} />
                   : <Text style={styles.emptyBtnText}>Subir foto de {mascotaActivaMatch.nombre}</Text>}
               </TouchableOpacity>
             </View>
           ) : loading ? (
-            <SkeletonLoader
+            <SkeletonBloque
               width={cardWidth}
               height={cardHeight}
               borderRadius={24}
@@ -440,7 +441,7 @@ export default function MatchScreen() {
             />
           ) : isEmpty ? (
             <View style={styles.empty}>
-              <Ionicons name="paw" size={64} color="#27AE60" />
+              <Ionicons name="paw" size={64} color={colores.verdeExito} />
               <Text style={styles.emptyTitle}>
                 No hay más perfiles por ahora. Volvé más tarde 🐾
               </Text>
@@ -540,7 +541,7 @@ export default function MatchScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#D4F5E2' },
+  safe: { flex: 1, backgroundColor: colores.mentaClara },
   checking: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   screenBackground: { flex: 1, width: '100%' },
   screenBackgroundImage: { width: '100%', height: '100%' },
@@ -551,9 +552,9 @@ const styles = StyleSheet.create({
   headerCenter: { flex: 1 },
   filtersBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#F5C842', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8,
+    backgroundColor: colores.amarillo, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8,
   },
-  filtersText: { fontSize: 14, fontWeight: '700', color: '#2C2C2C' },
+  filtersText: { fontSize: 14, fontWeight: '700', color: colores.texto },
   headerDivider: { height: 1, backgroundColor: 'rgba(0,0,0,0.06)', marginHorizontal: 20 },
 
   // Acceso al propio perfil, pegado al menú (arriba a la izquierda)
@@ -563,11 +564,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.75)',
   },
   miPerfilFoto: {
-    width: 28, height: 28, borderRadius: 14, backgroundColor: '#EFEFEF',
-    borderWidth: 1.5, borderColor: '#2DBD72',
+    width: 28, height: 28, borderRadius: 14, backgroundColor: colores.gris200,
+    borderWidth: 1.5, borderColor: colores.verde,
   },
   miPerfilFotoVacia: { alignItems: 'center', justifyContent: 'center' },
-  miPerfilTxt: { fontSize: 12, fontWeight: '700', color: '#2C2C2C' },
+  miPerfilTxt: { fontSize: 12, fontWeight: '700', color: colores.texto },
 
   body: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
@@ -577,27 +578,27 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingHorizontal: 32, gap: 16 },
   petBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#E8F7EE', borderRadius: 14,
+    backgroundColor: colores.mentaBorde, borderRadius: 14,
     marginHorizontal: 20, marginTop: 10, paddingHorizontal: 14, paddingVertical: 10,
   },
-  petBannerTxt: { flex: 1, fontSize: 13, color: '#177046', fontWeight: '600' },
+  petBannerTxt: { flex: 1, fontSize: 13, color: colores.verdeOscuro, fontWeight: '600' },
   petBannerBtn: {
-    fontSize: 13, fontWeight: '700', color: '#177046',
+    fontSize: 13, fontWeight: '700', color: colores.verdeOscuro,
     textDecorationLine: 'underline', padding: 4,
   },
   setupAvatarWrap: { alignItems: 'center', justifyContent: 'center' },
   setupAvatar: {
     width: 120, height: 120, borderRadius: 60, overflow: 'hidden',
-    borderWidth: 3, borderColor: '#2DBD72', backgroundColor: '#E4F9EA',
+    borderWidth: 3, borderColor: colores.verde, backgroundColor: '#E4F9EA',
   },
   camaraBadge: {
     position: 'absolute', width: 48, height: 48, borderRadius: 24,
-    backgroundColor: '#2DBD72', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 3, borderColor: '#FFFFFF',
+    backgroundColor: colores.verde, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 3, borderColor: colores.blanco,
   },
-  emptyTitle: { fontSize: 16, color: '#6B6B6B', textAlign: 'center', lineHeight: 24 },
+  emptyTitle: { fontSize: 16, color: colores.textoSecundario, textAlign: 'center', lineHeight: 24 },
   emptyBtn: {
-    backgroundColor: '#2DBD72', borderRadius: 30, paddingHorizontal: 24, paddingVertical: 14, marginTop: 8,
+    backgroundColor: colores.verde, borderRadius: 30, paddingHorizontal: 24, paddingVertical: 14, marginTop: 8,
   },
-  emptyBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
+  emptyBtnText: { color: colores.blanco, fontWeight: '700', fontSize: 15 },
 });

@@ -4,6 +4,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, PanResponder } from 'react-native';
+import { colores } from '../../theme';
 
 export default function SimpleSlider({
   label,
@@ -61,12 +62,12 @@ export default function SimpleSlider({
 const styles = StyleSheet.create({
   wrap: { marginBottom: 16 },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  label: { fontSize: 14, color: '#2C2C2C', fontWeight: '600' },
-  value: { fontSize: 14, color: '#2DBD72', fontWeight: '700' },
+  label: { fontSize: 14, color: colores.texto, fontWeight: '600' },
+  value: { fontSize: 14, color: colores.verde, fontWeight: '700' },
   trackHit: { height: 40, justifyContent: 'center', width: '100%' },
   track: {
     height: 6,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: colores.gris400,
     borderRadius: 3,
     width: '100%',
   },
@@ -74,7 +75,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     height: 6,
-    backgroundColor: '#2DBD72',
+    backgroundColor: colores.verde,
     borderRadius: 3,
   },
   thumb: {
@@ -82,9 +83,9 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colores.blanco,
     borderWidth: 2,
-    borderColor: '#2DBD72',
+    borderColor: colores.verde,
     top: -9,
   },
 });

@@ -33,6 +33,7 @@ import { rutaSegunRoles } from '../utils/rutaSegunRoles';
 import { getUltimoMail, getUltimoMailWeb } from '../config/session';
 import { MASCOTAS_BIENVENIDA } from '../constants/registroImages';
 import BotonesSociales from '../components/BotonesSociales';
+import { colores } from '../theme';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -109,7 +110,7 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={colores.blanco} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
           contentContainerStyle={s.scroll}
@@ -123,7 +124,7 @@ export default function LoginScreen() {
 
           {bannerVisible && (
             <Animated.View style={[s.banner, { opacity: bannerOpacity, transform: [{ translateY: bannerY }] }]}>
-              <Ionicons name="checkmark-circle" size={20} color="#2DBD72" />
+              <Ionicons name="checkmark-circle" size={20} color={colores.verde} />
               <Text style={s.bannerTxt}>¡Cuenta creada exitosamente!</Text>
             </Animated.View>
           )}
@@ -133,7 +134,7 @@ export default function LoginScreen() {
           <TextInput
             style={[s.input, focusEmail && s.inputFocus, errEmail && s.inputError]}
             placeholder="Correo electrónico"
-            placeholderTextColor="#AAAAAA"
+            placeholderTextColor={colores.textoTenue}
             value={email}
             onChangeText={(v) => { setEmail(v); setErrEmail(false); setErrorLogin(null); }}
             keyboardType="email-address"
@@ -152,7 +153,7 @@ export default function LoginScreen() {
             <TextInput
               style={s.inputPass}
               placeholder="Contraseña"
-              placeholderTextColor="#AAAAAA"
+              placeholderTextColor={colores.textoTenue}
               value={password}
               onChangeText={(v) => { setPassword(v); setErrPass(false); setErrorLogin(null); }}
               secureTextEntry={!verPassword}
@@ -167,14 +168,14 @@ export default function LoginScreen() {
             <TouchableOpacity onPress={() => setVerPassword((v) => !v)}
               accessibilityLabel={verPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name={verPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#6B6B6B" />
+              <Ionicons name={verPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colores.textoSecundario} />
             </TouchableOpacity>
           </View>
           {errPass && <Text style={s.errorTxt}>Ingresá tu contraseña</Text>}
 
           <TouchableOpacity style={s.btnIngresar} onPress={handleIngresar} disabled={cargando} activeOpacity={0.85}>
             {cargando
-              ? <ActivityIndicator size="small" color="#FFFFFF" />
+              ? <ActivityIndicator size="small" color={colores.blanco} />
               : <Text style={s.btnIngresarTxt}>Ingresar</Text>}
           </TouchableOpacity>
           {errorLogin && <Text style={s.errorLoginTxt}>{errorLogin}</Text>}
@@ -200,64 +201,64 @@ export default function LoginScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  safe: { flex: 1, backgroundColor: colores.blanco },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 24 },
 
   titulo: {
-    fontSize: 36, fontWeight: '800', color: '#5C3D1E',
+    fontSize: 36, fontWeight: '800', color: colores.marron,
     textAlign: 'center', marginBottom: 8,
   },
 
   illustration: { width: '100%', height: 160, alignSelf: 'center', marginBottom: 20 },
 
   banner: {
-    backgroundColor: '#F0FFF8', borderWidth: 1.5, borderColor: '#2DBD72', borderRadius: 12,
+    backgroundColor: '#F0FFF8', borderWidth: 1.5, borderColor: colores.verde, borderRadius: 12,
     paddingVertical: 12, paddingHorizontal: 16,
     flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20,
   },
-  bannerTxt: { fontSize: 14, fontWeight: '700', color: '#2DBD72' },
+  bannerTxt: { fontSize: 14, fontWeight: '700', color: colores.verde },
 
-  subtitulo: { fontSize: 18, fontWeight: '700', color: '#2C2C2C', textAlign: 'center', marginBottom: 16 },
+  subtitulo: { fontSize: 18, fontWeight: '700', color: colores.texto, textAlign: 'center', marginBottom: 16 },
 
   input: {
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
     paddingHorizontal: 16, paddingVertical: 14,
-    fontSize: 15, color: '#2C2C2C', backgroundColor: '#FFFFFF', marginBottom: 10,
+    fontSize: 15, color: colores.texto, backgroundColor: colores.blanco, marginBottom: 10,
   },
   inputRow: {
     flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 10,
-    paddingHorizontal: 16, backgroundColor: '#FFFFFF', marginBottom: 16,
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
+    paddingHorizontal: 16, backgroundColor: colores.blanco, marginBottom: 16,
   },
-  inputPass: { flex: 1, paddingVertical: 14, fontSize: 15, color: '#2C2C2C' },
-  inputFocus: { borderColor: '#2DBD72' },
-  inputError: { borderColor: '#E63946' },
-  errorTxt: { fontSize: 11, color: '#E63946', marginTop: -6, marginBottom: 8, marginLeft: 4 },
+  inputPass: { flex: 1, paddingVertical: 14, fontSize: 15, color: colores.texto },
+  inputFocus: { borderColor: colores.verde },
+  inputError: { borderColor: colores.rojo },
+  errorTxt: { fontSize: 11, color: colores.rojo, marginTop: -6, marginBottom: 8, marginLeft: 4 },
 
   btnIngresar: {
-    backgroundColor: '#2DBD72', borderRadius: 30, height: 52,
+    backgroundColor: colores.verde, borderRadius: 30, height: 52,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
   },
-  btnIngresarTxt: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
-  errorLoginTxt: { fontSize: 13, color: '#E63946', textAlign: 'center', marginTop: 10 },
+  btnIngresarTxt: { fontSize: 16, fontWeight: '700', color: colores.blanco },
+  errorLoginTxt: { fontSize: 13, color: colores.rojo, textAlign: 'center', marginTop: 10 },
 
-  oRegistrate: { fontSize: 14, color: '#6B6B6B', textAlign: 'center', marginVertical: 14 },
+  oRegistrate: { fontSize: 14, color: colores.textoSecundario, textAlign: 'center', marginVertical: 14 },
 
   btnCrear: {
-    backgroundColor: '#F5C842', borderRadius: 30, height: 52,
+    backgroundColor: colores.amarillo, borderRadius: 30, height: 52,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.10, shadowRadius: 6, elevation: 3,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.10, shadowRadius: 6, elevation: 3,
   },
-  btnCrearTxt: { fontSize: 16, fontWeight: '700', color: '#2C2C2C' },
+  btnCrearTxt: { fontSize: 16, fontWeight: '700', color: colores.texto },
 
-  separador: { height: 1, backgroundColor: '#EFEFEF', marginVertical: 20 },
+  separador: { height: 1, backgroundColor: colores.gris200, marginVertical: 20 },
 
-  proveedorPregunta: { fontSize: 13, color: '#6B6B6B', textAlign: 'center', marginBottom: 10 },
+  proveedorPregunta: { fontSize: 13, color: colores.textoSecundario, textAlign: 'center', marginBottom: 10 },
   btnProveedor: {
     backgroundColor: '#4A4A4A', borderRadius: 30, height: 48,
     alignItems: 'center', justifyContent: 'center', alignSelf: 'center', paddingHorizontal: 28,
   },
-  btnProveedorTxt: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+  btnProveedorTxt: { fontSize: 14, fontWeight: '700', color: colores.blanco },
 
 });

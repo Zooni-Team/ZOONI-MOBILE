@@ -12,6 +12,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { colores } from '../theme';
 
 export default function SliderAmarillo({
   value, min, max, step, onChange, etiquetaMenos, etiquetaMas,
@@ -63,7 +64,7 @@ export default function SliderAmarillo({
         accessibilityLabel={etiquetaMenos ?? 'Restar'}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <Ionicons name="remove" size={20} color="#2C2C2C" />
+        <Ionicons name="remove" size={20} color={colores.texto} />
       </TouchableOpacity>
 
       <View
@@ -87,7 +88,7 @@ export default function SliderAmarillo({
         accessibilityLabel={etiquetaMas ?? 'Sumar'}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
-        <Ionicons name="add" size={20} color="#2C2C2C" />
+        <Ionicons name="add" size={20} color={colores.texto} />
       </TouchableOpacity>
     </View>
   );
@@ -96,16 +97,16 @@ export default function SliderAmarillo({
 const sl = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, width: '100%' },
   flecha: {
-    width: 36, height: 36, borderRadius: 18, backgroundColor: '#F5C842',
+    width: 36, height: 36, borderRadius: 18, backgroundColor: colores.amarillo,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 2, elevation: 2,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 2, elevation: 2,
   },
   hit: { flex: 1, height: 40, justifyContent: 'center' },
-  track: { height: 6, backgroundColor: '#DDDDDD', borderRadius: 3, width: '100%' },
-  fill: { position: 'absolute', left: 0, height: 6, backgroundColor: '#F5C842', borderRadius: 3 },
+  track: { height: 6, backgroundColor: colores.gris500, borderRadius: 3, width: '100%' },
+  fill: { position: 'absolute', left: 0, height: 6, backgroundColor: colores.amarillo, borderRadius: 3 },
   thumb: {
     position: 'absolute', width: 22, height: 22, borderRadius: 11,
-    backgroundColor: '#F5C842', borderWidth: 2, borderColor: '#FFFFFF', top: -8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 3,
+    backgroundColor: colores.amarillo, borderWidth: 2, borderColor: colores.blanco, top: -8,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 3,
   },
 });

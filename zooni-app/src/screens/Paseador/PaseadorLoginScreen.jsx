@@ -20,6 +20,7 @@ import { getUltimoMail, getUltimoMailWeb } from '../../config/session';
 import { MASCOTAS_BIENVENIDA } from '../../constants/registroImages';
 import BotonesSociales from '../../components/BotonesSociales';
 import { volverOLogin } from '../../utils/volverOLogin';
+import { colores } from '../../theme';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -68,7 +69,7 @@ export default function PaseadorLoginScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={colores.blanco} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <TouchableOpacity onPress={() => volverOLogin(navigation)} style={s.volver} accessibilityLabel="Volver">
@@ -155,11 +156,11 @@ export default function PaseadorLoginScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  safe: { flex: 1, backgroundColor: colores.blanco },
   scroll: { flexGrow: 1, padding: 24, paddingBottom: 40 },
   volver: { width: 44, height: 44, justifyContent: 'center' },
 
-  marca: { fontSize: 36, fontWeight: '800', color: '#5C3D1E', textAlign: 'center' },
+  marca: { fontSize: 36, fontWeight: '800', color: colores.marron, textAlign: 'center' },
   subRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: -2 },
   submarca: { fontSize: 15, fontWeight: '800', color: C.teal, letterSpacing: 0.5 },
   ilustracion: { width: '100%', height: 130, marginVertical: 18 },
@@ -167,13 +168,13 @@ const s = StyleSheet.create({
   titulo: { fontSize: 18, fontWeight: '700', color: C.texto, marginBottom: 16, textAlign: 'center' },
 
   input: {
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
     paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, color: C.texto,
-    backgroundColor: '#FFFFFF', marginBottom: 10,
+    backgroundColor: colores.blanco, marginBottom: 10,
   },
   inputRow: {
-    flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#DDDDDD',
-    borderRadius: 10, paddingHorizontal: 16, backgroundColor: '#FFFFFF', marginBottom: 16,
+    flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colores.gris500,
+    borderRadius: 10, paddingHorizontal: 16, backgroundColor: colores.blanco, marginBottom: 16,
   },
   inputPass: { flex: 1, paddingVertical: 14, fontSize: 15, color: C.texto },
   error: { fontSize: 13, color: C.rojo, textAlign: 'center', marginTop: 10 },
@@ -185,6 +186,6 @@ const s = StyleSheet.create({
   activarTitulo: { fontSize: 15, fontWeight: '800', color: C.texto },
   activarTxt: { fontSize: 13, color: C.texto2, marginTop: 2, lineHeight: 18 },
 
-  separador: { height: 1, backgroundColor: '#EFEFEF', marginVertical: 22 },
+  separador: { height: 1, backgroundColor: colores.gris200, marginVertical: 22 },
   pregunta: { fontSize: 14, color: C.texto2, textAlign: 'center', marginBottom: 12 },
 });

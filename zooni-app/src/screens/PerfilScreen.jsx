@@ -41,6 +41,9 @@ import {
   crearPublicacion,
   eliminarPublicacion,
 } from '../services/perfilApi';
+import { colores } from '../theme';
+import Skeleton from '../components/ui/Skeleton';
+import { useToast } from '../hooks/useToast';
 
 function formatFecha(iso) {
   if (!iso) return '';
@@ -51,21 +54,14 @@ function formatFecha(iso) {
 // ─── SKELETON ─────────────────────────────────────────────────────────────────
 
 function Skel({ w, h, r = 8, style }) {
-  const shimmer = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const a = Animated.loop(Animated.sequence([
-      Animated.timing(shimmer, { toValue: 1, duration: 900, useNativeDriver: true }),
-      Animated.timing(shimmer, { toValue: 0, duration: 900, useNativeDriver: true }),
-    ]));
-    a.start(); return () => a.stop();
-  }, [shimmer]);
-  const opacity = shimmer.interpolate({ inputRange: [0,1], outputRange: [0.4,1] });
-  return <Animated.View style={[{ width:w, height:h, borderRadius:r, backgroundColor:'#E0E0E0', opacity }, style]} />;
+  return <Skeleton min={0.4} style={[{ width: w, height: h, borderRadius: r, backgroundColor: colores.gris400 }, style]} />;
 }
 
-// ─── TOAST (banner verde inline, justo antes de los tabs) ─────────────────────
+// ─── AVISO INLINE (banner verde dentro del perfil, justo antes de los tabs) ───
+// A diferencia del <Toast /> flotante, este ocupa lugar en el layout. El
+// estado y el temporizador salen del mismo hook useToast.
 
-function Toast({ visible, mensaje }) {
+function AvisoInline({ visible, mensaje }) {
   const ty  = useRef(new Animated.Value(-8)).current;
   const op  = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -77,7 +73,7 @@ function Toast({ visible, mensaje }) {
   if (!visible && op._value === 0) return null;
   return (
     <Animated.View style={[s.toast, { opacity: op, transform: [{ translateY: ty }] }]}>
-      <Ionicons name="checkmark-circle" size={18} color="#FFF" />
+      <Ionicons name="checkmark-circle" size={18} color={colores.blanco} />
       <Text style={s.toastTxt}>{mensaje}</Text>
     </Animated.View>
   );
@@ -109,10 +105,7 @@ export default function PerfilScreen() {
   const [imgErr,    setImgErr]    = useState(false);
   const [publicando,setPublicando]= useState(false);
 
-  // Toast
-  const [showToast,  setShowToast]  = useState(false);
-  const [toastMsg,   setToastMsg]   = useState('');
-  const toastRef = useRef(null);
+  const { toast, mostrarToast } = useToast();
 
   // Animaciones botones
   const scEditar   = useRef(new Animated.Value(1)).current;
@@ -140,12 +133,6 @@ export default function PerfilScreen() {
 
   useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
 
-  // ── Toast ────────────────────────────────────────────────────────────────
-  function mostrarToast(msg) {
-    if (toastRef.current) clearTimeout(toastRef.current);
-    setToastMsg(msg); setShowToast(true);
-    toastRef.current = setTimeout(() => setShowToast(false), 2500);
-  }
 
   // ── Botón press animations ────────────────────────────────────────────────
   const pi = (sc) => Animated.timing(sc, { toValue: 0.97, duration: 100, useNativeDriver: true }).start();
@@ -302,7 +289,7 @@ export default function PerfilScreen() {
                     <Image source={{ uri: p.fotoPerfil }} style={s.avatarImg} />
                   </TouchableOpacity>
                 : <TouchableOpacity onPress={cambiarFoto} accessibilityLabel="Cambiar foto">
-                    <View style={s.avatarFallback}><Ionicons name="person" size={48} color="#FFF" /></View>
+                    <View style={s.avatarFallback}><Ionicons name="person" size={48} color={colores.blanco} /></View>
                   </TouchableOpacity>
             }
           </View>
@@ -333,7 +320,7 @@ export default function PerfilScreen() {
             </Pressable>
           </Animated.View>
 
-          <Pressable style={[s.btnConfig, cfgPress && {backgroundColor:'#F5F5F5'}]}
+          <Pressable style={[s.btnConfig, cfgPress && {backgroundColor:colores.gris50}]}
             onPressIn={()=>setCfgPress(true)} onPressOut={()=>setCfgPress(false)}
             onPress={()=>navigation.navigate('Configuracion')}>
             <Text style={s.btnConfigTxt}>Config</Text>
@@ -378,7 +365,7 @@ export default function PerfilScreen() {
           ) : null}
 
           {/* ── Toast (banner inline antes de tabs) ── */}
-          <Toast visible={showToast} mensaje={toastMsg} />
+          <AvisoInline {...toast} />
 
           {/* ── Separador ── */}
           <View style={s.tabSep}/>
@@ -398,11 +385,11 @@ export default function PerfilScreen() {
           {/* ── Contenido ── */}
           {loading ? (
             <View style={s.grid}>
-              {[0,1,2,3,4,5].map(i=><View key={i} style={[s.gridCell, {backgroundColor:'#E0E0E0'}]}/>)}
+              {[0,1,2,3,4,5].map(i=><View key={i} style={[s.gridCell, {backgroundColor:colores.gris400}]}/>)}
             </View>
           ) : pubs.length === 0 ? (
             <View style={s.empty}>
-              <Ionicons name="camera-outline" size={48} color="#AAAAAA"/>
+              <Ionicons name="camera-outline" size={48} color={colores.textoTenue}/>
               <Text style={s.emptyTxt}>Aún no publicaste nada 📸</Text>
             </View>
           ) : tab === 'grid' ? (
@@ -411,7 +398,7 @@ export default function PerfilScreen() {
                 <TouchableOpacity key={pub.id} style={s.gridCell} onPress={() => setPubAbierta(pub)}>
                   {pub.imagenUrl
                     ? <Image source={{uri:pub.imagenUrl}} style={s.gridImg}/>
-                    : <View style={[s.gridImg,s.gridPH]}><Ionicons name="image-outline" size={28} color="#AAAAAA"/></View>
+                    : <View style={[s.gridImg,s.gridPH]}><Ionicons name="image-outline" size={28} color={colores.textoTenue}/></View>
                   }
                 </TouchableOpacity>
               ))}
@@ -423,7 +410,7 @@ export default function PerfilScreen() {
                   onPress={() => setPubAbierta(pub)}>
                   {pub.imagenUrl
                     ? <Image source={{uri:pub.imagenUrl}} style={s.listaImg}/>
-                    : <View style={[s.listaImg,s.listaImgPH]}><Ionicons name="image-outline" size={36} color="#AAAAAA"/></View>
+                    : <View style={[s.listaImg,s.listaImgPH]}><Ionicons name="image-outline" size={36} color={colores.textoTenue}/></View>
                   }
                   {!!pub.descripcion && <Text style={s.listaDesc}>{pub.descripcion}</Text>}
                   <Text style={s.listaFecha}>{formatFecha(pub.fecha)}</Text>
@@ -463,25 +450,25 @@ export default function PerfilScreen() {
               <>
                 <Image source={{uri:fImagen.uri}} style={s.imgPreview}/>
                 <TouchableOpacity style={s.imgEditBtn} onPress={abrirPickerPublicar}>
-                  <Ionicons name="create-outline" size={20} color="#FFF"/>
+                  <Ionicons name="create-outline" size={20} color={colores.blanco}/>
                 </TouchableOpacity>
               </>
             ) : (
               <View style={s.imgEmpty}>
-                <Ionicons name="camera-outline" size={40} color="#AAAAAA"/>
+                <Ionicons name="camera-outline" size={40} color={colores.textoTenue}/>
                 <Text style={s.imgEmptyTxt}>Tocá para agregar una foto</Text>
               </View>
             )}
           </TouchableOpacity>
           {imgErr && <Text style={s.errTxt}>Seleccioná una imagen</Text>}
 
-          <FocusInput placeholder="Agregá una descripción o hashtags..." placeholderTextColor="#AAAAAA"
+          <FocusInput placeholder="Agregá una descripción o hashtags..." placeholderTextColor={colores.textoTenue}
             value={fDesc} onChangeText={setFDesc}
             multiline numberOfLines={4} maxLength={300} textAlignVertical="top"
             style={{marginBottom:20}} />
 
           <TouchableOpacity style={s.btnPublicarModal} onPress={publicar} disabled={publicando}>
-            {publicando ? <ActivityIndicator size="small" color="#2C2C2C"/> : <Text style={s.btnPublicarModalTxt}>Publicar</Text>}
+            {publicando ? <ActivityIndicator size="small" color={colores.texto}/> : <Text style={s.btnPublicarModalTxt}>Publicar</Text>}
           </TouchableOpacity>
           <TouchableOpacity style={s.btnCancelar} onPress={cerrarPublicar}>
             <Text style={s.btnCancelarTxt}>Cancelar</Text>
@@ -496,7 +483,7 @@ export default function PerfilScreen() {
             <View style={s.pvAutor}>
               {p.fotoPerfil
                 ? <Image source={{ uri: p.fotoPerfil }} style={s.pvAvatar} />
-                : <View style={[s.pvAvatar, s.pvAvatarPH]}><Ionicons name="person" size={16} color="#FFF" /></View>}
+                : <View style={[s.pvAvatar, s.pvAvatarPH]}><Ionicons name="person" size={16} color={colores.blanco} /></View>}
               <View>
                 <Text style={s.pvNombre}>{displayNombreCompleto}</Text>
                 {p.nombreUsuario ? <Text style={s.pvUsuario}>@{p.nombreUsuario}</Text> : null}
@@ -504,7 +491,7 @@ export default function PerfilScreen() {
             </View>
             <TouchableOpacity onPress={() => setPubAbierta(null)} style={s.pvClose}
               accessibilityLabel="Cerrar">
-              <Ionicons name="close" size={26} color="#2C2C2C" />
+              <Ionicons name="close" size={26} color={colores.texto} />
             </TouchableOpacity>
           </View>
 
@@ -523,7 +510,7 @@ export default function PerfilScreen() {
 
             <TouchableOpacity style={s.pvBorrar} onPress={() => setConfirmarBorrar(pubAbierta)}
               accessibilityRole="button" accessibilityLabel="Eliminar publicación">
-              <Ionicons name="trash-outline" size={16} color="#B3121D" />
+              <Ionicons name="trash-outline" size={16} color={colores.rojoOscuro} />
               <Text style={s.pvBorrarTxt}>Eliminar publicación</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -559,7 +546,7 @@ export default function PerfilScreen() {
 // ─── ESTILOS ─────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safe:        { flex:1, backgroundColor:'#D4F5E2' },
+  safe:        { flex:1, backgroundColor:colores.mentaClara },
   background:  { flex:1, width:'100%' },
   backgroundImage: { width:'100%', height:'100%' },
   scroll:      { flex:1, backgroundColor:'transparent' },
@@ -573,125 +560,125 @@ const s = StyleSheet.create({
   // Avatar
   avatarWrap:  { alignItems:'center', marginTop:8 },
   avatarImg:   { width:84, height:84, borderRadius:42, resizeMode:'cover',
-                 shadowColor:'#000', shadowOffset:{width:0,height:2}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
-  avatarFallback:{ width:84, height:84, borderRadius:42, backgroundColor:'#DDDDDD',
+                 shadowColor:colores.negro, shadowOffset:{width:0,height:2}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
+  avatarFallback:{ width:84, height:84, borderRadius:42, backgroundColor:colores.gris500,
                    alignItems:'center', justifyContent:'center',
-                   shadowColor:'#000', shadowOffset:{width:0,height:2}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
+                   shadowColor:colores.negro, shadowOffset:{width:0,height:2}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
   nombreBlock:  { alignItems:'center', marginTop:12, marginBottom:20, paddingHorizontal:20 },
-  nombreUsuario:{ fontSize:20, fontWeight:'700', color:'#2C2C2C', textAlign:'center' },
+  nombreUsuario:{ fontSize:20, fontWeight:'700', color:colores.texto, textAlign:'center' },
   arrobaUsuario:{ fontSize:14, color:'#8A8A8A', textAlign:'center', marginTop:2 },
 
   // Card blanco
-  card:        { backgroundColor:'#FFF', borderTopLeftRadius:28, borderTopRightRadius:28,
+  card:        { backgroundColor:colores.blanco, borderTopLeftRadius:28, borderTopRightRadius:28,
                  paddingHorizontal:20, paddingTop:24, paddingBottom:40 },
 
   // Botones acción
-  btnEditar:   { backgroundColor:'#2DBD72', borderRadius:30, height:48,
+  btnEditar:   { backgroundColor:colores.verde, borderRadius:30, height:48,
                  alignItems:'center', justifyContent:'center', marginBottom:10,
-                 shadowColor:'#000', shadowOffset:{width:0,height:2}, shadowOpacity:0.10, shadowRadius:4, elevation:3 },
-  btnEditarTxt:{ fontSize:15, fontWeight:'700', color:'#FFF' },
-  btnConfig:   { backgroundColor:'#FFF', borderRadius:30, height:48,
+                 shadowColor:colores.negro, shadowOffset:{width:0,height:2}, shadowOpacity:0.10, shadowRadius:4, elevation:3 },
+  btnEditarTxt:{ fontSize:15, fontWeight:'700', color:colores.blanco },
+  btnConfig:   { backgroundColor:colores.blanco, borderRadius:30, height:48,
                  alignItems:'center', justifyContent:'center',
-                 borderWidth:1.5, borderColor:'#DDDDDD', marginBottom:10 },
-  btnConfigTxt:{ fontSize:15, fontWeight:'700', color:'#2C2C2C' },
-  btnPublicar: { backgroundColor:'#F5C842', borderRadius:30, height:48,
+                 borderWidth:1.5, borderColor:colores.gris500, marginBottom:10 },
+  btnConfigTxt:{ fontSize:15, fontWeight:'700', color:colores.texto },
+  btnPublicar: { backgroundColor:colores.amarillo, borderRadius:30, height:48,
                  alignItems:'center', justifyContent:'center',
-                 shadowColor:'#000', shadowOffset:{width:0,height:2}, shadowOpacity:0.10, shadowRadius:4, elevation:3 },
-  btnPublicarTxt:{ fontSize:15, fontWeight:'700', color:'#2C2C2C' },
+                 shadowColor:colores.negro, shadowOffset:{width:0,height:2}, shadowOpacity:0.10, shadowRadius:4, elevation:3 },
+  btnPublicarTxt:{ fontSize:15, fontWeight:'700', color:colores.texto },
 
   // Stats
   statsRow:    { flexDirection:'row', marginTop:24, marginBottom:16, alignItems:'center' },
   statCol:     { flex:1, alignItems:'center' },
-  statSep:     { width:1, height:30, backgroundColor:'#EFEFEF' },
-  statNum:     { fontSize:18, fontWeight:'700', color:'#2C2C2C' },
-  statLbl:     { fontSize:12, color:'#6B6B6B', marginTop:2, textAlign:'center' },
+  statSep:     { width:1, height:30, backgroundColor:colores.gris200 },
+  statNum:     { fontSize:18, fontWeight:'700', color:colores.texto },
+  statLbl:     { fontSize:12, color:colores.textoSecundario, marginTop:2, textAlign:'center' },
 
   // Bio
   bioWrap:     { marginBottom:20 },
-  bioNombre:   { fontSize:15, fontWeight:'700', color:'#2C2C2C' },
-  bioTxt:      { fontSize:14, color:'#6B6B6B', marginTop:2 },
+  bioNombre:   { fontSize:15, fontWeight:'700', color:colores.texto },
+  bioTxt:      { fontSize:14, color:colores.textoSecundario, marginTop:2 },
 
   // Toast inline
   toast:       { flexDirection:'row', alignItems:'center', gap:8,
-                 backgroundColor:'#2DBD72', borderRadius:12,
+                 backgroundColor:colores.verde, borderRadius:12,
                  paddingVertical:12, paddingHorizontal:16, marginBottom:16 },
-  toastTxt:    { fontSize:14, fontWeight:'700', color:'#FFF', flex:1 },
+  toastTxt:    { fontSize:14, fontWeight:'700', color:colores.blanco, flex:1 },
 
   // Separador tabs
-  tabSep:      { height:1, backgroundColor:'#EFEFEF' },
+  tabSep:      { height:1, backgroundColor:colores.gris200 },
 
   // Tabs
   tabsRow:     { flexDirection:'row', marginBottom:12 },
   tabBtn:      { flex:1, alignItems:'center', paddingVertical:12 },
-  tabTxt:      { fontSize:15, color:'#AAAAAA' },
-  tabTxtOn:    { color:'#2C2C2C', fontWeight:'700' },
-  tabLine:     { width:'30%', height:2, backgroundColor:'#2DBD72', marginTop:4 },
+  tabTxt:      { fontSize:15, color:colores.textoTenue },
+  tabTxtOn:    { color:colores.texto, fontWeight:'700' },
+  tabLine:     { width:'30%', height:2, backgroundColor:colores.verde, marginTop:4 },
 
   // Grid
   grid:        { flexDirection:'row', flexWrap:'wrap', gap:2, backgroundColor:'transparent' },
   gridCell:    { width:'33%', aspectRatio:1, overflow:'hidden' },
   gridImg:     { width:'100%', height:'100%', resizeMode:'cover' },
-  gridPH:      { backgroundColor:'#F0F0F0', alignItems:'center', justifyContent:'center' },
+  gridPH:      { backgroundColor:colores.gris150, alignItems:'center', justifyContent:'center' },
 
   // Lista
   lista:       { gap:12 },
-  listaCard:   { backgroundColor:'#FFF', borderRadius:12, overflow:'hidden',
-                 shadowColor:'#000', shadowOffset:{width:0,height:2}, shadowOpacity:0.07, shadowRadius:6, elevation:3 },
+  listaCard:   { backgroundColor:colores.blanco, borderRadius:12, overflow:'hidden',
+                 shadowColor:colores.negro, shadowOffset:{width:0,height:2}, shadowOpacity:0.07, shadowRadius:6, elevation:3 },
   listaImg:    { width:'100%', height:200, resizeMode:'cover' },
-  listaImgPH:  { backgroundColor:'#F0F0F0', alignItems:'center', justifyContent:'center' },
-  listaDesc:   { fontSize:14, color:'#2C2C2C', padding:12, paddingBottom:4 },
-  listaFecha:  { fontSize:12, color:'#AAAAAA', paddingHorizontal:12, paddingBottom:12 },
+  listaImgPH:  { backgroundColor:colores.gris150, alignItems:'center', justifyContent:'center' },
+  listaDesc:   { fontSize:14, color:colores.texto, padding:12, paddingBottom:4 },
+  listaFecha:  { fontSize:12, color:colores.textoTenue, paddingHorizontal:12, paddingBottom:12 },
 
   // Empty
   empty:       { alignItems:'center', marginTop:40, gap:12 },
-  emptyTxt:    { fontSize:15, color:'#6B6B6B', textAlign:'center' },
+  emptyTxt:    { fontSize:15, color:colores.textoSecundario, textAlign:'center' },
 
   // Modal (el card animado y los inputs viven en EditarPerfilModal)
-  modalTitulo: { fontSize:18, fontWeight:'700', color:'#2DBD72', textAlign:'center', marginBottom:20 },
-  errTxt:      { fontSize:11, color:'#E63946', marginBottom:8, marginLeft:4 },
+  modalTitulo: { fontSize:18, fontWeight:'700', color:colores.verde, textAlign:'center', marginBottom:20 },
+  errTxt:      { fontSize:11, color:colores.rojo, marginBottom:8, marginLeft:4 },
 
   // Selector imagen publicación
   imgSel:      { width:'100%', height:130, borderRadius:12,
-                 backgroundColor:'#F5F5F5', borderWidth:1.5, borderColor:'#DDDDDD',
+                 backgroundColor:colores.gris50, borderWidth:1.5, borderColor:colores.gris500,
                  borderStyle:'dashed', overflow:'hidden', marginBottom:14 },
-  imgSelErr:   { borderColor:'#E63946' },
+  imgSelErr:   { borderColor:colores.rojo },
   imgPreview:  { width:'100%', height:'100%', resizeMode:'cover' },
   imgEmpty:    { flex:1, alignItems:'center', justifyContent:'center', gap:8 },
-  imgEmptyTxt: { fontSize:13, color:'#AAAAAA' },
+  imgEmptyTxt: { fontSize:13, color:colores.textoTenue },
   imgEditBtn:  { position:'absolute', top:8, right:8, width:34, height:34, borderRadius:17,
                  backgroundColor:'rgba(0,0,0,0.4)', alignItems:'center', justifyContent:'center' },
 
   // Botones modales
-  btnGuardar:      { width:'100%', height:48, borderRadius:30, backgroundColor:'#2DBD72',
+  btnGuardar:      { width:'100%', height:48, borderRadius:30, backgroundColor:colores.verde,
                      alignItems:'center', justifyContent:'center',
-                     shadowColor:'#000', shadowOffset:{width:0,height:3}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
-  btnGuardarTxt:   { fontSize:15, fontWeight:'700', color:'#FFF' },
-  btnPublicarModal:{ width:'100%', height:48, borderRadius:30, backgroundColor:'#F5C842',
+                     shadowColor:colores.negro, shadowOffset:{width:0,height:3}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
+  btnGuardarTxt:   { fontSize:15, fontWeight:'700', color:colores.blanco },
+  btnPublicarModal:{ width:'100%', height:48, borderRadius:30, backgroundColor:colores.amarillo,
                      alignItems:'center', justifyContent:'center',
-                     shadowColor:'#000', shadowOffset:{width:0,height:3}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
-  btnPublicarModalTxt:{ fontSize:15, fontWeight:'700', color:'#2C2C2C' },
-  btnCancelar:     { width:'100%', height:44, borderRadius:30, backgroundColor:'#E8E8E8',
+                     shadowColor:colores.negro, shadowOffset:{width:0,height:3}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
+  btnPublicarModalTxt:{ fontSize:15, fontWeight:'700', color:colores.texto },
+  btnCancelar:     { width:'100%', height:44, borderRadius:30, backgroundColor:colores.gris300,
                      alignItems:'center', justifyContent:'center', marginTop:10 },
-  btnCancelarTxt:  { fontSize:15, fontWeight:'700', color:'#2C2C2C' },
+  btnCancelarTxt:  { fontSize:15, fontWeight:'700', color:colores.texto },
 
   // Visor de publicación
-  pvRoot:    { flex:1, backgroundColor:'#FFFFFF' },
+  pvRoot:    { flex:1, backgroundColor:colores.blanco },
   pvHeader:  { height:56, flexDirection:'row', alignItems:'center', justifyContent:'space-between',
-               paddingHorizontal:12, borderBottomWidth:1, borderBottomColor:'#EFEFEF',
+               paddingHorizontal:12, borderBottomWidth:1, borderBottomColor:colores.gris200,
                marginTop: Platform.OS === 'android' ? 24 : 0 },
   pvAutor:   { flexDirection:'row', alignItems:'center', gap:10, flex:1 },
-  pvAvatar:  { width:36, height:36, borderRadius:18, borderWidth:1.5, borderColor:'#2DBD72' },
+  pvAvatar:  { width:36, height:36, borderRadius:18, borderWidth:1.5, borderColor:colores.verde },
   pvAvatarPH:{ backgroundColor:'#BEBEBE', alignItems:'center', justifyContent:'center' },
-  pvNombre:  { fontSize:14, fontWeight:'700', color:'#2C2C2C' },
-  pvUsuario: { fontSize:12, color:'#6B6B6B' },
+  pvNombre:  { fontSize:14, fontWeight:'700', color:colores.texto },
+  pvUsuario: { fontSize:12, color:colores.textoSecundario },
   pvClose:   { width:40, height:40, alignItems:'center', justifyContent:'center' },
   pvScroll:  { paddingBottom:40 },
-  pvImg:     { width:'100%', height:380, backgroundColor:'#000' },
-  pvImgPH:   { backgroundColor:'#F0F0F0', alignItems:'center', justifyContent:'center' },
-  pvDesc:    { fontSize:14, color:'#2C2C2C', lineHeight:20, paddingHorizontal:16, paddingTop:14 },
+  pvImg:     { width:'100%', height:380, backgroundColor:colores.negro },
+  pvImgPH:   { backgroundColor:colores.gris150, alignItems:'center', justifyContent:'center' },
+  pvDesc:    { fontSize:14, color:colores.texto, lineHeight:20, paddingHorizontal:16, paddingTop:14 },
   pvDescUser:{ fontWeight:'700' },
-  pvFecha:   { fontSize:12, color:'#AAAAAA', paddingHorizontal:16, paddingTop:8 },
+  pvFecha:   { fontSize:12, color:colores.textoTenue, paddingHorizontal:16, paddingTop:8 },
   pvBorrar:  { flexDirection:'row', alignItems:'center', gap:8, alignSelf:'flex-start',
                paddingHorizontal:16, paddingVertical:14, marginTop:8 },
-  pvBorrarTxt:{ fontSize:15, fontWeight:'700', color:'#B3121D' },
+  pvBorrarTxt:{ fontSize:15, fontWeight:'700', color:colores.rojoOscuro },
 });

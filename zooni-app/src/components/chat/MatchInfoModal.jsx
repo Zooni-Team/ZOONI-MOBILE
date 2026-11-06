@@ -21,11 +21,12 @@ import { fetchDetalleMatch } from '../../services/matchApi';
 import { resolveMascotaVisual } from '../../constants/petImages';
 import { MOTIVOS_REPORTE, bloquearUsuario, reportarUsuario } from '../../services/moderacionApi';
 import { alerta, confirmar } from '../../utils/dialogo';
+import { colores } from '../../theme';
 
 const C = {
-  bg: '#F4FBF6', surface: '#FFFFFF', text: '#2C2C2C', textSoft: '#6B6B6B',
-  brand: '#2DBD72', brandText: '#177046', cta: '#F5C842', divider: '#E8EFE9',
-  chipBg: '#E8F7EE',
+  bg: '#F4FBF6', surface: colores.blanco, text: colores.texto, textSoft: colores.textoSecundario,
+  brand: colores.verde, brandText: colores.verdeOscuro, cta: colores.amarillo, divider: colores.mentaGris,
+  chipBg: colores.mentaBorde,
 };
 
 function formatFecha(iso) {
@@ -195,8 +196,8 @@ export default function MatchInfoModal({ visible, matchId, onClose, onAbrirChat,
               </TouchableOpacity>
               <View style={s.sheetDiv} />
               <TouchableOpacity style={s.sheetFila} onPress={bloquear}>
-                <Ionicons name="ban-outline" size={20} color="#B3121D" />
-                <Text style={[s.sheetFilaTxt, { color: '#B3121D' }]}>Bloquear</Text>
+                <Ionicons name="ban-outline" size={20} color={colores.rojoOscuro} />
+                <Text style={[s.sheetFilaTxt, { color: colores.rojoOscuro }]}>Bloquear</Text>
               </TouchableOpacity>
             </Pressable>
           </Pressable>
@@ -221,7 +222,7 @@ export default function MatchInfoModal({ visible, matchId, onClose, onAbrirChat,
         <Modal visible={fotoFull} transparent animationType="fade" onRequestClose={() => setFotoFull(false)}>
           <Pressable style={s.fullScrim} onPress={() => setFotoFull(false)}>
             <TouchableOpacity style={s.fullClose} onPress={() => setFotoFull(false)} accessibilityLabel="Cerrar foto">
-              <Ionicons name="close" size={30} color="#FFF" />
+              <Ionicons name="close" size={30} color={colores.blanco} />
             </TouchableOpacity>
             {tieneFoto && (
               <Image source={{ uri: persona.fotoPerfil }} style={s.fullFoto} resizeMode="contain" />
@@ -269,7 +270,7 @@ const s = StyleSheet.create({
   card: {
     alignSelf: 'stretch', backgroundColor: C.surface, borderRadius: 18,
     padding: 16, marginTop: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
   },
   cardTitulo: { fontSize: 14, fontWeight: '800', color: C.text, marginBottom: 12 },
 
@@ -290,7 +291,7 @@ const s = StyleSheet.create({
   btnChatTxt: { fontSize: 16, fontWeight: '700', color: C.text },
 
   sheetScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 8, paddingBottom: 28, paddingHorizontal: 8 },
+  sheet: { backgroundColor: colores.blanco, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 8, paddingBottom: 28, paddingHorizontal: 8 },
   sheetHandle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: C.divider, marginBottom: 8 },
   sheetTitulo: { fontSize: 15, fontWeight: '700', color: C.text, textAlign: 'center', marginBottom: 8 },
   sheetFila: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52, paddingHorizontal: 16 },

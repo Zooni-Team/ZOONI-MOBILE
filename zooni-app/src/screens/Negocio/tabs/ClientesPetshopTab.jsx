@@ -22,6 +22,7 @@ import { EstadoChip, Etiqueta, Segmento } from '../../../components/negocio/Nego
 import {
   cuandoTexto, diaTexto, fetchClientesPetshop, formatoPlata, unidadesDe,
 } from '../../../services/negocioApi';
+import { colores } from '../../../theme';
 
 const normalizar = (t) => String(t ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const EN_CURSO = ['nuevo', 'preparando', 'listo', 'en_camino'];
@@ -140,7 +141,7 @@ export default function ClientesPetshopTab({ negocio, avisar, abrirChat }) {
                 {c.compras >= 2 ? <Etiqueta texto="Frecuente" icono="repeat" color={C.teal} fondo={C.menta} /> : null}
                 {activo ? <EstadoChip estado={activo.estado} tipo="pedido" /> : null}
                 {c.favoritos.map((f) => (
-                  <Etiqueta key={f} texto={f.length > 22 ? `${f.slice(0, 22)}…` : f} icono="heart" color={C.texto2} fondo="#F1F1F1" />
+                  <Etiqueta key={f} texto={f.length > 22 ? `${f.slice(0, 22)}…` : f} icono="heart" color={C.texto2} fondo={colores.gris100} />
                 ))}
               </View>
 
@@ -176,7 +177,7 @@ const s = StyleSheet.create({
   totalLabel: { fontSize: 13, fontWeight: '700', color: C.texto },
   totalValor: { fontSize: 30, fontWeight: '900', color: C.texto, marginTop: 2 },
   buscador: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF', borderRadius: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colores.blanco, borderRadius: 14,
     borderWidth: 1, borderColor: C.borde, paddingHorizontal: 12,
   },
   buscadorInput: { flex: 1, fontSize: 15, color: C.texto, paddingVertical: 11 },
@@ -188,7 +189,7 @@ const s = StyleSheet.create({
   chat: { width: 40, height: 40, borderRadius: 20, backgroundColor: C.menta, alignItems: 'center', justifyContent: 'center' },
   etiquetas: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
 
-  pedidos: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#F2F2F2', gap: 10 },
+  pedidos: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: colores.gris75, gap: 10 },
   pedido: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   pedidoTitulo: { fontSize: 14, fontWeight: '800', color: C.texto },
 });

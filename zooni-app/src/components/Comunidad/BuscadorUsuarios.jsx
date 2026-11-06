@@ -3,6 +3,7 @@ import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Activity
 import { Ionicons } from '@expo/vector-icons';
 import { buscarUsuarios, enviarSolicitud } from '../../api/comunidad';
 import PersonaProfileModal from '../PersonaProfileModal';
+import { colores } from '../../theme';
 
 export default function BuscadorUsuarios({ onSolicitudEnviada }) {
   const [query,    setQuery]    = useState('');
@@ -40,7 +41,7 @@ export default function BuscadorUsuarios({ onSolicitudEnviada }) {
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.inputWrap}>
-        <Ionicons name="search" size={16} color="#6B6B6B" style={{ marginRight: 8 }} />
+        <Ionicons name="search" size={16} color={colores.textoSecundario} style={{ marginRight: 8 }} />
         <TextInput
           style={styles.input}
           placeholder="Buscar usuarios..."
@@ -48,7 +49,7 @@ export default function BuscadorUsuarios({ onSolicitudEnviada }) {
           onChangeText={handleChange}
           accessibilityLabel="Buscar usuarios"
         />
-        {loading && <ActivityIndicator size="small" color="#2DBD72" />}
+        {loading && <ActivityIndicator size="small" color={colores.verde} />}
       </View>
 
       {query.length < 2 && (
@@ -64,7 +65,7 @@ export default function BuscadorUsuarios({ onSolicitudEnviada }) {
             <View style={styles.item}>
               <TouchableOpacity style={styles.persona} onPress={() => setPerfilId(u.usuario_id)}
                 accessibilityRole="button" accessibilityLabel={`Ver perfil de ${u.nombre}`}>
-                <View style={styles.avatar}><Ionicons name="person" size={18} color="#AAAAAA" /></View>
+                <View style={styles.avatar}><Ionicons name="person" size={18} color={colores.textoTenue} /></View>
                 <View style={styles.info}>
                   <Text style={styles.nombre}>{u.nombre}</Text>
                   <Text style={styles.sub}>{u.mascota_nombre}{u.barrio ? `  ·  ${u.barrio}` : ''}</Text>
@@ -77,7 +78,7 @@ export default function BuscadorUsuarios({ onSolicitudEnviada }) {
               >
                 {ya
                   ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Ionicons name="checkmark" size={13} color="#6B6B6B" />
+                      <Ionicons name="checkmark" size={13} color={colores.textoSecundario} />
                       <Text style={[styles.btnAddText, styles.btnYaText]}>Amigos</Text>
                     </View>
                   : <Text style={styles.btnAddText}>+ Agregar</Text>
@@ -95,17 +96,17 @@ export default function BuscadorUsuarios({ onSolicitudEnviada }) {
 }
 
 const styles = StyleSheet.create({
-  inputWrap:   { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F5F5', borderRadius: 20, paddingHorizontal: 14, height: 44, marginBottom: 10 },
-  input:       { flex: 1, fontSize: 14, color: '#2C2C2C' },
-  hint:        { color: '#AAAAAA', fontSize: 13, textAlign: 'center', marginTop: 12 },
-  item:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  inputWrap:   { flexDirection: 'row', alignItems: 'center', backgroundColor: colores.gris50, borderRadius: 20, paddingHorizontal: 14, height: 44, marginBottom: 10 },
+  input:       { flex: 1, fontSize: 14, color: colores.texto },
+  hint:        { color: colores.textoTenue, fontSize: 13, textAlign: 'center', marginTop: 12 },
+  item:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colores.gris150 },
   persona:     { flex: 1, flexDirection: 'row', alignItems: 'center' },
-  avatar:      { width: 38, height: 38, borderRadius: 19, backgroundColor: '#F0F0F0', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  avatar:      { width: 38, height: 38, borderRadius: 19, backgroundColor: colores.gris150, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
   info:        { flex: 1 },
-  nombre:      { fontWeight: '700', fontSize: 14, color: '#2C2C2C' },
-  sub:         { fontSize: 12, color: '#6B6B6B', marginTop: 2 },
-  btnAdd:      { backgroundColor: '#2DBD72', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6 },
-  btnYa:       { backgroundColor: '#EEE' },
-  btnAddText:  { color: '#fff', fontWeight: '700', fontSize: 12 },
-  btnYaText:   { color: '#6B6B6B' },
+  nombre:      { fontWeight: '700', fontSize: 14, color: colores.texto },
+  sub:         { fontSize: 12, color: colores.textoSecundario, marginTop: 2 },
+  btnAdd:      { backgroundColor: colores.verde, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6 },
+  btnYa:       { backgroundColor: colores.gris250 },
+  btnAddText:  { color: colores.blanco, fontWeight: '700', fontSize: 12 },
+  btnYaText:   { color: colores.textoSecundario },
 });

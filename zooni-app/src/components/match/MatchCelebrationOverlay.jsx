@@ -7,6 +7,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, Animated, Image, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { colores } from '../../theme';
 
 export default function MatchCelebrationOverlay({
   visible,
@@ -57,14 +58,14 @@ export default function MatchCelebrationOverlay({
           <Animated.View style={{ transform: [{ translateX: avatarLeft }] }}>
             {renderAvatar(currentUserPhoto, 'Vos')}
           </Animated.View>
-          <Ionicons name="heart" size={32} color="#2DBD72" style={styles.heartIcon} />
+          <Ionicons name="heart" size={32} color={colores.verde} style={styles.heartIcon} />
           <Animated.View style={{ transform: [{ translateX: avatarRight }] }}>
             {renderAvatar(matchUser.foto_perfil_url, matchUser.nombre?.[0] ?? '?')}
           </Animated.View>
         </View>
 
         <TouchableOpacity style={styles.btnPrimary} onPress={onSendMessage}>
-          <Ionicons name="chatbubble-outline" size={20} color="#FFFFFF" style={styles.btnIcon} />
+          <Ionicons name="chatbubble-outline" size={20} color={colores.blanco} style={styles.btnIcon} />
           <Text style={styles.btnPrimaryText}>Enviar mensaje</Text>
         </TouchableOpacity>
 
@@ -81,29 +82,29 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: 'rgba(0,0,0,0.6)',
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24,
   },
-  title: { fontSize: 30, fontWeight: '800', color: '#FFFFFF', textAlign: 'center' },
+  title: { fontSize: 30, fontWeight: '800', color: colores.blanco, textAlign: 'center' },
   subtitle: {
     fontSize: 16, color: 'rgba(255,255,255,0.85)', textAlign: 'center',
     marginTop: 12, marginBottom: 28,
   },
   avatarsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 36 },
-  avatar: { width: 64, height: 64, borderRadius: 32, borderWidth: 3, borderColor: '#FFFFFF' },
+  avatar: { width: 64, height: 64, borderRadius: 32, borderWidth: 3, borderColor: colores.blanco },
   avatarFallback: {
-    width: 64, height: 64, borderRadius: 32, backgroundColor: '#C8F0D8',
-    borderWidth: 3, borderColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center',
+    width: 64, height: 64, borderRadius: 32, backgroundColor: colores.menta,
+    borderWidth: 3, borderColor: colores.blanco, alignItems: 'center', justifyContent: 'center',
   },
-  avatarLetter: { fontSize: 22, fontWeight: '800', color: '#27AE60' },
+  avatarLetter: { fontSize: 22, fontWeight: '800', color: colores.verdeExito },
   heartIcon: { marginHorizontal: 12 },
   btnPrimary: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#2DBD72', borderRadius: 30, height: 52, width: 240, marginBottom: 12,
+    backgroundColor: colores.verde, borderRadius: 30, height: 52, width: 240, marginBottom: 12,
   },
   btnIcon: { marginRight: 8 },
-  btnPrimaryText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  btnPrimaryText: { fontSize: 16, fontWeight: '700', color: colores.blanco },
   btnSecondary: {
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 30, height: 52, width: 240,
-    borderWidth: 1, borderColor: '#FFFFFF',
+    borderWidth: 1, borderColor: colores.blanco,
   },
-  btnSecondaryText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  btnSecondaryText: { fontSize: 16, fontWeight: '700', color: colores.blanco },
 });

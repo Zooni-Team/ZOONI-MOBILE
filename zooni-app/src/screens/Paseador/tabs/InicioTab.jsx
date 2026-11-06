@@ -24,6 +24,7 @@ import { FilaPaseo } from './PaseoTab';
 import {
   cuandoDe, enModoDemo, fetchMisPaseos, formatoDistancia, formatoPlata, setDisponible,
 } from '../../../services/paseadorApi';
+import { colores } from '../../../theme';
 
 function inicioDeHoy() {
   const d = new Date();
@@ -262,7 +263,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 20, padding: 18,
   },
   disponibleOn: { backgroundColor: C.menta },
-  disponibleOff: { backgroundColor: '#F1F1F1' },
+  disponibleOff: { backgroundColor: colores.gris100 },
   dispTitulo: { fontSize: 20, fontWeight: '900', color: C.texto },
   dispTxt: { fontSize: 13, color: C.texto2, marginTop: 3, lineHeight: 18 },
 
@@ -276,16 +277,16 @@ const s = StyleSheet.create({
 
   cobradoLabel: { fontSize: 13, fontWeight: '700', color: C.texto2 },
   cobrado: { fontSize: 40, fontWeight: '900', color: C.texto, marginTop: 2 },
-  stats: { flexDirection: 'row', alignItems: 'center', marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
-  divisor: { width: 1, alignSelf: 'stretch', backgroundColor: '#F0F0F0', marginHorizontal: 12 },
+  stats: { flexDirection: 'row', alignItems: 'center', marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: colores.gris150 },
+  divisor: { width: 1, alignSelf: 'stretch', backgroundColor: colores.gris150, marginHorizontal: 12 },
 
   nuevas: {
     flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14,
     backgroundColor: C.amarillo, borderRadius: 30, paddingVertical: 12, paddingHorizontal: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 3,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 3,
   },
   nuevasBadge: {
-    width: 34, height: 34, borderRadius: 17, backgroundColor: '#FFFFFF',
+    width: 34, height: 34, borderRadius: 17, backgroundColor: colores.blanco,
     alignItems: 'center', justifyContent: 'center',
   },
   nuevasNum: { fontSize: 16, fontWeight: '900', color: C.texto },

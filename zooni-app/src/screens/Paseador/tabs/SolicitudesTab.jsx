@@ -18,6 +18,7 @@ import {
   aceptarSolicitud, cancelarPaseo, fetchMisPaseos, rechazarSolicitud, setDisponible,
 } from '../../../services/paseadorApi';
 import { confirmar } from '../../../utils/dialogo';
+import { colores } from '../../../theme';
 
 // Se puede iniciar desde 1 hora antes del horario pactado
 const VENTANA_INICIO_MS = 60 * 60 * 1000;
@@ -159,7 +160,7 @@ export default function SolicitudesTab({
               accessibilityRole="tab" accessibilityState={{ selected: on }}>
               <Text style={[s.segTxt, on && s.segTxtOn]}>{op.label}</Text>
               {op.n > 0 && (
-                <View style={[s.segBadge, on && { backgroundColor: '#FFFFFF' }]}>
+                <View style={[s.segBadge, on && { backgroundColor: colores.blanco }]}>
                   <Text style={[s.segBadgeTxt, on && { color: C.teal }]}>{op.n}</Text>
                 </View>
               )}
@@ -216,7 +217,7 @@ export default function SolicitudesTab({
 const s = StyleSheet.create({
   segmento: {
     flexDirection: 'row', margin: 20, marginBottom: 6, padding: 4,
-    backgroundColor: '#FFFFFF', borderRadius: 30, borderWidth: 1, borderColor: C.borde,
+    backgroundColor: colores.blanco, borderRadius: 30, borderWidth: 1, borderColor: C.borde,
   },
   segBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -224,20 +225,20 @@ const s = StyleSheet.create({
   },
   segBtnOn: { backgroundColor: C.teal },
   segTxt: { fontSize: 15, fontWeight: '700', color: C.texto2 },
-  segTxtOn: { color: '#FFFFFF', fontWeight: '800' },
+  segTxtOn: { color: colores.blanco, fontWeight: '800' },
   segBadge: {
     minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 6,
     backgroundColor: C.ambar, alignItems: 'center', justifyContent: 'center',
   },
-  segBadgeTxt: { fontSize: 12, fontWeight: '800', color: '#FFFFFF' },
+  segBadgeTxt: { fontSize: 12, fontWeight: '800', color: colores.blanco },
 
   aviso: {
     flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 20, marginTop: 10,
-    padding: 14, borderRadius: 16, backgroundColor: '#F1F1F1',
+    padding: 14, borderRadius: 16, backgroundColor: colores.gris100,
   },
   avisoTxt: { flex: 1, fontSize: 13, color: C.texto, fontWeight: '600' },
   avisoBtn: { backgroundColor: C.teal, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
-  avisoBtnTxt: { color: '#FFFFFF', fontWeight: '800', fontSize: 13 },
+  avisoBtnTxt: { color: colores.blanco, fontWeight: '800', fontSize: 13 },
 
   lista: { padding: 20, paddingTop: 12, paddingBottom: 32, flexGrow: 1 },
   footer: { fontSize: 13, fontWeight: '700', color: C.teal, textAlign: 'center', marginTop: 6 },

@@ -23,6 +23,7 @@ import ItemFormModal from '../../../components/negocio/ItemFormModal';
 import {
   agregarSugeridos, ajustarStock, borrarItem, fetchItems, formatoPlata, guardarItem, textoPrecioItem,
 } from '../../../services/negocioApi';
+import { colores } from '../../../theme';
 
 const normalizar = (t) => String(t ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
@@ -169,7 +170,7 @@ export default function ItemsTab({ negocio, cfg, tipo, avisar }) {
               const on = categoria === c;
               return (
                 <TouchableOpacity key={c ?? 'todas'} style={[s.cat, on && s.catOn]} onPress={() => setCategoria(c)}>
-                  <Text style={[s.catTxt, on && { color: '#FFF' }]}>{c ?? `Todas (${items.length})`}</Text>
+                  <Text style={[s.catTxt, on && { color: colores.blanco }]}>{c ?? `Todas (${items.length})`}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -225,14 +226,14 @@ export default function ItemsTab({ negocio, cfg, tipo, avisar }) {
               <Text style={s.nombre} numberOfLines={2}>{it.nombre}</Text>
               <View style={s.etiquetas}>
                 {!esProducto && it.duracionMin ? (
-                  <Etiqueta texto={`${it.duracionMin} min`} icono="time-outline" color={C.texto2} fondo="#F1F1F1" />
+                  <Etiqueta texto={`${it.duracionMin} min`} icono="time-outline" color={C.texto2} fondo={colores.gris100} />
                 ) : null}
                 {esProducto && it.stock != null ? (
                   <Etiqueta texto={it.stock === 0 ? 'Sin stock' : `Stock ${it.stock}`}
-                    color={it.stock === 0 ? C.rojo : it.stock <= 3 ? '#B07A00' : C.texto2}
-                    fondo={it.stock === 0 ? '#FDECEE' : it.stock <= 3 ? '#FFF1DC' : '#F1F1F1'} />
+                    color={it.stock === 0 ? C.rojo : it.stock <= 3 ? colores.ambarOscuro : C.texto2}
+                    fondo={it.stock === 0 ? colores.rojoFondo : it.stock <= 3 ? colores.ambarFondo : colores.gris100} />
                 ) : null}
-                {!it.activo ? <Etiqueta texto="Oculto" icono="eye-off" color={C.texto2} fondo="#F1F1F1" /> : null}
+                {!it.activo ? <Etiqueta texto="Oculto" icono="eye-off" color={C.texto2} fondo={colores.gris100} /> : null}
               </View>
             </View>
             <View style={{ alignItems: 'flex-end', gap: 6 }}>
@@ -276,21 +277,21 @@ const s = StyleSheet.create({
   sugeridos: { marginBottom: 8 },
   sugTitulo: { fontSize: 17, fontWeight: '900', color: C.texto },
   sugTxt: { fontSize: 13, color: C.texto2, marginTop: 4, marginBottom: 8, lineHeight: 18 },
-  sugFila: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: '#F2F2F2' },
+  sugFila: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: colores.gris75 },
   sugNombre: { fontSize: 14, fontWeight: '800', color: C.texto },
   sugDet: { fontSize: 12, color: C.texto2 },
   sugPrecio: { fontSize: 13, fontWeight: '800', color: C.texto },
 
   buscador: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF', borderRadius: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colores.blanco, borderRadius: 14,
     borderWidth: 1, borderColor: C.borde, paddingHorizontal: 12, marginBottom: 10,
   },
   buscadorInput: { flex: 1, fontSize: 15, color: C.texto, paddingVertical: 11 },
   cats: { gap: 8, paddingBottom: 4 },
-  cat: { borderRadius: 18, borderWidth: 1.5, borderColor: C.menta, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: '#FFF' },
+  cat: { borderRadius: 18, borderWidth: 1.5, borderColor: C.menta, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: colores.blanco },
   catOn: { backgroundColor: C.teal, borderColor: C.teal },
   catTxt: { fontSize: 13, fontWeight: '700', color: C.texto },
-  aviso: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FDECEE', borderRadius: 12, padding: 10, marginTop: 10 },
+  aviso: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colores.rojoFondo, borderRadius: 12, padding: 10, marginTop: 10 },
   avisoTxt: { flex: 1, fontSize: 12, fontWeight: '700', color: C.texto },
   verSug: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, minHeight: 32 },
   verSugTxt: { fontSize: 13, fontWeight: '800', color: C.teal },

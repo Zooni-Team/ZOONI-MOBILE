@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Avatar, C, Stat } from '../paseador/PaseadorUI';
 import { cuandoTexto, formatoPlata } from '../../services/negocioApi';
 import { calcularEdad } from '../../utils/calcularEdad';
+import { colores } from '../../theme';
 
 const fechaLarga = (d) => new Date(d).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
 const num = (n) => String(n).replace('.', ',');
@@ -93,8 +94,8 @@ export default function FichaPacienteModal({
         </View>
       ) : null}
       {esVet && ficha.proximoControl ? (
-        <View style={[s.aviso, { backgroundColor: '#FFF1DC' }]}>
-          <Ionicons name="alarm" size={16} color="#B07A00" />
+        <View style={[s.aviso, { backgroundColor: colores.ambarFondo }]}>
+          <Ionicons name="alarm" size={16} color={colores.ambarOscuro} />
           <Text style={s.avisoTxt}>Control indicado para el {fechaLarga(ficha.proximoControl)}</Text>
         </View>
       ) : null}
@@ -181,7 +182,7 @@ export default function FichaPacienteModal({
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.fondo },
   header: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFFFFF',
+    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colores.blanco,
     paddingHorizontal: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.borde,
   },
   volver: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
@@ -193,15 +194,15 @@ const s = StyleSheet.create({
   nombre: { fontSize: 22, fontWeight: '900', color: C.texto },
   sub: { fontSize: 13, color: C.texto2, marginTop: 2 },
   dueno: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF', borderRadius: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colores.blanco, borderRadius: 16,
     padding: 12, marginTop: 16,
   },
   duenoNombre: { fontSize: 15, fontWeight: '800', color: C.texto },
   chat: { width: 38, height: 38, borderRadius: 19, backgroundColor: C.menta, alignItems: 'center', justifyContent: 'center' },
-  stats: { flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: 16, padding: 14, marginTop: 12 },
+  stats: { flexDirection: 'row', backgroundColor: colores.blanco, borderRadius: 16, padding: 14, marginTop: 12 },
   aviso: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, padding: 12, marginTop: 10 },
   avisoTxt: { flex: 1, fontSize: 13, fontWeight: '700', color: C.texto },
-  pesos: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 14, marginTop: 12 },
+  pesos: { backgroundColor: colores.blanco, borderRadius: 16, padding: 14, marginTop: 12 },
   seccionChica: { fontSize: 13, fontWeight: '800', color: C.texto, marginBottom: 8 },
   pesosFila: { flexDirection: 'row', justifyContent: 'space-between' },
   pesoItem: { alignItems: 'center' },
@@ -209,7 +210,7 @@ const s = StyleSheet.create({
   pesoFecha: { fontSize: 11, color: C.texto2 },
   seccion: { fontSize: 17, fontWeight: '900', color: C.texto, marginTop: 22, marginBottom: 10 },
 
-  visita: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 14, marginBottom: 10, gap: 8 },
+  visita: { backgroundColor: colores.blanco, borderRadius: 16, padding: 14, marginBottom: 10, gap: 8 },
   visitaTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   visitaTitulo: { fontSize: 15, fontWeight: '800', color: C.texto },
   editar: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 },

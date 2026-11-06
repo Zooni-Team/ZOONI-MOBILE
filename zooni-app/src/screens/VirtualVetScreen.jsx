@@ -42,26 +42,27 @@ import {
   preguntarZooniVet,
   sugerenciasIniciales,
 } from '../services/zoonivetApi';
+import { colores } from '../theme';
 
 // ─── Tokens de estilo (sección 3.1) ─────────────────────────────────────────
 const C = {
   bgTop: '#E4F9EA',
   bgBottom: '#A8E6BC',
-  surface: '#FFFFFF',
+  surface: colores.blanco,
   bubbleUser: '#7FD9A0',
-  bubbleBot: '#FFFFFF',
-  text: '#2C2C2C',
-  textSoft: '#6B6B6B',
-  textSoftMint: '#5A6B60',
-  brandText: '#177046',
-  brand: '#2DBD72',
-  cta: '#F5C842',
+  bubbleBot: colores.blanco,
+  text: colores.texto,
+  textSoft: colores.textoSecundario,
+  textSoftMint: colores.verdeGrisaceo,
+  brandText: colores.verdeOscuro,
+  brand: colores.verde,
+  cta: colores.amarillo,
   ctaSoft: '#F7D060',
   sosFill: '#D62031',
-  sosText: '#B3121D',
+  sosText: colores.rojoOscuro,
   amberText: '#A05F00',
   amberTint: '#FFF8E6',
-  divider: '#E8EFE9',
+  divider: colores.mentaGris,
   typingDot: '#8FA89A',
 };
 
@@ -104,7 +105,7 @@ function SosCard({ onVerVets }) {
   return (
     <View style={styles.sosCard}>
       <View style={styles.sosHeaderRow}>
-        <Ionicons name="add" size={20} color="#FFFFFF" style={styles.sosCross} />
+        <Ionicons name="add" size={20} color={colores.blanco} style={styles.sosCross} />
         <Text style={styles.sosTitle}>Esto puede ser urgente</Text>
       </View>
       <Text style={styles.sosBody}>
@@ -502,13 +503,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginHorizontal: 12,
     marginTop: 10,
-    shadowColor: '#000',
+    shadowColor: colores.negro,
     shadowOpacity: 0.1,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
-  ctxAvatar: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: C.brand, backgroundColor: '#EEE' },
+  ctxAvatar: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: C.brand, backgroundColor: colores.gris250 },
   ctxAvatarPh: { backgroundColor: C.divider },
   ctxName: { fontSize: 16, fontWeight: '700', color: C.brandText },
   ctxBreed: { fontSize: 13, color: C.textSoft, marginTop: 2 },
@@ -525,7 +526,7 @@ const styles = StyleSheet.create({
   },
   bubble: {
     maxWidth: '78%', borderRadius: 18, paddingVertical: 10, paddingHorizontal: 14,
-    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 1,
+    shadowColor: colores.negro, shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 1,
   },
   bubbleUser: { backgroundColor: C.bubbleUser, borderBottomRightRadius: 6 },
   bubbleBot: { backgroundColor: C.bubbleBot, borderWidth: 1, borderColor: C.divider, borderBottomLeftRadius: 6 },
@@ -548,28 +549,28 @@ const styles = StyleSheet.create({
   sosCard: { backgroundColor: C.sosFill, borderRadius: 18, padding: 16, marginTop: 10, width: '92%' },
   sosHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
   sosCross: { fontWeight: '800' },
-  sosTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
-  sosBody: { color: '#FFFFFF', fontSize: 14, fontWeight: '600', marginBottom: 12 },
-  sosBtn: { backgroundColor: '#FFFFFF', borderRadius: 24, height: 48, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  sosTitle: { color: colores.blanco, fontSize: 16, fontWeight: '800' },
+  sosBody: { color: colores.blanco, fontSize: 14, fontWeight: '600', marginBottom: 12 },
+  sosBtn: { backgroundColor: colores.blanco, borderRadius: 24, height: 48, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   sosBtnText: { color: C.sosText, fontSize: 15, fontWeight: '700' },
 
   chipsScroll: { flexGrow: 0, maxHeight: 48, marginBottom: 14 },
   chipsRow: { paddingHorizontal: 12, paddingRight: 24, gap: 10, alignItems: 'center' },
   chip: {
-    height: 38, paddingHorizontal: 16, borderRadius: 19, backgroundColor: '#FFFFFF',
+    height: 38, paddingHorizontal: 16, borderRadius: 19, backgroundColor: colores.blanco,
     borderWidth: 1.5, borderColor: C.brandText, alignItems: 'center', justifyContent: 'center',
   },
   chipText: { color: C.brandText, fontSize: 14, fontWeight: '600' },
 
   inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 12, paddingHorizontal: 12, paddingTop: 4 },
   inputBox: {
-    flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: C.divider,
+    flex: 1, backgroundColor: colores.blanco, borderWidth: 1, borderColor: C.divider,
     borderRadius: 22, paddingHorizontal: 16, paddingVertical: Platform.OS === 'ios' ? 12 : 4, minHeight: 48, justifyContent: 'center',
   },
   input: { fontSize: 15, lineHeight: 21, color: C.text, maxHeight: 120 },
   sendBtn: {
     width: 48, height: 48, borderRadius: 24, backgroundColor: C.cta, alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 3,
+    shadowColor: colores.negro, shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 3,
   },
   sendBtnOff: { opacity: 0.45 },
 
@@ -584,10 +585,10 @@ const styles = StyleSheet.create({
   emptyBtnText: { fontSize: 15, fontWeight: '700', color: C.text },
 
   sheetBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, paddingBottom: 32 },
+  sheet: { backgroundColor: colores.blanco, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, paddingBottom: 32 },
   sheetTitle: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 12 },
   sheetItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
-  sheetAvatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: C.brand, backgroundColor: '#EEE' },
+  sheetAvatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: C.brand, backgroundColor: colores.gris250 },
   sheetName: { fontSize: 15, fontWeight: '700', color: C.text },
   sheetBreed: { fontSize: 13, color: C.textSoft, marginTop: 2 },
 });

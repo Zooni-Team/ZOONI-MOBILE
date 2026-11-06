@@ -37,15 +37,9 @@ import {
   precioTurno, radioBuscaYLlevaKm, recargoDomicilio, textoPrecioItem, turnosLibres,
 } from '../services/negocioApi';
 import { buscarLugar, direccionDe } from '../services/paseadorApi';
+import { colores, sombras } from '../theme';
 
 const kmTexto = (km) => `${km.toFixed(1).replace('.', ',')} km`;
-
-const VERDE = '#2DBD72';
-const MENTA = '#C8F0D8';
-const AMARILLO = '#F5C842';
-const ROJO = '#E63946';
-const TEXTO = '#2C2C2C';
-const TEXTO2 = '#6B6B6B';
 
 const DIAS_VISTA = 21;
 const NOMBRE_DIA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -236,11 +230,11 @@ export default function ReservarTurnoScreen() {
     }
   };
 
-  if (cargando) return <View style={[s.safe, s.centro]}><ActivityIndicator size="large" color={VERDE} /></View>;
+  if (cargando) return <View style={[s.safe, s.centro]}><ActivityIndicator size="large" color={colores.verde} /></View>;
   if (!negocio || !negocio.items?.length) {
     return (
       <SafeAreaView style={[s.safe, s.centro]}>
-        <Ionicons name="calendar-outline" size={44} color={TEXTO2} />
+        <Ionicons name="calendar-outline" size={44} color={colores.textoSecundario} />
         <Text style={s.vacioTxt}>{negocio ? 'Este negocio todavía no cargó sus servicios.' : 'Este negocio ya no está disponible.'}</Text>
         <TouchableOpacity style={[s.btn, { alignSelf: 'stretch', marginHorizontal: 24 }]} onPress={() => navigation.goBack()}>
           <Text style={s.btnTxt}>Volver</Text>
@@ -258,10 +252,10 @@ export default function ReservarTurnoScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={MENTA} />
+      <StatusBar barStyle="dark-content" backgroundColor={colores.menta} />
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={10} accessibilityLabel="Volver">
-          <Ionicons name="arrow-back" size={24} color={TEXTO} />
+          <Ionicons name="arrow-back" size={24} color={colores.texto} />
         </TouchableOpacity>
         <Text style={s.titulo}>{urgente && esVet ? 'Turno urgente' : 'Pedir turno'}</Text>
         <View style={{ width: 24 }} />
@@ -292,12 +286,12 @@ export default function ReservarTurnoScreen() {
               return (
                 <TouchableOpacity key={it.id} style={[s.opcion, on && s.opcionOn]} onPress={() => setItemId(it.id)}
                   accessibilityRole="radio" accessibilityState={{ selected: on }}>
-                  <Ionicons name={on ? 'radio-button-on' : 'radio-button-off'} size={20} color={on ? '#FFF' : VERDE} />
+                  <Ionicons name={on ? 'radio-button-on' : 'radio-button-off'} size={20} color={on ? colores.blanco : colores.verde} />
                   <View style={{ flex: 1 }}>
-                    <Text style={[s.opcionTitulo, on && { color: '#FFF' }]}>{it.nombre}</Text>
-                    <Text style={[s.opcionTxt, on && { color: '#F0FFF6' }]}>{it.categoria} · {it.duracionMin} min</Text>
+                    <Text style={[s.opcionTitulo, on && { color: colores.blanco }]}>{it.nombre}</Text>
+                    <Text style={[s.opcionTxt, on && { color: colores.mentaFondo }]}>{it.categoria} · {it.duracionMin} min</Text>
                   </View>
-                  <Text style={[s.opcionPrecio, on && { color: '#FFF' }]}>
+                  <Text style={[s.opcionPrecio, on && { color: colores.blanco }]}>
                     {esPelu && tamanoMascota && it.precios ? formatoPlata(precioTurno(negocio, it, tamanoMascota, false)) : textoPrecioItem(it)}
                   </Text>
                 </TouchableOpacity>
@@ -307,7 +301,7 @@ export default function ReservarTurnoScreen() {
 
           {/* 2. Mascota */}
           <Text style={s.label}>¿Para quién?</Text>
-          {cargandoMascotas ? <ActivityIndicator color={VERDE} /> : mascotas.length === 0 ? (
+          {cargandoMascotas ? <ActivityIndicator color={colores.verde} /> : mascotas.length === 0 ? (
             <Text style={s.ayuda}>No tenés mascotas cargadas. Agregá una desde Mis Mascotas.</Text>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
@@ -318,8 +312,8 @@ export default function ReservarTurnoScreen() {
                     onPress={() => { setMascotaId(m.id); setTamano(null); }}
                     accessibilityRole="radio" accessibilityState={{ selected: on }}>
                     <Image source={resolveMascotaVisual(m)} style={s.mascotaFoto} />
-                    <Text style={[s.mascotaNombre, on && { color: '#FFF' }]} numberOfLines={1}>{m.nombre}</Text>
-                    {m.peso ? <Text style={[s.mascotaPeso, on && { color: '#F0FFF6' }]}>{String(m.peso).replace('.', ',')} kg</Text> : null}
+                    <Text style={[s.mascotaNombre, on && { color: colores.blanco }]} numberOfLines={1}>{m.nombre}</Text>
+                    {m.peso ? <Text style={[s.mascotaPeso, on && { color: colores.mentaFondo }]}>{String(m.peso).replace('.', ',')} kg</Text> : null}
                   </TouchableOpacity>
                 );
               })}
@@ -327,7 +321,7 @@ export default function ReservarTurnoScreen() {
           )}
           {!especieOk && (
             <Text style={s.alerta}>
-              <Ionicons name="warning-outline" size={13} color={ROJO} /> {negocio.nombre} no indica que atienda {String(mascota?.especie ?? '').toLowerCase()}s. Consultá por chat antes.
+              <Ionicons name="warning-outline" size={13} color={colores.rojo} /> {negocio.nombre} no indica que atienda {String(mascota?.especie ?? '').toLowerCase()}s. Consultá por chat antes.
             </Text>
           )}
           {esPelu && mascota && (
@@ -342,8 +336,8 @@ export default function ReservarTurnoScreen() {
                   return (
                     <TouchableOpacity key={t.key} style={[s.chip, on && s.chipOn, !atiende && { opacity: 0.4 }]}
                       onPress={() => setTamano(t.key)} disabled={!atiende}>
-                      <Text style={[s.chipTxt, on && { color: '#FFF' }]}>{t.label}</Text>
-                      <Text style={[s.chipSub, on && { color: '#F0FFF6' }]}>{t.detalle}</Text>
+                      <Text style={[s.chipTxt, on && { color: colores.blanco }]}>{t.label}</Text>
+                      <Text style={[s.chipSub, on && { color: colores.mentaFondo }]}>{t.detalle}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -356,9 +350,9 @@ export default function ReservarTurnoScreen() {
           {esVet && (
             <TouchableOpacity style={[s.toggle, urgente && s.toggleUrgente]} onPress={() => { setUrgente((u) => !u); setDia(null); }}
               accessibilityRole="switch" accessibilityState={{ checked: urgente }}>
-              <Ionicons name={urgente ? 'alert-circle' : 'alert-circle-outline'} size={24} color={urgente ? ROJO : TEXTO2} />
+              <Ionicons name={urgente ? 'alert-circle' : 'alert-circle-outline'} size={24} color={urgente ? colores.rojo : colores.textoSecundario} />
               <View style={{ flex: 1 }}>
-                <Text style={[s.toggleTitulo, urgente && { color: ROJO }]}>Es una urgencia</Text>
+                <Text style={[s.toggleTitulo, urgente && { color: colores.rojo }]}>Es una urgencia</Text>
                 <Text style={s.toggleTxt}>
                   {d.urgencias24h
                     ? 'Atienden urgencias 24 h: podés elegir cualquier horario y les llega destacado.'
@@ -378,9 +372,9 @@ export default function ReservarTurnoScreen() {
                 <TouchableOpacity key={x.toISOString()} style={[s.dia, on && s.diaOn, !abierto && s.diaCerrado]}
                   onPress={() => setDia(x)} disabled={!abierto}
                   accessibilityLabel={`${fechaLarga(x)}${abierto ? '' : ', cerrado'}`}>
-                  <Text style={[s.diaNombre, on && { color: '#FFF' }]}>{i === 0 ? 'Hoy' : i === 1 ? 'Mañ' : NOMBRE_DIA[x.getDay()]}</Text>
-                  <Text style={[s.diaNum, on && { color: '#FFF' }]}>{x.getDate()}</Text>
-                  <Text style={[s.diaMes, on && { color: '#F0FFF6' }]}>{abierto ? x.toLocaleDateString('es-AR', { month: 'short' }) : 'cerr.'}</Text>
+                  <Text style={[s.diaNombre, on && { color: colores.blanco }]}>{i === 0 ? 'Hoy' : i === 1 ? 'Mañ' : NOMBRE_DIA[x.getDay()]}</Text>
+                  <Text style={[s.diaNum, on && { color: colores.blanco }]}>{x.getDate()}</Text>
+                  <Text style={[s.diaMes, on && { color: colores.mentaFondo }]}>{abierto ? x.toLocaleDateString('es-AR', { month: 'short' }) : 'cerr.'}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -389,10 +383,10 @@ export default function ReservarTurnoScreen() {
           {/* 4. Horario */}
           <Text style={s.label}>¿A qué hora?{dia ? <Text style={s.labelSub}> · {fechaLarga(dia)}</Text> : null}</Text>
           {!item ? <Text style={s.ayuda}>Elegí primero el servicio.</Text>
-            : cargandoLibres || libres === null ? <ActivityIndicator color={VERDE} />
+            : cargandoLibres || libres === null ? <ActivityIndicator color={colores.verde} />
               : !grupos.length ? (
                 <View style={s.sinLibres}>
-                  <Ionicons name="calendar-clear-outline" size={20} color={TEXTO2} />
+                  <Ionicons name="calendar-clear-outline" size={20} color={colores.textoSecundario} />
                   <Text style={s.sinLibresTxt}>No quedan horarios libres para {item.duracionMin} min este día. Probá con otro.</Text>
                 </View>
               ) : grupos.map((g) => (
@@ -404,7 +398,7 @@ export default function ReservarTurnoScreen() {
                       return (
                         <TouchableOpacity key={h.toISOString()} style={[s.hora, on && s.horaOn]} onPress={() => setHora(h)}
                           accessibilityRole="radio" accessibilityState={{ selected: on }}>
-                          <Text style={[s.horaTxt, on && { color: '#FFF' }]}>{horaTexto(h)}</Text>
+                          <Text style={[s.horaTxt, on && { color: colores.blanco }]}>{horaTexto(h)}</Text>
                         </TouchableOpacity>
                       );
                     })}
@@ -417,7 +411,7 @@ export default function ReservarTurnoScreen() {
             <>
               <TouchableOpacity style={[s.toggle, aDomicilio && s.toggleOn]} onPress={() => setADomicilio((x) => !x)}
                 accessibilityRole="switch" accessibilityState={{ checked: aDomicilio }}>
-                <Ionicons name={aDomicilio ? 'checkbox' : 'square-outline'} size={22} color={aDomicilio ? VERDE : TEXTO2} />
+                <Ionicons name={aDomicilio ? 'checkbox' : 'square-outline'} size={22} color={aDomicilio ? colores.verde : colores.textoSecundario} />
                 <View style={{ flex: 1 }}>
                   <Text style={s.toggleTitulo}>{esVet ? 'Que vengan a mi casa' : 'Que lo busquen y lo traigan'}</Text>
                   <Text style={s.toggleTxt}>
@@ -429,22 +423,22 @@ export default function ReservarTurnoScreen() {
               </TouchableOpacity>
               {aDomicilio && (
                 <>
-                  <View style={[s.inputFila, fueraDeRadio && { borderWidth: 1.5, borderColor: ROJO }]}>
+                  <View style={[s.inputFila, fueraDeRadio && { borderWidth: 1.5, borderColor: colores.rojo }]}>
                     <TextInput style={s.inputFlex} value={direccion}
                       onChangeText={(v) => { setDireccion(v.slice(0, 300)); setCoords(undefined); }}
                       // Al terminar de escribir se ubica en el mapa, así ve enseguida si llegan
                       onBlur={radioKm != null ? ubicarDireccion : undefined}
                       onSubmitEditing={radioKm != null ? ubicarDireccion : undefined}
-                      placeholder="Tu dirección (calle, número, piso)" placeholderTextColor="#AAAAAA" />
+                      placeholder="Tu dirección (calle, número, piso)" placeholderTextColor={colores.textoTenue} />
                     <TouchableOpacity onPress={usarUbicacion} hitSlop={8} accessibilityLabel="Usar mi ubicación">
-                      {ubicando ? <ActivityIndicator size="small" color={VERDE} /> : <Ionicons name="locate" size={22} color={VERDE} />}
+                      {ubicando ? <ActivityIndicator size="small" color={colores.verde} /> : <Ionicons name="locate" size={22} color={colores.verde} />}
                     </TouchableOpacity>
                   </View>
                   {radioKm != null && distanciaKm != null && (
                     <View style={s.radioFila}>
                       <Ionicons name={fueraDeRadio ? 'close-circle' : 'checkmark-circle'} size={16}
-                        color={fueraDeRadio ? ROJO : VERDE} />
-                      <Text style={[s.radioTxt, fueraDeRadio && { color: ROJO }]}>
+                        color={fueraDeRadio ? colores.rojo : colores.verde} />
+                      <Text style={[s.radioTxt, fueraDeRadio && { color: colores.rojo }]}>
                         {fueraDeRadio
                           ? `Tu dirección queda a ${kmTexto(distanciaKm)}: ${negocio.nombre} busca y lleva hasta ${radioKm} km.`
                           : `Tu dirección queda a ${kmTexto(distanciaKm)} del local: llegan.`}
@@ -464,7 +458,7 @@ export default function ReservarTurnoScreen() {
           {/* 6. Notas */}
           <Text style={s.label}>{esVet ? 'Contales qué le pasa (opcional)' : 'Notas para la peluquería (opcional)'}</Text>
           <TextInput style={[s.input, { minHeight: 80, textAlignVertical: 'top' }]} value={notas} onChangeText={setNotas}
-            multiline maxLength={500} placeholderTextColor="#AAAAAA"
+            multiline maxLength={500} placeholderTextColor={colores.textoTenue}
             placeholder={esVet
               ? 'Ej: vomitó dos veces desde ayer, está decaído. Toma un antibiótico.'
               : 'Ej: tiene nudos en las patas, se pone nervioso con el secador.'} />
@@ -473,10 +467,10 @@ export default function ReservarTurnoScreen() {
           {item && mascota && hora ? (
             <View style={[s.card, { marginTop: 22 }]}>
               <Text style={s.resumenTitulo}>Tu turno</Text>
-              <Text style={s.resumenFila}><Ionicons name="paw" size={14} color={VERDE} /> {mascota.nombre} · {item.nombre}</Text>
-              <Text style={s.resumenFila}><Ionicons name="calendar" size={14} color={VERDE} /> {fechaLarga(hora)} a las {horaTexto(hora)} ({item.duracionMin} min)</Text>
-              {aDomicilio ? <Text style={s.resumenFila}><Ionicons name="home" size={14} color={VERDE} /> {esVet ? 'En tu casa' : 'Busca y lleva'}</Text> : null}
-              {esVet && urgente ? <Text style={[s.resumenFila, { color: ROJO }]}><Ionicons name="alert-circle" size={14} color={ROJO} /> Urgencia</Text> : null}
+              <Text style={s.resumenFila}><Ionicons name="paw" size={14} color={colores.verde} /> {mascota.nombre} · {item.nombre}</Text>
+              <Text style={s.resumenFila}><Ionicons name="calendar" size={14} color={colores.verde} /> {fechaLarga(hora)} a las {horaTexto(hora)} ({item.duracionMin} min)</Text>
+              {aDomicilio ? <Text style={s.resumenFila}><Ionicons name="home" size={14} color={colores.verde} /> {esVet ? 'En tu casa' : 'Busca y lleva'}</Text> : null}
+              {esVet && urgente ? <Text style={[s.resumenFila, { color: colores.rojo }]}><Ionicons name="alert-circle" size={14} color={colores.rojo} /> Urgencia</Text> : null}
               <View style={s.resumenTotal}>
                 <Text style={s.resumenTotalTxt}>Total</Text>
                 <Text style={s.resumenTotalTxt}>{formatoPlata(precio)}</Text>
@@ -492,10 +486,10 @@ export default function ReservarTurnoScreen() {
           )}
           {errorGeneral && <Text style={s.errorGeneral}>{errorGeneral}</Text>}
 
-          <TouchableOpacity style={[s.btn, esVet && urgente && { backgroundColor: ROJO }, enviando && { opacity: 0.6 }]}
+          <TouchableOpacity style={[s.btn, esVet && urgente && { backgroundColor: colores.rojo }, enviando && { opacity: 0.6 }]}
             onPress={enviar} disabled={enviando} activeOpacity={0.85}>
-            {enviando ? <ActivityIndicator color={TEXTO} /> : (
-              <Text style={[s.btnTxt, esVet && urgente && { color: '#FFF' }]}>
+            {enviando ? <ActivityIndicator color={colores.texto} /> : (
+              <Text style={[s.btnTxt, esVet && urgente && { color: colores.blanco }]}>
                 {esVet && urgente ? 'Pedir turno urgente' : 'Pedir turno'}{item ? ` · ${formatoPlata(precio)}` : ''}
               </Text>
             )}
@@ -507,101 +501,97 @@ export default function ReservarTurnoScreen() {
   );
 }
 
-const sombra = {
-  shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 3,
-};
-
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: MENTA },
+  safe: { flex: 1, backgroundColor: colores.menta },
   centro: { alignItems: 'center', justifyContent: 'center', gap: 12 },
   header: {
     height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16,
   },
-  titulo: { fontSize: 20, fontWeight: '800', color: VERDE },
+  titulo: { fontSize: 20, fontWeight: '800', color: colores.verde },
   scroll: { padding: 20, paddingTop: 4, paddingBottom: 40 },
 
-  card: { backgroundColor: '#FFF', borderRadius: 20, padding: 16, ...sombra },
+  card: { backgroundColor: colores.blanco, borderRadius: 20, padding: 16, ...sombras.tarjeta },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   logo: { width: 54, height: 54, borderRadius: 16 },
-  negocioNombre: { fontSize: 17, fontWeight: '900', color: TEXTO },
-  negocioSub: { fontSize: 13, color: TEXTO2, marginTop: 2 },
+  negocioNombre: { fontSize: 17, fontWeight: '900', color: colores.texto },
+  negocioSub: { fontSize: 13, color: colores.textoSecundario, marginTop: 2 },
 
-  label: { fontSize: 15, fontWeight: '800', color: TEXTO, marginTop: 22, marginBottom: 10 },
-  labelSub: { fontSize: 13, fontWeight: '600', color: TEXTO2 },
-  subLabel: { fontSize: 13, fontWeight: '700', color: TEXTO2, marginTop: 10, marginBottom: 8 },
-  ayuda: { fontSize: 13, color: TEXTO2 },
-  alerta: { fontSize: 12, color: ROJO, fontWeight: '700', marginTop: 8 },
+  label: { fontSize: 15, fontWeight: '800', color: colores.texto, marginTop: 22, marginBottom: 10 },
+  labelSub: { fontSize: 13, fontWeight: '600', color: colores.textoSecundario },
+  subLabel: { fontSize: 13, fontWeight: '700', color: colores.textoSecundario, marginTop: 10, marginBottom: 8 },
+  ayuda: { fontSize: 13, color: colores.textoSecundario },
+  alerta: { fontSize: 12, color: colores.rojo, fontWeight: '700', marginTop: 8 },
 
-  opcion: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFF', borderRadius: 18, padding: 14 },
-  opcionOn: { backgroundColor: VERDE },
-  opcionTitulo: { fontSize: 15, fontWeight: '800', color: TEXTO },
-  opcionTxt: { fontSize: 12, color: TEXTO2, marginTop: 2 },
-  opcionPrecio: { fontSize: 15, fontWeight: '900', color: TEXTO },
+  opcion: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colores.blanco, borderRadius: 18, padding: 14 },
+  opcionOn: { backgroundColor: colores.verde },
+  opcionTitulo: { fontSize: 15, fontWeight: '800', color: colores.texto },
+  opcionTxt: { fontSize: 12, color: colores.textoSecundario, marginTop: 2 },
+  opcionPrecio: { fontSize: 15, fontWeight: '900', color: colores.texto },
 
-  mascota: { alignItems: 'center', width: 86, paddingVertical: 10, borderRadius: 18, backgroundColor: '#FFF' },
-  mascotaOn: { backgroundColor: VERDE },
-  mascotaFoto: { width: 52, height: 52, borderRadius: 26, backgroundColor: MENTA },
-  mascotaNombre: { fontSize: 13, fontWeight: '800', color: TEXTO, marginTop: 6, maxWidth: 74 },
-  mascotaPeso: { fontSize: 11, color: TEXTO2 },
+  mascota: { alignItems: 'center', width: 86, paddingVertical: 10, borderRadius: 18, backgroundColor: colores.blanco },
+  mascotaOn: { backgroundColor: colores.verde },
+  mascotaFoto: { width: 52, height: 52, borderRadius: 26, backgroundColor: colores.menta },
+  mascotaNombre: { fontSize: 13, fontWeight: '800', color: colores.texto, marginTop: 6, maxWidth: 74 },
+  mascotaPeso: { fontSize: 11, color: colores.textoSecundario },
 
   chips: { flexDirection: 'row', gap: 8 },
-  chip: { flex: 1, alignItems: 'center', backgroundColor: '#FFF', borderRadius: 16, paddingVertical: 10 },
-  chipOn: { backgroundColor: VERDE },
-  chipTxt: { fontSize: 14, fontWeight: '800', color: TEXTO },
-  chipSub: { fontSize: 11, color: TEXTO2, marginTop: 1 },
+  chip: { flex: 1, alignItems: 'center', backgroundColor: colores.blanco, borderRadius: 16, paddingVertical: 10 },
+  chipOn: { backgroundColor: colores.verde },
+  chipTxt: { fontSize: 14, fontWeight: '800', color: colores.texto },
+  chipSub: { fontSize: 11, color: colores.textoSecundario, marginTop: 1 },
 
   toggle: {
-    flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFF', borderRadius: 18,
-    padding: 14, marginTop: 18, borderWidth: 2, borderColor: '#FFF',
+    flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colores.blanco, borderRadius: 18,
+    padding: 14, marginTop: 18, borderWidth: 2, borderColor: colores.blanco,
   },
-  toggleOn: { borderColor: VERDE },
-  toggleUrgente: { borderColor: ROJO, backgroundColor: '#FFF7F8' },
-  toggleTitulo: { fontSize: 15, fontWeight: '800', color: TEXTO },
-  toggleTxt: { fontSize: 12, color: TEXTO2, marginTop: 2, lineHeight: 17 },
+  toggleOn: { borderColor: colores.verde },
+  toggleUrgente: { borderColor: colores.rojo, backgroundColor: '#FFF7F8' },
+  toggleTitulo: { fontSize: 15, fontWeight: '800', color: colores.texto },
+  toggleTxt: { fontSize: 12, color: colores.textoSecundario, marginTop: 2, lineHeight: 17 },
 
-  dia: { width: 58, alignItems: 'center', paddingVertical: 10, borderRadius: 16, backgroundColor: '#FFF' },
-  diaOn: { backgroundColor: VERDE },
+  dia: { width: 58, alignItems: 'center', paddingVertical: 10, borderRadius: 16, backgroundColor: colores.blanco },
+  diaOn: { backgroundColor: colores.verde },
   diaCerrado: { opacity: 0.4 },
-  diaNombre: { fontSize: 12, fontWeight: '700', color: TEXTO2 },
-  diaNum: { fontSize: 20, fontWeight: '900', color: TEXTO },
-  diaMes: { fontSize: 11, color: TEXTO2 },
+  diaNombre: { fontSize: 12, fontWeight: '700', color: colores.textoSecundario },
+  diaNum: { fontSize: 20, fontWeight: '900', color: colores.texto },
+  diaMes: { fontSize: 11, color: colores.textoSecundario },
 
   horas: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  hora: { width: '22.5%', alignItems: 'center', paddingVertical: 11, borderRadius: 14, backgroundColor: '#FFF' },
-  horaOn: { backgroundColor: VERDE },
-  horaTxt: { fontSize: 15, fontWeight: '800', color: TEXTO, fontVariant: ['tabular-nums'] },
-  sinLibres: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFF', borderRadius: 16, padding: 14 },
-  sinLibresTxt: { flex: 1, fontSize: 13, color: TEXTO2 },
+  hora: { width: '22.5%', alignItems: 'center', paddingVertical: 11, borderRadius: 14, backgroundColor: colores.blanco },
+  horaOn: { backgroundColor: colores.verde },
+  horaTxt: { fontSize: 15, fontWeight: '800', color: colores.texto, fontVariant: ['tabular-nums'] },
+  sinLibres: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colores.blanco, borderRadius: 16, padding: 14 },
+  sinLibresTxt: { flex: 1, fontSize: 13, color: colores.textoSecundario },
 
   inputFila: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF',
+    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colores.blanco,
     borderRadius: 16, paddingHorizontal: 14, marginTop: 10,
   },
-  inputFlex: { flex: 1, paddingVertical: 14, fontSize: 15, color: TEXTO },
+  inputFlex: { flex: 1, paddingVertical: 14, fontSize: 15, color: colores.texto },
   radioFila: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 8, paddingHorizontal: 4 },
-  radioTxt: { flex: 1, fontSize: 13, fontWeight: '700', color: VERDE, lineHeight: 18 },
-  radioAyuda: { fontSize: 13, color: TEXTO2, marginTop: 8, paddingHorizontal: 4, lineHeight: 18 },
-  input: { backgroundColor: '#FFF', borderRadius: 16, padding: 14, fontSize: 15, color: TEXTO },
+  radioTxt: { flex: 1, fontSize: 13, fontWeight: '700', color: colores.verde, lineHeight: 18 },
+  radioAyuda: { fontSize: 13, color: colores.textoSecundario, marginTop: 8, paddingHorizontal: 4, lineHeight: 18 },
+  input: { backgroundColor: colores.blanco, borderRadius: 16, padding: 14, fontSize: 15, color: colores.texto },
 
-  resumenTitulo: { fontSize: 16, fontWeight: '900', color: TEXTO, marginBottom: 6 },
-  resumenFila: { fontSize: 14, color: TEXTO, marginTop: 4 },
+  resumenTitulo: { fontSize: 16, fontWeight: '900', color: colores.texto, marginBottom: 6 },
+  resumenFila: { fontSize: 14, color: colores.texto, marginTop: 4 },
   resumenTotal: {
     flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingTop: 10,
-    borderTopWidth: 1, borderTopColor: '#F2F2F2',
+    borderTopWidth: 1, borderTopColor: colores.gris75,
   },
-  resumenTotalTxt: { fontSize: 18, fontWeight: '900', color: TEXTO },
+  resumenTotalTxt: { fontSize: 18, fontWeight: '900', color: colores.texto },
 
-  errores: { marginTop: 18, padding: 14, borderRadius: 14, backgroundColor: '#FDECEE', borderWidth: 1, borderColor: '#F5B7BD' },
-  erroresTitulo: { fontSize: 13, fontWeight: '800', color: ROJO, marginBottom: 4 },
-  errorItem: { fontSize: 13, color: TEXTO, marginTop: 2 },
-  errorGeneral: { marginTop: 14, padding: 12, borderRadius: 12, backgroundColor: '#FDECEE', fontSize: 13, color: ROJO },
+  errores: { marginTop: 18, padding: 14, borderRadius: 14, backgroundColor: colores.rojoFondo, borderWidth: 1, borderColor: colores.rojoBorde },
+  erroresTitulo: { fontSize: 13, fontWeight: '800', color: colores.rojo, marginBottom: 4 },
+  errorItem: { fontSize: 13, color: colores.texto, marginTop: 2 },
+  errorGeneral: { marginTop: 14, padding: 12, borderRadius: 12, backgroundColor: colores.rojoFondo, fontSize: 13, color: colores.rojo },
 
   btn: {
-    marginTop: 22, height: 56, borderRadius: 30, backgroundColor: AMARILLO,
+    marginTop: 22, height: 56, borderRadius: 30, backgroundColor: colores.amarillo,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 3,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 3,
   },
-  btnTxt: { fontSize: 16, fontWeight: '800', color: TEXTO },
-  pie: { fontSize: 12, color: TEXTO2, textAlign: 'center', marginTop: 10 },
-  vacioTxt: { fontSize: 15, color: TEXTO2, textAlign: 'center', paddingHorizontal: 24 },
+  btnTxt: { fontSize: 16, fontWeight: '800', color: colores.texto },
+  pie: { fontSize: 12, color: colores.textoSecundario, textAlign: 'center', marginTop: 10 },
+  vacioTxt: { fontSize: 15, color: colores.textoSecundario, textAlign: 'center', paddingHorizontal: 24 },
 });

@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { colores } from '../../theme';
 
 export default function PopupServicio({ servicio, onClose }) {
   const navigation = useNavigation();
@@ -47,25 +48,25 @@ export default function PopupServicio({ servicio, onClose }) {
       <View style={styles.header}>
         <Text style={styles.nombre}>{servicio.nombre}</Text>
         <TouchableOpacity onPress={onClose} accessibilityLabel="Cerrar">
-          <Ionicons name="close" size={18} color="#6B6B6B" />
+          <Ionicons name="close" size={18} color={colores.textoSecundario} />
         </TouchableOpacity>
       </View>
       <Text style={styles.tipo}>{servicio.tipo?.charAt(0).toUpperCase() + servicio.tipo?.slice(1)}</Text>
       {servicio.direccion && (
         <View style={styles.infoRow}>
-          <Ionicons name="location-outline" size={13} color="#6B6B6B" />
+          <Ionicons name="location-outline" size={13} color={colores.textoSecundario} />
           <Text style={styles.info}>{servicio.direccion}</Text>
         </View>
       )}
       {servicio.telefono && (
         <View style={styles.infoRow}>
-          <Ionicons name="call-outline" size={13} color="#6B6B6B" />
+          <Ionicons name="call-outline" size={13} color={colores.textoSecundario} />
           <Text style={styles.info}>{servicio.telefono}</Text>
         </View>
       )}
       {servicio.descripcion && (
         <View style={styles.infoRow}>
-          <Ionicons name="document-text-outline" size={13} color="#6B6B6B" />
+          <Ionicons name="document-text-outline" size={13} color={colores.textoSecundario} />
           <Text style={styles.info}>{servicio.descripcion}</Text>
         </View>
       )}
@@ -73,7 +74,7 @@ export default function PopupServicio({ servicio, onClose }) {
         <View style={styles.infoRow}>
           {servicio.rating != null && (
             <>
-              <Ionicons name="star" size={13} color="#F5A623" />
+              <Ionicons name="star" size={13} color={colores.ambar} />
               <Text style={styles.info}>
                 {servicio.rating.toFixed(1)}
                 {servicio.ratingCount ? ` · ${servicio.ratingCount} reseñas` : ''}
@@ -81,7 +82,7 @@ export default function PopupServicio({ servicio, onClose }) {
             </>
           )}
           {servicio.abiertoAhora != null && (
-            <Text style={[styles.info, { color: servicio.abiertoAhora ? '#2DBD72' : '#E63946', fontWeight: '600' }]}>
+            <Text style={[styles.info, { color: servicio.abiertoAhora ? colores.verde : colores.rojo, fontWeight: '600' }]}>
               {servicio.abiertoAhora ? 'Abierto ahora' : 'Cerrado'}
             </Text>
           )}
@@ -91,20 +92,20 @@ export default function PopupServicio({ servicio, onClose }) {
           en texto ("Mo-Fr 09:00-19:00"), que es lo que hace falta saber. */}
       {servicio.horario && (
         <View style={styles.infoRow}>
-          <Ionicons name="time-outline" size={13} color="#6B6B6B" />
+          <Ionicons name="time-outline" size={13} color={colores.textoSecundario} />
           <Text style={styles.info}>{servicio.horario}</Text>
         </View>
       )}
       {idNegocio ? (
         <View style={styles.btnsRow}>
           <TouchableOpacity style={[styles.btnMaps, styles.btnFicha]} onPress={verFicha}>
-            <Ionicons name={servicio.tipo === 'petshop' ? 'bag-handle-outline' : 'calendar-outline'} size={15} color="#2C2C2C" />
-            <Text style={[styles.btnMapsText, { color: '#2C2C2C' }]}>
+            <Ionicons name={servicio.tipo === 'petshop' ? 'bag-handle-outline' : 'calendar-outline'} size={15} color={colores.texto} />
+            <Text style={[styles.btnMapsText, { color: colores.texto }]}>
               {servicio.tipo === 'petshop' ? 'Ver productos' : 'Pedir turno'}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.btnMaps, styles.btnMensaje]} onPress={enviarMensaje}>
-            <Ionicons name="chatbubble-outline" size={15} color="#2DBD72" />
+            <Ionicons name="chatbubble-outline" size={15} color={colores.verde} />
             <Text style={[styles.btnMapsText, styles.btnMensajeText]}>Mensaje</Text>
           </TouchableOpacity>
         </View>
@@ -117,13 +118,13 @@ export default function PopupServicio({ servicio, onClose }) {
               style={[styles.btnMaps, styles.btnMensaje]}
               onPress={() => Linking.openURL(`tel:${servicio.telefono.replace(/[^+\d]/g, '')}`)}
             >
-              <Ionicons name="call-outline" size={15} color="#2DBD72" />
+              <Ionicons name="call-outline" size={15} color={colores.verde} />
               <Text style={[styles.btnMapsText, styles.btnMensajeText]}>Llamar</Text>
             </TouchableOpacity>
           )
         ) : (
           <TouchableOpacity style={[styles.btnMaps, styles.btnMensaje]} onPress={enviarMensaje}>
-            <Ionicons name="chatbubble-outline" size={15} color="#2DBD72" />
+            <Ionicons name="chatbubble-outline" size={15} color={colores.verde} />
             <Text style={[styles.btnMapsText, styles.btnMensajeText]}>Enviar mensaje</Text>
           </TouchableOpacity>
         )}
@@ -134,7 +135,7 @@ export default function PopupServicio({ servicio, onClose }) {
       )}
       {idNegocio ? (
         <TouchableOpacity onPress={verFicha} style={styles.enZooni}>
-          <Ionicons name="checkmark-circle" size={13} color="#2DBD72" />
+          <Ionicons name="checkmark-circle" size={13} color={colores.verde} />
           <Text style={styles.enZooniTxt}>En Zooni · respondé y reservá desde la app</Text>
         </TouchableOpacity>
       ) : null}
@@ -145,26 +146,26 @@ export default function PopupServicio({ servicio, onClose }) {
 const styles = StyleSheet.create({
   popup: {
     position: 'absolute', bottom: 230, alignSelf: 'center', width: '82%',
-    backgroundColor: '#fff', borderRadius: 16, padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 6 },
+    backgroundColor: colores.blanco, borderRadius: 16, padding: 16,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.15, shadowRadius: 20, elevation: 10, zIndex: 200,
   },
   header:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  nombre:  { fontSize: 15, fontWeight: '700', color: '#2C2C2C', flex: 1 },
-  tipo:    { fontSize: 12, fontWeight: '600', color: '#2DBD72', marginBottom: 8 },
+  nombre:  { fontSize: 15, fontWeight: '700', color: colores.texto, flex: 1 },
+  tipo:    { fontSize: 12, fontWeight: '600', color: colores.verde, marginBottom: 8 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  info:    { fontSize: 13, color: '#6B6B6B' },
+  info:    { fontSize: 13, color: colores.textoSecundario },
   btnsRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  btnMaps: { flex: 1, backgroundColor: '#2DBD72', borderRadius: 20, paddingVertical: 10, alignItems: 'center' },
-  btnMapsText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  btnMaps: { flex: 1, backgroundColor: colores.verde, borderRadius: 20, paddingVertical: 10, alignItems: 'center' },
+  btnMapsText: { color: colores.blanco, fontWeight: '700', fontSize: 14 },
   btnMensaje: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    backgroundColor: '#F0FFF6', borderWidth: 1.5, borderColor: '#2DBD72',
+    backgroundColor: colores.mentaFondo, borderWidth: 1.5, borderColor: colores.verde,
   },
-  btnMensajeText: { color: '#2DBD72' },
+  btnMensajeText: { color: colores.verde },
   btnFicha: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#F5C842',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colores.amarillo,
   },
   enZooni: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, alignSelf: 'center' },
-  enZooniTxt: { fontSize: 11, fontWeight: '700', color: '#2DBD72' },
+  enZooniTxt: { fontSize: 11, fontWeight: '700', color: colores.verde },
 });

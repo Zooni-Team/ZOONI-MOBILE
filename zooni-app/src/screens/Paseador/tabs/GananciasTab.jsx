@@ -23,6 +23,7 @@ import HistorialPerroModal from '../../../components/paseador/HistorialPerroModa
 import {
   fetchGanancias, formatoDistancia, formatoPlata, inicioDePeriodo,
 } from '../../../services/paseadorApi';
+import { colores } from '../../../theme';
 
 const PERIODOS = [
   { key: 'semana', label: 'Semana', frase: 'esta semana' },
@@ -271,8 +272,8 @@ const g = StyleSheet.create({
   barra: { width: '58%', maxWidth: 28, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
   barraOn: { backgroundColor: C.teal },
   barraOff: { backgroundColor: C.teal, opacity: 0.45 },
-  barraVacia: { backgroundColor: '#E8E8E8' },
-  base: { height: 1, backgroundColor: '#E6E6E6' },
+  barraVacia: { backgroundColor: colores.gris300 },
+  base: { height: 1, backgroundColor: colores.gris350 },
   labels: { flexDirection: 'row', marginTop: 6 },
   label: { flex: 1, textAlign: 'center', fontSize: 12, color: C.texto2, fontWeight: '600' },
   labelOn: { color: C.texto, fontWeight: '800' },
@@ -282,13 +283,13 @@ const s = StyleSheet.create({
   lista: { padding: 20, paddingBottom: 32 },
 
   segmento: {
-    flexDirection: 'row', padding: 4, backgroundColor: '#FFFFFF', borderRadius: 30,
+    flexDirection: 'row', padding: 4, backgroundColor: colores.blanco, borderRadius: 30,
     borderWidth: 1, borderColor: C.borde,
   },
   segBtn: { flex: 1, height: 40, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   segBtnOn: { backgroundColor: C.teal },
   segTxt: { fontSize: 14, fontWeight: '700', color: C.texto2 },
-  segTxtOn: { color: '#FFFFFF', fontWeight: '800' },
+  segTxtOn: { color: colores.blanco, fontWeight: '800' },
 
   hero: { backgroundColor: C.menta, borderRadius: 20, padding: 20, marginTop: 16 },
   heroLabel: { fontSize: 14, fontWeight: '700', color: C.texto },
@@ -302,7 +303,7 @@ const s = StyleSheet.create({
   fila: {
     flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.card,
     borderRadius: 16, padding: 12, marginBottom: 8,
-    borderWidth: 1, borderColor: '#F0F0F0',
+    borderWidth: 1, borderColor: colores.gris150,
   },
   filaNombre: { fontSize: 15, fontWeight: '800', color: C.texto },
   filaSub: { fontSize: 12, color: C.texto2, marginTop: 2 },

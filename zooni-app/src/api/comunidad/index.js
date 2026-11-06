@@ -13,7 +13,6 @@ import { buscarLugares, combinarServicios } from '../../services/lugaresApi';
 import { consultarPerfiles, perfilesPorId } from '../../services/perfilesPublicos';
 import { distanciaKm } from '../../utils/geo';
 
-
 function aplicarBbox(query, bbox, latCol = 'lat', lngCol = 'lng') {
   if (!bbox) return query;
   return query

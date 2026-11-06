@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { fetchNotificaciones, marcarNotificacionLeida, marcarTodasLeidas } from '../services/api';
 import { chatDeMatchPorMascota } from '../services/matchApi';
 import { resolveMascotaVisual } from '../constants/petImages';
+import { colores } from '../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DROPDOWN_TOP = 56;
@@ -158,7 +159,7 @@ export default function NotificationsPanel({ visible, onClose, onNavigate, onMar
           <Image source={{ uri: item.fotoUrl }} style={styles.avatar} />
         ) : (
           <View style={[styles.avatar, styles.avatarFallback]}>
-            <Ionicons name="paw" size={18} color="#2DBD72" />
+            <Ionicons name="paw" size={18} color={colores.verde} />
           </View>
         )}
       </View>
@@ -190,7 +191,7 @@ export default function NotificationsPanel({ visible, onClose, onNavigate, onMar
 
         <View style={styles.dropdownBody}>
           {loading ? (
-            <ActivityIndicator size="small" color="#2DBD72" style={styles.loader} />
+            <ActivityIndicator size="small" color={colores.verde} style={styles.loader} />
           ) : notificaciones.length === 0 ? (
             <Text style={styles.emptyText}>No tenés notificaciones</Text>
           ) : (
@@ -226,7 +227,7 @@ const styles = StyleSheet.create({
     maxWidth: 380,
     borderRadius: 14,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: colores.negro,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.18,
     shadowRadius: 14,
@@ -246,7 +247,7 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
   },
   markAllBtn: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colores.blanco,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 14,
@@ -254,10 +255,10 @@ const styles = StyleSheet.create({
   markAllBtnText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#2C2C2C',
+    color: colores.texto,
   },
   dropdownBody: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colores.blanco,
     minHeight: 72,
     maxHeight: 240,
     justifyContent: 'center',
@@ -265,7 +266,7 @@ const styles = StyleSheet.create({
   loader: { paddingVertical: 24 },
   emptyText: {
     fontSize: 14,
-    color: '#9A9A9A',
+    color: colores.textoGris,
     textAlign: 'center',
     paddingVertical: 28,
     paddingHorizontal: 16,
@@ -277,21 +278,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: colores.gris150,
   },
   itemUnread: { backgroundColor: 'rgba(45, 189, 114, 0.08)' },
   avatarWrap: { marginRight: 10 },
   avatar: { width: 36, height: 36, borderRadius: 18 },
   avatarFallback: {
-    backgroundColor: '#C8F0D8',
+    backgroundColor: colores.menta,
     alignItems: 'center',
     justifyContent: 'center',
   },
   textWrap: { flex: 1, marginRight: 6 },
-  titulo: { fontSize: 13, fontWeight: '700', color: '#2C2C2C' },
-  cuerpo: { fontSize: 12, color: '#6B6B6B', marginTop: 2 },
-  mascotaNombre: { fontSize: 11, fontWeight: '700', color: '#177046', marginTop: 2 },
+  titulo: { fontSize: 13, fontWeight: '700', color: colores.texto },
+  cuerpo: { fontSize: 12, color: colores.textoSecundario, marginTop: 2 },
+  mascotaNombre: { fontSize: 11, fontWeight: '700', color: colores.verdeOscuro, marginTop: 2 },
   rightWrap: { alignItems: 'flex-end', gap: 4 },
-  tiempo: { fontSize: 10, color: '#AAAAAA' },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#2DBD72' },
+  tiempo: { fontSize: 10, color: colores.textoTenue },
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colores.verde },
 });

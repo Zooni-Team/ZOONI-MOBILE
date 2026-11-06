@@ -26,6 +26,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { C, sombra } from '../paseador/PaseadorUI';
 import { MEDIOS_PAGO_NEGOCIO, TAMANOS, configNegocio } from '../../constants/negocios';
 import { sanitizarDigitos } from '../../utils/sanitizar';
+import { colores } from '../../theme';
 
 export const ESPECIES_NEGOCIO = [
   { key: 'perro', label: 'Perros', icono: 'paw' },
@@ -59,7 +60,7 @@ export function Multi({ opciones, valor, onCambio, error }) {
           <TouchableOpacity key={key} style={[f.chip, on && f.chipOn, error && !valor.length && f.inputError]}
             onPress={() => onCambio(on ? valor.filter((x) => x !== key) : [...valor, key])}
             accessibilityRole="checkbox" accessibilityState={{ checked: on }}>
-            {o.icono ? <Ionicons name={o.icono} size={14} color={on ? '#FFF' : C.teal} /> : null}
+            {o.icono ? <Ionicons name={o.icono} size={14} color={on ? colores.blanco : C.teal} /> : null}
             <Text style={[f.chipTxt, on && f.chipTxtOn]}>{o.label ?? o}</Text>
           </TouchableOpacity>
         );
@@ -78,7 +79,7 @@ export function Unico({ opciones, valor, onCambio }) {
         return (
           <TouchableOpacity key={key} style={[f.chip, on && f.chipOn]} onPress={() => onCambio(key)}
             accessibilityRole="radio" accessibilityState={{ selected: on }}>
-            {o.icono ? <Ionicons name={o.icono} size={14} color={on ? '#FFF' : C.teal} /> : null}
+            {o.icono ? <Ionicons name={o.icono} size={14} color={on ? colores.blanco : C.teal} /> : null}
             <Text style={[f.chipTxt, on && f.chipTxtOn]}>{o.label ?? o}</Text>
           </TouchableOpacity>
         );
@@ -341,8 +342,8 @@ const f = StyleSheet.create({
   ayuda: { fontSize: 12, color: C.texto2, marginTop: 4 },
   error: { fontSize: 12, color: C.rojo, marginTop: 4 },
   input: {
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: C.texto, backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: C.texto, backgroundColor: colores.blanco,
   },
   inputError: { borderColor: C.rojo },
 
@@ -354,15 +355,15 @@ const f = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 18, borderWidth: 1.5, borderColor: C.menta,
-    paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colores.blanco,
   },
   chipOn: { backgroundColor: C.teal, borderColor: C.teal },
   chipTxt: { fontSize: 13, fontWeight: '700', color: C.texto },
-  chipTxtOn: { color: '#FFFFFF' },
+  chipTxtOn: { color: colores.blanco },
 
   toggle: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderRadius: 14, borderWidth: 1.5,
-    borderColor: '#EEEEEE', padding: 12, marginBottom: 10,
+    borderColor: colores.gris250, padding: 12, marginBottom: 10,
   },
   toggleOn: { borderColor: C.menta, backgroundColor: '#F6FFF9' },
   toggleTitulo: { fontSize: 14, fontWeight: '800', color: C.texto },

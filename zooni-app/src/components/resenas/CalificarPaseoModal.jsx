@@ -27,13 +27,8 @@ import {
 } from '../../services/paseadorApi';
 import { alerta } from '../../utils/dialogo';
 import { MiniaturaMedia, VisorMedia } from './MediaResena';
+import { colores } from '../../theme';
 
-const VERDE = '#2DBD72';
-const MENTA = '#E8F5EC';
-const AMARILLO = '#F5C842';
-const TEXTO = '#2C2C2C';
-const TEXTO2 = '#6B6B6B';
-const ROJO = '#E63946';
 const MAX_MB = 50; // file_size_limit del bucket "resenas" (042)
 const ETIQUETAS = ['', 'Muy malo', 'Malo', 'Regular', 'Bueno', 'Excelente'];
 
@@ -43,7 +38,7 @@ function EstrellasInput({ valor, onCambio, size = 34, borrable = false }) {
       {[1, 2, 3, 4, 5].map((i) => (
         <TouchableOpacity key={i} onPress={() => onCambio(borrable && valor === i ? 0 : i)} hitSlop={4}
           accessibilityLabel={`${i} ${i === 1 ? 'estrella' : 'estrellas'}`}>
-          <Ionicons name={valor >= i ? 'star' : 'star-outline'} size={size} color={AMARILLO} />
+          <Ionicons name={valor >= i ? 'star' : 'star-outline'} size={size} color={colores.amarillo} />
         </TouchableOpacity>
       ))}
     </View>
@@ -126,7 +121,7 @@ export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviad
       <SafeAreaView style={s.safe}>
         <View style={s.header}>
           <TouchableOpacity onPress={onCerrar} style={s.volver} accessibilityLabel="Cerrar">
-            <Ionicons name="close" size={26} color={TEXTO} />
+            <Ionicons name="close" size={26} color={colores.texto} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={s.titulo} numberOfLines={1}>{paseo?.paseador?.nombre ?? 'Tu paseador'}</Text>
@@ -174,7 +169,7 @@ export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviad
                           return n;
                         })}
                         accessibilityRole="radio" accessibilityState={{ selected: on }}>
-                        <Text style={[s.siNoTxt, on && { color: '#FFF' }]}>{label}</Text>
+                        <Text style={[s.siNoTxt, on && { color: colores.blanco }]}>{label}</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -186,7 +181,7 @@ export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviad
             <Text style={s.seccion}>Tu opinión (opcional)</Text>
             <TextInput style={s.input} value={texto} onChangeText={setTexto} multiline maxLength={1000}
               placeholder="Contá cómo te fue: puntualidad, cómo trató a tu mascota, si te mandó novedades…"
-              placeholderTextColor="#AAAAAA" />
+              placeholderTextColor={colores.textoTenue} />
             <Text style={s.contador}>{texto.length}/1000</Text>
 
             {/* 5. Fotos y videos */}
@@ -197,19 +192,19 @@ export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviad
                   <MiniaturaMedia item={m} size={78} onPress={() => setVisor(i)} />
                   <TouchableOpacity style={s.quitar} onPress={() => setMedia((x) => x.filter((_, j) => j !== i))}
                     accessibilityLabel="Quitar">
-                    <Ionicons name="close" size={14} color="#FFF" />
+                    <Ionicons name="close" size={14} color={colores.blanco} />
                   </TouchableOpacity>
                 </View>
               ))}
               {media.length < MEDIA_RESENA_MAX && (
                 <>
                   <TouchableOpacity style={s.agregar} onPress={() => agregarMedia(false)}>
-                    <Ionicons name="images-outline" size={24} color={VERDE} />
+                    <Ionicons name="images-outline" size={24} color={colores.verde} />
                     <Text style={s.agregarTxt}>Galería</Text>
                   </TouchableOpacity>
                   {Platform.OS !== 'web' && (
                     <TouchableOpacity style={s.agregar} onPress={() => agregarMedia(true)}>
-                      <Ionicons name="camera-outline" size={24} color={VERDE} />
+                      <Ionicons name="camera-outline" size={24} color={colores.verde} />
                       <Text style={s.agregarTxt}>Cámara</Text>
                     </TouchableOpacity>
                   )}
@@ -221,7 +216,7 @@ export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviad
             {error ? <Text style={s.error}>{error}</Text> : null}
             <TouchableOpacity style={[s.btn, !rating && { opacity: 0.6 }]} onPress={enviar} disabled={enviando}>
               {enviando
-                ? <><ActivityIndicator color={TEXTO} /><Text style={s.btnTxt}>{media.length ? 'Subiendo…' : 'Enviando…'}</Text></>
+                ? <><ActivityIndicator color={colores.texto} /><Text style={s.btnTxt}>{media.length ? 'Subiendo…' : 'Enviando…'}</Text></>
                 : <Text style={s.btnTxt}>Publicar reseña</Text>}
             </TouchableOpacity>
           </ScrollView>
@@ -233,55 +228,55 @@ export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviad
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  safe: { flex: 1, backgroundColor: colores.blanco },
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#EEEEEE',
+    borderBottomWidth: 1, borderBottomColor: colores.gris250,
   },
   volver: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
-  titulo: { fontSize: 18, fontWeight: '800', color: TEXTO },
-  sub: { fontSize: 12, color: TEXTO2 },
+  titulo: { fontSize: 18, fontWeight: '800', color: colores.texto },
+  sub: { fontSize: 12, color: colores.textoSecundario },
   scroll: { padding: 20, paddingBottom: 40 },
 
-  pregunta: { fontSize: 20, fontWeight: '900', color: TEXTO, textAlign: 'center' },
-  etiqueta: { fontSize: 14, color: TEXTO2, fontWeight: '700', marginTop: 6 },
-  seccion: { fontSize: 15, fontWeight: '800', color: TEXTO, marginTop: 24, marginBottom: 10 },
+  pregunta: { fontSize: 20, fontWeight: '900', color: colores.texto, textAlign: 'center' },
+  etiqueta: { fontSize: 14, color: colores.textoSecundario, fontWeight: '700', marginTop: 6 },
+  seccion: { fontSize: 15, fontWeight: '800', color: colores.texto, marginTop: 24, marginBottom: 10 },
 
   aspecto: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 },
-  aspectoLabel: { fontSize: 14, color: TEXTO, fontWeight: '600', flex: 1 },
+  aspectoLabel: { fontSize: 14, color: colores.texto, fontWeight: '600', flex: 1 },
 
   preguntaBox: { marginTop: 14 },
-  preguntaTxt: { fontSize: 14, color: TEXTO, fontWeight: '600' },
+  preguntaTxt: { fontSize: 14, color: colores.texto, fontWeight: '600' },
   siNo: { flexDirection: 'row', gap: 8, marginTop: 8 },
   siNoBtn: {
-    flex: 1, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: '#DDDDDD',
+    flex: 1, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: colores.gris500,
     alignItems: 'center', justifyContent: 'center',
   },
-  siNoOn: { backgroundColor: VERDE, borderColor: VERDE },
-  siNoTxt: { fontSize: 14, fontWeight: '800', color: TEXTO },
+  siNoOn: { backgroundColor: colores.verde, borderColor: colores.verde },
+  siNoTxt: { fontSize: 14, fontWeight: '800', color: colores.texto },
 
   input: {
-    minHeight: 110, borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 14, padding: 12,
-    fontSize: 15, color: TEXTO, textAlignVertical: 'top',
+    minHeight: 110, borderWidth: 1, borderColor: colores.gris500, borderRadius: 14, padding: 12,
+    fontSize: 15, color: colores.texto, textAlignVertical: 'top',
   },
-  contador: { fontSize: 11, color: TEXTO2, textAlign: 'right', marginTop: 4 },
+  contador: { fontSize: 11, color: colores.textoSecundario, textAlign: 'right', marginTop: 4 },
 
   mediaFila: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   agregar: {
-    width: 78, height: 78, borderRadius: 12, borderWidth: 1.5, borderColor: VERDE, borderStyle: 'dashed',
-    alignItems: 'center', justifyContent: 'center', backgroundColor: MENTA, gap: 2,
+    width: 78, height: 78, borderRadius: 12, borderWidth: 1.5, borderColor: colores.verde, borderStyle: 'dashed',
+    alignItems: 'center', justifyContent: 'center', backgroundColor: colores.mentaSuave, gap: 2,
   },
-  agregarTxt: { fontSize: 11, fontWeight: '800', color: VERDE },
+  agregarTxt: { fontSize: 11, fontWeight: '800', color: colores.verde },
   quitar: {
     position: 'absolute', top: -6, right: -6, width: 22, height: 22, borderRadius: 11,
     backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center',
   },
-  ayuda: { fontSize: 12, color: TEXTO2, marginTop: 8 },
+  ayuda: { fontSize: 12, color: colores.textoSecundario, marginTop: 8 },
 
-  error: { fontSize: 13, color: ROJO, marginTop: 16, textAlign: 'center' },
+  error: { fontSize: 13, color: colores.rojo, marginTop: 16, textAlign: 'center' },
   btn: {
-    flexDirection: 'row', gap: 8, marginTop: 20, height: 54, borderRadius: 27, backgroundColor: AMARILLO,
+    flexDirection: 'row', gap: 8, marginTop: 20, height: 54, borderRadius: 27, backgroundColor: colores.amarillo,
     alignItems: 'center', justifyContent: 'center',
   },
-  btnTxt: { fontSize: 16, fontWeight: '900', color: TEXTO },
+  btnTxt: { fontSize: 16, fontWeight: '900', color: colores.texto },
 });

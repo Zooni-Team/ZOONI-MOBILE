@@ -24,6 +24,7 @@ import {
   cuandoDe, enviarMensajePaseo, fetchPaseo, getMensajesPaseo, marcarLeidosPaseo,
 } from '../../services/paseadorApi';
 import { etiquetaDia, horaCorta, mismoDia } from '../../utils/tiempoRelativo';
+import { colores } from '../../theme';
 
 const POLL_MS = 4000;
 
@@ -174,7 +175,7 @@ export default function PaseadorChatScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={colores.blanco} />
 
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.volver} accessibilityLabel="Volver">
@@ -274,7 +275,7 @@ export default function PaseadorChatScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.fondo },
   header: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FFFFFF',
+    flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colores.blanco,
     paddingHorizontal: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.borde,
   },
   volver: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
@@ -289,7 +290,7 @@ const s = StyleSheet.create({
   burbuja: { maxWidth: '80%', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9, marginBottom: 6 },
   burbujaYo: { alignSelf: 'flex-end', backgroundColor: C.burbujaYo, borderBottomRightRadius: 6 },
   burbujaOtro: {
-    alignSelf: 'flex-start', backgroundColor: '#FFFFFF', borderBottomLeftRadius: 6,
+    alignSelf: 'flex-start', backgroundColor: colores.blanco, borderBottomLeftRadius: 6,
     borderWidth: 1, borderColor: '#EAEAEA',
   },
   burbujaTxt: { fontSize: 15, color: C.texto, lineHeight: 20 },
@@ -301,13 +302,13 @@ const s = StyleSheet.create({
   rapida: {
     height: 36, justifyContent: 'center', alignSelf: 'center',
     borderWidth: 1.5, borderColor: C.teal, borderRadius: 18, paddingHorizontal: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colores.blanco,
   },
   rapidaTxt: { fontSize: 13, fontWeight: '700', color: C.teal },
 
   inputRow: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 10,
-    backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: C.borde,
+    backgroundColor: colores.blanco, borderTopWidth: 1, borderTopColor: C.borde,
   },
   input: {
     flex: 1, minHeight: 46, maxHeight: 110, borderRadius: 23, backgroundColor: C.fondo,

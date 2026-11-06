@@ -24,6 +24,7 @@ import { TAMANOS, configNegocio } from '../../constants/negocios';
 import { validarItem } from '../../services/negocioApi';
 import { sanitizarDigitos } from '../../utils/sanitizar';
 import { alerta, confirmar } from '../../utils/dialogo';
+import { colores } from '../../theme';
 
 const DURACIONES = [15, 30, 45, 60, 90, 120];
 const txt = (n) => (n == null || n === '' ? '' : String(Math.round(Number(n))));
@@ -130,7 +131,7 @@ export default function ItemFormModal({ visible, tipo, item, onGuardar, onBorrar
                 return (
                   <TouchableOpacity key={c} style={[s.chip, on && s.chipOn]} onPress={() => set('categoria', c)}
                     accessibilityRole="radio" accessibilityState={{ selected: on }}>
-                    <Text style={[s.chipTxt, on && { color: '#FFF' }]}>{c}</Text>
+                    <Text style={[s.chipTxt, on && { color: colores.blanco }]}>{c}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -174,7 +175,7 @@ export default function ItemFormModal({ visible, tipo, item, onGuardar, onBorrar
                     const on = Number(f.duracionMin) === d;
                     return (
                       <TouchableOpacity key={d} style={[s.chip, on && s.chipOn]} onPress={() => set('duracionMin', String(d))}>
-                        <Text style={[s.chipTxt, on && { color: '#FFF' }]}>{d} min</Text>
+                        <Text style={[s.chipTxt, on && { color: colores.blanco }]}>{d} min</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -239,7 +240,7 @@ export default function ItemFormModal({ visible, tipo, item, onGuardar, onBorrar
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.fondo },
   header: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFFFFF',
+    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colores.blanco,
     paddingHorizontal: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.borde,
   },
   cerrar: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
@@ -248,21 +249,21 @@ const s = StyleSheet.create({
 
   foto: {
     alignSelf: 'center', width: 120, height: 120, borderRadius: 20, borderWidth: 2, borderColor: C.teal,
-    borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: '#FFFFFF',
+    borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: colores.blanco,
   },
   fotoImg: { width: '100%', height: '100%' },
   fotoTxt: { fontSize: 12, fontWeight: '700', color: C.teal },
 
   label: { fontSize: 13, fontWeight: '700', color: C.texto, marginTop: 16, marginBottom: 8 },
   input: {
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, color: C.texto, backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 15, color: C.texto, backgroundColor: colores.blanco,
   },
   textarea: { minHeight: 80, textAlignVertical: 'top' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     borderRadius: 18, borderWidth: 1.5, borderColor: C.menta, paddingHorizontal: 12, paddingVertical: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colores.blanco,
   },
   chipOn: { backgroundColor: C.teal, borderColor: C.teal },
   chipTxt: { fontSize: 13, fontWeight: '700', color: C.texto },
@@ -271,8 +272,8 @@ const s = StyleSheet.create({
   tamano: { fontSize: 13, fontWeight: '800', color: C.texto },
   tamanoDet: { fontSize: 11, color: C.texto2, marginBottom: 6 },
   montoBox: {
-    flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 12,
-    paddingHorizontal: 12, backgroundColor: '#FFFFFF',
+    flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colores.gris500, borderRadius: 12,
+    paddingHorizontal: 12, backgroundColor: colores.blanco,
   },
   signo: { fontSize: 18, fontWeight: '900', color: C.texto, marginRight: 4 },
   montoInput: { flex: 1, fontSize: 18, fontWeight: '800', color: C.texto, paddingVertical: 10, minWidth: 0 },

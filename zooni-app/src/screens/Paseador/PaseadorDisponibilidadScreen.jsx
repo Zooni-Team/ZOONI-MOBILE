@@ -24,6 +24,7 @@ import { DIAS_SEMANA } from '../../constants/negocios';
 import { minutosDe } from '../../services/negocioApi';
 import { HORARIOS_DEFAULT, actualizarPerfilPaseador, fetchPerfilPaseador } from '../../services/paseadorApi';
 import { alerta } from '../../utils/dialogo';
+import { colores } from '../../theme';
 
 export default function PaseadorDisponibilidadScreen() {
   const navigation = useNavigation();
@@ -91,7 +92,7 @@ export default function PaseadorDisponibilidadScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={colores.blanco} />
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.volver} accessibilityLabel="Volver">
           <Ionicons name="chevron-back" size={26} color={C.teal} />
@@ -158,7 +159,7 @@ export default function PaseadorDisponibilidadScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.fondo },
   header: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFFFFF',
+    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colores.blanco,
     paddingHorizontal: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.borde,
   },
   volver: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
@@ -169,8 +170,8 @@ const s = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '700', color: C.texto, marginBottom: 6 },
   ayuda: { fontSize: 13, color: C.texto2, lineHeight: 18, marginBottom: 4 },
   input: {
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
-    fontSize: 15, color: C.texto, backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
+    fontSize: 15, color: C.texto, backgroundColor: colores.blanco,
   },
   zonas: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
   zonaChip: {

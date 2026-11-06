@@ -42,6 +42,10 @@ import { haySesion } from '../config/session';
 import { MASCOTA_VACIA } from '../constants/mascotaVacia';
 import { fetchMascota, fetchConsultas, crearConsulta, eliminarConsulta } from '../services/fichaMedicaApi';
 import FechaPicker from '../components/FechaPicker';
+import { colores } from '../theme';
+import Skeleton from '../components/ui/Skeleton';
+import Toast from '../components/ui/Toast';
+import { useToast } from '../hooks/useToast';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -57,45 +61,17 @@ function formatFecha(iso) {
 // ─── COMPONENTE: SKELETON ─────────────────────────────────────────────────────
 
 function SkeletonCard() {
-  const shimmer = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    const anim = Animated.loop(Animated.sequence([
-      Animated.timing(shimmer, { toValue: 1, duration: 900, useNativeDriver: true }),
-      Animated.timing(shimmer, { toValue: 0, duration: 900, useNativeDriver: true }),
-    ]));
-    anim.start();
-    return () => anim.stop();
-  }, [shimmer]);
-  const opacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.45, 1] });
   return (
-    <Animated.View style={[s.skeletonCard, { opacity }]}>
+    <Skeleton style={s.skeletonCard}>
       <View style={s.skeletonLine1} />
       <View style={s.skeletonLine2} />
       <View style={s.skeletonLine3} />
-    </Animated.View>
+    </Skeleton>
   );
 }
 
 // ─── COMPONENTE: TOAST ────────────────────────────────────────────────────────
 
-function Toast({ visible, mensaje, color }) {
-  const translateY = useRef(new Animated.Value(-12)).current;
-  const opacity    = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(translateY, { toValue: visible ? 0 : -12, duration: visible ? 220 : 200, useNativeDriver: true }),
-      Animated.timing(opacity,    { toValue: visible ? 1 : 0,   duration: visible ? 220 : 200, useNativeDriver: true }),
-    ]).start();
-  }, [visible, translateY, opacity]);
-
-  return (
-    <Animated.View style={[s.toast, { backgroundColor: color, opacity, transform: [{ translateY }] }]}>
-      <Ionicons name="checkmark-circle" size={18} color="#FFF" />
-      <Text style={s.toastTxt}>{mensaje}</Text>
-    </Animated.View>
-  );
-}
 
 // ─── COMPONENTE: CARD CONSULTA ────────────────────────────────────────────────
 
@@ -118,7 +94,7 @@ function CardConsulta({ consulta, index, onEliminar }) {
     <Animated.View style={[s.cardConsulta, { transform: [{ translateY }], opacity }]}>
       <View style={s.cardTop}>
         <View style={s.cardFechaChip}>
-          <Ionicons name="calendar-outline" size={12} color="#2DBD72" />
+          <Ionicons name="calendar-outline" size={12} color={colores.verde} />
           <Text style={s.cardFechaTxt}>{formatFecha(consulta.fecha) ?? '—'}</Text>
         </View>
         <Animated.View style={{ transform: [{ scale }] }}>
@@ -129,7 +105,7 @@ function CardConsulta({ consulta, index, onEliminar }) {
             onPress={() => onEliminar(consulta.id)}
             accessibilityLabel="Eliminar consulta"
           >
-            <Ionicons name="trash-outline" size={16} color="#FFF" />
+            <Ionicons name="trash-outline" size={16} color={colores.blanco} />
           </Pressable>
         </Animated.View>
       </View>
@@ -176,16 +152,13 @@ export default function ConsultasScreen() {
   const [focusMotivo, setFocusMotivo] = useState(false);
   const [focusVet,    setFocusVet]    = useState(false);
   const [focusNotas,  setFocusNotas]  = useState(false);
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMensaje, setToastMensaje] = useState('');
-  const [toastColor,   setToastColor]   = useState('#2DBD72');
+  const { toast, mostrarToast } = useToast();
 
   const modalScale   = useRef(new Animated.Value(0.92)).current;
   const modalOpacity = useRef(new Animated.Value(0)).current;
   const heroScale    = useRef(new Animated.Value(0.88)).current;
   const heroOpacity  = useRef(new Animated.Value(0)).current;
   const btnScale     = useRef(new Animated.Value(1)).current;
-  const toastTimer   = useRef(null);
 
   // ── Datos hardcodeados para preview visual (sin backend) ─────────────────
   const DEMO_MASCOTA = {
@@ -251,14 +224,6 @@ export default function ConsultasScreen() {
     ]).start();
   }
 
-  // ── Toast ────────────────────────────────────────────────────────────────
-  function mostrarToast(mensaje, color = '#2DBD72') {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToastMensaje(mensaje);
-    setToastColor(color);
-    setToastVisible(true);
-    toastTimer.current = setTimeout(() => setToastVisible(false), 2500);
-  }
 
   // ── Modal ────────────────────────────────────────────────────────────────
   function abrirModal() {
@@ -290,7 +255,7 @@ export default function ConsultasScreen() {
   async function elegirImagen() {
     const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permiso.granted) {
-      mostrarToast('Habilitá el acceso a la galería', '#E63946');
+      mostrarToast('Habilitá el acceso a la galería', colores.rojo);
       return;
     }
     const res = await ImagePicker.launchImageLibraryAsync({
@@ -316,7 +281,7 @@ export default function ConsultasScreen() {
         try {
           imagenUrl = await subirImagenPublica(formImagenUri, 'consultas');
         } catch {
-          mostrarToast('No se pudo subir la imagen, guardo sin ella', '#F5A623');
+          mostrarToast('No se pudo subir la imagen, guardo sin ella', colores.ambar);
         }
       }
       const nueva = await crearConsulta(idMascota, {
@@ -329,12 +294,12 @@ export default function ConsultasScreen() {
       // Insertar manteniendo el orden por fecha descendente
       setConsultas((prev) => [nueva, ...prev].sort((a, b) => (a.fecha < b.fecha ? 1 : -1)));
       cerrarModal();
-      mostrarToast('Consulta registrada correctamente', '#2DBD72');
+      mostrarToast('Consulta registrada correctamente', colores.verde);
     } catch (err) {
       // Mostramos el motivo real: con el mensaje genérico no había forma de
       // saber si faltaba una migración, un permiso o la conexión.
       const detalle = err?.message ? `: ${err.message}` : '';
-      mostrarToast(`No se pudo guardar la consulta${detalle}`, '#E63946');
+      mostrarToast(`No se pudo guardar la consulta${detalle}`, colores.rojo);
     } finally {
       setGuardando(false);
     }
@@ -361,9 +326,9 @@ export default function ConsultasScreen() {
     try {
       await eliminarConsulta(id);
       setConsultas((prev) => prev.filter((c) => c.id !== id));
-      mostrarToast('Consulta eliminada', '#E63946');
+      mostrarToast('Consulta eliminada', colores.rojo);
     } catch {
-      mostrarToast('No se pudo eliminar la consulta', '#E63946');
+      mostrarToast('No se pudo eliminar la consulta', colores.rojo);
     }
   }
 
@@ -383,7 +348,7 @@ export default function ConsultasScreen() {
     <SafeAreaView style={s.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      <Toast visible={toastVisible} mensaje={toastMensaje} color={toastColor} />
+      <Toast {...toast} />
 
       <View style={s.screenBg}>
 
@@ -391,7 +356,7 @@ export default function ConsultasScreen() {
         <View style={s.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={s.headerBtn}
             accessibilityLabel="Volver" hitSlop={{ top:12, bottom:12, left:12, right:12 }}>
-            <Ionicons name="arrow-back" size={26} color="#2C2C2C" />
+            <Ionicons name="arrow-back" size={26} color={colores.texto} />
           </TouchableOpacity>
           <View style={{ flex: 1 }} />
         </View>
@@ -402,7 +367,7 @@ export default function ConsultasScreen() {
           showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh}
-              colors={['#2DBD72']} tintColor="#2DBD72" />
+              colors={[colores.verde]} tintColor={colores.verde} />
           }>
 
           {/* ── HERO ── (compartido con Vacunas, Tratamientos y Curiosidades) */}
@@ -413,7 +378,7 @@ export default function ConsultasScreen() {
 
             {esDemo && (
               <View style={s.demoBanner}>
-                <Ionicons name="alert-circle-outline" size={14} color="#F5A623" />
+                <Ionicons name="alert-circle-outline" size={14} color={colores.ambar} />
                 <Text style={s.demoBannerTxt}>Vista previa — conectá el backend para ver datos reales</Text>
               </View>
             )}
@@ -423,7 +388,7 @@ export default function ConsultasScreen() {
               <Animated.View style={{ transform: [{ scale: btnScale }] }}>
                 <Pressable style={s.btnAnadir}
                   onPressIn={pressInBtn} onPressOut={pressOutBtn} onPress={abrirModal}>
-                  <Ionicons name="add" size={16} color="#FFF" />
+                  <Ionicons name="add" size={16} color={colores.blanco} />
                   <Text style={s.btnAnadirTxt}>Añadir</Text>
                 </Pressable>
               </Animated.View>
@@ -464,7 +429,7 @@ export default function ConsultasScreen() {
                   <TextInput
                     style={[s.input, focusMotivo && s.inputFocus, formErrors.motivo && s.inputError]}
                     placeholder="Motivo de la consulta"
-                    placeholderTextColor="#AAAAAA"
+                    placeholderTextColor={colores.textoTenue}
                     value={formMotivo}
                     onChangeText={(v) => { setFormMotivo(v); if (formErrors.motivo) setFormErrors((p) => ({ ...p, motivo: null })); }}
                     onFocus={() => setFocusMotivo(true)}
@@ -478,10 +443,10 @@ export default function ConsultasScreen() {
                     style={[s.inputFecha, formErrors.fecha && s.inputError]}
                     onPress={() => setShowPickerFecha(true)}
                   >
-                    <Text style={[s.inputFechaTxt, !formFecha && { color: '#AAAAAA' }]}>
+                    <Text style={[s.inputFechaTxt, !formFecha && { color: colores.textoTenue }]}>
                       {formFecha ? formatFecha(toISODateLocal(formFecha)) : 'Fecha de la consulta'}
                     </Text>
-                    <Ionicons name="calendar-outline" size={18} color="#6B6B6B" />
+                    <Ionicons name="calendar-outline" size={18} color={colores.textoSecundario} />
                   </TouchableOpacity>
                   {formErrors.fecha && <Text style={s.errorTxt}>{formErrors.fecha}</Text>}
 
@@ -489,7 +454,7 @@ export default function ConsultasScreen() {
                   <TextInput
                     style={[s.input, focusVet && s.inputFocus]}
                     placeholder="Veterinario/a o clínica (opcional)"
-                    placeholderTextColor="#AAAAAA"
+                    placeholderTextColor={colores.textoTenue}
                     value={formVeterinario}
                     onChangeText={setFormVeterinario}
                     onFocus={() => setFocusVet(true)}
@@ -501,7 +466,7 @@ export default function ConsultasScreen() {
                   <TextInput
                     style={[s.input, s.inputMulti, focusNotas && s.inputFocus]}
                     placeholder="Descripción: diagnóstico, indicaciones… (opcional)"
-                    placeholderTextColor="#AAAAAA"
+                    placeholderTextColor={colores.textoTenue}
                     value={formNotas}
                     onChangeText={setFormNotas}
                     onFocus={() => setFocusNotas(true)}
@@ -516,19 +481,19 @@ export default function ConsultasScreen() {
                     <View style={s.imgPreviewWrap}>
                       <Image source={{ uri: formImagenUri }} style={s.imgPreview} resizeMode="cover" />
                       <TouchableOpacity style={s.imgQuitar} onPress={() => setFormImagenUri(null)} accessibilityLabel="Quitar imagen">
-                        <Ionicons name="close" size={16} color="#FFF" />
+                        <Ionicons name="close" size={16} color={colores.blanco} />
                       </TouchableOpacity>
                     </View>
                   ) : (
                     <TouchableOpacity style={s.btnImagen} onPress={elegirImagen}>
-                      <Ionicons name="image-outline" size={18} color="#2DBD72" />
+                      <Ionicons name="image-outline" size={18} color={colores.verde} />
                       <Text style={s.btnImagenTxt}>Adjuntar imagen (opcional)</Text>
                     </TouchableOpacity>
                   )}
 
                   <TouchableOpacity style={s.btnGuardar} onPress={guardarConsulta} disabled={guardando}>
                     {guardando
-                      ? <ActivityIndicator size="small" color="#FFF" />
+                      ? <ActivityIndicator size="small" color={colores.blanco} />
                       : <Text style={s.btnGuardarTxt}>Guardar</Text>
                     }
                   </TouchableOpacity>
@@ -557,8 +522,8 @@ export default function ConsultasScreen() {
 // ─── ESTILOS ─────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  safeArea:      { flex: 1, backgroundColor: '#C8F0D8' },
-  screenBg:      { flex: 1, width: '100%', backgroundColor: '#C8F0D8' },
+  safeArea:      { flex: 1, backgroundColor: colores.menta },
+  screenBg:      { flex: 1, width: '100%', backgroundColor: colores.menta },
   scroll:        { flex: 1, backgroundColor: 'transparent' },
   scrollContent: { flexGrow: 1 },
 
@@ -570,7 +535,7 @@ const s = StyleSheet.create({
 
   // Card blanco
   whiteCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: colores.blanco,
     borderTopLeftRadius: 28, borderTopRightRadius: 28,
     paddingHorizontal: 20, paddingTop: 22, paddingBottom: 40,
     minHeight: 400,
@@ -578,110 +543,102 @@ const s = StyleSheet.create({
 
   // Demo banner
   demoBanner:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFF8E1', borderRadius: 10, padding: 10, marginBottom: 16 },
-  demoBannerTxt: { fontSize: 12, color: '#F5A623', textAlign: 'center' },
+  demoBannerTxt: { fontSize: 12, color: colores.ambar, textAlign: 'center' },
 
   // Sección row
   secRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  secTitulo: { fontSize: 18, fontWeight: '700', color: '#2C2C2C' },
+  secTitulo: { fontSize: 18, fontWeight: '700', color: colores.texto },
 
   // Botón Añadir
   btnAnadir: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#2DBD72', borderRadius: 20,
+    backgroundColor: colores.verde, borderRadius: 20,
     paddingVertical: 8, paddingHorizontal: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 3,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 3,
   },
-  btnAnadirTxt: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+  btnAnadirTxt: { fontSize: 14, fontWeight: '700', color: colores.blanco },
 
   // Empty
   emptyWrap:   { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 16, gap: 8 },
-  emptyTitulo: { fontSize: 15, fontWeight: '700', color: '#6B6B6B' },
-  emptyTxt:    { fontSize: 13, color: '#9A9A9A', textAlign: 'center', lineHeight: 19 },
+  emptyTitulo: { fontSize: 15, fontWeight: '700', color: colores.textoSecundario },
+  emptyTxt:    { fontSize: 13, color: colores.textoGris, textAlign: 'center', lineHeight: 19 },
 
   // Card consulta (celeste suave, distinta del ámbar de Tratamientos)
   cardConsulta: {
     backgroundColor: '#F2FBF6',
     borderRadius: 14,
     borderWidth: 1, borderColor: '#D4EEDF',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
     paddingHorizontal: 14, paddingVertical: 12,
     marginBottom: 10,
   },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   cardFechaChip: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#FFFFFF', borderRadius: 12,
+    backgroundColor: colores.blanco, borderRadius: 12,
     paddingVertical: 4, paddingHorizontal: 10,
     borderWidth: 1, borderColor: '#D4EEDF',
   },
-  cardFechaTxt: { fontSize: 12, fontWeight: '700', color: '#2DBD72' },
-  cardMotivo:   { fontSize: 14, fontWeight: '700', color: '#2C2C2C', marginBottom: 3 },
-  cardField:    { fontSize: 12, color: '#6B6B6B', marginBottom: 3 },
+  cardFechaTxt: { fontSize: 12, fontWeight: '700', color: colores.verde },
+  cardMotivo:   { fontSize: 14, fontWeight: '700', color: colores.texto, marginBottom: 3 },
+  cardField:    { fontSize: 12, color: colores.textoSecundario, marginBottom: 3 },
   cardNotas:    { fontSize: 13, color: '#4A4A4A', lineHeight: 19, marginTop: 2 },
-  cardImagen:   { width: '100%', height: 180, borderRadius: 10, marginTop: 10, backgroundColor: '#E8E8E8' },
+  cardImagen:   { width: '100%', height: 180, borderRadius: 10, marginTop: 10, backgroundColor: colores.gris300 },
 
   // Botón eliminar
   btnEliminar: {
-    backgroundColor: '#E63946', width: 32, height: 32, borderRadius: 10,
+    backgroundColor: colores.rojo, width: 32, height: 32, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
   },
 
   // Skeleton
-  skeletonCard:  { backgroundColor: '#E8E8E8', borderRadius: 12, padding: 16, marginBottom: 10, gap: 8 },
-  skeletonLine1: { height: 14, backgroundColor: '#D8D8D8', borderRadius: 6, width: '60%' },
-  skeletonLine2: { height: 11, backgroundColor: '#D8D8D8', borderRadius: 6, width: '80%' },
-  skeletonLine3: { height: 11, backgroundColor: '#D8D8D8', borderRadius: 6, width: '50%' },
+  skeletonCard:  { backgroundColor: colores.gris300, borderRadius: 12, padding: 16, marginBottom: 10, gap: 8 },
+  skeletonLine1: { height: 14, backgroundColor: colores.gris600, borderRadius: 6, width: '60%' },
+  skeletonLine2: { height: 11, backgroundColor: colores.gris600, borderRadius: 6, width: '80%' },
+  skeletonLine3: { height: 11, backgroundColor: colores.gris600, borderRadius: 6, width: '50%' },
 
   // Toast
-  toast: {
-    position: 'absolute', top: 56, alignSelf: 'center',
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8,
-    elevation: 8, zIndex: 100,
-  },
-  toastTxt: { fontSize: 14, fontWeight: '700', color: '#FFF' },
 
   // Overlay modal
   overlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.50)', justifyContent: 'center', alignItems: 'center' },
   modalCard: {
-    backgroundColor: '#FFF', borderRadius: 20,
+    backgroundColor: colores.blanco, borderRadius: 20,
     width: Math.min(SCREEN_WIDTH * 0.88, 360),
     paddingHorizontal: 22, paddingTop: 24, paddingBottom: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 10,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 10,
     maxHeight: '90%',
   },
-  modalTitulo: { fontSize: 18, fontWeight: '700', color: '#2DBD72', textAlign: 'center', marginBottom: 20 },
+  modalTitulo: { fontSize: 18, fontWeight: '700', color: colores.verde, textAlign: 'center', marginBottom: 20 },
 
   // Inputs del modal
   input: {
-    borderWidth: 1.5, borderColor: '#DDDDDD', borderRadius: 10,
+    borderWidth: 1.5, borderColor: colores.gris500, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 14, color: '#2C2C2C', backgroundColor: '#FFF',
+    fontSize: 14, color: colores.texto, backgroundColor: colores.blanco,
     marginBottom: 12,
   },
-  inputFocus:   { borderColor: '#2DBD72' },
-  inputError:   { borderColor: '#E63946' },
+  inputFocus:   { borderColor: colores.verde },
+  inputError:   { borderColor: colores.rojo },
   inputMulti:   { height: 92, textAlignVertical: 'top', marginBottom: 20 },
   inputFecha: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    borderWidth: 1.5, borderColor: '#DDDDDD', borderRadius: 10,
+    borderWidth: 1.5, borderColor: colores.gris500, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
-    marginBottom: 12, backgroundColor: '#FFF',
+    marginBottom: 12, backgroundColor: colores.blanco,
   },
-  inputFechaTxt: { flex: 1, fontSize: 14, color: '#2C2C2C' },
-  errorTxt:  { fontSize: 11, color: '#E63946', marginTop: -8, marginBottom: 8, marginLeft: 4 },
+  inputFechaTxt: { flex: 1, fontSize: 14, color: colores.texto },
+  errorTxt:  { fontSize: 11, color: colores.rojo, marginTop: -8, marginBottom: 8, marginLeft: 4 },
 
   // Adjuntar imagen
   btnImagen: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    borderWidth: 1.5, borderColor: '#2DBD72', borderStyle: 'dashed', borderRadius: 10,
-    paddingVertical: 12, marginBottom: 16, backgroundColor: '#F0FFF6',
+    borderWidth: 1.5, borderColor: colores.verde, borderStyle: 'dashed', borderRadius: 10,
+    paddingVertical: 12, marginBottom: 16, backgroundColor: colores.mentaFondo,
   },
-  btnImagenTxt: { fontSize: 14, fontWeight: '600', color: '#2DBD72' },
+  btnImagenTxt: { fontSize: 14, fontWeight: '600', color: colores.verde },
   imgPreviewWrap: { position: 'relative', marginBottom: 16 },
-  imgPreview: { width: '100%', height: 160, borderRadius: 10, backgroundColor: '#E8E8E8' },
+  imgPreview: { width: '100%', height: 160, borderRadius: 10, backgroundColor: colores.gris300 },
   imgQuitar: {
     position: 'absolute', top: 8, right: 8,
     width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.6)',
@@ -691,10 +648,10 @@ const s = StyleSheet.create({
   // Botones del modal
   btnGuardar: {
     width: '100%', height: 48, borderRadius: 30,
-    backgroundColor: '#2DBD72', alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
+    backgroundColor: colores.verde, alignItems: 'center', justifyContent: 'center',
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
   },
-  btnGuardarTxt: { fontSize: 15, fontWeight: '700', color: '#FFF' },
-  btnCancelar:   { width: '100%', height: 44, borderRadius: 30, backgroundColor: '#E8E8E8', alignItems: 'center', justifyContent: 'center', marginTop: 10 },
-  btnCancelarTxt: { fontSize: 15, fontWeight: '700', color: '#2C2C2C' },
+  btnGuardarTxt: { fontSize: 15, fontWeight: '700', color: colores.blanco },
+  btnCancelar:   { width: '100%', height: 44, borderRadius: 30, backgroundColor: colores.gris300, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
+  btnCancelarTxt: { fontSize: 15, fontWeight: '700', color: colores.texto },
 });

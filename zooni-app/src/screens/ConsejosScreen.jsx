@@ -24,6 +24,8 @@ import { generarConsejos } from '../constants/consejosData';
 import { fetchMascota } from '../services/fichaMedicaApi';
 import PetHero from '../components/PetHero';
 import SelectorMascota from '../components/SelectorMascota';
+import { colores } from '../theme';
+import Skeleton from '../components/ui/Skeleton';
 
 // Mascota de respaldo si no hay petId o falla la carga: los consejos generales
 // de perro son un punto de partida razonable.
@@ -32,30 +34,15 @@ const DEMO_MASCOTA = { nombre: 'Tu mascota', especie: 'perro', raza: null, fotoU
 // ─── SKELETON ─────────────────────────────────────────────────────────────────
 
 function SkeletonCard() {
-  const shimmer = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const a = Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmer, { toValue: 1, duration: 900, useNativeDriver: true }),
-        Animated.timing(shimmer, { toValue: 0, duration: 900, useNativeDriver: true }),
-      ])
-    );
-    a.start();
-    return () => a.stop();
-  }, [shimmer]);
-
-  const opacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.45, 1] });
-
   return (
-    <Animated.View style={[st.skeletonCard, { opacity }]}>
+    <Skeleton style={st.skeletonCard}>
       <View style={st.skeletonHeader} />
       <View style={st.skeletonBody}>
         <View style={st.skeletonLine} />
         <View style={[st.skeletonLine, { width: '80%' }]} />
         <View style={[st.skeletonLine, { width: '55%' }]} />
       </View>
-    </Animated.View>
+    </Skeleton>
   );
 }
 
@@ -118,8 +105,8 @@ function Chip({ label, activo, onPress, acento, fondo, isAll }) {
     onPress();
   };
 
-  const bg  = isAll ? (activo ? '#2DBD72' : '#F0F0F0') : (activo ? acento  : fondo);
-  const clr = isAll ? (activo ? '#FFF'    : '#6B6B6B') : (activo ? '#FFF'  : acento);
+  const bg  = isAll ? (activo ? colores.verde : colores.gris150) : (activo ? acento  : fondo);
+  const clr = isAll ? (activo ? colores.blanco    : colores.textoSecundario) : (activo ? colores.blanco  : acento);
 
   return (
     <Animated.View style={{ transform: [{ scale: sc }] }}>
@@ -184,7 +171,6 @@ export default function ConsejosScreen() {
     [consejos, categoriaActiva]
   );
 
-
   return (
     <SafeAreaView style={st.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
@@ -194,7 +180,7 @@ export default function ConsejosScreen() {
         <View style={st.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={st.headerBtn}
             accessibilityLabel="Volver" hitSlop={{ top:10, bottom:10, left:10, right:10 }}>
-            <Ionicons name="arrow-back" size={24} color="#2C2C2C" />
+            <Ionicons name="arrow-back" size={24} color={colores.texto} />
           </TouchableOpacity>
         </View>
 
@@ -254,8 +240,8 @@ export default function ConsejosScreen() {
 // ─── ESTILOS ─────────────────────────────────────────────────────────────────
 
 const st = StyleSheet.create({
-  safeArea:             { flex: 1, backgroundColor: '#C8F0D8' },
-  screenBackground:     { flex: 1, width: '100%', backgroundColor: '#C8F0D8' },
+  safeArea:             { flex: 1, backgroundColor: colores.menta },
+  screenBackground:     { flex: 1, width: '100%', backgroundColor: colores.menta },
   scroll:               { flex: 1, backgroundColor: 'transparent' },
   scrollContent:        { flexGrow: 1, backgroundColor: 'transparent' },
 
@@ -265,10 +251,10 @@ const st = StyleSheet.create({
   // Hero → components/PetHero.jsx (compartido con Vacunas, Tratamientos y Consultas)
 
   // Mismo bottom sheet que Vacunas, Tratamientos y Consultas
-  whiteCard: { backgroundColor: '#FFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 22, paddingBottom: 40, minHeight: 400 },
+  whiteCard: { backgroundColor: colores.blanco, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 22, paddingBottom: 40, minHeight: 400 },
 
   demoBanner:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFF8E1', borderRadius: 10, padding: 10, marginBottom: 12 },
-  demoBannerTxt: { fontSize: 12, color: '#F5A623', textAlign: 'center' },
+  demoBannerTxt: { fontSize: 12, color: colores.ambar, textAlign: 'center' },
 
   chipsRow: { paddingBottom: 16, gap: 8, flexDirection: 'row', alignItems: 'center' },
   chip:     { borderRadius: 20, paddingVertical: 8, paddingHorizontal: 14 },
@@ -277,20 +263,20 @@ const st = StyleSheet.create({
   list: { paddingTop: 4 },
 
   card: {
-    backgroundColor: '#FFF', borderRadius: 18, marginHorizontal: 4, marginBottom: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 4,
+    backgroundColor: colores.blanco, borderRadius: 18, marginHorizontal: 4, marginBottom: 14,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 4,
     overflow: 'hidden',
   },
   cardBorder:  { position: 'absolute', left: 0, top: 0, width: 4, height: '100%', zIndex: 1 },
   cardHead:    { flexDirection: 'row', alignItems: 'center', paddingLeft: 20, paddingRight: 16, paddingVertical: 12, gap: 10 },
   iconoCircle: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   cardCateg:   { fontSize: 14, fontWeight: '700', letterSpacing: 0.3 },
-  cardSep:     { height: 1, backgroundColor: '#F0F0F0' },
+  cardSep:     { height: 1, backgroundColor: colores.gris150 },
   cardBody:    { paddingLeft: 24, paddingRight: 20, paddingTop: 14, paddingBottom: 16 },
-  cardTxt:     { fontSize: 14, color: '#2C2C2C', lineHeight: 22 },
+  cardTxt:     { fontSize: 14, color: colores.texto, lineHeight: 22 },
 
-  skeletonCard:   { backgroundColor: '#F0F0F0', borderRadius: 18, marginHorizontal: 4, marginBottom: 14, overflow: 'hidden' },
-  skeletonHeader: { height: 56, backgroundColor: '#E8E8E8' },
+  skeletonCard:   { backgroundColor: colores.gris150, borderRadius: 18, marginHorizontal: 4, marginBottom: 14, overflow: 'hidden' },
+  skeletonHeader: { height: 56, backgroundColor: colores.gris300 },
   skeletonBody:   { padding: 14, gap: 8 },
-  skeletonLine:   { height: 12, backgroundColor: '#E0E0E0', borderRadius: 6, width: '100%' },
+  skeletonLine:   { height: 12, backgroundColor: colores.gris400, borderRadius: 6, width: '100%' },
 });

@@ -39,9 +39,10 @@ import MatchInfoModal from '../components/chat/MatchInfoModal';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { tiempoRelativoCorto } from '../utils/tiempoRelativo';
+import { colores } from '../theme';
 
 const ICONOS_SERVICIO = { veterinaria: 'medkit-outline', paseador: 'walk-outline', petshop: 'bag-outline', peluqueria: 'cut-outline' };
-const COLORES_SERVICIO = { veterinaria: '#E63946', paseador: '#F5A623', petshop: '#F5C842', peluqueria: '#9B59B6' };
+const COLORES_SERVICIO = { veterinaria: colores.rojo, paseador: colores.ambar, petshop: colores.amarillo, peluqueria: colores.violeta };
 
 // El formato de tiempo vive en utils/tiempoRelativo.js — el mismo que usa el
 // chat, así que el inbox y la conversación ya no dicen cosas distintas.
@@ -144,7 +145,7 @@ export default function MensajesScreen() {
 
   return (
     <SafeAreaView style={st.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={colores.blanco} />
 
       {/* Menú lateral en vez de la flecha de volver: Mensajes es una sección
           propia a la que se llega desde el drawer, no un paso dentro de otro
@@ -169,7 +170,7 @@ export default function MensajesScreen() {
       </View>
 
       {loading ? (
-        <ActivityIndicator color="#2DBD72" style={{ marginTop: 30 }} />
+        <ActivityIndicator color={colores.verde} style={{ marginTop: 30 }} />
       ) : (
         <FlatList
           data={items}
@@ -202,7 +203,7 @@ export default function MensajesScreen() {
                     <View style={st.previewFila}>
                       {c.ultimoEsMio && c.ultimoMensaje && (
                         <Ionicons name={c.ultimoLeido ? 'checkmark-done' : 'checkmark'}
-                          size={14} color={c.ultimoLeido ? '#34B7F1' : '#9B9B9B'} />
+                          size={14} color={c.ultimoLeido ? '#34B7F1' : colores.textoDeshabilitado} />
                       )}
                       <Text style={st.preview} numberOfLines={1}>
                         {c.ultimoMensaje ?? 'Todavía no hay mensajes'}
@@ -226,7 +227,7 @@ export default function MensajesScreen() {
                   onPress={() => navigation.navigate('PaseadorChat', { paseoId: p.id, idsPaseos: c.idsPaseos })}
                   accessibilityLabel={`Chat con ${p.paseador?.nombre ?? 'el paseador'}`}>
                   <View style={[st.iconCircle, { backgroundColor: COLORES_SERVICIO.paseador }]}>
-                    <Ionicons name="walk-outline" size={18} color="#FFF" />
+                    <Ionicons name="walk-outline" size={18} color={colores.blanco} />
                   </View>
                   <View style={st.info}>
                     <Text style={st.nombre} numberOfLines={1}>{p.paseador?.nombre ?? 'Paseador'}</Text>
@@ -247,7 +248,7 @@ export default function MensajesScreen() {
             return (
               <TouchableOpacity style={st.item} onPress={() => abrirChatServicio(s)}>
                 <View style={[st.iconCircle, { backgroundColor: COLORES_SERVICIO[s.tipo] || '#888' }]}>
-                  <Ionicons name={ICONOS_SERVICIO[s.tipo] || 'storefront-outline'} size={18} color="#FFF" />
+                  <Ionicons name={ICONOS_SERVICIO[s.tipo] || 'storefront-outline'} size={18} color={colores.blanco} />
                 </View>
                 <View style={st.info}>
                   <Text style={st.nombre} numberOfLines={1}>{s.nombre}</Text>
@@ -266,8 +267,6 @@ export default function MensajesScreen() {
           }}
         />
       )}
-
-
 
       <MatchInfoModal
         visible={!!infoMatch}
@@ -288,40 +287,40 @@ export default function MensajesScreen() {
 }
 
 const st = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  safe: { flex: 1, backgroundColor: colores.blanco },
   header: {
     height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#EFEFEF',
+    paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: colores.gris200,
   },
-  titulo: { fontSize: 18, fontWeight: '800', color: '#2C2C2C' },
+  titulo: { fontSize: 18, fontWeight: '800', color: colores.texto },
 
   tabs: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, gap: 8 },
-  tabBtn: { flex: 1, paddingVertical: 10, borderRadius: 20, alignItems: 'center', backgroundColor: '#F5F5F5' },
-  tabBtnOn: { backgroundColor: '#2DBD72' },
-  tabTxt: { fontSize: 14, fontWeight: '600', color: '#6B6B6B' },
-  tabTxtOn: { color: '#FFFFFF' },
+  tabBtn: { flex: 1, paddingVertical: 10, borderRadius: 20, alignItems: 'center', backgroundColor: colores.gris50 },
+  tabBtnOn: { backgroundColor: colores.verde },
+  tabTxt: { fontSize: 14, fontWeight: '600', color: colores.textoSecundario },
+  tabTxtOn: { color: colores.blanco },
 
   lista: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24 },
   item: {
     flexDirection: 'row', alignItems: 'center', paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: '#F0F0F0', gap: 12,
+    borderBottomWidth: 1, borderBottomColor: colores.gris150, gap: 12,
   },
   avatar: { width: 46, height: 46, borderRadius: 23 },
   avatarFallback: {
-    width: 46, height: 46, borderRadius: 23, backgroundColor: '#C8F0D8',
+    width: 46, height: 46, borderRadius: 23, backgroundColor: colores.menta,
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarLetra: { fontSize: 17, fontWeight: '800', color: '#27AE60' },
+  avatarLetra: { fontSize: 17, fontWeight: '800', color: colores.verdeExito },
   iconCircle: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1 },
-  nombre: { fontSize: 15, fontWeight: '700', color: '#2C2C2C' },
+  nombre: { fontSize: 15, fontWeight: '700', color: colores.texto },
   previewFila: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  preview: { flex: 1, fontSize: 13, color: '#6B6B6B' },
+  preview: { flex: 1, fontSize: 13, color: colores.textoSecundario },
   derecha: { alignItems: 'flex-end', gap: 6 },
-  fecha: { fontSize: 11, color: '#AAAAAA' },
-  badge: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: '#2DBD72', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
-  badgeTxt: { fontSize: 11, fontWeight: '700', color: '#FFFFFF' },
+  fecha: { fontSize: 11, color: colores.textoTenue },
+  badge: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: colores.verde, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
+  badgeTxt: { fontSize: 11, fontWeight: '700', color: colores.blanco },
 
   vacio: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 32 },
-  vacioTxt: { color: '#6B6B6B', fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  vacioTxt: { color: colores.textoSecundario, fontSize: 14, textAlign: 'center', lineHeight: 20 },
 });

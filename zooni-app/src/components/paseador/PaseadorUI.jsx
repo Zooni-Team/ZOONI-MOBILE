@@ -11,30 +11,26 @@ import {
   ActivityIndicator, Animated, Image, Pressable, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { colores, sombras } from '../../theme';
 
 export const C = {
   fondo: '#F9FFF9',
-  menta: '#C8F0D8',
-  card: '#FFFFFF',
-  amarillo: '#F5C842',
+  menta: colores.menta,
+  card: colores.blanco,
+  amarillo: colores.amarillo,
   crema: '#F7D060',
-  rojo: '#E63946',
-  teal: '#2DBD72',
-  texto: '#2C2C2C',
-  texto2: '#6B6B6B',
-  burbujaYo: '#A8E6C0',
-  ambar: '#F5A623',
-  gris: '#AAAAAA',
+  rojo: colores.rojo,
+  teal: colores.verde,
+  texto: colores.texto,
+  texto2: colores.textoSecundario,
+  burbujaYo: colores.verdeBurbuja,
+  ambar: colores.ambar,
+  gris: colores.textoTenue,
   borde: '#E6EFE9',
 };
 
-export const sombra = {
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.08,
-  shadowRadius: 10,
-  elevation: 3,
-};
+/** Sombra de tarjeta: la misma de todo Zooni (theme/sombras). */
+export const sombra = sombras.tarjeta;
 
 // ─── Botón pill ─────────────────────────────────────────────────────────────
 // variante: 'primario' (amarillo) | 'secundario' (outline teal) |
@@ -74,8 +70,8 @@ const VARIANTES = {
     caja: { backgroundColor: C.card, borderWidth: 2, borderColor: C.teal, shadowOpacity: 0 },
     texto: { color: C.teal },
   },
-  peligro: { caja: { backgroundColor: C.rojo }, texto: { color: '#FFFFFF' } },
-  teal: { caja: { backgroundColor: C.teal }, texto: { color: '#FFFFFF' } },
+  peligro: { caja: { backgroundColor: C.rojo }, texto: { color: colores.blanco } },
+  teal: { caja: { backgroundColor: C.teal }, texto: { color: colores.blanco } },
 };
 
 // ─── Card ───────────────────────────────────────────────────────────────────
@@ -184,7 +180,7 @@ const ui = StyleSheet.create({
   pill: {
     height: 54, borderRadius: 30, paddingHorizontal: 22,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 3,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 3,
   },
   pillChico: { height: 44, paddingHorizontal: 16 },
   pillDisabled: { opacity: 0.45 },
@@ -226,7 +222,7 @@ const ui = StyleSheet.create({
 
   switch: { width: 72, height: 42, borderRadius: 21, justifyContent: 'center' },
   switchBola: {
-    width: 34, height: 34, borderRadius: 17, backgroundColor: '#FFFFFF',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3, elevation: 3,
+    width: 34, height: 34, borderRadius: 17, backgroundColor: colores.blanco,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3, elevation: 3,
   },
 });

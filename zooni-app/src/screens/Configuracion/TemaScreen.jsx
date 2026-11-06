@@ -13,6 +13,7 @@ import {
   SettingsGroup, SettingsScreen, SettingsSelect, SettingsSlider, SettingsToggle, T,
 } from '../../components/settings/SettingsKit';
 import { getSettings, patchSettings } from '../../services/settingsStore';
+import { colores } from '../../theme';
 
 const TAMANOS = [
   { value: 'small',  label: 'Chico',      px: 13 },
@@ -94,7 +95,7 @@ const s = StyleSheet.create({
   preview: {
     height: 140, backgroundColor: T.surface, borderRadius: 18, marginTop: 16,
     padding: 14, gap: 10, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
   },
   previewHeader: { height: 14, borderRadius: 7, backgroundColor: T.bgMain, width: '45%' },
   previewCard: {

@@ -32,6 +32,7 @@ import { resolveMascotaVisual } from '../../constants/petImages';
 import { crearPerfilMatchMascota } from '../../services/matchApi';
 import { setFotoPrincipalMascota } from '../../services/petsApi';
 import { alerta } from '../../utils/dialogo';
+import { colores } from '../../theme';
 
 const PASOS = ['foto', 'descripcion', 'visibilidad'];
 const MAX_DESC = 150;
@@ -119,7 +120,7 @@ export default function PetMatchOnboarding({ mascota, onListo, onCancelar }) {
           <TouchableOpacity onPress={atras} style={s.backBtn}
             accessibilityLabel={paso > 0 ? 'Paso anterior' : 'Cancelar'}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="chevron-back" size={26} color="#2C2C2C" />
+            <Ionicons name="chevron-back" size={26} color={colores.texto} />
           </TouchableOpacity>
           <View style={s.progreso}>
             {PASOS.map((p, i) => (
@@ -147,11 +148,11 @@ export default function PetMatchOnboarding({ mascota, onListo, onCancelar }) {
               )}
               <View style={s.botonesRow}>
                 <TouchableOpacity style={s.btnSecundario} onPress={() => elegirFoto(false)} activeOpacity={0.85}>
-                  <Ionicons name="images-outline" size={16} color="#2C2C2C" />
+                  <Ionicons name="images-outline" size={16} color={colores.texto} />
                   <Text style={s.btnSecundarioTxt}>Galería</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.btnSecundario} onPress={() => elegirFoto(true)} activeOpacity={0.85}>
-                  <Ionicons name="camera-outline" size={16} color="#2C2C2C" />
+                  <Ionicons name="camera-outline" size={16} color={colores.texto} />
                   <Text style={s.btnSecundarioTxt}>Cámara</Text>
                 </TouchableOpacity>
               </View>
@@ -168,7 +169,7 @@ export default function PetMatchOnboarding({ mascota, onListo, onCancelar }) {
               <TextInput
                 style={[s.input, error && s.inputError]}
                 placeholder={`Ej: ${mascota.nombre} es tranquila, le encanta la plaza y se lleva bien con perros grandes.`}
-                placeholderTextColor="#9B9B9B"
+                placeholderTextColor={colores.textoDeshabilitado}
                 value={descripcion}
                 onChangeText={(v) => { setDescripcion(v); setError(null); }}
                 multiline
@@ -208,7 +209,7 @@ export default function PetMatchOnboarding({ mascota, onListo, onCancelar }) {
 
         <TouchableOpacity style={s.btnContinuar} onPress={siguiente} disabled={guardando} activeOpacity={0.85}>
           {guardando
-            ? <ActivityIndicator size="small" color="#FFFFFF" />
+            ? <ActivityIndicator size="small" color={colores.blanco} />
             : <Text style={s.btnContinuarTxt}>
               {esUltimo ? `Crear perfil de ${mascota.nombre}` : 'Continuar'}
             </Text>}
@@ -226,64 +227,64 @@ function Opcion({ activo, onPress, titulo, apoyo }) {
         <Text style={[s.opcionTxt, activo && s.opcionTxtOn]}>{titulo}</Text>
         <Text style={s.opcionApoyo}>{apoyo}</Text>
       </View>
-      {activo && <Ionicons name="checkmark-circle" size={22} color="#2DBD72" />}
+      {activo && <Ionicons name="checkmark-circle" size={22} color={colores.verde} />}
     </TouchableOpacity>
   );
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#D4F5E2' },
+  safe: { flex: 1, backgroundColor: colores.mentaClara },
 
   topBar: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 12 },
   backBtn: { width: 30 },
   progreso: { flex: 1, flexDirection: 'row', gap: 5 },
   segmento: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.7)' },
-  segmentoOn: { backgroundColor: '#2DBD72' },
-  contadorPaso: { fontSize: 12, fontWeight: '700', color: '#6B6B6B', width: 30, textAlign: 'right' },
+  segmentoOn: { backgroundColor: colores.verde },
+  contadorPaso: { fontSize: 12, fontWeight: '700', color: colores.textoSecundario, width: 30, textAlign: 'right' },
 
   scroll: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 28, paddingBottom: 16 },
-  pregunta: { fontSize: 24, fontWeight: '800', color: '#2C2C2C', marginBottom: 8 },
-  ayuda: { fontSize: 14, color: '#6B6B6B', lineHeight: 20, marginBottom: 24 },
-  nota: { fontSize: 13, color: '#6B6B6B', textAlign: 'center', marginTop: 12 },
+  pregunta: { fontSize: 24, fontWeight: '800', color: colores.texto, marginBottom: 8 },
+  ayuda: { fontSize: 14, color: colores.textoSecundario, lineHeight: 20, marginBottom: 24 },
+  nota: { fontSize: 13, color: colores.textoSecundario, textAlign: 'center', marginTop: 12 },
 
   preview: {
     width: 170, height: 170, borderRadius: 85, alignSelf: 'center',
-    backgroundColor: '#FFFFFF', borderWidth: 3, borderColor: '#FFFFFF',
+    backgroundColor: colores.blanco, borderWidth: 3, borderColor: colores.blanco,
   },
-  previewIlustracion: { resizeMode: 'contain', borderColor: '#E8EFE9' },
+  previewIlustracion: { resizeMode: 'contain', borderColor: colores.mentaGris },
 
   botonesRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
   btnSecundario: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    backgroundColor: '#F5C842', borderRadius: 24, paddingVertical: 13,
+    backgroundColor: colores.amarillo, borderRadius: 24, paddingVertical: 13,
   },
-  btnSecundarioTxt: { fontSize: 14, fontWeight: '700', color: '#2C2C2C' },
+  btnSecundarioTxt: { fontSize: 14, fontWeight: '700', color: colores.texto },
 
   input: {
-    backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: 'transparent', borderRadius: 14,
-    padding: 14, minHeight: 110, fontSize: 15, color: '#2C2C2C', textAlignVertical: 'top',
+    backgroundColor: colores.blanco, borderWidth: 1.5, borderColor: 'transparent', borderRadius: 14,
+    padding: 14, minHeight: 110, fontSize: 15, color: colores.texto, textAlignVertical: 'top',
   },
-  inputError: { borderColor: '#E63946' },
-  contador: { alignSelf: 'flex-end', fontSize: 12, color: '#6B6B6B', marginTop: 6 },
+  inputError: { borderColor: colores.rojo },
+  contador: { alignSelf: 'flex-end', fontSize: 12, color: colores.textoSecundario, marginTop: 6 },
 
   opcionesCol: { gap: 10 },
   opcion: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#FFFFFF', borderRadius: 16, paddingVertical: 16, paddingHorizontal: 18,
+    backgroundColor: colores.blanco, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 18,
     borderWidth: 1.5, borderColor: 'transparent',
   },
-  opcionOn: { borderColor: '#2DBD72' },
-  opcionTxt: { fontSize: 16, color: '#2C2C2C', fontWeight: '700' },
-  opcionTxtOn: { color: '#2DBD72' },
-  opcionApoyo: { fontSize: 13, color: '#6B6B6B', marginTop: 3, lineHeight: 18 },
+  opcionOn: { borderColor: colores.verde },
+  opcionTxt: { fontSize: 16, color: colores.texto, fontWeight: '700' },
+  opcionTxtOn: { color: colores.verde },
+  opcionApoyo: { fontSize: 13, color: colores.textoSecundario, marginTop: 3, lineHeight: 18 },
 
-  errorTxt: { fontSize: 13, color: '#E63946', marginTop: 14, textAlign: 'center', fontWeight: '600' },
+  errorTxt: { fontSize: 13, color: colores.rojo, marginTop: 14, textAlign: 'center', fontWeight: '600' },
 
   btnContinuar: {
-    backgroundColor: '#2DBD72', borderRadius: 30, height: 52,
+    backgroundColor: colores.verde, borderRadius: 30, height: 52,
     alignItems: 'center', justifyContent: 'center',
     marginHorizontal: 24, marginBottom: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
   },
-  btnContinuarTxt: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  btnContinuarTxt: { fontSize: 16, fontWeight: '700', color: colores.blanco },
 });

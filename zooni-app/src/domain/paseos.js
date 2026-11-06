@@ -170,7 +170,6 @@ export function formatoTiempoPaseado(segundos) {
 /** Comisión de Zooni sobre lo cobrado en un paseo. */
 export const comisionDe = (cobrado) => aCentavos(Number(cobrado) * COMISION_ZOONI);
 
-
 /** Minutos después de finalizar en los que todavía se puede retomar el paseo. */
 export const RETOMAR_MINUTOS = 15;
 

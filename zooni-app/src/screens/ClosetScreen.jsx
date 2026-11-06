@@ -23,6 +23,9 @@ import HamburgerDrawer from '../components/HamburgerDrawer';
 import SelectorMascota from '../components/SelectorMascota';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
+import { colores } from '../theme';
+import Toast from '../components/ui/Toast';
+import { useToast } from '../hooks/useToast';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const THUMBNAIL_SIZE = (SCREEN_WIDTH - 48 - 24) / 3;
@@ -55,37 +58,6 @@ function SkeletonCloset() {
         ))}
       </View>
     </View>
-  );
-}
-
-// ─── Toast ───────────────────────────────────────────────────────────────────
-
-function Toast({ visible }) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(-16)).current;
-
-  useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }),
-        Animated.timing(translateY, { toValue: 0, duration: 220, useNativeDriver: true }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-        Animated.timing(translateY, { toValue: -16, duration: 200, useNativeDriver: true }),
-      ]).start();
-    }
-  }, [visible]);
-
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={[styles.toast, { opacity, transform: [{ translateY }] }]}
-    >
-      <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-      <Text style={styles.toastText}>¡Avatar aplicado! 🎉</Text>
-    </Animated.View>
   );
 }
 
@@ -133,7 +105,7 @@ function AvatarThumbnail({ avatar, mascota, isSelected, isActual, onPress, entry
           {/* Badge de avatar actual */}
           {isActual && (
             <View style={styles.badgeActual}>
-              <Ionicons name="checkmark" size={11} color="#FFFFFF" />
+              <Ionicons name="checkmark" size={11} color={colores.blanco} />
             </View>
           )}
           {/* Nombre del avatar */}
@@ -147,8 +119,6 @@ function AvatarThumbnail({ avatar, mascota, isSelected, isActual, onPress, entry
     </Animated.View>
   );
 }
-
-
 
 // ─── Pantalla principal ───────────────────────────────────────────────────────
 
@@ -164,10 +134,9 @@ export default function ClosetScreen() {
   const [avatarSeleccionado, setAvatarSeleccionado] = useState(null);
   const [loading, setLoading] = useState(true);
   const [aplicando, setAplicando] = useState(false);
-  const [showToast, setShowToast] = useState(false);
+  const { toast, mostrarToast } = useToast();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { usuario, mascotaActiva: mascotaActivaDemo } = useUsuarioActivo();
-
 
   const previewScale = useRef(new Animated.Value(1)).current;
   const previewRotate = useRef(new Animated.Value(0)).current;
@@ -230,8 +199,7 @@ export default function ClosetScreen() {
       await aplicarAvatar(petId, avatarSeleccionado);
       setMascota(prev => ({ ...prev, imagen_asset: avatarSeleccionado }));
       Animated.timing(botonColor, { toValue: 0, duration: 200, useNativeDriver: false }).start();
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 2700);
+      mostrarToast('¡Avatar aplicado! 🎉');
     } catch (err) {
       if (err?.response?.status === 403) {
         Alert.alert('Sin permiso', 'No tenés permiso para modificar esta mascota.');
@@ -263,7 +231,7 @@ export default function ClosetScreen() {
 
   const botonBg = botonColor.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#CCCCCC', '#F5C842'],
+    outputRange: ['#CCCCCC', colores.amarillo],
   });
 
   const rotateDeg = previewRotate.interpolate({
@@ -283,7 +251,7 @@ export default function ClosetScreen() {
         imageStyle={styles.screenBackgroundImage}
         resizeMode="cover"
       >
-        <Toast visible={showToast} />
+        <Toast {...toast} />
 
         {/* ── HEADER ── */}
         <View style={styles.header}>
@@ -332,7 +300,7 @@ export default function ClosetScreen() {
                   <Ionicons
                     name={esAvatarActual ? 'checkmark-circle' : 'eye-outline'}
                     size={13}
-                    color={esAvatarActual ? '#27AE60' : '#6B6B6B'}
+                    color={esAvatarActual ? colores.verdeExito : colores.textoSecundario}
                     style={{ marginRight: 4 }}
                   />
                   <Text style={[
@@ -380,7 +348,7 @@ export default function ClosetScreen() {
                 <View style={styles.gridHeaderRow}>
                   <Text style={styles.gridLabel}>Elegí un look</Text>
                   <View style={styles.gridSpecieChip}>
-                    <Ionicons name="paw" size={12} color="#27AE60" style={{ marginRight: 4 }} />
+                    <Ionicons name="paw" size={12} color={colores.verdeExito} style={{ marginRight: 4 }} />
                     <Text style={styles.gridSpecieText}>
                       {mascota?.especie ?? ''}
                     </Text>
@@ -417,7 +385,7 @@ export default function ClosetScreen() {
                     {
                       backgroundColor: botonBg,
                       opacity: esAvatarActual ? 0.55 : 1,
-                      shadowColor: esAvatarActual ? 'transparent' : '#F5C842',
+                      shadowColor: esAvatarActual ? 'transparent' : colores.amarillo,
                       shadowOffset: { width: 0, height: 6 },
                       shadowOpacity: esAvatarActual ? 0 : 0.4,
                       shadowRadius: 12,
@@ -432,11 +400,11 @@ export default function ClosetScreen() {
                     style={styles.boton}
                   >
                     {aplicando ? (
-                      <ActivityIndicator color="#2C2C2C" size="small" />
+                      <ActivityIndicator color={colores.texto} size="small" />
                     ) : (
                       <View style={styles.botonContent}>
                         {!esAvatarActual && (
-                          <Ionicons name="shirt-outline" size={18} color="#2C2C2C" style={{ marginRight: 8 }} />
+                          <Ionicons name="shirt-outline" size={18} color={colores.texto} style={{ marginRight: 8 }} />
                         )}
                         <Text style={styles.botonTexto}>
                           {esAvatarActual ? 'Ya aplicado ✓' : 'Aplicar Avatar'}
@@ -469,7 +437,7 @@ export default function ClosetScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#D4F5E2' },
+  safeArea: { flex: 1, backgroundColor: colores.mentaClara },
   screenBackground: { flex: 1, width: '100%' },
   screenBackgroundImage: { width: '100%', height: '100%' },
 
@@ -500,14 +468,14 @@ const styles = StyleSheet.create({
   },
   heroSubtitulo: {
     fontSize: 15,
-    color: '#2C2C2C',
+    color: colores.texto,
     textAlign: 'center',
     lineHeight: 22,
     fontWeight: '500',
   },
   heroNombreMascota: {
     fontWeight: '800',
-    color: '#27AE60',
+    color: colores.verdeExito,
   },
 
   // ── Preview card ──
@@ -535,18 +503,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   previewBadgeTextActual: {
-    color: '#27AE60',
+    color: colores.verdeExito,
   },
   previewBadgeTextPreview: {
-    color: '#6B6B6B',
+    color: colores.textoSecundario,
   },
   previewCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colores.blanco,
     borderRadius: 28,
     paddingVertical: 36,
     paddingHorizontal: 24,
     alignItems: 'center',
-    shadowColor: '#2DBD72',
+    shadowColor: colores.verde,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.12,
     shadowRadius: 20,
@@ -573,7 +541,7 @@ const styles = StyleSheet.create({
     width: 130,
     height: 130,
     borderRadius: 65,
-    backgroundColor: '#C8F0D8',
+    backgroundColor: colores.menta,
     opacity: 0.7,
   },
   previewImage: {
@@ -584,7 +552,7 @@ const styles = StyleSheet.create({
   previewAvatarName: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#2C2C2C',
+    color: colores.texto,
     marginTop: 14,
     textAlign: 'center',
     zIndex: 1,
@@ -592,13 +560,13 @@ const styles = StyleSheet.create({
 
   // ── Grid ──
   gridSection: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colores.blanco,
     borderRadius: 28,
     marginHorizontal: 16,
     marginBottom: 20,
     paddingTop: 20,
     paddingBottom: 20,
-    shadowColor: '#000',
+    shadowColor: colores.negro,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.07,
     shadowRadius: 12,
@@ -614,7 +582,7 @@ const styles = StyleSheet.create({
   gridLabel: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#2C2C2C',
+    color: colores.texto,
     letterSpacing: 0.2,
   },
   gridSpecieChip: {
@@ -628,7 +596,7 @@ const styles = StyleSheet.create({
   gridSpecieText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#27AE60',
+    color: colores.verdeExito,
     textTransform: 'capitalize',
   },
   gridContainer: {
@@ -655,8 +623,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#E8E8E8',
-    shadowColor: '#000',
+    borderColor: colores.gris300,
+    shadowColor: colores.negro,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 4,
@@ -665,9 +633,9 @@ const styles = StyleSheet.create({
   },
   thumbnailSelected: {
     borderWidth: 2.5,
-    borderColor: '#2DBD72',
+    borderColor: colores.verde,
     backgroundColor: '#F0FDF5',
-    shadowColor: '#2DBD72',
+    shadowColor: colores.verde,
     shadowOpacity: 0.22,
     shadowRadius: 8,
     elevation: 4,
@@ -679,7 +647,7 @@ const styles = StyleSheet.create({
   thumbnailLabel: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#6B6B6B',
+    color: colores.textoSecundario,
     textAlign: 'center',
     marginTop: 4,
     width: '100%',
@@ -691,11 +659,11 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#2DBD72',
+    backgroundColor: colores.verde,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,
-    shadowColor: '#2DBD72',
+    shadowColor: colores.verde,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.4,
     shadowRadius: 3,
@@ -715,12 +683,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#2C2C2C',
+    color: colores.texto,
     marginBottom: 8,
   },
   emptyText: {
     fontSize: 14,
-    color: '#6B6B6B',
+    color: colores.textoSecundario,
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -751,38 +719,15 @@ const styles = StyleSheet.create({
   botonTexto: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#2C2C2C',
+    color: colores.texto,
     letterSpacing: 0.2,
   },
   botonHint: {
     fontSize: 12,
-    color: '#6B6B6B',
+    color: colores.textoSecundario,
     marginTop: 10,
     textAlign: 'center',
     fontStyle: 'italic',
   },
 
-  // ── Toast ──
-  toast: {
-    position: 'absolute',
-    top: 70,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2DBD72',
-    borderRadius: 14,
-    paddingHorizontal: 22,
-    paddingVertical: 13,
-    zIndex: 200,
-    shadowColor: '#2DBD72',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 10,
-  },
-  toastText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
 });

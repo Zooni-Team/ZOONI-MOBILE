@@ -41,14 +41,7 @@ import {
 } from '../services/negocioApi';
 import { direccionDe } from '../services/paseadorApi';
 import { alerta } from '../utils/dialogo';
-
-const VERDE = '#2DBD72';
-const MENTA = '#C8F0D8';
-const AMARILLO = '#F5C842';
-const ROJO = '#E63946';
-const AMBAR = '#F5A623';
-const TEXTO = '#2C2C2C';
-const TEXTO2 = '#6B6B6B';
+import { colores, sombras } from '../theme';
 
 const DIA_JS = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
 const normalizar = (t) => String(t ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -69,7 +62,7 @@ function proximaApertura(horarios, ahora = new Date()) {
   return null;
 }
 
-function Sello({ icono, texto, color = VERDE, fondo = '#E3F7EC' }) {
+function Sello({ icono, texto, color = colores.verde, fondo = colores.mentaTarjeta }) {
   return (
     <View style={[s.sello, { backgroundColor: fondo }]}>
       <Ionicons name={icono} size={13} color={color} />
@@ -146,7 +139,7 @@ function HojaPedido({ visible, negocio, lineas, onCantidad, onCerrar, onHecho, s
       <SafeAreaView style={s.safe}>
         <View style={s.header}>
           <TouchableOpacity onPress={onCerrar} hitSlop={10} accessibilityLabel="Cerrar">
-            <Ionicons name="close" size={26} color={TEXTO} />
+            <Ionicons name="close" size={26} color={colores.texto} />
           </TouchableOpacity>
           <Text style={s.headerTitulo}>Tu pedido</Text>
           <View style={{ width: 26 }} />
@@ -170,21 +163,21 @@ function HojaPedido({ visible, negocio, lineas, onCantidad, onCerrar, onHecho, s
             <View style={{ gap: 10 }}>
               <TouchableOpacity style={[s.opcion, entrega === 'retiro' && s.opcionOn]} onPress={() => setEntrega('retiro')}
                 accessibilityRole="radio" accessibilityState={{ selected: entrega === 'retiro' }}>
-                <Ionicons name="storefront" size={22} color={entrega === 'retiro' ? '#FFF' : VERDE} />
+                <Ionicons name="storefront" size={22} color={entrega === 'retiro' ? colores.blanco : colores.verde} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[s.opcionTitulo, entrega === 'retiro' && { color: '#FFF' }]}>Retiro en el local · Gratis</Text>
-                  <Text style={[s.opcionTxt, entrega === 'retiro' && { color: '#F0FFF6' }]} numberOfLines={1}>{negocio.direccion}</Text>
+                  <Text style={[s.opcionTitulo, entrega === 'retiro' && { color: colores.blanco }]}>Retiro en el local · Gratis</Text>
+                  <Text style={[s.opcionTxt, entrega === 'retiro' && { color: colores.mentaFondo }]} numberOfLines={1}>{negocio.direccion}</Text>
                 </View>
               </TouchableOpacity>
               {d.envios ? (
                 <TouchableOpacity style={[s.opcion, entrega === 'envio' && s.opcionOn]} onPress={() => setEntrega('envio')}
                   accessibilityRole="radio" accessibilityState={{ selected: entrega === 'envio' }}>
-                  <Ionicons name="bicycle" size={22} color={entrega === 'envio' ? '#FFF' : VERDE} />
+                  <Ionicons name="bicycle" size={22} color={entrega === 'envio' ? colores.blanco : colores.verde} />
                   <View style={{ flex: 1 }}>
-                    <Text style={[s.opcionTitulo, entrega === 'envio' && { color: '#FFF' }]}>
+                    <Text style={[s.opcionTitulo, entrega === 'envio' && { color: colores.blanco }]}>
                       Envío a domicilio · {costoEnvio(negocio, subtotal) ? formatoPlata(costoEnvio(negocio, subtotal)) : 'Gratis'}
                     </Text>
-                    <Text style={[s.opcionTxt, entrega === 'envio' && { color: '#F0FFF6' }]}>
+                    <Text style={[s.opcionTxt, entrega === 'envio' && { color: colores.mentaFondo }]}>
                       {d.demoraEnvio ?? 'A coordinar'} · hasta {d.radioEnvioKm ?? 3} km
                       {gratisDesde && subtotal < gratisDesde ? ` · gratis desde ${formatoPlata(gratisDesde)}` : ''}
                     </Text>
@@ -198,9 +191,9 @@ function HojaPedido({ visible, negocio, lineas, onCantidad, onCerrar, onHecho, s
                 <Text style={s.label}>¿A dónde?</Text>
                 <View style={s.inputFila}>
                   <TextInput style={s.inputFlex} value={direccion} onChangeText={(v) => setDireccion(v.slice(0, 300))}
-                    placeholder="Calle, número y piso/depto" placeholderTextColor="#AAAAAA" />
+                    placeholder="Calle, número y piso/depto" placeholderTextColor={colores.textoTenue} />
                   <TouchableOpacity onPress={usarUbicacion} hitSlop={8} accessibilityLabel="Usar mi ubicación">
-                    {ubicando ? <ActivityIndicator size="small" color={VERDE} /> : <Ionicons name="locate" size={22} color={VERDE} />}
+                    {ubicando ? <ActivityIndicator size="small" color={colores.verde} /> : <Ionicons name="locate" size={22} color={colores.verde} />}
                   </TouchableOpacity>
                 </View>
               </>
@@ -213,8 +206,8 @@ function HojaPedido({ visible, negocio, lineas, onCantidad, onCerrar, onHecho, s
                 return (
                   <TouchableOpacity key={m.key} style={[s.chip, on && s.chipOn]} onPress={() => setMedio(m.key)}
                     accessibilityRole="radio" accessibilityState={{ selected: on }}>
-                    <Ionicons name={m.icono} size={16} color={on ? '#FFF' : VERDE} />
-                    <Text style={[s.chipTxt, on && { color: '#FFF' }]}>{m.label}</Text>
+                    <Ionicons name={m.icono} size={16} color={on ? colores.blanco : colores.verde} />
+                    <Text style={[s.chipTxt, on && { color: colores.blanco }]}>{m.label}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -223,7 +216,7 @@ function HojaPedido({ visible, negocio, lineas, onCantidad, onCerrar, onHecho, s
 
             <Text style={s.label}>Notas (opcional)</Text>
             <TextInput style={[s.input, { minHeight: 70, textAlignVertical: 'top' }]} value={notas} onChangeText={setNotas}
-              multiline maxLength={500} placeholderTextColor="#AAAAAA"
+              multiline maxLength={500} placeholderTextColor={colores.textoTenue}
               placeholder="Ej: si no está el sabor pollo, traé carne. Timbre 3B." />
 
             <View style={[s.card, { marginTop: 18 }]}>
@@ -243,7 +236,7 @@ function HojaPedido({ visible, negocio, lineas, onCantidad, onCerrar, onHecho, s
             {error ? <Text style={s.error}>{error}</Text> : null}
             <TouchableOpacity style={[s.btn, (enviando || faltaMinimo || !lineas.length) && { opacity: 0.6 }]} onPress={pedir}
               disabled={enviando || !lineas.length} activeOpacity={0.85}>
-              {enviando ? <ActivityIndicator color={TEXTO} />
+              {enviando ? <ActivityIndicator color={colores.texto} />
                 : <Text style={s.btnTxt}>Hacer pedido · {formatoPlata(subtotal + envio)}</Text>}
             </TouchableOpacity>
             <Text style={s.pie}>Te avisamos cuando {negocio.nombre} lo acepte y cuando esté {entrega === 'envio' ? 'en camino' : 'listo para retirar'}.</Text>
@@ -259,12 +252,12 @@ function Stepper({ cantidad, max, onCambio }) {
   return (
     <View style={s.stepper}>
       <TouchableOpacity style={s.stepBtn} onPress={() => onCambio(cantidad - 1)} accessibilityLabel="Uno menos">
-        <Ionicons name={cantidad <= 1 ? 'trash-outline' : 'remove'} size={18} color={VERDE} />
+        <Ionicons name={cantidad <= 1 ? 'trash-outline' : 'remove'} size={18} color={colores.verde} />
       </TouchableOpacity>
       <Text style={s.stepNum}>{cantidad}</Text>
       <TouchableOpacity style={[s.stepBtn, cantidad >= tope && { opacity: 0.35 }]} disabled={cantidad >= tope}
         onPress={() => onCambio(cantidad + 1)} accessibilityLabel="Uno más">
-        <Ionicons name="add" size={18} color={VERDE} />
+        <Ionicons name="add" size={18} color={colores.verde} />
       </TouchableOpacity>
     </View>
   );
@@ -344,11 +337,11 @@ export default function NegocioPublicoScreen() {
     navigation.navigate('ReservarTurno', { idNegocio: negocio.id, idItem: item?.id ?? null, urgente });
   };
 
-  if (cargando) return <View style={[s.safe, s.centro]}><ActivityIndicator size="large" color={VERDE} /></View>;
+  if (cargando) return <View style={[s.safe, s.centro]}><ActivityIndicator size="large" color={colores.verde} /></View>;
   if (error || !negocio) {
     return (
       <SafeAreaView style={[s.safe, s.centro]}>
-        <Ionicons name={error ? 'cloud-offline-outline' : 'storefront-outline'} size={44} color={TEXTO2} />
+        <Ionicons name={error ? 'cloud-offline-outline' : 'storefront-outline'} size={44} color={colores.textoSecundario} />
         <Text style={s.vacioTxt}>{error ? 'No se pudo cargar. Revisá tu conexión.' : 'Este negocio ya no está en Zooni.'}</Text>
         <TouchableOpacity style={[s.btn, { alignSelf: 'stretch', marginHorizontal: 24 }]}
           onPress={() => (error ? (setCargando(true), cargar()) : navigation.goBack())}>
@@ -368,8 +361,8 @@ export default function NegocioPublicoScreen() {
   // Sellos según el tipo
   const sellos = [];
   if (negocio.tipo === 'veterinaria') {
-    if (d.urgencias24h) sellos.push({ icono: 'alert-circle', texto: 'Urgencias 24 h', color: ROJO, fondo: '#FDECEE' });
-    if (d.aDomicilio) sellos.push({ icono: 'home', texto: 'Atiende a domicilio', color: '#2B6CB0', fondo: '#E6F0FA' });
+    if (d.urgencias24h) sellos.push({ icono: 'alert-circle', texto: 'Urgencias 24 h', color: colores.rojo, fondo: colores.rojoFondo });
+    if (d.aDomicilio) sellos.push({ icono: 'home', texto: 'Atiende a domicilio', color: colores.azul, fondo: colores.azulFondo });
     (d.especies ?? []).forEach((e) => {
       const esp = ESPECIES_NEGOCIO.find((x) => x.key === e);
       if (esp) sellos.push({ icono: esp.icono, texto: esp.label });
@@ -381,7 +374,7 @@ export default function NegocioPublicoScreen() {
         icono: 'car',
         texto: `Busca y lleva${Number(d.buscaYLlevaCosto) ? ` · ${formatoPlata(d.buscaYLlevaCosto)}` : ' gratis'}`
           + (Number(d.buscaYLlevaRadioKm) > 0 ? ` · hasta ${d.buscaYLlevaRadioKm} km` : ''),
-        color: '#2B6CB0', fondo: '#E6F0FA',
+        color: colores.azul, fondo: colores.azulFondo,
       });
     }
     if (d.hipoalergenicos) sellos.push({ icono: 'leaf', texto: 'Productos hipoalergénicos' });
@@ -390,7 +383,7 @@ export default function NegocioPublicoScreen() {
       if (esp) sellos.push({ icono: esp.icono, texto: esp.label });
     });
     if (d.tamanos?.length && d.tamanos.length < TAMANOS.length) {
-      sellos.push({ icono: 'resize', texto: `Sólo ${d.tamanos.map((t) => TAMANOS.find((x) => x.key === t)?.label.toLowerCase()).join(' y ')}`, color: TEXTO2, fondo: '#F1F1F1' });
+      sellos.push({ icono: 'resize', texto: `Sólo ${d.tamanos.map((t) => TAMANOS.find((x) => x.key === t)?.label.toLowerCase()).join(' y ')}`, color: colores.textoSecundario, fondo: colores.gris100 });
     }
   }
   if (negocio.tipo === 'petshop') {
@@ -398,13 +391,13 @@ export default function NegocioPublicoScreen() {
       sellos.push({
         icono: 'bicycle',
         texto: `Envíos ${Number(d.envioCosto) ? formatoPlata(d.envioCosto) : 'gratis'} · ${d.demoraEnvio ?? 'a coordinar'}`,
-        color: '#2B6CB0', fondo: '#E6F0FA',
+        color: colores.azul, fondo: colores.azulFondo,
       });
       if (Number(d.envioGratisDesde)) sellos.push({ icono: 'gift', texto: `Envío gratis desde ${formatoPlata(d.envioGratisDesde)}` });
     } else {
-      sellos.push({ icono: 'storefront', texto: 'Sólo retiro en el local', color: TEXTO2, fondo: '#F1F1F1' });
+      sellos.push({ icono: 'storefront', texto: 'Sólo retiro en el local', color: colores.textoSecundario, fondo: colores.gris100 });
     }
-    if (Number(d.pedidoMinimo)) sellos.push({ icono: 'cart', texto: `Mínimo ${formatoPlata(d.pedidoMinimo)}`, color: TEXTO2, fondo: '#F1F1F1' });
+    if (Number(d.pedidoMinimo)) sellos.push({ icono: 'cart', texto: `Mínimo ${formatoPlata(d.pedidoMinimo)}`, color: colores.textoSecundario, fondo: colores.gris100 });
   }
 
   const porCategoria = categorias
@@ -413,10 +406,10 @@ export default function NegocioPublicoScreen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={MENTA} />
+      <StatusBar barStyle="dark-content" backgroundColor={colores.menta} />
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={10} accessibilityLabel="Volver">
-          <Ionicons name="arrow-back" size={24} color={TEXTO} />
+          <Ionicons name="arrow-back" size={24} color={colores.texto} />
         </TouchableOpacity>
         <Text style={s.headerTitulo}>{cfg.label}</Text>
         <View style={{ width: 24 }} />
@@ -424,7 +417,7 @@ export default function NegocioPublicoScreen() {
 
       {soloVista ? (
         <View style={s.vista}>
-          <Ionicons name="eye-outline" size={16} color="#2B6CB0" />
+          <Ionicons name="eye-outline" size={16} color={colores.azul} />
           <Text style={s.vistaTxt}>Vista previa: así ven tu ficha los clientes.</Text>
         </View>
       ) : null}
@@ -446,8 +439,8 @@ export default function NegocioPublicoScreen() {
                 <Text style={[s.tipoChipTxt, { color: cfg.color }]}>{cfg.label}{negocio.barrio ? ` · ${negocio.barrio}` : ''}</Text>
               </View>
               <View style={s.estadoFila}>
-                <View style={[s.punto, { backgroundColor: abiertoYa ? VERDE : ROJO }]} />
-                <Text style={[s.estadoTxt, { color: abiertoYa ? VERDE : ROJO }]}>
+                <View style={[s.punto, { backgroundColor: abiertoYa ? colores.verde : colores.rojo }]} />
+                <Text style={[s.estadoTxt, { color: abiertoYa ? colores.verde : colores.rojo }]}>
                   {abiertoYa ? `Abierto · hasta las ${hoy.hasta}` : 'Cerrado'}
                 </Text>
                 {!abiertoYa && proximaApertura(negocio.horarios)
@@ -456,30 +449,30 @@ export default function NegocioPublicoScreen() {
             </View>
           </View>
           <Text style={s.realizados}>
-            <Ionicons name="ribbon-outline" size={13} color={TEXTO2} /> {realizadosTxt}
+            <Ionicons name="ribbon-outline" size={13} color={colores.textoSecundario} /> {realizadosTxt}
           </Text>
           {negocio.descripcion ? <Text style={s.descripcion}>{negocio.descripcion}</Text> : null}
           {sellos.length ? (
             <View style={s.sellos}>{sellos.map((x) => <Sello key={x.texto} {...x} />)}</View>
           ) : null}
           <View style={s.direccion}>
-            <Ionicons name="location-outline" size={16} color={TEXTO2} />
+            <Ionicons name="location-outline" size={16} color={colores.textoSecundario} />
             <Text style={s.direccionTxt}>{negocio.direccion}</Text>
           </View>
 
           <View style={s.acciones}>
             <TouchableOpacity style={s.accion} onPress={chat} accessibilityLabel="Chatear">
-              <Ionicons name="chatbubble-ellipses-outline" size={20} color={VERDE} />
+              <Ionicons name="chatbubble-ellipses-outline" size={20} color={colores.verde} />
               <Text style={s.accionTxt}>Chat</Text>
             </TouchableOpacity>
             {negocio.telefono ? (
               <TouchableOpacity style={s.accion} onPress={() => llamar(negocio.telefono)} accessibilityLabel="Llamar">
-                <Ionicons name="call-outline" size={20} color={VERDE} />
+                <Ionicons name="call-outline" size={20} color={colores.verde} />
                 <Text style={s.accionTxt}>Llamar</Text>
               </TouchableOpacity>
             ) : null}
             <TouchableOpacity style={s.accion} onPress={comoLlegar} accessibilityLabel="Cómo llegar">
-              <Ionicons name="navigate-outline" size={20} color={VERDE} />
+              <Ionicons name="navigate-outline" size={20} color={colores.verde} />
               <Text style={s.accionTxt}>Cómo llegar</Text>
             </TouchableOpacity>
           </View>
@@ -487,7 +480,7 @@ export default function NegocioPublicoScreen() {
 
         {!negocio.abierto && (
           <View style={s.cerrado}>
-            <Ionicons name="pause-circle" size={20} color={AMBAR} />
+            <Ionicons name="pause-circle" size={20} color={colores.ambar} />
             <Text style={s.cerradoTxt}>
               {cfg.usaPedidos ? 'No está tomando pedidos' : 'No está tomando turnos'} por ahora. Podés escribirle por chat.
             </Text>
@@ -498,7 +491,7 @@ export default function NegocioPublicoScreen() {
         {negocio.tipo === 'veterinaria' && d.urgencias24h && (
           <View style={s.urgencia}>
             <View style={s.urgenciaTop}>
-              <Ionicons name="alert-circle" size={26} color={ROJO} />
+              <Ionicons name="alert-circle" size={26} color={colores.rojo} />
               <View style={{ flex: 1 }}>
                 <Text style={s.urgenciaTitulo}>Urgencias las 24 horas</Text>
                 <Text style={s.urgenciaTxt}>Si tu mascota está mal, llamá a la guardia o pedí un turno urgente: le llega destacado.</Text>
@@ -506,14 +499,14 @@ export default function NegocioPublicoScreen() {
             </View>
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
               {d.telefonoUrgencias || negocio.telefono ? (
-                <TouchableOpacity style={[s.btnChico, { backgroundColor: ROJO }]} onPress={() => llamar(d.telefonoUrgencias || negocio.telefono)}>
-                  <Ionicons name="call" size={16} color="#FFF" />
-                  <Text style={[s.btnChicoTxt, { color: '#FFF' }]}>Llamar a la guardia</Text>
+                <TouchableOpacity style={[s.btnChico, { backgroundColor: colores.rojo }]} onPress={() => llamar(d.telefonoUrgencias || negocio.telefono)}>
+                  <Ionicons name="call" size={16} color={colores.blanco} />
+                  <Text style={[s.btnChicoTxt, { color: colores.blanco }]}>Llamar a la guardia</Text>
                 </TouchableOpacity>
               ) : null}
-              <TouchableOpacity style={[s.btnChico, { borderWidth: 2, borderColor: ROJO, backgroundColor: '#FFF' }]}
+              <TouchableOpacity style={[s.btnChico, { borderWidth: 2, borderColor: colores.rojo, backgroundColor: colores.blanco }]}
                 onPress={() => pedirTurno(items[0], true)}>
-                <Text style={[s.btnChicoTxt, { color: ROJO }]}>Turno urgente</Text>
+                <Text style={[s.btnChicoTxt, { color: colores.rojo }]}>Turno urgente</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -562,7 +555,7 @@ export default function NegocioPublicoScreen() {
                       <Text style={s.servicioNombre}>{it.nombre}</Text>
                       {it.descripcion ? <Text style={s.servicioDesc} numberOfLines={2}>{it.descripcion}</Text> : null}
                       <Text style={s.servicioDesc}>
-                        <Ionicons name="time-outline" size={12} color={TEXTO2} /> {it.duracionMin} min
+                        <Ionicons name="time-outline" size={12} color={colores.textoSecundario} /> {it.duracionMin} min
                       </Text>
                       {it.precios ? (
                         <Text style={s.porTamano}>
@@ -596,16 +589,16 @@ export default function NegocioPublicoScreen() {
             {items.length > 0 && (
               <>
                 <View style={s.buscador}>
-                  <Ionicons name="search" size={18} color={TEXTO2} />
+                  <Ionicons name="search" size={18} color={colores.textoSecundario} />
                   <TextInput style={s.buscadorInput} value={busqueda} onChangeText={setBusqueda}
-                    placeholder="Buscar alimento, juguete…" placeholderTextColor="#AAAAAA" />
+                    placeholder="Buscar alimento, juguete…" placeholderTextColor={colores.textoTenue} />
                 </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.categorias}>
                   {[null, ...categorias].map((c) => {
                     const on = categoria === c;
                     return (
                       <TouchableOpacity key={c ?? 'todas'} style={[s.chip, on && s.chipOn]} onPress={() => setCategoria(c)}>
-                        <Text style={[s.chipTxt, on && { color: '#FFF' }]}>{c ?? 'Todo'}</Text>
+                        <Text style={[s.chipTxt, on && { color: colores.blanco }]}>{c ?? 'Todo'}</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -623,12 +616,12 @@ export default function NegocioPublicoScreen() {
                 <View key={it.id} style={[s.producto, agotado && { opacity: 0.55 }]}>
                   {it.foto
                     ? <Image source={{ uri: it.foto }} style={s.productoFoto} />
-                    : <View style={[s.productoFoto, s.productoSinFoto]}><Ionicons name="cube-outline" size={26} color={AMBAR} /></View>}
+                    : <View style={[s.productoFoto, s.productoSinFoto]}><Ionicons name="cube-outline" size={26} color={colores.ambar} /></View>}
                   <View style={{ flex: 1 }}>
                     <Text style={s.servicioNombre} numberOfLines={2}>{it.nombre}</Text>
                     {it.descripcion ? <Text style={s.servicioDesc} numberOfLines={2}>{it.descripcion}</Text> : null}
                     <Text style={s.servicioPrecio}>{formatoPlata(it.precio)}</Text>
-                    {agotado ? <Text style={[s.stock, { color: ROJO }]}>Sin stock</Text>
+                    {agotado ? <Text style={[s.stock, { color: colores.rojo }]}>Sin stock</Text>
                       : it.stock != null && it.stock <= 3 ? <Text style={s.stock}>¡Quedan {it.stock}!</Text> : null}
                   </View>
                   {agotado ? null : cant > 0 ? (
@@ -636,7 +629,7 @@ export default function NegocioPublicoScreen() {
                   ) : (
                     <TouchableOpacity style={s.agregar} onPress={() => (soloVista ? soloVer() : ponerCantidad(it, 1))}
                       accessibilityLabel={`Agregar ${it.nombre}`}>
-                      <Ionicons name="add" size={22} color="#FFF" />
+                      <Ionicons name="add" size={22} color={colores.blanco} />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -653,8 +646,8 @@ export default function NegocioPublicoScreen() {
             const esHoy = dia.key === keyHoy;
             return (
               <View key={dia.key} style={[s.horario, esHoy && s.horarioHoy]}>
-                <Text style={[s.horarioDia, esHoy && { fontWeight: '900', color: VERDE }]}>{dia.label}{esHoy ? ' (hoy)' : ''}</Text>
-                <Text style={[s.horarioHora, !h?.activo && { color: TEXTO2 }]}>{h?.activo ? `${h.desde} – ${h.hasta}` : 'Cerrado'}</Text>
+                <Text style={[s.horarioDia, esHoy && { fontWeight: '900', color: colores.verde }]}>{dia.label}{esHoy ? ' (hoy)' : ''}</Text>
+                <Text style={[s.horarioHora, !h?.activo && { color: colores.textoSecundario }]}>{h?.activo ? `${h.desde} – ${h.hasta}` : 'Cerrado'}</Text>
               </View>
             );
           })}
@@ -703,29 +696,25 @@ export default function NegocioPublicoScreen() {
   );
 }
 
-const sombra = {
-  shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 3,
-};
-
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: MENTA },
+  safe: { flex: 1, backgroundColor: colores.menta },
   centro: { alignItems: 'center', justifyContent: 'center', gap: 12 },
   header: {
     height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16,
   },
-  headerTitulo: { fontSize: 20, fontWeight: '800', color: VERDE },
+  headerTitulo: { fontSize: 20, fontWeight: '800', color: colores.verde },
   scroll: { padding: 20, paddingTop: 4, paddingBottom: 40 },
   vista: {
     flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 20, marginBottom: 8,
-    padding: 10, borderRadius: 12, backgroundColor: '#E6F0FA',
+    padding: 10, borderRadius: 12, backgroundColor: colores.azulFondo,
   },
-  vistaTxt: { flex: 1, fontSize: 13, fontWeight: '700', color: '#2B6CB0' },
+  vistaTxt: { flex: 1, fontSize: 13, fontWeight: '700', color: colores.azul },
 
-  card: { backgroundColor: '#FFF', borderRadius: 20, padding: 16, ...sombra },
-  cardTitulo: { fontSize: 17, fontWeight: '900', color: TEXTO, marginBottom: 6 },
+  card: { backgroundColor: colores.blanco, borderRadius: 20, padding: 16, ...sombras.tarjeta },
+  cardTitulo: { fontSize: 17, fontWeight: '900', color: colores.texto, marginBottom: 6 },
   heroFila: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   logo: { width: 76, height: 76, borderRadius: 22 },
-  nombre: { fontSize: 21, fontWeight: '900', color: TEXTO },
+  nombre: { fontSize: 21, fontWeight: '900', color: colores.texto },
   tipoChip: {
     flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start',
     paddingHorizontal: 9, paddingVertical: 3, borderRadius: 12, marginTop: 4,
@@ -734,128 +723,128 @@ const s = StyleSheet.create({
   estadoFila: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginTop: 6 },
   punto: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
   estadoTxt: { fontSize: 13, fontWeight: '800' },
-  estadoSub: { fontSize: 12, color: TEXTO2 },
-  realizados: { fontSize: 13, color: TEXTO2, marginTop: 12, fontWeight: '600' },
-  descripcion: { fontSize: 14, color: TEXTO, marginTop: 10, lineHeight: 20 },
+  estadoSub: { fontSize: 12, color: colores.textoSecundario },
+  realizados: { fontSize: 13, color: colores.textoSecundario, marginTop: 12, fontWeight: '600' },
+  descripcion: { fontSize: 14, color: colores.texto, marginTop: 10, lineHeight: 20 },
   sellos: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
   sello: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 12 },
   selloTxt: { fontSize: 12, fontWeight: '800' },
   direccion: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
-  direccionTxt: { flex: 1, fontSize: 13, color: TEXTO },
+  direccionTxt: { flex: 1, fontSize: 13, color: colores.texto },
   acciones: { flexDirection: 'row', gap: 8, marginTop: 14 },
   accion: {
     flex: 1, alignItems: 'center', gap: 4, paddingVertical: 10, borderRadius: 16,
-    borderWidth: 1.5, borderColor: MENTA, backgroundColor: '#F6FFF9',
+    borderWidth: 1.5, borderColor: colores.menta, backgroundColor: '#F6FFF9',
   },
-  accionTxt: { fontSize: 12, fontWeight: '800', color: VERDE },
+  accionTxt: { fontSize: 12, fontWeight: '800', color: colores.verde },
 
   cerrado: {
     flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14, padding: 14, borderRadius: 16,
     backgroundColor: '#FFF7E8', borderWidth: 1.5, borderColor: '#FCE7B2',
   },
-  cerradoTxt: { flex: 1, fontSize: 13, fontWeight: '700', color: TEXTO },
+  cerradoTxt: { flex: 1, fontSize: 13, fontWeight: '700', color: colores.texto },
 
   urgencia: {
-    marginTop: 14, padding: 16, borderRadius: 20, backgroundColor: '#FFF7F8', borderWidth: 2, borderColor: '#F5B7BD',
+    marginTop: 14, padding: 16, borderRadius: 20, backgroundColor: '#FFF7F8', borderWidth: 2, borderColor: colores.rojoBorde,
   },
   urgenciaTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  urgenciaTitulo: { fontSize: 16, fontWeight: '900', color: ROJO },
-  urgenciaTxt: { fontSize: 13, color: TEXTO, marginTop: 2, lineHeight: 18 },
+  urgenciaTitulo: { fontSize: 16, fontWeight: '900', color: colores.rojo },
+  urgenciaTxt: { fontSize: 13, color: colores.texto, marginTop: 2, lineHeight: 18 },
   btnChico: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     height: 42, borderRadius: 21,
   },
   btnChicoTxt: { fontSize: 14, fontWeight: '800' },
-  matricula: { fontSize: 13, color: TEXTO2, marginTop: 10, fontWeight: '700' },
+  matricula: { fontSize: 13, color: colores.textoSecundario, marginTop: 10, fontWeight: '700' },
 
   tituloFila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, marginBottom: 10 },
-  titulo: { fontSize: 18, fontWeight: '900', color: TEXTO },
-  tituloExtra: { fontSize: 13, color: TEXTO2, fontWeight: '700' },
-  ayudaSeccion: { fontSize: 12, color: TEXTO2, marginTop: -4, marginBottom: 10 },
-  trabajo: { width: 130, height: 130, borderRadius: 16, backgroundColor: '#FFF' },
+  titulo: { fontSize: 18, fontWeight: '900', color: colores.texto },
+  tituloExtra: { fontSize: 13, color: colores.textoSecundario, fontWeight: '700' },
+  ayudaSeccion: { fontSize: 12, color: colores.textoSecundario, marginTop: -4, marginBottom: 10 },
+  trabajo: { width: 130, height: 130, borderRadius: 16, backgroundColor: colores.blanco },
 
-  categoria: { fontSize: 13, fontWeight: '900', color: VERDE, textTransform: 'uppercase', marginTop: 8, marginBottom: 2 },
+  categoria: { fontSize: 13, fontWeight: '900', color: colores.verde, textTransform: 'uppercase', marginTop: 8, marginBottom: 2 },
   servicio: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
-  servicioBorde: { borderTopWidth: 1, borderTopColor: '#F2F2F2' },
-  servicioNombre: { fontSize: 15, fontWeight: '800', color: TEXTO },
-  servicioDesc: { fontSize: 12, color: TEXTO2, marginTop: 2 },
-  porTamano: { fontSize: 12, color: TEXTO, marginTop: 4, fontWeight: '600' },
-  servicioPrecio: { fontSize: 16, fontWeight: '900', color: TEXTO, marginTop: 2 },
-  btnTurno: { height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: AMARILLO, justifyContent: 'center' },
-  btnTurnoTxt: { fontSize: 13, fontWeight: '800', color: TEXTO },
+  servicioBorde: { borderTopWidth: 1, borderTopColor: colores.gris75 },
+  servicioNombre: { fontSize: 15, fontWeight: '800', color: colores.texto },
+  servicioDesc: { fontSize: 12, color: colores.textoSecundario, marginTop: 2 },
+  porTamano: { fontSize: 12, color: colores.texto, marginTop: 4, fontWeight: '600' },
+  servicioPrecio: { fontSize: 16, fontWeight: '900', color: colores.texto, marginTop: 2 },
+  btnTurno: { height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: colores.amarillo, justifyContent: 'center' },
+  btnTurnoTxt: { fontSize: 13, fontWeight: '800', color: colores.texto },
 
   buscador: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF', borderRadius: 16, paddingHorizontal: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colores.blanco, borderRadius: 16, paddingHorizontal: 12,
   },
-  buscadorInput: { flex: 1, fontSize: 15, color: TEXTO, paddingVertical: 12 },
+  buscadorInput: { flex: 1, fontSize: 15, color: colores.texto, paddingVertical: 12 },
   categorias: { gap: 8, paddingVertical: 12 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF', borderRadius: 18,
+    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colores.blanco, borderRadius: 18,
     paddingHorizontal: 14, paddingVertical: 9,
   },
-  chipOn: { backgroundColor: VERDE },
-  chipTxt: { fontSize: 13, fontWeight: '700', color: TEXTO },
+  chipOn: { backgroundColor: colores.verde },
+  chipTxt: { fontSize: 13, fontWeight: '700', color: colores.texto },
 
   producto: {
-    flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFF', borderRadius: 18,
-    padding: 12, marginBottom: 10, ...sombra,
+    flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colores.blanco, borderRadius: 18,
+    padding: 12, marginBottom: 10, ...sombras.tarjeta,
   },
   productoFoto: { width: 72, height: 72, borderRadius: 14, backgroundColor: '#F6F6F6' },
   productoSinFoto: { backgroundColor: '#FFF4DE', alignItems: 'center', justifyContent: 'center' },
-  stock: { fontSize: 12, fontWeight: '800', color: AMBAR, marginTop: 2 },
-  agregar: { width: 40, height: 40, borderRadius: 20, backgroundColor: VERDE, alignItems: 'center', justifyContent: 'center' },
+  stock: { fontSize: 12, fontWeight: '800', color: colores.ambar, marginTop: 2 },
+  agregar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colores.verde, alignItems: 'center', justifyContent: 'center' },
   stepper: {
-    flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 20, borderWidth: 1.5, borderColor: MENTA,
-    paddingHorizontal: 4, height: 40, backgroundColor: '#FFF',
+    flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 20, borderWidth: 1.5, borderColor: colores.menta,
+    paddingHorizontal: 4, height: 40, backgroundColor: colores.blanco,
   },
   stepBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-  stepNum: { minWidth: 22, textAlign: 'center', fontSize: 15, fontWeight: '900', color: TEXTO },
+  stepNum: { minWidth: 22, textAlign: 'center', fontSize: 15, fontWeight: '900', color: colores.texto },
 
   horario: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, paddingHorizontal: 6, borderRadius: 10 },
   horarioHoy: { backgroundColor: '#F2FCF6' },
-  horarioDia: { fontSize: 14, color: TEXTO, fontWeight: '600' },
-  horarioHora: { fontSize: 14, color: TEXTO, fontWeight: '800', fontVariant: ['tabular-nums'] },
-  horarioNota: { fontSize: 12, color: ROJO, marginTop: 8, fontWeight: '700' },
+  horarioDia: { fontSize: 14, color: colores.texto, fontWeight: '600' },
+  horarioHora: { fontSize: 14, color: colores.texto, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  horarioNota: { fontSize: 12, color: colores.rojo, marginTop: 8, fontWeight: '700' },
 
   carritoBarra: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: 16 },
   carritoBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 12, height: 58, borderRadius: 30, paddingHorizontal: 12,
-    backgroundColor: AMARILLO, ...sombra, shadowOpacity: 0.18,
+    backgroundColor: colores.amarillo, ...sombras.tarjeta, shadowOpacity: 0.18,
   },
-  carritoCant: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
-  carritoCantTxt: { fontSize: 15, fontWeight: '900', color: TEXTO },
-  carritoTxt: { flex: 1, fontSize: 16, fontWeight: '800', color: TEXTO },
-  carritoTotal: { fontSize: 16, fontWeight: '900', color: TEXTO, marginRight: 6 },
+  carritoCant: { width: 36, height: 36, borderRadius: 18, backgroundColor: colores.blanco, alignItems: 'center', justifyContent: 'center' },
+  carritoCantTxt: { fontSize: 15, fontWeight: '900', color: colores.texto },
+  carritoTxt: { flex: 1, fontSize: 16, fontWeight: '800', color: colores.texto },
+  carritoTotal: { fontSize: 16, fontWeight: '900', color: colores.texto, marginRight: 6 },
 
   // Hoja del pedido
-  linea: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#F2F2F2' },
-  lineaNombre: { fontSize: 14, fontWeight: '700', color: TEXTO },
-  lineaPrecio: { fontSize: 12, color: TEXTO2, marginTop: 2 },
-  label: { fontSize: 15, fontWeight: '800', color: TEXTO, marginTop: 22, marginBottom: 10 },
-  opcion: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFF', borderRadius: 18, padding: 14 },
-  opcionOn: { backgroundColor: VERDE },
-  opcionTitulo: { fontSize: 15, fontWeight: '800', color: TEXTO },
-  opcionTxt: { fontSize: 12, color: TEXTO2, marginTop: 2 },
-  inputFila: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF', borderRadius: 16, paddingHorizontal: 14 },
-  inputFlex: { flex: 1, paddingVertical: 14, fontSize: 15, color: TEXTO },
-  input: { backgroundColor: '#FFF', borderRadius: 16, padding: 14, fontSize: 15, color: TEXTO },
-  ayuda: { fontSize: 12, color: TEXTO2, marginTop: 8 },
+  linea: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colores.gris75 },
+  lineaNombre: { fontSize: 14, fontWeight: '700', color: colores.texto },
+  lineaPrecio: { fontSize: 12, color: colores.textoSecundario, marginTop: 2 },
+  label: { fontSize: 15, fontWeight: '800', color: colores.texto, marginTop: 22, marginBottom: 10 },
+  opcion: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colores.blanco, borderRadius: 18, padding: 14 },
+  opcionOn: { backgroundColor: colores.verde },
+  opcionTitulo: { fontSize: 15, fontWeight: '800', color: colores.texto },
+  opcionTxt: { fontSize: 12, color: colores.textoSecundario, marginTop: 2 },
+  inputFila: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colores.blanco, borderRadius: 16, paddingHorizontal: 14 },
+  inputFlex: { flex: 1, paddingVertical: 14, fontSize: 15, color: colores.texto },
+  input: { backgroundColor: colores.blanco, borderRadius: 16, padding: 14, fontSize: 15, color: colores.texto },
+  ayuda: { fontSize: 12, color: colores.textoSecundario, marginTop: 8 },
   totalFila: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
-  totalTxt: { fontSize: 14, color: TEXTO2, fontWeight: '600' },
-  totalFinal: { borderTopWidth: 1, borderTopColor: '#F2F2F2', marginTop: 6, paddingTop: 10 },
-  totalFinalTxt: { fontSize: 18, fontWeight: '900', color: TEXTO },
-  minimo: { fontSize: 13, color: ROJO, fontWeight: '700', marginTop: 8 },
-  error: { marginTop: 14, padding: 12, borderRadius: 12, backgroundColor: '#FDECEE', fontSize: 13, color: ROJO },
+  totalTxt: { fontSize: 14, color: colores.textoSecundario, fontWeight: '600' },
+  totalFinal: { borderTopWidth: 1, borderTopColor: colores.gris75, marginTop: 6, paddingTop: 10 },
+  totalFinalTxt: { fontSize: 18, fontWeight: '900', color: colores.texto },
+  minimo: { fontSize: 13, color: colores.rojo, fontWeight: '700', marginTop: 8 },
+  error: { marginTop: 14, padding: 12, borderRadius: 12, backgroundColor: colores.rojoFondo, fontSize: 13, color: colores.rojo },
   btn: {
-    marginTop: 20, height: 56, borderRadius: 30, backgroundColor: AMARILLO, alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 3,
+    marginTop: 20, height: 56, borderRadius: 30, backgroundColor: colores.amarillo, alignItems: 'center', justifyContent: 'center',
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 3,
   },
-  btnTxt: { fontSize: 16, fontWeight: '800', color: TEXTO },
-  pie: { fontSize: 12, color: TEXTO2, textAlign: 'center', marginTop: 10 },
-  vacioTxt: { fontSize: 14, color: TEXTO2, textAlign: 'center', lineHeight: 20 },
+  btnTxt: { fontSize: 16, fontWeight: '800', color: colores.texto },
+  pie: { fontSize: 12, color: colores.textoSecundario, textAlign: 'center', marginTop: 10 },
+  vacioTxt: { fontSize: 14, color: colores.textoSecundario, textAlign: 'center', lineHeight: 20 },
 
   visor: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center', padding: 20 },
   visorImg: { width: '100%', height: '75%' },
-  visorNota: { fontSize: 15, fontWeight: '700', color: '#FFF', marginTop: 14, textAlign: 'center' },
+  visorNota: { fontSize: 15, fontWeight: '700', color: colores.blanco, marginTop: 14, textAlign: 'center' },
 });

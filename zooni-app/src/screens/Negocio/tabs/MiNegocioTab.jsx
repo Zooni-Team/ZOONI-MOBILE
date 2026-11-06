@@ -35,6 +35,7 @@ import {
 } from '../../../services/negocioApi';
 import { sanitizarDigitos } from '../../../utils/sanitizar';
 import { alerta } from '../../../utils/dialogo';
+import { colores } from '../../../theme';
 
 function localDe(n) {
   return {
@@ -155,7 +156,7 @@ export default function MiNegocioTab({ negocio, setNegocio, tipo, cfg, avisar, n
             {subiendoLogo ? <ActivityIndicator color={C.teal} />
               : negocio.logo ? <Image source={{ uri: negocio.logo }} style={s.logoImg} />
                 : <Ionicons name={cfg.icono} size={34} color={cfg.color} />}
-            <View style={s.logoEditar}><Ionicons name="camera" size={14} color="#FFF" /></View>
+            <View style={s.logoEditar}><Ionicons name="camera" size={14} color={colores.blanco} /></View>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={s.nombre} numberOfLines={2}>{negocio.nombre}</Text>
@@ -253,7 +254,7 @@ const s = StyleSheet.create({
   logoImg: { width: '100%', height: '100%', borderRadius: 20 },
   logoEditar: {
     position: 'absolute', right: -6, bottom: -6, width: 28, height: 28, borderRadius: 14,
-    backgroundColor: C.teal, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFF',
+    backgroundColor: C.teal, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colores.blanco,
   },
   nombre: { fontSize: 20, fontWeight: '900', color: C.texto },
   tipoChip: {
@@ -276,6 +277,6 @@ const s = StyleSheet.create({
 
   barraGuardar: {
     position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', gap: 10,
-    padding: 16, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: C.borde, ...sombra,
+    padding: 16, backgroundColor: colores.blanco, borderTopWidth: 1, borderTopColor: C.borde, ...sombra,
   },
 });

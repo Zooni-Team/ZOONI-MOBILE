@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   SettingsAction, SettingsGroup, SettingsRow, SettingsScreen, T,
 } from '../../components/settings/SettingsKit';
+import { colores } from '../../theme';
 
 const proximamente = () => Alert.alert('Próximamente', 'Esta opción va a estar disponible en una próxima versión.');
 
@@ -63,7 +64,7 @@ const s = StyleSheet.create({
   planCard: {
     backgroundColor: T.surface, borderRadius: 18, borderWidth: 2, borderColor: T.cta,
     padding: 18, marginTop: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
   },
   planNombre: { fontSize: 20, fontWeight: '800', color: T.text },
   planEstado: { fontSize: 14, color: T.brandText, fontWeight: '700', marginTop: 2 },

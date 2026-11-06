@@ -42,6 +42,7 @@ import * as ImagePicker from 'expo-image-picker';
 import FilterChip from './FilterChip';
 import { INTEREST_OPTIONS, GENDER_OPTIONS } from '../../data/matchDemo';
 import { guardarPerfilMatch } from '../../services/matchApi';
+import { colores } from '../../theme';
 
 const GENEROS = GENDER_OPTIONS.filter((g) => g.key !== 'todos');
 const EDAD_MINIMA = 18;
@@ -201,7 +202,7 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
             style={[s.backBtn, !puedeVolver && { opacity: 0 }]}
             accessibilityLabel={paso > 0 ? 'Paso anterior' : 'Volver a la pantalla anterior'}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="chevron-back" size={26} color="#2C2C2C" />
+            <Ionicons name="chevron-back" size={26} color={colores.texto} />
           </TouchableOpacity>
           <View style={s.progreso}>
             {PASOS.map((p, i) => (
@@ -232,11 +233,11 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
               )}
               <View style={s.fotoBtnsRow}>
                 <TouchableOpacity style={s.btnFoto} onPress={elegirDeGaleria} activeOpacity={0.85}>
-                  <Ionicons name="images-outline" size={16} color="#2C2C2C" />
+                  <Ionicons name="images-outline" size={16} color={colores.texto} />
                   <Text style={s.btnFotoText}>Galería</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.btnFoto} onPress={abrirCamara} activeOpacity={0.85}>
-                  <Ionicons name="camera-outline" size={16} color="#2C2C2C" />
+                  <Ionicons name="camera-outline" size={16} color={colores.texto} />
                   <Text style={s.btnFotoText}>Cámara</Text>
                 </TouchableOpacity>
               </View>
@@ -251,7 +252,7 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
               </Text>
               <TextInput
                 style={[s.inputFecha, error && s.inputError]}
-                placeholder="DD/MM/AAAA" placeholderTextColor="#AAAAAA"
+                placeholder="DD/MM/AAAA" placeholderTextColor={colores.textoTenue}
                 value={fechaTexto}
                 onChangeText={(v) => { setFechaTexto(formatearFecha(v)); setError(null); }}
                 keyboardType="number-pad"
@@ -280,7 +281,7 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
                       accessibilityState={{ selected: activo }}
                     >
                       <Text style={[s.opcionTxt, activo && s.opcionTxtOn]}>{g.label}</Text>
-                      {activo && <Ionicons name="checkmark-circle" size={22} color="#2DBD72" />}
+                      {activo && <Ionicons name="checkmark-circle" size={22} color={colores.verde} />}
                     </TouchableOpacity>
                   );
                 })}
@@ -316,7 +317,7 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
 
         <TouchableOpacity style={s.btnContinuar} onPress={siguiente} disabled={guardando} activeOpacity={0.85}>
           {guardando
-            ? <ActivityIndicator size="small" color="#FFFFFF" />
+            ? <ActivityIndicator size="small" color={colores.blanco} />
             : <Text style={s.btnContinuarTxt}>{esUltimo ? 'Empezar a swipear' : 'Continuar'}</Text>}
         </TouchableOpacity>
       </KeyboardAvoidingView>
@@ -325,57 +326,57 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#D4F5E2' },
+  safe: { flex: 1, backgroundColor: colores.mentaClara },
 
   topBar: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 12 },
   backBtn: { width: 30 },
   progreso: { flex: 1, flexDirection: 'row', gap: 5 },
   segmento: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.7)' },
-  segmentoOn: { backgroundColor: '#2DBD72' },
-  contadorPaso: { fontSize: 12, fontWeight: '700', color: '#6B6B6B', width: 30, textAlign: 'right' },
+  segmentoOn: { backgroundColor: colores.verde },
+  contadorPaso: { fontSize: 12, fontWeight: '700', color: colores.textoSecundario, width: 30, textAlign: 'right' },
 
   scroll: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 28, paddingBottom: 16 },
-  pregunta: { fontSize: 24, fontWeight: '800', color: '#2C2C2C', marginBottom: 8 },
-  ayuda: { fontSize: 14, color: '#6B6B6B', lineHeight: 20, marginBottom: 24 },
-  nota: { fontSize: 13, color: '#6B6B6B', textAlign: 'center', marginTop: 12 },
+  pregunta: { fontSize: 24, fontWeight: '800', color: colores.texto, marginBottom: 8 },
+  ayuda: { fontSize: 14, color: colores.textoSecundario, lineHeight: 20, marginBottom: 24 },
+  nota: { fontSize: 13, color: colores.textoSecundario, textAlign: 'center', marginTop: 12 },
 
   preview: {
     width: 150, height: 150, borderRadius: 75, alignSelf: 'center',
-    backgroundColor: '#FFFFFF', borderWidth: 3, borderColor: '#FFFFFF',
+    backgroundColor: colores.blanco, borderWidth: 3, borderColor: colores.blanco,
   },
-  previewVacio: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#EFEFEF' },
+  previewVacio: { alignItems: 'center', justifyContent: 'center', backgroundColor: colores.gris200 },
   fotoBtnsRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
   btnFoto: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    backgroundColor: '#F5C842', borderRadius: 24, paddingVertical: 13,
+    backgroundColor: colores.amarillo, borderRadius: 24, paddingVertical: 13,
   },
-  btnFotoText: { fontSize: 14, fontWeight: '700', color: '#2C2C2C' },
+  btnFotoText: { fontSize: 14, fontWeight: '700', color: colores.texto },
 
   inputFecha: {
-    backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: 'transparent', borderRadius: 14,
+    backgroundColor: colores.blanco, borderWidth: 1.5, borderColor: 'transparent', borderRadius: 14,
     paddingVertical: 16, paddingHorizontal: 14, textAlign: 'center',
-    fontSize: 22, fontWeight: '700', letterSpacing: 2, color: '#2C2C2C',
+    fontSize: 22, fontWeight: '700', letterSpacing: 2, color: colores.texto,
   },
-  inputError: { borderColor: '#E63946' },
+  inputError: { borderColor: colores.rojo },
 
   opcionesCol: { gap: 10 },
   opcion: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF', borderRadius: 16, paddingVertical: 16, paddingHorizontal: 18,
+    backgroundColor: colores.blanco, borderRadius: 16, paddingVertical: 16, paddingHorizontal: 18,
     borderWidth: 1.5, borderColor: 'transparent',
   },
-  opcionOn: { borderColor: '#2DBD72' },
-  opcionTxt: { fontSize: 16, color: '#2C2C2C', fontWeight: '600' },
-  opcionTxtOn: { color: '#2DBD72', fontWeight: '700' },
+  opcionOn: { borderColor: colores.verde },
+  opcionTxt: { fontSize: 16, color: colores.texto, fontWeight: '600' },
+  opcionTxtOn: { color: colores.verde, fontWeight: '700' },
 
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap' },
-  errorTxt: { fontSize: 13, color: '#E63946', marginTop: 14, textAlign: 'center', fontWeight: '600' },
+  errorTxt: { fontSize: 13, color: colores.rojo, marginTop: 14, textAlign: 'center', fontWeight: '600' },
 
   btnContinuar: {
-    backgroundColor: '#2DBD72', borderRadius: 30, height: 52,
+    backgroundColor: colores.verde, borderRadius: 30, height: 52,
     alignItems: 'center', justifyContent: 'center',
     marginHorizontal: 24, marginBottom: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
   },
-  btnContinuarTxt: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  btnContinuarTxt: { fontSize: 16, fontWeight: '700', color: colores.blanco },
 });

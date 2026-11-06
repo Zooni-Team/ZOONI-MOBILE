@@ -21,6 +21,7 @@ import FechaPicker from '../FechaPicker';
 import { MEDIOS_PAGO, aCentavos, formatoPlata } from '../../services/paseadorApi';
 import { parseDecimal, sanitizarDecimal } from '../../utils/sanitizar';
 import { confirmar } from '../../utils/dialogo';
+import { colores } from '../../theme';
 
 const fechaCorta = (d) => d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
 /** 20000 → "20000" · 166.66 → "166,66" (lo que se ve en el input) */
@@ -120,8 +121,8 @@ export default function PagoFormModal({
               return (
                 <TouchableOpacity key={m.key} style={[s.medio, on && s.medioOn]} onPress={() => { setMedio(m.key); setError(null); }}
                   accessibilityRole="radio" accessibilityState={{ selected: on }}>
-                  <Ionicons name={m.icono} size={16} color={on ? '#FFF' : C.teal} />
-                  <Text style={[s.medioTxt, on && { color: '#FFF' }]}>{m.label}</Text>
+                  <Ionicons name={m.icono} size={16} color={on ? colores.blanco : C.teal} />
+                  <Text style={[s.medioTxt, on && { color: colores.blanco }]}>{m.label}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -156,15 +157,15 @@ export default function PagoFormModal({
 const s = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
   sheet: {
-    backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 30,
+    backgroundColor: colores.blanco, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 30,
   },
-  handle: { width: 44, height: 5, borderRadius: 3, backgroundColor: '#E0E0E0', alignSelf: 'center', marginBottom: 14 },
+  handle: { width: 44, height: 5, borderRadius: 3, backgroundColor: colores.gris400, alignSelf: 'center', marginBottom: 14 },
   titulo: { fontSize: 20, fontWeight: '900', color: C.texto },
   sub: { fontSize: 13, color: C.texto2, marginTop: 2 },
   label: { fontSize: 13, fontWeight: '700', color: C.texto, marginTop: 16, marginBottom: 8 },
 
   montoBox: {
-    flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 14,
+    flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colores.gris500, borderRadius: 14,
     paddingHorizontal: 14, backgroundColor: C.fondo,
   },
   signo: { fontSize: 26, fontWeight: '900', color: C.texto, marginRight: 4 },
@@ -177,18 +178,18 @@ const s = StyleSheet.create({
   medios: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   medio: {
     flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 18, borderWidth: 1.5, borderColor: C.menta,
-    paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colores.blanco,
   },
   medioOn: { backgroundColor: C.teal, borderColor: C.teal },
   medioTxt: { fontSize: 13, fontWeight: '700', color: C.texto },
 
   fecha: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: '#DDDDDD',
+    flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: colores.gris500,
     borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
   },
   fechaTxt: { fontSize: 15, color: C.texto, fontWeight: '600' },
   nota: {
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
     fontSize: 15, color: C.texto,
   },
   error: { fontSize: 13, color: C.rojo, marginTop: 12, textAlign: 'center' },

@@ -38,6 +38,7 @@ import { formatearPeso, pesoValido, rangoPeso, textoRangoPeso } from '../constan
 import OpcionPicker from '../components/OpcionPicker';
 import FechaPicker from '../components/FechaPicker';
 import SliderAmarillo from '../components/SliderAmarillo';
+import { colores } from '../theme';
 
 const SEXOS = ['Macho', 'Hembra'];
 
@@ -147,7 +148,7 @@ export default function RegisterStep2Screen() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#C8F0D8" />
+      <StatusBar barStyle="dark-content" backgroundColor={colores.menta} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
@@ -155,7 +156,7 @@ export default function RegisterStep2Screen() {
           <View style={s.header}>
             <TouchableOpacity onPress={() => navigation.goBack()} accessibilityLabel="Volver al paso anterior"
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="chevron-back" size={22} color="#2DBD72" />
+              <Ionicons name="chevron-back" size={22} color={colores.verde} />
             </TouchableOpacity>
             <Text style={s.headerTxt}>Completá los datos de tu {capitalizar(especie)} 🐾</Text>
           </View>
@@ -167,7 +168,7 @@ export default function RegisterStep2Screen() {
             {/* Sexo */}
             <TouchableOpacity style={[s.dropdown, errores.sexo && s.inputError]} onPress={() => setShowSexo(true)}>
               <Text style={[s.dropdownTxt, !sexo && s.placeholder]}>{sexo ?? 'Sexo'}</Text>
-              <Ionicons name="chevron-down" size={16} color="#6B6B6B" />
+              <Ionicons name="chevron-down" size={16} color={colores.textoSecundario} />
             </TouchableOpacity>
             {errores.sexo && <Text style={s.errorTxt}>{errores.sexo}</Text>}
 
@@ -177,9 +178,9 @@ export default function RegisterStep2Screen() {
               onPress={() => setShowRaza(true)}
             >
               {cargandoRazas
-                ? <ActivityIndicator size="small" color="#2DBD72" />
+                ? <ActivityIndicator size="small" color={colores.verde} />
                 : <Text style={[s.dropdownTxt, !raza && s.placeholder]}>{raza?.nombre ?? 'Seleccioná una opción'}</Text>}
-              <Ionicons name="chevron-down" size={16} color="#6B6B6B" />
+              <Ionicons name="chevron-down" size={16} color={colores.textoSecundario} />
             </TouchableOpacity>
             {errores.raza && <Text style={s.errorTxt}>{errores.raza}</Text>}
 
@@ -203,7 +204,7 @@ export default function RegisterStep2Screen() {
               <Text style={[s.dropdownTxt, !fechaNacimiento && s.placeholder]}>
                 {fechaFmt ?? 'Elegí la fecha de nacimiento'}
               </Text>
-              <Ionicons name="calendar-outline" size={16} color="#6B6B6B" />
+              <Ionicons name="calendar-outline" size={16} color={colores.textoSecundario} />
             </TouchableOpacity>
             {errores.fechaNacimiento && <Text style={[s.errorTxt, { textAlign: 'center' }]}>{errores.fechaNacimiento}</Text>}
             {fechaNacimiento && <Text style={s.sliderValor}>{calcularEdad(fechaNacimiento)}</Text>}
@@ -215,7 +216,7 @@ export default function RegisterStep2Screen() {
                 <Image source={{ uri: fotoUri }} style={s.preview} />
                 <TouchableOpacity style={s.previewQuitar} onPress={() => setFotoUri(null)}
                   accessibilityLabel="Quitar foto">
-                  <Ionicons name="close" size={14} color="#FFFFFF" />
+                  <Ionicons name="close" size={14} color={colores.blanco} />
                 </TouchableOpacity>
               </View>
             )}
@@ -268,60 +269,60 @@ export default function RegisterStep2Screen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#C8F0D8' },
+  safe: { flex: 1, backgroundColor: colores.menta },
   scroll: { flexGrow: 1, paddingBottom: 16 },
 
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 20, marginTop: 16, marginBottom: 16,
   },
-  headerTxt: { flex: 1, fontSize: 16, fontWeight: '700', color: '#2DBD72' },
+  headerTxt: { flex: 1, fontSize: 16, fontWeight: '700', color: colores.verde },
 
   sorpresa: { width: 140, height: 140, alignSelf: 'center', marginBottom: 16 },
 
   card: {
-    backgroundColor: '#FFFFFF', borderRadius: 20,
+    backgroundColor: colores.blanco, borderRadius: 20,
     paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24,
     marginHorizontal: 16, marginBottom: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 4,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 4,
   },
 
   dropdown: {
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     marginBottom: 12,
   },
-  dropdownSeleccionado: { borderColor: '#2DBD72', borderWidth: 1.5 },
-  dropdownTxt: { fontSize: 15, color: '#2C2C2C', flex: 1, textAlign: 'center' },
-  placeholder: { color: '#AAAAAA' },
-  inputError: { borderColor: '#E63946' },
-  errorTxt: { fontSize: 11, color: '#E63946', marginTop: -8, marginBottom: 8, marginLeft: 4 },
+  dropdownSeleccionado: { borderColor: colores.verde, borderWidth: 1.5 },
+  dropdownTxt: { fontSize: 15, color: colores.texto, flex: 1, textAlign: 'center' },
+  placeholder: { color: colores.textoTenue },
+  inputError: { borderColor: colores.rojo },
+  errorTxt: { fontSize: 11, color: colores.rojo, marginTop: -8, marginBottom: 8, marginLeft: 4 },
 
-  sliderLabel: { fontSize: 14, fontWeight: '700', color: '#2DBD72', textAlign: 'center', marginTop: 8, marginBottom: 4 },
-  sliderValor: { fontSize: 16, fontWeight: '700', color: '#2C2C2C', textAlign: 'center' },
-  sliderAyuda: { fontSize: 11, color: '#9A9A9A', textAlign: 'center', marginTop: 2, marginBottom: 12 },
+  sliderLabel: { fontSize: 14, fontWeight: '700', color: colores.verde, textAlign: 'center', marginTop: 8, marginBottom: 4 },
+  sliderValor: { fontSize: 16, fontWeight: '700', color: colores.texto, textAlign: 'center' },
+  sliderAyuda: { fontSize: 11, color: colores.textoGris, textAlign: 'center', marginTop: 2, marginBottom: 12 },
 
-  fotoLabel: { fontSize: 14, color: '#2C2C2C', marginTop: 8, marginBottom: 10, textAlign: 'center', fontWeight: '600' },
+  fotoLabel: { fontSize: 14, color: colores.texto, marginTop: 8, marginBottom: 10, textAlign: 'center', fontWeight: '600' },
   previewWrap: { alignSelf: 'center', marginBottom: 10 },
   preview: { width: 80, height: 80, borderRadius: 10 },
   previewQuitar: {
     position: 'absolute', top: -6, right: -6,
-    width: 22, height: 22, borderRadius: 11, backgroundColor: '#E63946',
+    width: 22, height: 22, borderRadius: 11, backgroundColor: colores.rojo,
     alignItems: 'center', justifyContent: 'center',
   },
   btnFoto: {
-    backgroundColor: '#F5C842', borderRadius: 20,
+    backgroundColor: colores.amarillo, borderRadius: 20,
     paddingVertical: 10, paddingHorizontal: 20,
     alignSelf: 'center', marginBottom: 10, minWidth: 190, alignItems: 'center',
   },
-  btnFotoTxt: { fontSize: 14, fontWeight: '700', color: '#2C2C2C' },
+  btnFotoTxt: { fontSize: 14, fontWeight: '700', color: colores.texto },
 
   btnContinuar: {
-    backgroundColor: '#2DBD72', borderRadius: 30, height: 52,
+    backgroundColor: colores.verde, borderRadius: 30, height: 52,
     alignItems: 'center', justifyContent: 'center',
     marginHorizontal: 20, marginBottom: 32,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
   },
-  btnContinuarTxt: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
+  btnContinuarTxt: { fontSize: 16, fontWeight: '700', color: colores.blanco },
 });

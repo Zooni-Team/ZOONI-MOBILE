@@ -17,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { especieIcono, PET_TYPE_OPTIONS } from '../../data/matchDemo';
 import { resolveMascotaVisual } from '../../constants/petImages';
+import { colores } from '../../theme';
 
 function especieLabel(especie) {
   return PET_TYPE_OPTIONS.find((p) => p.key === especie)?.label ?? especie;
@@ -56,7 +57,7 @@ export default function MatchProfileDetailModal({ visible, perfil, onClose }) {
             accessibilityLabel="Cerrar detalle"
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <Ionicons name="close" size={22} color="#2C2C2C" />
+            <Ionicons name="close" size={22} color={colores.texto} />
           </TouchableOpacity>
 
           <ScrollView
@@ -91,7 +92,7 @@ export default function MatchProfileDetailModal({ visible, perfil, onClose }) {
               <Text style={styles.sectionTitle}>Mascota</Text>
               <View style={styles.petNameCard}>
                 <View style={styles.petEmojiWrap}>
-                  <Ionicons name={especieIcono(mascota.especie)} size={26} color="#27AE60" />
+                  <Ionicons name={especieIcono(mascota.especie)} size={26} color={colores.verdeExito} />
                 </View>
                 <View style={styles.petNameBlock}>
                   <Text style={styles.petName}>{mascota.nombre}</Text>
@@ -133,10 +134,10 @@ const styles = StyleSheet.create({
   },
   sheet: {
     maxHeight: '92%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colores.blanco,
     borderRadius: 24,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: colores.negro,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.2,
     shadowRadius: 28,
@@ -153,7 +154,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.95)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
+    shadowColor: colores.negro,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
@@ -162,30 +163,30 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 20 },
   photoSection: {
     width: '100%',
-    backgroundColor: '#E8E8E8',
+    backgroundColor: colores.gris300,
     overflow: 'hidden',
   },
   petPhoto: { width: '100%', height: '100%', resizeMode: 'cover' },
   ownerPhotoWrap: { position: 'absolute', top: 16, left: 16, zIndex: 2 },
   ownerPhoto: {
     width: 56, height: 56, borderRadius: 28,
-    borderWidth: 3, borderColor: '#FFFFFF',
+    borderWidth: 3, borderColor: colores.blanco,
   },
   ownerPhotoFallback: {
     width: 56, height: 56, borderRadius: 28,
-    borderWidth: 3, borderColor: '#FFFFFF',
-    backgroundColor: '#C8F0D8', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 3, borderColor: colores.blanco,
+    backgroundColor: colores.menta, alignItems: 'center', justifyContent: 'center',
   },
-  ownerInitial: { fontSize: 22, fontWeight: '800', color: '#27AE60' },
+  ownerInitial: { fontSize: 22, fontWeight: '800', color: colores.verdeExito },
   petAvatarWrap: { position: 'absolute', bottom: -14, right: -14 },
   petAvatar: {
     width: 40, height: 40, borderRadius: 20,
-    borderWidth: 2, borderColor: '#FFFFFF',
+    borderWidth: 2, borderColor: colores.blanco,
   },
   petAvatarFallback: {
     width: 40, height: 40, borderRadius: 20,
-    borderWidth: 2, borderColor: '#FFFFFF',
-    backgroundColor: '#F5C842', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: colores.blanco,
+    backgroundColor: colores.amarillo, alignItems: 'center', justifyContent: 'center',
   },
   photoCaption: {
     position: 'absolute',
@@ -197,7 +198,7 @@ const styles = StyleSheet.create({
     paddingBottom: 18,
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
-  photoCaptionName: { fontSize: 26, fontWeight: '800', color: '#FFFFFF' },
+  photoCaptionName: { fontSize: 26, fontWeight: '800', color: colores.blanco },
   photoCaptionUser: { fontSize: 14, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
   photoCaptionLoc: { fontSize: 15, color: 'rgba(255,255,255,0.9)', marginTop: 4 },
   bodySection: {
@@ -208,7 +209,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#6B6B6B',
+    color: colores.textoSecundario,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
     marginBottom: 10,
@@ -231,8 +232,8 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   petNameBlock: { flex: 1 },
-  petName: { fontSize: 22, fontWeight: '800', color: '#27AE60' },
-  petBreed: { fontSize: 15, color: '#2C2C2C', marginTop: 2, fontWeight: '600' },
+  petName: { fontSize: 22, fontWeight: '800', color: colores.verdeExito },
+  petBreed: { fontSize: 15, color: colores.texto, marginTop: 2, fontWeight: '600' },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -241,14 +242,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.06)',
   },
-  detailLabel: { fontSize: 14, color: '#6B6B6B', fontWeight: '600' },
-  detailValue: { fontSize: 15, color: '#2C2C2C', fontWeight: '700', flexShrink: 1, textAlign: 'right' },
+  detailLabel: { fontSize: 14, color: colores.textoSecundario, fontWeight: '600' },
+  detailValue: { fontSize: 15, color: colores.texto, fontWeight: '700', flexShrink: 1, textAlign: 'right' },
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tag: {
-    backgroundColor: '#2DBD72',
+    backgroundColor: colores.verde,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 6,
   },
-  tagText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
+  tagText: { fontSize: 13, fontWeight: '700', color: colores.blanco },
 });

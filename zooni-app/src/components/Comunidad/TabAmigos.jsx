@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { fetchAmigos } from '../../api/comunidad';
 import PersonaProfileModal from '../PersonaProfileModal';
 import { estadoPresencia } from '../../utils/tiempoRelativo';
+import { colores } from '../../theme';
 
 export default function TabAmigos({ onVerEnMapa }) {
   const [amigos, setAmigos]   = useState([]);
@@ -14,7 +15,7 @@ export default function TabAmigos({ onVerEnMapa }) {
     fetchAmigos().then(d => setAmigos(d.amigos || [])).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <ActivityIndicator color="#2DBD72" style={{ marginTop: 20 }} />;
+  if (loading) return <ActivityIndicator color={colores.verde} style={{ marginTop: 20 }} />;
 
   if (!amigos.length) return (
     <View style={styles.vacio}>
@@ -34,8 +35,8 @@ export default function TabAmigos({ onVerEnMapa }) {
             <TouchableOpacity style={styles.persona} onPress={() => setPerfilId(a.usuario_id)}
               accessibilityRole="button" accessibilityLabel={`Ver perfil de ${a.nombre}`}>
               <View style={styles.avatarWrap}>
-                <View style={[styles.avatar, { borderColor: a.online ? '#2DBD72' : '#CCCCCC' }]}>
-                  <Ionicons name="person" size={18} color="#AAAAAA" />
+                <View style={[styles.avatar, { borderColor: a.online ? colores.verde : '#CCCCCC' }]}>
+                  <Ionicons name="person" size={18} color={colores.textoTenue} />
                 </View>
                 {/* Punto verde de presencia, como en cualquier app de mensajes */}
                 {a.online && <View style={styles.puntoOnline} />}
@@ -63,21 +64,21 @@ export default function TabAmigos({ onVerEnMapa }) {
 
 const styles = StyleSheet.create({
   vacio:      { alignItems: 'center', paddingTop: 32 },
-  vacioText:  { color: '#6B6B6B', fontSize: 14 },
-  item:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  vacioText:  { color: colores.textoSecundario, fontSize: 14 },
+  item:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colores.gris150 },
   persona:    { flex: 1, flexDirection: 'row', alignItems: 'center' },
   avatarWrap: { marginRight: 10 },
-  avatar:     { width: 40, height: 40, borderRadius: 20, borderWidth: 2, backgroundColor: '#F0F0F0', alignItems: 'center', justifyContent: 'center' },
+  avatar:     { width: 40, height: 40, borderRadius: 20, borderWidth: 2, backgroundColor: colores.gris150, alignItems: 'center', justifyContent: 'center' },
   puntoOnline: {
     position: 'absolute', right: 0, bottom: 0,
     width: 12, height: 12, borderRadius: 6,
-    backgroundColor: '#2DBD72', borderWidth: 2, borderColor: '#FFFFFF',
+    backgroundColor: colores.verde, borderWidth: 2, borderColor: colores.blanco,
   },
   info:       { flex: 1 },
-  nombre:     { fontWeight: '700', fontSize: 14, color: '#2C2C2C' },
-  sub:        { fontSize: 12, color: '#6B6B6B', marginTop: 2 },
-  presencia:       { fontSize: 11, color: '#9B9B9B', marginTop: 2 },
-  presenciaOnline: { color: '#2DBD72', fontWeight: '600' },
-  btnVer:     { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1.5, borderColor: '#2DBD72', backgroundColor: '#E8FFF2' },
-  btnVerText: { fontSize: 11, color: '#2DBD72', fontWeight: '600' },
+  nombre:     { fontWeight: '700', fontSize: 14, color: colores.texto },
+  sub:        { fontSize: 12, color: colores.textoSecundario, marginTop: 2 },
+  presencia:       { fontSize: 11, color: colores.textoDeshabilitado, marginTop: 2 },
+  presenciaOnline: { color: colores.verde, fontWeight: '600' },
+  btnVer:     { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1.5, borderColor: colores.verde, backgroundColor: '#E8FFF2' },
+  btnVerText: { fontSize: 11, color: colores.verde, fontWeight: '600' },
 });

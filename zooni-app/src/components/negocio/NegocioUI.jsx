@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Avatar, C, PillButton, sombra } from '../paseador/PaseadorUI';
 import { ESTADOS_PEDIDO, ESTADOS_TURNO, MEDIOS_PAGO_NEGOCIO } from '../../constants/negocios';
 import { cuandoTexto, formatoPlata, horaTexto, unidadesDe } from '../../services/negocioApi';
+import { colores } from '../../theme';
 
 export function EstadoChip({ estado, tipo = 'turno', style }) {
   const e = (tipo === 'pedido' ? ESTADOS_PEDIDO : ESTADOS_TURNO)[estado];
@@ -30,7 +31,7 @@ export function EstadoChip({ estado, tipo = 'turno', style }) {
   );
 }
 
-export function Etiqueta({ texto, icono, color = C.rojo, fondo = '#FDECEE' }) {
+export function Etiqueta({ texto, icono, color = C.rojo, fondo = colores.rojoFondo }) {
   return (
     <View style={[ui.chip, { backgroundColor: fondo }]}>
       {icono ? <Ionicons name={icono} size={12} color={color} /> : null}
@@ -93,7 +94,7 @@ export function TurnoCard({ turno, mostrarFecha = false, onPress, onChat, childr
       <View style={ui.etiquetas}>
         <EstadoChip estado={turno.estado} />
         {turno.urgencia ? <Etiqueta texto="Urgencia" icono="alert-circle" /> : null}
-        {turno.aDomicilio ? <Etiqueta texto="A domicilio" icono="home" color="#2B6CB0" fondo="#E6F0FA" /> : null}
+        {turno.aDomicilio ? <Etiqueta texto="A domicilio" icono="home" color={colores.azul} fondo={colores.azulFondo} /> : null}
       </View>
       {turno.notas ? (
         <View style={ui.notas}>
@@ -159,9 +160,9 @@ export function PedidoCard({ pedido, onChat, children, mostrarCliente = true }) 
         <Etiqueta
           texto={pedido.entrega === 'envio' ? 'Envío' : 'Retira en el local'}
           icono={pedido.entrega === 'envio' ? 'bicycle' : 'storefront'}
-          color="#2B6CB0" fondo="#E6F0FA"
+          color={colores.azul} fondo={colores.azulFondo}
         />
-        {medio ? <Etiqueta texto={medio.label} icono={medio.icono} color={C.texto2} fondo="#F1F1F1" /> : null}
+        {medio ? <Etiqueta texto={medio.label} icono={medio.icono} color={C.texto2} fondo={colores.gris100} /> : null}
       </View>
       {pedido.entrega === 'envio' && pedido.direccion ? (
         <View style={ui.notas}>
@@ -226,13 +227,13 @@ const ui = StyleSheet.create({
   chipTxt: { fontSize: 12, fontWeight: '800' },
 
   segmento: {
-    flexDirection: 'row', padding: 4, backgroundColor: '#FFFFFF', borderRadius: 30,
+    flexDirection: 'row', padding: 4, backgroundColor: colores.blanco, borderRadius: 30,
     borderWidth: 1, borderColor: C.borde,
   },
   segBtn: { flex: 1, height: 38, borderRadius: 26, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   segBtnOn: { backgroundColor: C.teal },
   segTxt: { fontSize: 13, fontWeight: '700', color: C.texto2 },
-  segTxtOn: { color: '#FFFFFF', fontWeight: '800' },
+  segTxtOn: { color: colores.blanco, fontWeight: '800' },
 
   card: { backgroundColor: C.card, borderRadius: 18, padding: 14, marginBottom: 12, ...sombra },
   cardUrgente: { borderWidth: 2, borderColor: C.rojo },
@@ -250,18 +251,18 @@ const ui = StyleSheet.create({
   acciones: { flexDirection: 'row', gap: 8, marginTop: 12 },
 
   iconoPedido: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.menta, alignItems: 'center', justifyContent: 'center' },
-  lineas: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#F2F2F2', gap: 4 },
+  lineas: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colores.gris75, gap: 4 },
   linea: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   lineaCant: { width: 28, fontSize: 13, fontWeight: '800', color: C.teal },
   lineaNombre: { flex: 1, fontSize: 14, color: C.texto },
   lineaPrecio: { fontSize: 13, fontWeight: '700', color: C.texto },
 
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', padding: 24 },
-  dialogo: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20 },
+  dialogo: { backgroundColor: colores.blanco, borderRadius: 20, padding: 20 },
   dialogoTitulo: { fontSize: 18, fontWeight: '900', color: C.texto },
   dialogoTexto: { fontSize: 14, color: C.texto2, marginTop: 6, lineHeight: 20 },
   input: {
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 12, padding: 12, marginTop: 14,
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12, padding: 12, marginTop: 14,
     fontSize: 15, color: C.texto, minHeight: 70, textAlignVertical: 'top',
   },
 });

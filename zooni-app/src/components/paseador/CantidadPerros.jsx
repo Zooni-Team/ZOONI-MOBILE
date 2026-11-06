@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { C } from './PaseadorUI';
 import { sanitizarDigitos } from '../../utils/sanitizar';
+import { colores } from '../../theme';
 
 export default function CantidadPerros({ valor, onCambio, error }) {
   return (
@@ -47,8 +48,8 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   valor: {
-    minWidth: 64, height: 44, borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 12, paddingHorizontal: 8,
-    fontSize: 24, fontWeight: '900', color: C.texto, textAlign: 'center', backgroundColor: '#FFFFFF',
+    minWidth: 64, height: 44, borderWidth: 1, borderColor: colores.gris500, borderRadius: 12, paddingHorizontal: 8,
+    fontSize: 24, fontWeight: '900', color: C.texto, textAlign: 'center', backgroundColor: colores.blanco,
   },
   valorError: { borderColor: C.rojo },
 });

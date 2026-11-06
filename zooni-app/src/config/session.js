@@ -95,7 +95,6 @@ export async function restaurarSesion() {
   }
 }
 
-
 /** Cierra la sesión (logout). Queda sin usuario: nadie hereda datos ajenos. */
 export async function clearCurrentUserId() {
   // Antes de olvidar la cuenta, guardar su mail para el próximo login.

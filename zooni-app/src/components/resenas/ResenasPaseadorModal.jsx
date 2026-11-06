@@ -26,12 +26,7 @@ import { getCurrentUserId } from '../../config/session';
 import { tiempoRelativo } from '../../utils/tiempoRelativo';
 import { MiniaturaMedia, VisorMedia } from './MediaResena';
 import CalificarPaseoModal from './CalificarPaseoModal';
-
-const VERDE = '#2DBD72';
-const MENTA = '#E8F5EC';
-const AMARILLO = '#F5C842';
-const TEXTO = '#2C2C2C';
-const TEXTO2 = '#6B6B6B';
+import { colores } from '../../theme';
 
 const fmt1 = (n) => n.toFixed(1).replace('.', ',');
 
@@ -39,7 +34,7 @@ function Estrellas({ valor, size = 14 }) {
   return (
     <View style={{ flexDirection: 'row', gap: 1 }}>
       {[1, 2, 3, 4, 5].map((i) => (
-        <Ionicons key={i} size={size} color={AMARILLO}
+        <Ionicons key={i} size={size} color={colores.amarillo}
           name={valor >= i ? 'star' : valor >= i - 0.5 ? 'star-half' : 'star-outline'} />
       ))}
     </View>
@@ -76,7 +71,7 @@ function Resumen({ datos, onVerMedia }) {
             <View key={a.key} style={s.aspecto}>
               <Text style={s.aspectoLabel}>{a.label}</Text>
               <Text style={s.aspectoValor}>{fmt1(a.promedio)}</Text>
-              <Ionicons name="star" size={13} color={AMARILLO} />
+              <Ionicons name="star" size={13} color={colores.amarillo} />
             </View>
           ))}
         </View>
@@ -138,7 +133,7 @@ function TarjetaResena({ r, onVerMedia }) {
           {respuestas.map((p) => (
             <View key={p.key} style={[s.chipResp, !r.respuestas[p.key] && s.chipRespNo]}>
               <Ionicons name={r.respuestas[p.key] ? 'checkmark' : 'close'} size={13}
-                color={r.respuestas[p.key] ? VERDE : TEXTO2} />
+                color={r.respuestas[p.key] ? colores.verde : colores.textoSecundario} />
               <Text style={s.chipRespTxt}>{p.pregunta.replace(/^¿|\?$/g, '')}</Text>
             </View>
           ))}
@@ -227,13 +222,13 @@ export default function ResenasPaseadorModal({ visible, idPaseador, nombre, onCe
     <View style={s.escribir}>
       {gracias ? (
         <View style={s.gracias}>
-          <Ionicons name="checkmark-circle" size={18} color={VERDE} />
+          <Ionicons name="checkmark-circle" size={18} color={colores.verde} />
           <Text style={s.graciasTxt}>{gracias}</Text>
         </View>
       ) : null}
       <TouchableOpacity style={s.escribirBtn} onPress={() => setCalificando(pendiente ?? opinionLibre)}
         activeOpacity={0.85} accessibilityRole="button">
-        <Ionicons name="create-outline" size={18} color={TEXTO} />
+        <Ionicons name="create-outline" size={18} color={colores.texto} />
         <Text style={s.escribirTxt}>Escribir una opinión</Text>
       </TouchableOpacity>
       {pendiente ? (
@@ -257,8 +252,8 @@ export default function ResenasPaseadorModal({ visible, idPaseador, nombre, onCe
             const on = filtro === f.key;
             return (
               <TouchableOpacity key={String(f.key)} style={[s.filtro, on && s.filtroOn]} onPress={() => setFiltro(f.key)}>
-                {f.icono ? <Ionicons name={f.icono} size={13} color={on ? '#FFF' : f.icono === 'star' ? AMARILLO : TEXTO2} /> : null}
-                <Text style={[s.filtroTxt, on && { color: '#FFF' }]}>{f.label}</Text>
+                {f.icono ? <Ionicons name={f.icono} size={13} color={on ? colores.blanco : f.icono === 'star' ? colores.amarillo : colores.textoSecundario} /> : null}
+                <Text style={[s.filtroTxt, on && { color: colores.blanco }]}>{f.label}</Text>
               </TouchableOpacity>
             );
           })}
@@ -273,7 +268,7 @@ export default function ResenasPaseadorModal({ visible, idPaseador, nombre, onCe
       <SafeAreaView style={s.safe}>
         <View style={s.header}>
           <TouchableOpacity onPress={onCerrar} style={s.volver} accessibilityLabel="Volver">
-            <Ionicons name="chevron-back" size={26} color={VERDE} />
+            <Ionicons name="chevron-back" size={26} color={colores.verde} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={s.titulo}>Opiniones</Text>
@@ -284,7 +279,7 @@ export default function ResenasPaseadorModal({ visible, idPaseador, nombre, onCe
         {error ? (
           <Text style={s.vacio}>No se pudieron cargar las opiniones. Probá de nuevo.</Text>
         ) : !datos ? (
-          <ActivityIndicator color={VERDE} style={{ marginTop: 40 }} />
+          <ActivityIndicator color={colores.verde} style={{ marginTop: 40 }} />
         ) : (
           <FlatList
             data={lista}
@@ -313,74 +308,74 @@ export default function ResenasPaseadorModal({ visible, idPaseador, nombre, onCe
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFFFFF' },
+  safe: { flex: 1, backgroundColor: colores.blanco },
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#EEEEEE',
+    borderBottomWidth: 1, borderBottomColor: colores.gris250,
   },
   volver: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
-  titulo: { fontSize: 19, fontWeight: '800', color: TEXTO },
-  sub: { fontSize: 12, color: TEXTO2 },
+  titulo: { fontSize: 19, fontWeight: '800', color: colores.texto },
+  sub: { fontSize: 12, color: colores.textoSecundario },
   lista: { padding: 20, paddingBottom: 40 },
-  vacio: { fontSize: 14, color: TEXTO2, textAlign: 'center', marginTop: 24, paddingHorizontal: 20 },
+  vacio: { fontSize: 14, color: colores.textoSecundario, textAlign: 'center', marginTop: 24, paddingHorizontal: 20 },
 
   resumen: { flexDirection: 'row', alignItems: 'center', gap: 18 },
   promedioCol: { alignItems: 'center', minWidth: 90 },
-  promedio: { fontSize: 46, fontWeight: '900', color: TEXTO },
-  cantidad: { fontSize: 12, color: TEXTO2, marginTop: 4 },
+  promedio: { fontSize: 46, fontWeight: '900', color: colores.texto },
+  cantidad: { fontSize: 12, color: colores.textoSecundario, marginTop: 4 },
   barraFila: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  barraNum: { width: 10, fontSize: 12, color: TEXTO2, fontWeight: '700' },
-  barraFondo: { flex: 1, height: 8, borderRadius: 4, backgroundColor: '#EEEEEE', overflow: 'hidden' },
-  barra: { height: 8, borderRadius: 4, backgroundColor: AMARILLO },
+  barraNum: { width: 10, fontSize: 12, color: colores.textoSecundario, fontWeight: '700' },
+  barraFondo: { flex: 1, height: 8, borderRadius: 4, backgroundColor: colores.gris250, overflow: 'hidden' },
+  barra: { height: 8, borderRadius: 4, backgroundColor: colores.amarillo },
 
   bloque: { marginTop: 16, backgroundColor: '#F9F9F9', borderRadius: 14, padding: 12, gap: 6 },
   aspecto: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  aspectoLabel: { flex: 1, fontSize: 14, color: TEXTO, fontWeight: '600' },
-  aspectoValor: { fontSize: 14, color: TEXTO, fontWeight: '800' },
+  aspectoLabel: { flex: 1, fontSize: 14, color: colores.texto, fontWeight: '600' },
+  aspectoValor: { fontSize: 14, color: colores.texto, fontWeight: '800' },
 
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   chipPct: {
-    flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: MENTA,
+    flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colores.mentaSuave,
     borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6,
   },
-  chipPctNum: { fontSize: 13, fontWeight: '900', color: VERDE },
-  chipPctTxt: { fontSize: 13, color: TEXTO, fontWeight: '600' },
-  subtitulo: { fontSize: 14, fontWeight: '800', color: TEXTO, marginBottom: 8 },
+  chipPctNum: { fontSize: 13, fontWeight: '900', color: colores.verde },
+  chipPctTxt: { fontSize: 13, color: colores.texto, fontWeight: '600' },
+  subtitulo: { fontSize: 14, fontWeight: '800', color: colores.texto, marginBottom: 8 },
 
   escribir: { marginTop: 16 },
   escribirBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: AMARILLO, borderRadius: 24, height: 46,
+    backgroundColor: colores.amarillo, borderRadius: 24, height: 46,
   },
-  escribirTxt: { fontSize: 15, fontWeight: '800', color: TEXTO },
-  escribirSub: { fontSize: 12, color: TEXTO2, marginTop: 6, textAlign: 'center' },
+  escribirTxt: { fontSize: 15, fontWeight: '800', color: colores.texto },
+  escribirSub: { fontSize: 12, color: colores.textoSecundario, marginTop: 6, textAlign: 'center' },
   gracias: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: MENTA,
+    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colores.mentaSuave,
     borderRadius: 12, padding: 10, marginBottom: 8,
   },
-  graciasTxt: { flex: 1, fontSize: 13, fontWeight: '700', color: TEXTO },
+  graciasTxt: { flex: 1, fontSize: 13, fontWeight: '700', color: colores.texto },
 
   filtro: {
-    flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: '#DDDDDD',
+    flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: colores.gris500,
     borderRadius: 18, paddingHorizontal: 12, paddingVertical: 7,
   },
-  filtroOn: { backgroundColor: VERDE, borderColor: VERDE },
-  filtroTxt: { fontSize: 13, fontWeight: '700', color: TEXTO },
+  filtroOn: { backgroundColor: colores.verde, borderColor: colores.verde },
+  filtroTxt: { fontSize: 13, fontWeight: '700', color: colores.texto },
 
-  card: { paddingVertical: 14, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
+  card: { paddingVertical: 14, borderTopWidth: 1, borderTopColor: colores.gris150 },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  avatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: MENTA },
+  avatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: colores.mentaSuave },
   avatarIni: { alignItems: 'center', justifyContent: 'center' },
-  avatarIniTxt: { fontSize: 16, fontWeight: '800', color: VERDE },
-  cardNombre: { fontSize: 14, fontWeight: '800', color: TEXTO },
-  cardSub: { fontSize: 12, color: TEXTO2, marginTop: 1 },
-  cardTxt: { fontSize: 14, color: TEXTO, lineHeight: 20, marginTop: 6 },
-  cardAspectos: { fontSize: 12, color: TEXTO2, marginTop: 6, fontWeight: '600' },
+  avatarIniTxt: { fontSize: 16, fontWeight: '800', color: colores.verde },
+  cardNombre: { fontSize: 14, fontWeight: '800', color: colores.texto },
+  cardSub: { fontSize: 12, color: colores.textoSecundario, marginTop: 1 },
+  cardTxt: { fontSize: 14, color: colores.texto, lineHeight: 20, marginTop: 6 },
+  cardAspectos: { fontSize: 12, color: colores.textoSecundario, marginTop: 6, fontWeight: '600' },
   chipResp: {
-    flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: MENTA,
+    flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colores.mentaSuave,
     borderRadius: 14, paddingHorizontal: 9, paddingVertical: 5,
   },
-  chipRespNo: { backgroundColor: '#F1F1F1' },
-  chipRespTxt: { fontSize: 12, color: TEXTO, fontWeight: '600' },
+  chipRespNo: { backgroundColor: colores.gris100 },
+  chipRespTxt: { fontSize: 12, color: colores.texto, fontWeight: '600' },
   cardMedia: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
 });

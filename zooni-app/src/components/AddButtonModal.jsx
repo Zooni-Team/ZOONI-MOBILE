@@ -17,6 +17,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TODAS_LAS_SECCIONES } from '../services/secciones';
+import { colores } from '../theme';
 
 // Filtra "inicio" porque no tiene sentido agregarlo como botón (ya es la Home)
 const SECCIONES_DISPONIBLES = TODAS_LAS_SECCIONES.filter((s) => s.key !== 'inicio');
@@ -39,7 +40,7 @@ export default function AddButtonModal({ visible, onClose, botonesActivos, onAdd
           <View style={styles.header}>
             <Text style={styles.title}>Agregar sección</Text>
             <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#2C2C2C" />
+              <Ionicons name="close" size={24} color={colores.texto} />
             </TouchableOpacity>
           </View>
 
@@ -59,13 +60,13 @@ export default function AddButtonModal({ visible, onClose, botonesActivos, onAdd
                   <Ionicons
                     name={item.icono}
                     size={22}
-                    color={isDisabled ? '#AAAAAA' : '#2DBD72'}
+                    color={isDisabled ? colores.textoTenue : colores.verde}
                     style={styles.itemIcon}
                   />
                   <Text style={[styles.itemLabel, isDisabled && styles.itemLabelDisabled]}>
                     {item.label}
                   </Text>
-                  {isActive && <Ionicons name="checkmark-circle" size={20} color="#AAAAAA" />}
+                  {isActive && <Ionicons name="checkmark-circle" size={20} color={colores.textoTenue} />}
                   {!isActive && atLimit && <Text style={styles.limitText}>Límite</Text>}
                 </TouchableOpacity>
               );
@@ -81,14 +82,14 @@ const styles = StyleSheet.create({
   // Fondo oscuro semitransparente
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   // Hoja blanca que sube desde abajo
-  sheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 32, maxHeight: '75%' },
+  sheet: { backgroundColor: colores.blanco, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 32, maxHeight: '75%' },
   handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#D0D0D0', alignSelf: 'center', marginTop: 10, marginBottom: 4 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#E0E0E0' },
-  title: { fontSize: 17, fontWeight: '700', color: '#2C2C2C' },
-  item: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F5F5F5' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colores.gris400 },
+  title: { fontSize: 17, fontWeight: '700', color: colores.texto },
+  item: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colores.gris50 },
   itemDisabled: { opacity: 0.5 },  // Gris para secciones ya activas
   itemIcon: { marginRight: 14 },
-  itemLabel: { flex: 1, fontSize: 15, color: '#2C2C2C', fontWeight: '500' },
-  itemLabelDisabled: { color: '#AAAAAA' },
-  limitText: { fontSize: 11, color: '#AAAAAA', fontStyle: 'italic' },
+  itemLabel: { flex: 1, fontSize: 15, color: colores.texto, fontWeight: '500' },
+  itemLabelDisabled: { color: colores.textoTenue },
+  limitText: { fontSize: 11, color: colores.textoTenue, fontStyle: 'italic' },
 });

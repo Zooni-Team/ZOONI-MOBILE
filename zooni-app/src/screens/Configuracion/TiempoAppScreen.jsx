@@ -12,6 +12,7 @@ import {
   SettingsGroup, SettingsScreen, SettingsSelect, SettingsToggle, T,
 } from '../../components/settings/SettingsKit';
 import { getSettings, patchSettings } from '../../services/settingsStore';
+import { colores } from '../../theme';
 
 // Demo: minutos por día de la última semana (L a D)
 const SEMANA = [
@@ -123,7 +124,7 @@ export default function TiempoAppScreen() {
 const s = StyleSheet.create({
   chartCard: {
     backgroundColor: T.surface, borderRadius: 18, marginTop: 16, padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
   },
   chartTooltip: { textAlign: 'center', fontSize: 14, fontWeight: '700', color: T.brandText, marginBottom: 6 },
   chartRow:     { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 150 },

@@ -53,6 +53,7 @@ import BotonesSociales from '../../components/BotonesSociales';
 import { volverOLogin } from '../../utils/volverOLogin';
 import { sanitizarDigitos } from '../../utils/sanitizar';
 import { toISODateLocal } from '../../utils/fechaLocal';
+import { colores } from '../../theme';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EDAD_MINIMA = 18;
@@ -508,7 +509,7 @@ export default function PaseadorRegistroScreen() {
                     <TouchableOpacity key={t.key} style={[s.chip, on && s.chipOn]} onPress={() => toggleTamano(t.key)}
                       accessibilityRole="checkbox" accessibilityState={{ checked: on }}>
                       <Text style={[s.chipTxt, on && s.chipTxtOn]}>{t.label}</Text>
-                      <Text style={[s.chipDetalle, on && { color: '#FFFFFF' }]}>{t.detalle}</Text>
+                      <Text style={[s.chipDetalle, on && { color: colores.blanco }]}>{t.detalle}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -579,8 +580,8 @@ const s = StyleSheet.create({
 
   label: { fontSize: 13, fontWeight: '700', color: C.texto, marginBottom: 6 },
   input: {
-    borderWidth: 1, borderColor: '#DDDDDD', borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: C.texto, backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: C.texto, backgroundColor: colores.blanco,
   },
   inputError: { borderColor: C.rojo },
   inputPassWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 0 },
@@ -589,24 +590,22 @@ const s = StyleSheet.create({
   errorCampo: { fontSize: 12, color: C.rojo, marginTop: 4 },
   ayuda: { fontSize: 12, color: C.texto2, marginTop: 6 },
 
-
-
   chips: { flexDirection: 'row', gap: 8, marginBottom: 14 },
   generos: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   genero: {
     flexGrow: 1, borderRadius: 14, borderWidth: 1.5, borderColor: C.menta, paddingVertical: 11,
-    paddingHorizontal: 12, alignItems: 'center', backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12, alignItems: 'center', backgroundColor: colores.blanco,
   },
   generoTxt: { fontSize: 14, fontWeight: '700', color: C.texto },
   fechaBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   fechaTxt: { fontSize: 15, color: C.texto, flex: 1 },
   chip: {
     flex: 1, borderRadius: 14, borderWidth: 1.5, borderColor: C.menta, paddingVertical: 10,
-    alignItems: 'center', backgroundColor: '#FFFFFF',
+    alignItems: 'center', backgroundColor: colores.blanco,
   },
   chipOn: { backgroundColor: C.teal, borderColor: C.teal },
   chipTxt: { fontSize: 14, fontWeight: '800', color: C.texto },
-  chipTxtOn: { color: '#FFFFFF' },
+  chipTxtOn: { color: colores.blanco },
   chipDetalle: { fontSize: 11, color: C.texto2, marginTop: 2 },
 
   fotoFila: { flexDirection: 'row', alignItems: 'center', gap: 14 },
@@ -622,11 +621,11 @@ const s = StyleSheet.create({
   fotoBtnTxt: { fontSize: 13, fontWeight: '800', color: C.teal },
   errorGeneral: {
     fontSize: 13, color: C.rojo, marginTop: 14, padding: 12, borderRadius: 12,
-    backgroundColor: '#FDECEE', borderWidth: 1, borderColor: '#F5B7BD',
+    backgroundColor: colores.rojoFondo, borderWidth: 1, borderColor: colores.rojoBorde,
   },
   resumen: {
-    marginTop: 16, padding: 14, borderRadius: 14, backgroundColor: '#FDECEE',
-    borderWidth: 1, borderColor: '#F5B7BD',
+    marginTop: 16, padding: 14, borderRadius: 14, backgroundColor: colores.rojoFondo,
+    borderWidth: 1, borderColor: colores.rojoBorde,
   },
   resumenTitulo: { fontSize: 13, fontWeight: '800', color: C.rojo, marginBottom: 4 },
   resumenItem: { fontSize: 13, color: C.texto, marginTop: 2 },

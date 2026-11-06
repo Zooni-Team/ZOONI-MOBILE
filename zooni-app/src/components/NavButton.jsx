@@ -18,6 +18,7 @@
 import React, { useRef } from 'react';
 import { TouchableOpacity, Text, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { colores } from '../theme';
 
 export default function NavButton({
   label,
@@ -59,7 +60,7 @@ export default function NavButton({
           <Ionicons
             name={iconName}
             size={20}
-            color={isPrimary ? '#2C2C2C' : '#FFFFFF'}
+            color={isPrimary ? colores.texto : colores.blanco}
             style={styles.icon}
           />
         )}
@@ -75,7 +76,7 @@ export default function NavButton({
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityLabel={`Eliminar ${label}`}
           >
-            <Ionicons name="close-circle" size={20} color="#E63946" />
+            <Ionicons name="close-circle" size={20} color={colores.rojo} />
           </TouchableOpacity>
         )}
       </TouchableOpacity>
@@ -92,24 +93,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: colores.negro,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 10,
     elevation: 4,
   },
-  primary: { backgroundColor: '#F5C842' },  // Amarillo dorado
+  primary: { backgroundColor: colores.amarillo },  // Amarillo dorado
   danger: {
     // Instruction-SOS §2.1: #D62031 (no #E63946 — con texto blanco de 17px
     // da 4.17:1 y no pasa AA). Sombra teñida de rojo, sin animación de pulso.
     backgroundColor: '#D62031',
-    shadowColor: '#E63946',
+    shadowColor: colores.rojo,
     shadowOpacity: 0.32,
     shadowRadius: 8,
     elevation: 6,
   },
   icon: { marginRight: 12 },
   label: { flex: 1, fontSize: 17, fontWeight: '700', textAlign: 'center' },
-  labelPrimary: { color: '#2C2C2C' },
-  labelDanger: { color: '#FFFFFF' },
+  labelPrimary: { color: colores.texto },
+  labelDanger: { color: colores.blanco },
 });

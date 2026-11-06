@@ -25,6 +25,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Avatar, C, PillButton } from './PaseadorUI';
 import ModalidadCobro from './ModalidadCobro';
 import { formatoTiempoPaseado, formatoPlata, medioDePago } from '../../services/paseadorApi';
+import { colores } from '../../theme';
 
 const fechaCorta = (iso) => new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: '2-digit' });
 
@@ -37,15 +38,15 @@ function minutosDePaseo(p) {
 
 const ESTADO_PASEO = {
   pagado: { txt: 'Pagado', color: C.teal, fondo: C.menta },
-  parcial: { txt: 'Parcial', color: '#B07A00', fondo: '#FFF1DC' },
-  pendiente: { txt: 'Pendiente', color: C.rojo, fondo: '#FDECEE' },
+  parcial: { txt: 'Parcial', color: colores.ambarOscuro, fondo: colores.ambarFondo },
+  pendiente: { txt: 'Pendiente', color: C.rojo, fondo: colores.rojoFondo },
 };
 
 export function EtiquetaSaldo({ saldo, grande = false }) {
   const est = saldo > 0
-    ? { txt: grande ? 'Te debe' : `Debe ${formatoPlata(saldo)}`, color: C.rojo, fondo: '#FDECEE', icono: 'alert-circle' }
+    ? { txt: grande ? 'Te debe' : `Debe ${formatoPlata(saldo)}`, color: C.rojo, fondo: colores.rojoFondo, icono: 'alert-circle' }
     : saldo < 0
-      ? { txt: grande ? 'Tiene a favor' : `A favor ${formatoPlata(-saldo)}`, color: '#2B6CB0', fondo: '#E6F0FA', icono: 'arrow-undo-circle' }
+      ? { txt: grande ? 'Tiene a favor' : `A favor ${formatoPlata(-saldo)}`, color: colores.azul, fondo: colores.azulFondo, icono: 'arrow-undo-circle' }
       : { txt: 'Al día', color: C.teal, fondo: C.menta, icono: 'checkmark-circle' };
   return (
     <View style={[s.etiqueta, { backgroundColor: est.fondo }]}>
@@ -162,8 +163,8 @@ export default function CuentaCorrienteModal({
             return (
               <TouchableOpacity style={s.mov} onPress={() => onEditar(pg)} activeOpacity={0.8}
                 accessibilityRole="button" accessibilityLabel="Editar pago">
-                <View style={[s.movIcono, { backgroundColor: '#E6F0FA' }]}>
-                  <Ionicons name={mp?.icono ?? 'cash-outline'} size={18} color="#2B6CB0" />
+                <View style={[s.movIcono, { backgroundColor: colores.azulFondo }]}>
+                  <Ionicons name={mp?.icono ?? 'cash-outline'} size={18} color={colores.azul} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.movTitulo}>Pago · {mp?.label ?? pg.medio}</Text>
@@ -187,7 +188,7 @@ export default function CuentaCorrienteModal({
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.fondo },
   header: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFFFFF',
+    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colores.blanco,
     paddingHorizontal: 10, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.borde,
   },
   volver: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
@@ -218,7 +219,7 @@ const s = StyleSheet.create({
   seccion: { fontSize: 16, fontWeight: '900', color: C.texto, marginTop: 22, marginBottom: 10 },
   mov: {
     flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.card, borderRadius: 16,
-    padding: 12, marginBottom: 8, borderWidth: 1, borderColor: '#F0F0F0',
+    padding: 12, marginBottom: 8, borderWidth: 1, borderColor: colores.gris150,
   },
   movIcono: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   movTitulo: { fontSize: 14, fontWeight: '800', color: C.texto },
@@ -227,6 +228,6 @@ const s = StyleSheet.create({
   estadoTxt: { fontSize: 11, fontWeight: '800' },
   editar: { fontSize: 11, color: C.gris, marginTop: 3 },
   cargo: { fontSize: 15, fontWeight: '900', color: C.texto },
-  abono: { fontSize: 15, fontWeight: '900', color: '#2B6CB0' },
+  abono: { fontSize: 15, fontWeight: '900', color: colores.azul },
   saldoMov: { fontSize: 11, color: C.texto2, marginTop: 2 },
 });

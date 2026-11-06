@@ -6,12 +6,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { crearCartel } from '../../api/comunidad';
+import { colores } from '../../theme';
 
 const TIPOS = [
-  { v: 'perdida',       l: 'Mascota Perdida',    icono: 'alert-circle-outline', color: '#E63946' },
-  { v: 'encontrada',    l: 'Mascota Encontrada', icono: 'checkmark-circle-outline', color: '#2DBD72' },
-  { v: 'adopcion',      l: 'En Adopción',        icono: 'heart-outline', color: '#F5C842' },
-  { v: 'aviso_general', l: 'Aviso General',      icono: 'megaphone-outline', color: '#6B6B6B' },
+  { v: 'perdida',       l: 'Mascota Perdida',    icono: 'alert-circle-outline', color: colores.rojo },
+  { v: 'encontrada',    l: 'Mascota Encontrada', icono: 'checkmark-circle-outline', color: colores.verde },
+  { v: 'adopcion',      l: 'En Adopción',        icono: 'heart-outline', color: colores.amarillo },
+  { v: 'aviso_general', l: 'Aviso General',      icono: 'megaphone-outline', color: colores.textoSecundario },
 ];
 
 export default function FormularioCartel({ coordenadas, onExito, onCancelar }) {
@@ -74,7 +75,7 @@ export default function FormularioCartel({ coordenadas, onExito, onCancelar }) {
       <View style={styles.overlay}>
         <View style={styles.sheet}>
           <View style={styles.tituloRow}>
-            <Ionicons name="warning-outline" size={18} color="#E63946" />
+            <Ionicons name="warning-outline" size={18} color={colores.rojo} />
             <Text style={styles.titulo}>Crear Cartel de Mascota</Text>
           </View>
           <ScrollView showsVerticalScrollIndicator={false}>
@@ -84,7 +85,7 @@ export default function FormularioCartel({ coordenadas, onExito, onCancelar }) {
                 <TouchableOpacity key={t.v}
                   style={[styles.tipoBtn, tipo === t.v && styles.tipoBtnOn]}
                   onPress={() => setTipo(t.v)}>
-                  <Ionicons name={t.icono} size={14} color={tipo === t.v ? '#2DBD72' : t.color} />
+                  <Ionicons name={t.icono} size={14} color={tipo === t.v ? colores.verde : t.color} />
                   <Text style={[styles.tipoBtnText, tipo === t.v && styles.tipoBtnTextOn]}>{t.l}</Text>
                 </TouchableOpacity>
               ))}
@@ -109,7 +110,7 @@ export default function FormularioCartel({ coordenadas, onExito, onCancelar }) {
                 <Image source={{ uri: fotoUri }} style={styles.preview} />
                 <TouchableOpacity style={styles.previewQuitar} onPress={() => setFotoUri(null)}
                   accessibilityLabel="Quitar foto">
-                  <Ionicons name="close" size={14} color="#FFFFFF" />
+                  <Ionicons name="close" size={14} color={colores.blanco} />
                 </TouchableOpacity>
               </View>
             )}
@@ -129,7 +130,7 @@ export default function FormularioCartel({ coordenadas, onExito, onCancelar }) {
               <TouchableOpacity style={[styles.btnCrear, loading && { opacity: 0.6 }]}
                 onPress={submit} disabled={loading}>
                 {loading
-                  ? <ActivityIndicator color="#fff" />
+                  ? <ActivityIndicator color={colores.blanco} />
                   : <Text style={styles.btnCrearText}>Crear Cartel</Text>
                 }
               </TouchableOpacity>
@@ -143,32 +144,32 @@ export default function FormularioCartel({ coordenadas, onExito, onCancelar }) {
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-  sheet:   { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '85%' },
+  sheet:   { backgroundColor: colores.blanco, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '85%' },
   tituloRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
-  titulo:  { fontSize: 18, fontWeight: '700', color: '#2C2C2C' },
-  lbl:     { fontSize: 14, fontWeight: '600', color: '#2C2C2C', marginTop: 12, marginBottom: 6 },
-  input:   { borderWidth: 1.5, borderColor: '#DDD', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#2C2C2C' },
-  inputErr:{ borderColor: '#E63946' },
+  titulo:  { fontSize: 18, fontWeight: '700', color: colores.texto },
+  lbl:     { fontSize: 14, fontWeight: '600', color: colores.texto, marginTop: 12, marginBottom: 6 },
+  input:   { borderWidth: 1.5, borderColor: colores.gris500, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colores.texto },
+  inputErr:{ borderColor: colores.rojo },
   textarea:{ height: 90, textAlignVertical: 'top' },
-  errText: { color: '#E63946', fontSize: 12, marginTop: 4 },
+  errText: { color: colores.rojo, fontSize: 12, marginTop: 4 },
   tiposRow:{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-  tipoBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5, borderColor: '#DDD' },
-  tipoBtnOn:    { borderColor: '#2DBD72', backgroundColor: '#E8FFF2' },
-  tipoBtnText:  { fontSize: 12, color: '#6B6B6B' },
-  tipoBtnTextOn:{ color: '#2DBD72', fontWeight: '600' },
+  tipoBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5, borderColor: colores.gris500 },
+  tipoBtnOn:    { borderColor: colores.verde, backgroundColor: '#E8FFF2' },
+  tipoBtnText:  { fontSize: 12, color: colores.textoSecundario },
+  tipoBtnTextOn:{ color: colores.verde, fontWeight: '600' },
   previewWrap: { alignSelf: 'flex-start', marginBottom: 10 },
   preview: { width: 80, height: 80, borderRadius: 10 },
   previewQuitar: {
     position: 'absolute', top: -6, right: -6,
-    width: 22, height: 22, borderRadius: 11, backgroundColor: '#E63946',
+    width: 22, height: 22, borderRadius: 11, backgroundColor: colores.rojo,
     alignItems: 'center', justifyContent: 'center',
   },
   fotoBtnsRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
-  btnFoto: { flex: 1, backgroundColor: '#F5C842', borderRadius: 20, paddingVertical: 10, alignItems: 'center' },
-  btnFotoText: { fontSize: 12, fontWeight: '700', color: '#2C2C2C' },
+  btnFoto: { flex: 1, backgroundColor: colores.amarillo, borderRadius: 20, paddingVertical: 10, alignItems: 'center' },
+  btnFotoText: { fontSize: 12, fontWeight: '700', color: colores.texto },
   btnsRow: { flexDirection: 'row', gap: 10, marginTop: 20, marginBottom: 8 },
   btnCancel:    { flex: 1, backgroundColor: '#4A4A4A', borderRadius: 25, paddingVertical: 13, alignItems: 'center' },
-  btnCancelText:{ color: '#fff', fontWeight: '700', fontSize: 14 },
-  btnCrear:     { flex: 1, backgroundColor: '#2DBD72', borderRadius: 25, paddingVertical: 13, alignItems: 'center' },
-  btnCrearText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  btnCancelText:{ color: colores.blanco, fontWeight: '700', fontSize: 14 },
+  btnCrear:     { flex: 1, backgroundColor: colores.verde, borderRadius: 25, paddingVertical: 13, alignItems: 'center' },
+  btnCrearText: { color: colores.blanco, fontWeight: '700', fontSize: 14 },
 });

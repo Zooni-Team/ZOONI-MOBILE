@@ -26,26 +26,27 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useTheme } from '../../config/theme';
+import { useTheme } from '../../theme';
+import { colores } from '../../theme';
 
 // ─── TOKENS (§3.1) ───────────────────────────────────────────────────────────
 
 export const T = {
-  bgMain: '#C8F0D8',
+  bgMain: colores.menta,
   bgMainSoft: '#D9F6E4',
-  surface: '#FFFFFF',
-  text: '#2C2C2C',
-  textSoft: '#6B6B6B',
-  textSoftMint: '#5A6B60',
+  surface: colores.blanco,
+  text: colores.texto,
+  textSoft: colores.textoSecundario,
+  textSoftMint: colores.verdeGrisaceo,
   chevron: '#8A8A8A',
-  divider: '#E8EFE9',
-  brand: '#2DBD72',
-  brandText: '#177046',
+  divider: colores.mentaGris,
+  brand: colores.verde,
+  brandText: colores.verdeOscuro,
   amberText: '#A05F00',
   amberTint: '#FEF3E0',
-  sosRedText: '#B3121D',
-  sosRedTint: '#FDECEE',
-  cta: '#F5C842',
+  sosRedText: colores.rojoOscuro,
+  sosRedTint: colores.rojoFondo,
+  cta: colores.amarillo,
   switchOff: '#D8DEDA',
   pressedRow: '#F2F7F4',
 };
@@ -56,13 +57,13 @@ export const TINTS = {
   apariencia:    { bg: '#FDEAF2', glifo: '#A83A6B' },
   medios:        { bg: '#EAF1F7', glifo: '#2F6B8F' },
   tiempo:        { bg: '#F1EDFB', glifo: '#5A3AA8' },
-  mascotas:      { bg: '#E8F7EE', glifo: '#177046' },
+  mascotas:      { bg: colores.mentaBorde, glifo: colores.verdeOscuro },
   privacidad:    { bg: '#FEF3E0', glifo: '#8A5A00' },
   permisos:      { bg: '#EDEBFA', glifo: '#4A3AA0' },
   notificaciones:{ bg: '#FEF6DC', glifo: '#8A6A00' },
   pagos:         { bg: '#E6F4FB', glifo: '#1A6A8F' },
   legal:         { bg: '#EFF1F3', glifo: '#4A5560' },
-  ayuda:         { bg: '#FDECEE', glifo: '#B3121D' },
+  ayuda:         { bg: colores.rojoFondo, glifo: colores.rojoOscuro },
 };
 
 // ─── CHASIS DE SUB-PANTALLA (§3.5) ──────────────────────────────────────────
@@ -308,7 +309,7 @@ const k = StyleSheet.create({
   groupLabel: { fontSize: 13, fontWeight: '700', color: T.textSoftMint, marginLeft: 4, marginBottom: 8 },
   groupCard: {
     backgroundColor: T.surface, borderRadius: 18, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
   },
   groupCardHC: { borderWidth: 1.5, borderColor: T.text },
   rowDivider: { height: 1, backgroundColor: T.divider, marginLeft: 60 },
@@ -330,8 +331,8 @@ const k = StyleSheet.create({
   },
   rail: { width: 50, height: 30, borderRadius: 15, padding: 2, justifyContent: 'center' },
   knob: {
-    width: 26, height: 26, borderRadius: 13, backgroundColor: '#FFF',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 3, elevation: 2,
+    width: 26, height: 26, borderRadius: 13, backgroundColor: colores.blanco,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 3, elevation: 2,
   },
 
   sheetScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },

@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { formatoDuracion, formatoPlata, serviciosDe } from '../../services/paseadorApi';
 import { resumenHorarios } from '../../services/negocioApi';
 import ResenasPaseadorModal from '../resenas/ResenasPaseadorModal';
+import { colores } from '../../theme';
 
 const TAMANO = { chico: 'chicos', mediano: 'medianos', grande: 'grandes' };
 
@@ -47,7 +48,7 @@ export default function PopupPaseador({ paseador, onClose }) {
           accessibilityRole="button" accessibilityLabel={`Ver opiniones de ${paseador.nombreCompleto}`}>
           {paseador.foto
             ? <Image source={{ uri: paseador.foto }} style={st.avatar} referrerPolicy="no-referrer" />
-            : <View style={[st.avatar, st.avatarIni]}><Ionicons name="walk" size={22} color="#2DBD72" /></View>}
+            : <View style={[st.avatar, st.avatarIni]}><Ionicons name="walk" size={22} color={colores.verde} /></View>}
           <View style={{ flex: 1 }}>
             <View style={st.nombreFila}>
               <Text style={st.nombre} numberOfLines={1}>{paseador.nombreCompleto}</Text>
@@ -56,7 +57,7 @@ export default function PopupPaseador({ paseador, onClose }) {
             <View style={st.infoRow}>
               {paseador.rating != null ? (
                 <>
-                  <Ionicons name="star" size={13} color="#F5A623" />
+                  <Ionicons name="star" size={13} color={colores.ambar} />
                   <Text style={st.info}>{paseador.rating.toFixed(1).replace('.', ',')} ({paseador.votos})</Text>
                 </>
               ) : <Text style={st.info}>Nuevo en Zooni</Text>}
@@ -66,21 +67,21 @@ export default function PopupPaseador({ paseador, onClose }) {
           </View>
         </TouchableOpacity>
         <TouchableOpacity onPress={onClose} accessibilityLabel="Cerrar" hitSlop={8}>
-          <Ionicons name="close" size={20} color="#6B6B6B" />
+          <Ionicons name="close" size={20} color={colores.textoSecundario} />
         </TouchableOpacity>
       </View>
 
       <View style={st.infoRow}>
-        <Ionicons name="location-outline" size={14} color="#6B6B6B" />
+        <Ionicons name="location-outline" size={14} color={colores.textoSecundario} />
         <Text style={st.info}>{paseador.zona} · atiende a {paseador.radioKm} km a la redonda</Text>
       </View>
       <View style={[st.infoRow, { flexWrap: 'nowrap', alignItems: 'flex-start' }]}>
-        <Ionicons name="time-outline" size={14} color="#6B6B6B" style={{ marginTop: 2 }} />
+        <Ionicons name="time-outline" size={14} color={colores.textoSecundario} style={{ marginTop: 2 }} />
         <Text style={st.info}>{resumenHorarios(paseador.horarios, { inactivo: 'no pasea' })}</Text>
       </View>
       {tamanos.length > 0 && (
         <View style={st.infoRow}>
-          <Ionicons name="paw-outline" size={14} color="#6B6B6B" />
+          <Ionicons name="paw-outline" size={14} color={colores.textoSecundario} />
           <Text style={st.info}>Perros {tamanos.join(', ')} · hasta {paseador.maxPerros} por paseo</Text>
         </View>
       )}
@@ -97,11 +98,11 @@ export default function PopupPaseador({ paseador, onClose }) {
 
       <View style={st.botones}>
         <TouchableOpacity style={st.btnSec} onPress={() => setVerResenas(true)} activeOpacity={0.85} accessibilityRole="button">
-          <Ionicons name="star-outline" size={17} color="#2DBD72" />
+          <Ionicons name="star-outline" size={17} color={colores.verde} />
           <Text style={st.btnSecTxt}>Opiniones</Text>
         </TouchableOpacity>
         <TouchableOpacity style={st.btn} onPress={contratar} activeOpacity={0.85} accessibilityRole="button">
-          <Ionicons name="walk" size={18} color="#2C2C2C" />
+          <Ionicons name="walk" size={18} color={colores.texto} />
           <Text style={st.btnTxt}>Contratar paseo</Text>
         </TouchableOpacity>
       </View>
@@ -118,36 +119,36 @@ export default function PopupPaseador({ paseador, onClose }) {
 
 const st = StyleSheet.create({
   popup: {
-    position: 'absolute', left: 12, right: 12, bottom: 12, backgroundColor: '#FFF', borderRadius: 20, padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 14, elevation: 10,
+    position: 'absolute', left: 12, right: 12, bottom: 12, backgroundColor: colores.blanco, borderRadius: 20, padding: 16,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 14, elevation: 10,
     zIndex: 200,
   },
   header: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  avatar: { width: 48, height: 48, borderRadius: 24, borderWidth: 2, borderColor: '#2DBD72' },
-  avatarIni: { backgroundColor: '#C8F0D8', alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 48, height: 48, borderRadius: 24, borderWidth: 2, borderColor: colores.verde },
+  avatarIni: { backgroundColor: colores.menta, alignItems: 'center', justifyContent: 'center' },
   nombreFila: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  nombre: { fontSize: 17, fontWeight: '800', color: '#2C2C2C', flexShrink: 1 },
-  zooni: { backgroundColor: '#C8F0D8', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
-  zooniTxt: { fontSize: 10, fontWeight: '800', color: '#2DBD72' },
+  nombre: { fontSize: 17, fontWeight: '800', color: colores.texto, flexShrink: 1 },
+  zooni: { backgroundColor: colores.menta, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
+  zooniTxt: { fontSize: 10, fontWeight: '800', color: colores.verde },
   infoRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4, marginTop: 3 },
-  info: { fontSize: 13, color: '#6B6B6B', flexShrink: 1 },
-  bio: { fontSize: 13, color: '#2C2C2C', marginTop: 8, lineHeight: 18 },
+  info: { fontSize: 13, color: colores.textoSecundario, flexShrink: 1 },
+  bio: { fontSize: 13, color: colores.texto, marginTop: 8, lineHeight: 18 },
   precios: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   precio: { flexGrow: 1, flexBasis: '40%', backgroundColor: '#F9FFF9', borderRadius: 14, padding: 10, borderWidth: 1, borderColor: '#E6EFE9' },
-  precioDur: { fontSize: 12, fontWeight: '700', color: '#2DBD72' },
-  precioValor: { fontSize: 20, fontWeight: '900', color: '#2C2C2C' },
+  precioDur: { fontSize: 12, fontWeight: '700', color: colores.verde },
+  precioValor: { fontSize: 20, fontWeight: '900', color: colores.texto },
   perfilTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  verOpiniones: { fontSize: 13, color: '#2DBD72', fontWeight: '800' },
+  verOpiniones: { fontSize: 13, color: colores.verde, fontWeight: '800' },
   botones: { flexDirection: 'row', gap: 8, marginTop: 14 },
   btnSec: {
     flexDirection: 'row', gap: 6, height: 50, borderRadius: 30, paddingHorizontal: 16,
-    borderWidth: 2, borderColor: '#2DBD72', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: colores.verde, alignItems: 'center', justifyContent: 'center',
   },
-  btnSecTxt: { fontSize: 15, fontWeight: '800', color: '#2DBD72' },
+  btnSecTxt: { fontSize: 15, fontWeight: '800', color: colores.verde },
   btn: {
-    flex: 1, flexDirection: 'row', gap: 8, height: 50, borderRadius: 30, backgroundColor: '#F5C842',
+    flex: 1, flexDirection: 'row', gap: 8, height: 50, borderRadius: 30, backgroundColor: colores.amarillo,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 3,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 3,
   },
-  btnTxt: { fontSize: 16, fontWeight: '800', color: '#2C2C2C' },
+  btnTxt: { fontSize: 16, fontWeight: '800', color: colores.texto },
 });

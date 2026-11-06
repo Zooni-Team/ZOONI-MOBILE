@@ -41,6 +41,8 @@ import {
   agregarEventoCalendario,
   getEventosCalendario,
 } from '../services/calendarioStore';
+import { colores } from '../theme';
+import Skeleton from '../components/ui/Skeleton';
 
 // ─────────────────────────────────────────────────────────────
 // DATOS DE EJEMPLO — se usan cuando el backend no está disponible
@@ -118,32 +120,8 @@ const EVENTOS_DEMO = [
 // Simula la forma de un card de evento mientras carga.
 // ─────────────────────────────────────────────────────────────
 function SkeletonCard() {
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmerAnim, {
-          toValue: 1,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimmerAnim, {
-          toValue: 0,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-      ]),
-    ).start();
-  }, []);
-
-  const opacity = shimmerAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.5, 1],
-  });
-
   return (
-    <Animated.View style={[styles.skeletonCard, { opacity }]}>
+    <Skeleton style={styles.skeletonCard} min={0.5}>
       {/* Foto */}
       <View style={styles.skeletonFoto} />
       {/* Título */}
@@ -152,7 +130,7 @@ function SkeletonCard() {
       <View style={styles.skeletonFecha} />
       {/* Descripción */}
       <View style={styles.skeletonDescripcion} />
-    </Animated.View>
+    </Skeleton>
   );
 }
 
@@ -187,7 +165,7 @@ function EventoCard({
 
   const btnBackground = btnColorAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#2DBD72', '#A8D8B8'],
+    outputRange: [colores.verde, '#A8D8B8'],
   });
 
   // ── Formateo de fecha y hora ───────────────────────────────
@@ -257,7 +235,7 @@ function EventoCard({
           />
         ) : (
           <View style={styles.fotoPlaceholder}>
-            <Ionicons name="image-outline" size={48} color="#AAAAAA" />
+            <Ionicons name="image-outline" size={48} color={colores.textoTenue} />
           </View>
         )}
 
@@ -279,11 +257,11 @@ function EventoCard({
         {/* Fila fecha + hora */}
         <View style={styles.filaFechaHora}>
           <View style={styles.chip}>
-            <Ionicons name="calendar-outline" size={13} color="#2DBD72" />
+            <Ionicons name="calendar-outline" size={13} color={colores.verde} />
             <Text style={styles.chipTexto}> {fechaFormateada}</Text>
           </View>
           <View style={styles.chip}>
-            <Ionicons name="time-outline" size={13} color="#2DBD72" />
+            <Ionicons name="time-outline" size={13} color={colores.verde} />
             <Text style={styles.chipTexto}> {horaFormateada}</Text>
           </View>
         </View>
@@ -296,7 +274,7 @@ function EventoCard({
           accessibilityLabel={`Ver ${evento.ubicacion_nombre} en Google Maps`}
           accessibilityRole="link"
         >
-          <Ionicons name="location-outline" size={14} color="#2DBD72" />
+          <Ionicons name="location-outline" size={14} color={colores.verde} />
           <Text style={styles.pillUbicacionTexto} numberOfLines={2}>
             {evento.ubicacion_nombre}
           </Text>
@@ -323,7 +301,7 @@ function EventoCard({
 
         {/* Pill del organizador */}
         <View style={styles.pillOrganizador}>
-          <Ionicons name="business-outline" size={15} color="#6B6B6B" />
+          <Ionicons name="business-outline" size={15} color={colores.textoSecundario} />
           <Text
             style={styles.pillOrganizadorTexto}
             numberOfLines={1}
@@ -332,7 +310,7 @@ function EventoCard({
             {evento.organizador_nombre}
           </Text>
           {/* Verificación checkmark */}
-          <Ionicons name="checkmark-circle" size={14} color="#2DBD72" />
+          <Ionicons name="checkmark-circle" size={14} color={colores.verde} />
         </View>
 
         {/* Botón Agregar al calendario */}
@@ -356,7 +334,7 @@ function EventoCard({
               ]}
             >
               {procesando ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={colores.blanco} />
               ) : (
                 <>
                   <Ionicons
@@ -364,7 +342,7 @@ function EventoCard({
                       yaAgregado ? 'checkmark-circle-outline' : 'calendar-outline'
                     }
                     size={18}
-                    color="#FFFFFF"
+                    color={colores.blanco}
                     style={{ marginRight: 8 }}
                   />
                   <Text style={styles.btnAgregarTexto}>
@@ -600,7 +578,7 @@ export default function EventosScreen() {
           tipo:        'Evento',
           origenId:    evento.id,
           emoji:       '🎉',
-          color:       '#9B59B6',
+          color:       colores.violeta,
         };
 
         await agregarEventoCalendario(petId, payload);
@@ -694,7 +672,7 @@ export default function EventosScreen() {
         ) : eventos.length === 0 ? (
           /* Estado vacío */
           <View style={styles.emptyContainer}>
-            <Ionicons name="storefront-outline" size={60} color="#AAAAAA" />
+            <Ionicons name="storefront-outline" size={60} color={colores.textoTenue} />
             <Text style={styles.emptyTitulo}>No hay eventos por ahora</Text>
             <Text style={styles.emptySubtexto}>
               Cuando haya actividades cerca tuyo, las vas a ver acá 🐾
@@ -713,7 +691,7 @@ export default function EventosScreen() {
                   await cargarDatos(true);
                   setRefreshing(false);
                 }}
-                colors={['#2DBD72']} tintColor="#2DBD72"
+                colors={[colores.verde]} tintColor={colores.verde}
               />
             }
           >
@@ -749,7 +727,7 @@ export default function EventosScreen() {
 // ─────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   // ── Raíz — mismo fondo e igual estructura de header que Home ──
-  safeArea: { flex: 1, backgroundColor: '#D4F5E2' },
+  safeArea: { flex: 1, backgroundColor: colores.mentaClara },
   screenBackground: { flex: 1, width: '100%' },
   screenBackgroundImage: { width: '100%', height: '100%' },
 
@@ -772,21 +750,21 @@ const styles = StyleSheet.create({
   titulo: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#2C2C2C',
+    color: colores.texto,
     textAlign: 'center',
     marginBottom: 4,
   },
   subtitulo: {
     fontSize: 14,
     fontWeight: '400',
-    color: '#6B6B6B',
+    color: colores.textoSecundario,
     textAlign: 'center',
     marginBottom: 8,
   },
   indicadorCiudad: {
     fontSize: 13,
     fontWeight: '400',
-    color: '#6B6B6B',
+    color: colores.textoSecundario,
     textAlign: 'center',
   },
 
@@ -797,11 +775,11 @@ const styles = StyleSheet.create({
 
   // ── Card de evento ────────────────────────────────────────
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colores.blanco,
     borderRadius: 18,
     marginHorizontal: 16,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: colores.negro,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 10,
@@ -821,7 +799,7 @@ const styles = StyleSheet.create({
   fotoPlaceholder: {
     width: '100%',
     height: 200,
-    backgroundColor: '#E8E8E8',
+    backgroundColor: colores.gris300,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -831,11 +809,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 12,
     left: 12,
-    backgroundColor: '#2DBD72',
+    backgroundColor: colores.verde,
     borderRadius: 20,
     paddingVertical: 5,
     paddingHorizontal: 12,
-    shadowColor: '#000',
+    shadowColor: colores.negro,
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
@@ -843,7 +821,7 @@ const styles = StyleSheet.create({
   pillCategoriaTexto: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colores.blanco,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
@@ -859,7 +837,7 @@ const styles = StyleSheet.create({
   eventoTitulo: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#2C2C2C',
+    color: colores.texto,
     marginBottom: 12,
   },
 
@@ -874,9 +852,9 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
+    backgroundColor: colores.gris50,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: colores.gris400,
     borderRadius: 20,
     paddingVertical: 6,
     paddingHorizontal: 12,
@@ -884,7 +862,7 @@ const styles = StyleSheet.create({
   chipTexto: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#2C2C2C',
+    color: colores.texto,
   },
 
   // Pill de ubicación
@@ -902,7 +880,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: '500',
-    color: '#2DBD72',
+    color: colores.verde,
   },
 
   // Descripción
@@ -912,13 +890,13 @@ const styles = StyleSheet.create({
   descripcionTexto: {
     fontSize: 14,
     fontWeight: '400',
-    color: '#6B6B6B',
+    color: colores.textoSecundario,
     lineHeight: 22,
   },
   verMasTexto: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#2DBD72',
+    color: colores.verde,
     marginTop: 4,
   },
 
@@ -927,7 +905,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: colores.gris50,
     borderRadius: 20,
     paddingVertical: 8,
     paddingHorizontal: 14,
@@ -938,7 +916,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: '400',
-    color: '#6B6B6B',
+    color: colores.textoSecundario,
   },
 
   // Botón Agregar al calendario
@@ -949,7 +927,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     height: 48,
     width: '100%',
-    shadowColor: '#000',
+    shadowColor: colores.negro,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
@@ -962,7 +940,7 @@ const styles = StyleSheet.create({
   btnAgregarTexto: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colores.blanco,
   },
 
   // ── Estado vacío ──────────────────────────────────────────
@@ -976,14 +954,14 @@ const styles = StyleSheet.create({
   emptyTitulo: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#2C2C2C',
+    color: colores.texto,
     textAlign: 'center',
     marginTop: 12,
   },
   emptySubtexto: {
     fontSize: 14,
     fontWeight: '400',
-    color: '#6B6B6B',
+    color: colores.textoSecundario,
     textAlign: 'center',
     marginTop: 6,
   },
@@ -999,12 +977,12 @@ const styles = StyleSheet.create({
   },
   skeletonFoto: {
     height: 200,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: colores.gris400,
   },
   skeletonTitulo: {
     height: 20,
     width: '70%',
-    backgroundColor: '#E8E8E8',
+    backgroundColor: colores.gris300,
     borderRadius: 6,
     marginTop: 14,
     marginHorizontal: 16,

@@ -19,6 +19,7 @@ import { Etiqueta, Segmento } from '../../../components/negocio/NegocioUI';
 import FichaPacienteModal from '../../../components/negocio/FichaPacienteModal';
 import InformeModal from '../../../components/negocio/InformeModal';
 import { cuandoTexto, diaTexto, fetchPacientes, guardarInforme } from '../../../services/negocioApi';
+import { colores } from '../../../theme';
 
 const normalizar = (t) => String(t ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
@@ -123,10 +124,10 @@ export default function PacientesTab({ negocio, tipo, avisar, abrirChat }) {
                   <Etiqueta texto={`Turno ${cuandoTexto(f.proximo.fecha)}`} icono="time" color={C.teal} fondo={C.menta} />
                 ) : null}
                 {esVet && f.proximoControl ? (
-                  <Etiqueta texto={`Control ${diaTexto(f.proximoControl)}`} icono="alarm" color="#B07A00" fondo="#FFF1DC" />
+                  <Etiqueta texto={`Control ${diaTexto(f.proximoControl)}`} icono="alarm" color={colores.ambarOscuro} fondo={colores.ambarFondo} />
                 ) : null}
                 {esVet && f.ultimoInforme?.diagnostico ? (
-                  <Etiqueta texto={f.ultimoInforme.diagnostico.slice(0, 28)} icono="pulse" color={C.texto2} fondo="#F1F1F1" />
+                  <Etiqueta texto={f.ultimoInforme.diagnostico.slice(0, 28)} icono="pulse" color={C.texto2} fondo={colores.gris100} />
                 ) : null}
               </View>
             </View>
@@ -159,7 +160,7 @@ export default function PacientesTab({ negocio, tipo, avisar, abrirChat }) {
 const s = StyleSheet.create({
   top: { paddingHorizontal: 20, paddingTop: 16, gap: 12 },
   buscador: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF', borderRadius: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colores.blanco, borderRadius: 14,
     borderWidth: 1, borderColor: C.borde, paddingHorizontal: 12,
   },
   buscadorInput: { flex: 1, fontSize: 15, color: C.texto, paddingVertical: 11 },

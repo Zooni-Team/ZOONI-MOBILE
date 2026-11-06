@@ -23,6 +23,7 @@ import { PedidoCard, TurnoCard } from '../../../components/negocio/NegocioUI';
 import {
   abiertoAhora, actualizarDatos, fetchResumenNegocio, formatoPlata, horarioDelDia, setAbiertoNegocio,
 } from '../../../services/negocioApi';
+import { colores } from '../../../theme';
 
 function Paso({ hecho, titulo, texto, onPress }) {
   return (
@@ -255,10 +256,10 @@ const s = StyleSheet.create({
   horaHoyTxt: { fontSize: 12, fontWeight: '700', color: C.texto },
 
   urgencias: {
-    flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFFFFF', borderRadius: 18,
-    padding: 14, marginTop: 12, borderWidth: 1.5, borderColor: '#EEEEEE', ...sombra,
+    flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colores.blanco, borderRadius: 18,
+    padding: 14, marginTop: 12, borderWidth: 1.5, borderColor: colores.gris250, ...sombra,
   },
-  urgenciasOn: { borderColor: '#F5B7BD', backgroundColor: '#FFF7F8' },
+  urgenciasOn: { borderColor: colores.rojoBorde, backgroundColor: '#FFF7F8' },
   urgenciasTitulo: { fontSize: 15, fontWeight: '800', color: C.texto },
   urgenciasTxt: { fontSize: 12, color: C.texto2, marginTop: 2 },
 
@@ -278,7 +279,7 @@ const s = StyleSheet.create({
   error: { fontSize: 14, color: C.texto2, textAlign: 'center', marginTop: 30 },
   stockFila: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#F2F2F2',
+    borderBottomWidth: 1, borderBottomColor: colores.gris75,
   },
   stockNombre: { flex: 1, fontSize: 14, color: C.texto, fontWeight: '600', marginRight: 10 },
   stockCant: { fontSize: 13, fontWeight: '800', color: C.ambar },

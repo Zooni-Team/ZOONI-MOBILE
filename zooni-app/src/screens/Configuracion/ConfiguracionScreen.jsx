@@ -32,6 +32,7 @@ import { clearToken, fetchHome } from '../../services/api';
 import { clearCurrentUserId } from '../../config/session';
 import { getSettings, subscribeSettings } from '../../services/settingsStore';
 import { fetchMisMascotas } from '../../services/petsApi';
+import { colores } from '../../theme';
 
 const APP_VERSION = 'Zooni 1.4.2 (build 218)';
 
@@ -203,10 +204,9 @@ const s = StyleSheet.create({
   logoutCard: {
     backgroundColor: T.surface, borderRadius: 18, height: 56,
     alignItems: 'center', justifyContent: 'center', marginTop: 24,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
   },
   logoutTxt: { fontSize: 16, fontWeight: '700', color: T.sosRedText },
-
 
   version: { fontSize: 12, color: T.textSoftMint, textAlign: 'center', marginTop: 24 },
 });

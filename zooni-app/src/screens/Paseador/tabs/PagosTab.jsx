@@ -24,6 +24,7 @@ import {
   borrarPago, editarPago, fetchCuentasCorrientes, formatoPlata, guardarModalidadCobro, medioDePago,
   modalidadDeCobro, registrarPago,
 } from '../../../services/paseadorApi';
+import { colores } from '../../../theme';
 
 const FILTROS = [
   { key: 'todos', label: 'Todos' },
@@ -246,17 +247,17 @@ const s = StyleSheet.create({
   avisoTxt: { flex: 1, fontSize: 12, color: C.texto, fontWeight: '600' },
 
   segmento: {
-    flexDirection: 'row', padding: 4, backgroundColor: '#FFFFFF', borderRadius: 30,
+    flexDirection: 'row', padding: 4, backgroundColor: colores.blanco, borderRadius: 30,
     borderWidth: 1, borderColor: C.borde, marginTop: 16, marginBottom: 12,
   },
   segBtn: { flex: 1, height: 38, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   segBtnOn: { backgroundColor: C.teal },
   segTxt: { fontSize: 14, fontWeight: '700', color: C.texto2 },
-  segTxtOn: { color: '#FFFFFF', fontWeight: '800' },
+  segTxtOn: { color: colores.blanco, fontWeight: '800' },
 
   fila: {
     flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.card,
-    borderRadius: 16, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: '#F0F0F0',
+    borderRadius: 16, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: colores.gris150,
   },
   filaNombre: { fontSize: 15, fontWeight: '800', color: C.texto },
   filaSub: { fontSize: 12, color: C.texto2, marginTop: 1 },

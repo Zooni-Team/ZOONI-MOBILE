@@ -15,6 +15,7 @@ import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } fr
 import { FACEBOOK_ICON, GOOGLE_ICON } from '../constants/registroImages';
 import { PROVEEDORES, iniciarConProveedor, loginSocialDisponible } from '../services/socialAuthApi';
 import { alerta } from '../utils/dialogo';
+import { colores } from '../theme';
 
 const ICONOS = { google: GOOGLE_ICON, facebook: FACEBOOK_ICON };
 
@@ -56,7 +57,7 @@ export default function BotonesSociales({ intencion = 'dueno', titulo }) {
           <TouchableOpacity key={p} style={s.btn} onPress={() => entrar(p)} disabled={!!yendo} activeOpacity={0.8}
             accessibilityRole="button" accessibilityLabel={`Continuar con ${PROVEEDORES[p].nombre}`}>
             {yendo === p
-              ? <ActivityIndicator color="#6B6B6B" />
+              ? <ActivityIndicator color={colores.textoSecundario} />
               : <Image source={ICONOS[p]} style={s.icono} resizeMode="contain" />}
           </TouchableOpacity>
         ))}
@@ -69,13 +70,13 @@ export default function BotonesSociales({ intencion = 'dueno', titulo }) {
 const s = StyleSheet.create({
   wrap: { marginTop: 16, alignItems: 'center' },
   tituloFila: { flexDirection: 'row', alignItems: 'center', gap: 10, alignSelf: 'stretch', marginBottom: 12 },
-  linea: { flex: 1, height: 1, backgroundColor: '#E6E6E6' },
-  titulo: { fontSize: 13, color: '#6B6B6B', fontWeight: '600' },
+  linea: { flex: 1, height: 1, backgroundColor: colores.gris350 },
+  titulo: { fontSize: 13, color: colores.textoSecundario, fontWeight: '600' },
   fila: { flexDirection: 'row', justifyContent: 'center', gap: 22 },
   btn: {
-    width: 58, height: 58, borderRadius: 29, borderWidth: 1, borderColor: '#E6E6E6', backgroundColor: '#FFFFFF',
+    width: 58, height: 58, borderRadius: 29, borderWidth: 1, borderColor: colores.gris350, backgroundColor: colores.blanco,
     alignItems: 'center', justifyContent: 'center',
   },
   icono: { width: 30, height: 30 },
-  error: { fontSize: 13, color: '#E63946', textAlign: 'center', marginTop: 10 },
+  error: { fontSize: 13, color: colores.rojo, textAlign: 'center', marginTop: 10 },
 });
