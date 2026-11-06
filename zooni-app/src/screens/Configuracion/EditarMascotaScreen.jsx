@@ -26,6 +26,7 @@ import { parseFechaLocal, toISODateLocal } from '../../utils/fechaLocal';
 import FechaPicker from '../../components/FechaPicker';
 import { alerta } from '../../utils/dialogo';
 import { colores } from '../../theme';
+import { formatearFecha } from '../../utils/fechaLocal';
 
 const P = {
   bgTop: '#E4F9EA', text: colores.texto, textSoft: colores.textoSecundario, textSoftMint: colores.verdeGrisaceo,
@@ -280,7 +281,7 @@ export default function EditarMascotaScreen() {
             accessibilityRole="button" accessibilityLabel="Elegir fecha de nacimiento">
             <Text style={[e.selectTxt, !fechaNacimiento && { color: P.textSoft }]}>
               {fechaNacimiento
-                ? fechaNacimiento.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
+                ? formatearFecha(fechaNacimiento, 'larga')
                 : 'Sin fecha registrada'}
             </Text>
             <Ionicons name="calendar-outline" size={18} color={P.textSoft} />

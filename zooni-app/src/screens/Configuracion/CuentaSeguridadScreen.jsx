@@ -31,6 +31,7 @@ import { clearToken } from '../../services/api';
 import { clearCurrentUserId } from '../../config/session';
 import { alerta } from '../../utils/dialogo';
 import { colores } from '../../theme';
+import { formatearFecha } from '../../utils/fechaLocal';
 
 // ─── MODAL DE EDICIÓN DE UN CAMPO (uno o dos inputs) ─────────────────────────
 
@@ -156,7 +157,7 @@ export default function CuentaSeguridadScreen() {
 
   // Si cambió el @usuario hace menos de 30 días, hasta cuándo queda bloqueado
   const bloqueadoHasta = fechaProximoCambioUsuario(cuenta?.nombreUsuarioCambiadoEn);
-  const fmtFecha = (d) => d?.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const fmtFecha = (d) => formatearFecha(d, 'numericaCeros');
   const telefonoTxt = cuenta?.telefono
     ? `${cuenta.codigoTelefono ? cuenta.codigoTelefono + ' ' : ''}${cuenta.telefono}`
     : 'Agregar';

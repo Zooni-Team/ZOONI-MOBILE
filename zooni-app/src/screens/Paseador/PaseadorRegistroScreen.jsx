@@ -56,6 +56,7 @@ import { toISODateLocal } from '../../utils/fechaLocal';
 import { colores } from '../../theme';
 import { EMAIL_REGEX } from '../../utils/validacion';
 import { PASSWORD_MIN } from '../../utils/validacion';
+import { formatearFecha } from '../../utils/fechaLocal';
 
 const EDAD_MINIMA = 18;
 const EDAD_MAXIMA = 100;
@@ -426,7 +427,7 @@ export default function PaseadorRegistroScreen() {
                   onPress={() => setVerFecha(true)} accessibilityLabel="Elegir fecha de nacimiento">
                   <Text style={[s.fechaTxt, !usuario.fechaNacimiento && { color: C.gris }]}>
                     {usuario.fechaNacimiento
-                      ? usuario.fechaNacimiento.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
+                      ? formatearFecha(usuario.fechaNacimiento, 'larga')
                       : 'Elegí tu fecha de nacimiento'}
                   </Text>
                   <Ionicons name="calendar-outline" size={20} color={C.teal} />

@@ -36,6 +36,7 @@ import {
 import { confirmar } from '../utils/dialogo';
 import { colores } from '../theme';
 import { INTERVALO_LISTAS_MS } from '../constants/intervalos';
+import { formatearFecha } from '../utils/fechaLocal';
 
 // Mismos estados que ve el negocio, contados desde el lado del dueño
 const ESTADO_TURNO = {
@@ -164,7 +165,7 @@ function InformeDueno({ turno, onCerrar }) {
                   <View style={s.control}>
                     <Ionicons name="alarm" size={20} color={colores.ambarOscuro} />
                     <Text style={s.controlTxt}>
-                      Próximo control: {new Date(i.proximoControl).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                      Próximo control: {formatearFecha(i.proximoControl, 'diaSemana')}
                     </Text>
                   </View>
                 ) : null}

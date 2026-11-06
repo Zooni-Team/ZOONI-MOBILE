@@ -40,6 +40,7 @@ import FechaPicker from '../components/FechaPicker';
 import SliderAmarillo from '../components/SliderAmarillo';
 import { colores } from '../theme';
 import { capitalizar } from '../utils/texto';
+import { formatearFecha } from '../utils/fechaLocal';
 
 const SEXOS = ['Macho', 'Hembra'];
 
@@ -140,7 +141,7 @@ export default function RegisterStep2Screen() {
 
   const pesoFmt = formatearPeso(peso);
   const fechaFmt = fechaNacimiento
-    ? fechaNacimiento.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
+    ? formatearFecha(fechaNacimiento, 'larga')
     : null;
 
   return (

@@ -21,21 +21,8 @@
  * abandona a la mitad no queda un perfil parcial en la base.
  */
 
-import { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -43,51 +30,15 @@ import FilterChip from './FilterChip';
 import { INTEREST_OPTIONS, GENDER_OPTIONS } from '../../data/matchDemo';
 import { guardarPerfilMatch } from '../../services/matchApi';
 import { colores } from '../../theme';
+import FechaPicker from '../FechaPicker';
+import { calcularEdadAnios } from '../../utils/calcularEdad';
+import { formatearFecha, parseFechaLocal, toISODateLocal } from '../../utils/fechaLocal';
 
 const GENEROS = GENDER_OPTIONS.filter((g) => g.key !== 'todos');
 const EDAD_MINIMA = 18;
 const MAX_INTERESES = 5;
 
 const PASOS = ['foto', 'fecha', 'genero', 'intereses'];
-
-function edadDesde(dia, mes, anio) {
-  const nacimiento = new Date(anio, mes - 1, dia);
-  const hoy = new Date();
-  let edad = hoy.getFullYear() - nacimiento.getFullYear();
-  if (hoy.getMonth() < nacimiento.getMonth()
-    || (hoy.getMonth() === nacimiento.getMonth() && hoy.getDate() < nacimiento.getDate())) {
-    edad -= 1;
-  }
-  return edad;
-}
-
-/** Va insertando las barras mientras se tipea: "20032005" -> "20/03/2005". */
-function formatearFecha(valor) {
-  const digitos = valor.replace(/\D/g, '').slice(0, 8);
-  if (digitos.length > 4) return `${digitos.slice(0, 2)}/${digitos.slice(2, 4)}/${digitos.slice(4)}`;
-  if (digitos.length > 2) return `${digitos.slice(0, 2)}/${digitos.slice(2)}`;
-  return digitos;
-}
-
-/** Parsea "DD/MM/AAAA" a { dia, mes, anio } numéricos, o null si está incompleta/mal escrita. */
-function parsearFecha(texto) {
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(texto);
-  if (!m) return null;
-  const dia = Number(m[1]);
-  const mes = Number(m[2]);
-  const anio = Number(m[3]);
-  if (mes < 1 || mes > 12 || anio < 1900) return null;
-  const fecha = new Date(anio, mes - 1, dia);
-  if (fecha.getMonth() !== mes - 1 || fecha.getDate() !== dia) return null; // ej: 31/02
-  return { dia, mes, anio };
-}
-
-/** "1998-03-20" → "20/03/1998" para prellenar el campo si ya hay fecha. */
-function isoAFecha(iso) {
-  if (!iso) return '';
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
-  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
-}
 
 export default function MatchProfileSetup({ onListo, perfilActual, onCancelar }) {
   // Si ya hay foto de perfil cargada (registro / Perfil), se usa esa directo:
@@ -96,7 +47,8 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
 
   const [paso, setPaso] = useState(0);
   const [fotoUri, setFotoUri] = useState(null);          // foto nueva elegida acá
-  const [fechaTexto, setFechaTexto] = useState(isoAFecha(perfilActual?.fechaNacimiento));
+  const [fechaNacimiento, setFechaNacimiento] = useState(() => parseFechaLocal(perfilActual?.fechaNacimiento));
+  const [verFecha, setVerFecha] = useState(false);
   const [genero, setGenero] = useState(perfilActual?.genero ?? null);
   const [intereses, setIntereses] = useState(perfilActual?.intereses ?? []);
   const [error, setError] = useState(null);
@@ -105,10 +57,7 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
   // La que se muestra en la vista previa: la nueva si eligió una, si no la ya cargada
   const fotoMostrada = fotoUri ?? fotoExistente;
 
-  const fechaParseada = useMemo(() => parsearFecha(fechaTexto), [fechaTexto]);
-  const edad = fechaParseada
-    ? edadDesde(fechaParseada.dia, fechaParseada.mes, fechaParseada.anio)
-    : null;
+  const edad = calcularEdadAnios(fechaNacimiento);
 
   const toggleInteres = (label) => {
     setError(null);
@@ -147,8 +96,7 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
       case 'foto':
         return (!fotoUri && !fotoExistente) ? 'Agregá una foto para poder continuar' : null;
       case 'fecha':
-        if (!fechaTexto) return 'Ingresá tu fecha de nacimiento';
-        if (!fechaParseada) return 'Esa fecha no existe, revisala';
+        if (!fechaNacimiento) return 'Elegí tu fecha de nacimiento';
         if (edad < EDAD_MINIMA) return `Tenés que ser mayor de ${EDAD_MINIMA} años`;
         return null;
       case 'genero':
@@ -163,9 +111,7 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
   const guardar = async () => {
     setGuardando(true);
     try {
-      const { dia, mes, anio } = fechaParseada;
-      const fechaNacimiento = `${anio}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
-      await guardarPerfilMatch({ fechaNacimiento, genero, intereses, fotoUri });
+      await guardarPerfilMatch({ fechaNacimiento: toISODateLocal(fechaNacimiento), genero, intereses, fotoUri });
       onListo();
     } catch {
       Alert.alert('Error', 'No se pudo guardar tu perfil. Revisá tu internet e intentá de nuevo.');
@@ -250,14 +196,24 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
               <Text style={s.ayuda}>
                 Solo mostramos tu edad, nunca la fecha. Tenés que ser mayor de {EDAD_MINIMA}.
               </Text>
-              <TextInput
+              <TouchableOpacity
                 style={[s.inputFecha, error && s.inputError]}
-                placeholder="DD/MM/AAAA" placeholderTextColor={colores.textoTenue}
-                value={fechaTexto}
-                onChangeText={(v) => { setFechaTexto(formatearFecha(v)); setError(null); }}
-                keyboardType="number-pad"
-                maxLength={10}
-                autoFocus
+                onPress={() => setVerFecha(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Elegir fecha de nacimiento"
+              >
+                <Text style={[s.inputFechaTxt, !fechaNacimiento && { color: colores.textoTenue }]}>
+                  {formatearFecha(fechaNacimiento, 'numericaCeros', { vacio: 'DD/MM/AAAA' })}
+                </Text>
+              </TouchableOpacity>
+              <FechaPicker
+                visible={verFecha}
+                titulo="Fecha de nacimiento"
+                valor={fechaNacimiento ?? new Date(new Date().getFullYear() - 25, 0, 1)}
+                aniosAtras={100}
+                sinFuturo
+                onConfirmar={(d) => { setFechaNacimiento(d); setVerFecha(false); setError(null); }}
+                onCancelar={() => setVerFecha(false)}
               />
               {edad != null && edad >= EDAD_MINIMA && (
                 <Text style={s.nota}>Vas a aparecer como {edad} años.</Text>
@@ -354,9 +310,9 @@ const s = StyleSheet.create({
 
   inputFecha: {
     backgroundColor: colores.blanco, borderWidth: 1.5, borderColor: 'transparent', borderRadius: 14,
-    paddingVertical: 16, paddingHorizontal: 14, textAlign: 'center',
-    fontSize: 22, fontWeight: '700', letterSpacing: 2, color: colores.texto,
+    paddingVertical: 16, paddingHorizontal: 14, alignItems: 'center',
   },
+  inputFechaTxt: { fontSize: 22, fontWeight: '700', letterSpacing: 2, color: colores.texto },
   inputError: { borderColor: colores.rojo },
 
   opcionesCol: { gap: 10 },

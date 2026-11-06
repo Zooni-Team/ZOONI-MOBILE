@@ -44,6 +44,7 @@ import { alerta } from '../../utils/dialogo';
 import AppDialog from '../../components/AppDialog';
 import { colores } from '../../theme';
 import { capitalizar } from '../../utils/texto';
+import { formatearFecha } from '../../utils/fechaLocal';
 
 const SEXOS = ['Macho', 'Hembra'];
 
@@ -226,7 +227,7 @@ export default function AltaMascotaScreen() {
   const rango   = rangoPeso(especie);
   const pesoFmt = formatearPeso(peso);
   const fechaFmt = fechaNacimiento
-    ? fechaNacimiento.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
+    ? formatearFecha(fechaNacimiento, 'larga')
     : null;
 
   // ── PASO 1: nombre + especie (mismo layout que RegisterStep1) ──
