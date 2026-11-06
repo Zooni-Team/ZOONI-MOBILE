@@ -1,105 +1,195 @@
-# Zooni — Mobile App
+# Zooni
+
+App para personas con mascotas: ficha médica (vacunas, tratamientos, consultas,
+peso), calendario de cuidados, Match entre mascotas, chat, Comunidad con mapa
+(servicios, carteles de mascotas perdidas, amigos), SOS veterinario, el
+asistente ZooniVet y dos "apps" para proveedores: **Zooni Paseadores** y
+**Zooni Negocios** (veterinarias, peluquerías y pet shops con turnos y pedidos).
 
 Proyecto escolar — Colegio ORT Argentina, 5to año Informática.
+Equipo (según el historial de commits): Ignacio Eskenazi, Lucas Dueñaz,
+Santi Dobro, Theo Valentín Trosman, Lior Tanel y Felipe Plat.
 
-## Estructura del Proyecto
+---
+
+## Arquitectura en una línea
 
 ```
-ZOONI-MOBILE/
-├── zooni-app/          ← Frontend React Native (Expo)
-│   ├── App.tsx         ← Entry point + navegación
-│   ├── src/
-│   │   ├── screens/
-│   │   │   ├── HomeScreen.tsx        ← Pantalla principal (completa)
-│   │   │   └── PlaceholderScreen.tsx ← Stub para pantallas pendientes
-│   │   ├── components/
-│   │   │   ├── HamburgerDrawer.tsx   ← Menú lateral
-│   │   │   ├── NotificationsPanel.tsx← Panel de notificaciones
-│   │   │   ├── AddButtonModal.tsx    ← Modal FAB "agregar sección"
-│   │   │   ├── NavButton.tsx         ← Botón de navegación reutilizable
-│   │   │   └── SkeletonLoader.tsx    ← Skeleton animado
-│   │   ├── services/
-│   │   │   ├── api.ts                ← Todas las llamadas al backend
-│   │   │   └── secciones.ts          ← Metadata de secciones (drawer + FABs)
-│   │   └── types/
-│   │       └── index.ts              ← Tipos TypeScript compartidos
-│   └── assets/
-│       └── home_background.png       ← Reemplazar con imagen real del equipo
-│
-└── zooni-api-temp/     ← Backend .NET 9 Web API
-    ├── Controllers/
-    │   ├── HomeController.cs         ← GET /home, GET+PUT /home/config, PATCH /mascotas/:id/activar
-    │   ├── NotificacionesController.cs← GET/PATCH notificaciones
-    │   └── AuthController.cs         ← POST /auth/login
-    ├── Services/
-    │   ├── HomeService.cs
-    │   ├── NotificacionService.cs
-    │   └── AuthService.cs
-    ├── DTOs/HomeDto.cs
-    ├── Models/HomeConfig.cs
-    ├── appsettings.json              ← Configurar connection string y JWT key
-    └── SQL_MIGRATION_HomeConfig.sql  ← Ejecutar en la BD para agregar tabla HomeConfig
+zooni-app (Expo / React Native, web + móvil)
+   │  supabase-js con la sesión de Supabase Auth (JWT)
+   ▼
+Supabase ── Postgres con RLS (quién ve qué fila)
+        ├── Auth (contraseñas con bcrypt, Google, Facebook)
+        ├── Storage (fotos; cada usuario sólo escribe en su carpeta)
+        └── Edge Functions (lo que necesita un secreto: Groq, migrar cuentas)
 ```
 
-## Setup
+No hay backend propio: la app habla directo con Supabase. Por eso **lo que
+protege los datos es la base** (políticas RLS y funciones), no la app. La
+clave pública que viaja en el bundle no protege nada sola.
 
-### Backend
+## Qué hay en cada carpeta
 
-1. Editar `zooni-api-temp/appsettings.json`:
-   - `ConnectionStrings:DefaultConnection` → tu SQL Server local
-   - `Jwt:Key` → clave secreta larga (mínimo 32 chars)
+| Carpeta | Qué es | ¿La usa la app? |
+|---|---|---|
+| `zooni-app/` | La app (Expo SDK 51, React Native 0.74, web con react-native-web). | Es la app |
+| `zooni-app/src/screens` · `components` | Pantallas y componentes. | Sí |
+| `zooni-app/src/services` | Única capa que habla con Supabase (un módulo por tema). | Sí |
+| `zooni-app/src/domain` | Reglas puras, sin base ni pantalla (hoy: paseos). Se prueban sin conexión. | Sí |
+| `zooni-app/src/utils` | Helpers compartidos (`geo.js` = la única fórmula de distancia, fechas, PDF…). | Sí |
+| `zooni-app/scripts` | Verificaciones: `verify:pdf` (ficha médica en PDF) y `verify:paseos`. | Desarrollo |
+| `zooni-app/wwwroot/img` | Ilustraciones de mascotas por especie/raza (las importa `src/constants`). | Sí |
+| `supabase/migrations` | **Esquema completo de la base**, en orden (000 → 063). Única fuente de verdad. | Sí |
+| `supabase/schema.sql` | Las migraciones juntas en un archivo (generado). | Sí |
+| `supabase/functions` | Edge Functions: `zoonivet-chat` (Groq) y `migrar-cuenta`. | Sí |
+| `supabase/tests` | Pruebas de RLS y reglas de negocio contra un Postgres local. | Desarrollo |
+| `prompts/` | Especificaciones de cada pantalla con las que se diseñó la app (las citan algunos comentarios). | Documentación |
+| `Imagenes-Figma/` | Diseños de referencia de cada pantalla. | Documentación |
+| `vercel.json` | Despliegue web en Vercel (compila `zooni-app` a `zooni-app/dist`). | Despliegue |
 
-2. Ejecutar la migración SQL:
-   ```sql
-   -- En SQL Server Management Studio, abrir y ejecutar:
-   zooni-api-temp/SQL_MIGRATION_HomeConfig.sql
-   ```
+Cómo comprobamos qué se usa: `scripts` aparte, todo módulo de `zooni-app/src`
+es alcanzable desde `App.jsx` siguiendo los `import`. Lo que no lo era (un
+backend Express sin ninguna pantalla que lo llamara, un backend .NET, un
+prototipo de Comunidad, routers de servidor dentro de la app, scripts SQL de
+MySQL y SQL Server) se borró; queda en el historial de git.
 
-3. Correr el backend:
-   ```
-   cd zooni-api-temp
-   dotnet run
-   ```
-   Corre en `http://localhost:5000`
+---
 
-### Frontend
+## Levantar el proyecto desde cero
 
-1. Instalar dependencias:
-   ```
-   cd zooni-app
-   npm install
-   ```
+### Lo que hace falta
 
-2. Reemplazar `assets/home_background.png` con la imagen real del equipo.
+- Node.js 20 o más y npm.
+- Una cuenta de [Supabase](https://supabase.com) (plan gratis alcanza).
+- La [CLI de Supabase](https://supabase.com/docs/guides/cli) para desplegar las Edge Functions.
+- Opcional: cuenta de [Groq](https://console.groq.com) (ZooniVet), de Google
+  Cloud (mapas con Places; sin ella se usa OpenStreetMap) y de Vercel (web).
+- Para probar en el teléfono: la app Expo Go.
 
-3. Ajustar `BASE_URL` en `src/services/api.ts`:
-   - Emulador Android: `http://10.0.2.2:5000/api/v1`
-   - Dispositivo físico: `http://<IP-de-tu-PC>:5000/api/v1`
+### 1. Base de datos (Supabase)
 
-4. Correr la app:
-   ```
-   npx expo start
-   ```
+1. Crear un proyecto nuevo en Supabase.
+2. **SQL Editor** → pegar `supabase/schema.sql` entero → Run.
+   Crea tablas, relaciones, índices, funciones, políticas RLS, permisos, los
+   buckets de Storage y los catálogos (roles, razas, vacunas, consejos…). Es
+   idempotente: se puede volver a correr sin romper nada.
+3. **Authentication → Providers → Email**: dejar habilitado.
+   *Confirm email*: si está activado, al registrarse Supabase manda un mail y
+   la persona tiene que confirmarlo y volver a registrarse con el mismo mail y
+   contraseña para terminar (la app lo explica). Desactivarlo simplifica las
+   pruebas, pero permite registrarse con un mail ajeno.
+4. Opcional, login con Google / Facebook: **Authentication → Providers** y
+   agregar la URL de la app en **URL Configuration → Redirect URLs**.
 
-## Endpoints Implementados
+### 2. Edge Functions
 
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| POST | `/api/v1/auth/login` | Login, devuelve JWT |
-| GET | `/api/v1/home` | Datos completos de la Home |
-| GET | `/api/v1/home/config` | Config de botones del usuario |
-| PUT | `/api/v1/home/config` | Guardar config de botones |
-| PATCH | `/api/v1/mascotas/:id/activar` | Cambiar mascota activa |
-| GET | `/api/v1/notificaciones` | Listar notificaciones |
-| PATCH | `/api/v1/notificaciones/:id/leer` | Marcar una como leída |
-| PATCH | `/api/v1/notificaciones/leer-todas` | Marcar todas como leídas |
+```bash
+supabase login
+supabase link --project-ref <ref-del-proyecto>
+supabase secrets set GROQ_API_KEY=gsk_...
+supabase functions deploy zoonivet-chat
+supabase functions deploy migrar-cuenta --no-verify-jwt
+```
 
-## Pantallas Pendientes
+Las variables de cada función están en `supabase/functions/.env.example`.
+`migrar-cuenta` se despliega sin verificación de JWT porque se llama antes de
+tener sesión (ver "Pasar a Supabase Auth").
 
-Las siguientes pantallas tienen un placeholder y deben implementarse:
-- Login / Onboarding
-- Comunidad
-- Ficha Médica
-- Mis Mascotas
-- Match
-- Planificador, Calendario, Eventos, ChatBot, Closet, Perfil, Configuración
+### 3. App
+
+```bash
+cd zooni-app
+cp .env.example .env      # completar con la URL y la clave publicable
+npm install
+npm start                 # Expo: w = web, escanear QR = Expo Go
+```
+
+`.env.example` explica cada variable y cuáles son públicas. **Ninguna clave
+secreta va en la app.**
+
+### 4. Web en Vercel
+
+`vercel.json` ya está configurado: importar el repo en Vercel y cargar las
+mismas `EXPO_PUBLIC_*` en *Settings → Environment Variables*.
+
+### Verificaciones
+
+```bash
+cd zooni-app
+npm run verify:pdf        # el PDF de la ficha médica sale completo
+npm run verify:paseos     # precios, comisión, tiempos y distancias
+```
+
+Esquema y seguridad (necesita un PostgreSQL local, no toca Supabase):
+
+```bash
+PGHOST=localhost PGUSER=postgres node supabase/scripts/probar-esquema.mjs
+```
+
+Corre todas las migraciones dos veces sobre una base vacía (desde cero e
+idempotencia) y después `supabase/tests/pruebas_rls.sql`: dos usuarios con su
+JWT comprueban, entre otras cosas, que uno no puede leer la ficha médica del
+otro, que un pedido con total inventado se recalcula, que el último producto
+no se vende dos veces y que dos turnos no se superponen.
+
+---
+
+## La base de datos
+
+- **Un solo motor**: PostgreSQL (Supabase). Los scripts viejos de MySQL y SQL
+  Server se quitaron.
+- **Orden**: el del nombre de archivo en `supabase/migrations`. Para cambiar la
+  base se agrega una migración nueva (idempotente: `IF NOT EXISTS`,
+  `CREATE OR REPLACE`, `ON CONFLICT`) y se regenera `schema.sql` con
+  `node supabase/scripts/armar-esquema.mjs`. Nada se cambia "a mano en el
+  dashboard": si se hace, se escribe la migración.
+- Migraciones clave:
+  - `060_auth_supabase.sql` — la identidad es el JWT de Supabase Auth;
+    `usuario_actual()` lo traduce a `Id_User`.
+  - `061_rls_por_usuario.sql` — todas las políticas. Datos de salud: sólo el
+    dueño de la mascota. `User`: sólo la fila propia; de los demás, la vista
+    `perfil_publico` (sin mail, edad en vez de fecha de nacimiento, ubicación
+    a ~1 km, teléfono sólo con un paseo/turno/pedido en común).
+  - `062_reglas_negocio.sql` — precios, totales, stock, turnos, transiciones de
+    paseos y Match se deciden en la base, en la misma transacción que la
+    escritura.
+  - `063_storage.sql` — buckets con límite de tamaño y tipos; cada usuario
+    escribe sólo en su carpeta.
+- Al borrar una mascota la app hace **borrado lógico** (`Estado`,
+  `EliminadaEn`), así que hoy no se borra ninguna fila hija. Pero si alguien
+  borrara la fila de verdad, las relaciones no son parejas:
+  `eventos_calendario`, `historial_peso` y `consultas_veterinarias` tienen
+  `ON DELETE CASCADE`; `MascotaVacuna`, `Tratamiento`, `HistorialEvento`,
+  `Voto` y `Match` no (el borrado falla). Falta decidir una regla única.
+
+## Pasar a Supabase Auth (cuentas existentes)
+
+Antes, la app mandaba `sha256(contraseña)` y guardaba el número de usuario en el
+dispositivo como "prueba" de identidad. Ahora el login es
+`supabase.auth.signInWithPassword` y cada consulta lleva un JWT.
+
+Las cuentas viejas no tienen que hacer nada: la primera vez que entran, si
+Supabase Auth no las conoce, la app llama a `migrar-cuenta`, que comprueba la
+contraseña contra el hash viejo, crea el usuario de Auth con esa misma
+contraseña (bcrypt) y borra el hash viejo.
+
+**Orden para aplicarlo en el proyecto que ya existe:**
+
+1. Desplegar las Edge Functions (paso 2 de arriba).
+2. Correr en el SQL Editor, en orden: `054`, `060`, `061`, `062`, `063`.
+3. Desplegar la app.
+4. Cuando todas las cuentas hayan entrado una vez (`select count(*) from user_credentials` = 0),
+   borrar `zooni-app/src/services/authLegado.js` y su uso en `authApi.js`, y el
+   respaldo de `perfilesPublicos.js` (`consultaRespaldo`).
+
+Mientras `migrar-cuenta` no esté desplegada, la app entra con el login viejo
+(`authLegado.js`, sin guardar la sesión). Después de la `061` ese camino deja
+de funcionar a propósito.
+
+## Pendientes conocidos
+
+- Las imágenes de consultas veterinarias están en el bucket público: deberían
+  ir a un bucket privado con URLs firmadas.
+- Los chats se actualizan consultando cada tanto; Supabase Realtime evitaría
+  ese trabajo repetido.
+- `zoonivet-chat` no tiene límite de mensajes por usuario (sólo el de Groq).

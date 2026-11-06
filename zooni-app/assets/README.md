@@ -7,9 +7,7 @@ Las imágenes que subís quedan guardadas **acá**, en esta carpeta:
 | `home_background.png` | Fondo del hero (paisaje verde / bosque) |
 | `perro_basico.png` | Ilustración de la mascota (PNG transparente) |
 
-Ruta completa en tu PC:
-
-`C:\Users\49374119\Downloads\ZOONI-MOBILE\zooni-app\assets\`
+Ruta: `zooni-app/assets/` (dentro del repo).
 
 El código las importa desde `src/constants/homeAssets.js`.
 
