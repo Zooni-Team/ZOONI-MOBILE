@@ -1,5 +1,5 @@
 /**
- * theme.js — Tema de la app (Configuración › Tema de la aplicación)
+ * ThemeProvider.js — Tema de la app (Configuración › Tema de la aplicación)
  *
  * Preferencias de DISPOSITIVO (viven en settingsStore, no sincronizan).
  * Lo que se aplica de verdad hoy:

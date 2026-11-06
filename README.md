@@ -12,6 +12,11 @@ Santi Dobro, Theo Valentín Trosman, Lior Tanel y Felipe Plat.
 
 ---
 
+> **¿Vas a tocar el código?** Empezá por [`CLAUDE.md`](CLAUDE.md) (reglas) y
+> [`docs/claude/`](docs/claude/README.md): arquitectura, convenciones, estilos,
+> catálogo de componentes y utilidades, servicios, base de datos, seguridad,
+> flujos, testing y deuda conocida.
+
 ## Arquitectura en una línea
 
 ```
@@ -36,11 +41,16 @@ clave pública que viaja en el bundle no protege nada sola.
 | `zooni-app/src/screens` · `components` | Pantallas y componentes. | Sí |
 | `zooni-app/src/services` | Única capa que habla con Supabase (un módulo por tema). | Sí |
 | `zooni-app/src/domain` | Reglas puras, sin base ni pantalla (hoy: paseos). Se prueban sin conexión. | Sí |
-| `zooni-app/src/utils` | Helpers compartidos (`geo.js` = la única fórmula de distancia, fechas, PDF…). | Sí |
+| `zooni-app/src/utils` | Helpers compartidos: fechas, edades, texto, validación, distancias, PDF ([catálogo](docs/claude/utilidades.md)). | Sí |
+| `zooni-app/src/theme` | Sistema de diseño: paleta única, sombras, tamaño de texto ([estilos](docs/claude/estilos.md)). | Sí |
+| `zooni-app/src/components/ui` | Componentes genéricos (Toast, Skeleton) ([catálogo](docs/claude/componentes.md)). | Sí |
+| `zooni-app/tests` | Tests con `node:test` y dobles de Supabase / React Native. | Desarrollo |
 | `zooni-app/scripts` | Verificaciones: `verify:pdf` (ficha médica en PDF) y `verify:paseos`. | Desarrollo |
 | `zooni-app/wwwroot/img` | Ilustraciones de mascotas por especie/raza (las importa `src/constants`). | Sí |
 | `supabase/migrations` | **Esquema completo de la base**, en orden (000 → 063). Única fuente de verdad. | Sí |
-| `supabase/schema.sql` | Las migraciones juntas en un archivo (generado). | Sí |
+| `supabase/schema.sql` | Las migraciones juntas para un proyecto vacío (generado). | Sí |
+| `supabase/APLICAR_EN_SUPABASE.sql` | Paquete para el proyecto que ya existe: `051`–`063` en una transacción, con chequeo de prerrequisitos (generado). | Sí |
+| `CLAUDE.md` · `docs/claude/` | Documentación para el equipo y para Claude. | Documentación |
 | `supabase/functions` | Edge Functions: `zoonivet-chat` (Groq) y `migrar-cuenta`. | Sí |
 | `supabase/tests` | Pruebas de RLS y reglas de negocio contra un Postgres local. | Desarrollo |
 | `prompts/` | Especificaciones de cada pantalla con las que se diseñó la app (las citan algunos comentarios). | Documentación |
@@ -116,8 +126,8 @@ mismas `EXPO_PUBLIC_*` en *Settings → Environment Variables*.
 
 ```bash
 cd zooni-app
-npm run verify:pdf        # el PDF de la ficha médica sale completo
-npm run verify:paseos     # precios, comisión, tiempos y distancias
+npm run lint              # ESLint: 0 errores
+npm test                  # tests de utilidades y servicios + verify:pdf + verify:paseos
 ```
 
 Esquema y seguridad (necesita un PostgreSQL local, no toca Supabase):
@@ -176,7 +186,9 @@ contraseña (bcrypt) y borra el hash viejo.
 **Orden para aplicarlo en el proyecto que ya existe:**
 
 1. Desplegar las Edge Functions (paso 2 de arriba).
-2. Correr en el SQL Editor, en orden: `054`, `060`, `061`, `062`, `063`.
+2. Pegar **`supabase/APLICAR_EN_SUPABASE.sql`** entero en el SQL Editor → Run.
+   Corre en una sola transacción, verifica primero que la base tenga las
+   migraciones anteriores y se puede volver a correr.
 3. Desplegar la app.
 4. Cuando todas las cuentas hayan entrado una vez (`select count(*) from user_credentials` = 0),
    borrar `zooni-app/src/services/authLegado.js` y su uso en `authApi.js`, y el
