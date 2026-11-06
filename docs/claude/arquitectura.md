@@ -47,8 +47,8 @@ utils/  ·  domain/  ·  constants/                    lógica pura → utilidad
 | Carpeta | Qué es |
 |---|---|
 | `zooni-app/` | La app. `src/` (código), `tests/`, `scripts/` (verificaciones), `wwwroot/img` (ilustraciones) |
-| `supabase/migrations/` | Esquema completo, en orden. Única fuente de verdad de la base |
+| `supabase/SUPABASE_PEGAR_TODO.sql` | Esquema completo, en orden. Única fuente de verdad de la base |
 | `supabase/functions/` | Edge Functions: `zoonivet-chat`, `migrar-cuenta` |
-| `supabase/scripts/` · `tests/` | Armar `schema.sql`, el paquete para Supabase y probar todo en Postgres local |
+| `supabase/scripts/` · `tests/` | Probar el SQL completo en Postgres local (`probar-esquema.mjs`, `pruebas_rls.sql`) |
 | `docs/claude/` | Esta documentación |
 | `prompts/` · `Imagenes-Figma/` | Especificaciones y diseños originales de cada pantalla |

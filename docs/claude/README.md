@@ -10,7 +10,7 @@ conectados: cada uno dice de qué depende y quién lo usa.
            /    |    \       |    \       |
      estilos componentes utilidades seguridad
            \    |    /       |        /
-            testing ——— flujos ———— pendientes
+            testing ——— flujos ———— faltaporhacer
 ```
 
 | Documento | De qué trata |
@@ -25,4 +25,4 @@ conectados: cada uno dice de qué depende y quién lo usa.
 | [seguridad.md](seguridad.md) | Auth, RLS, secretos, Storage |
 | [flujos.md](flujos.md) | Recorridos completos (login, registro, pedido, turno, paseo, match, ZooniVet) |
 | [testing.md](testing.md) | Cómo se prueba y cómo agregar tests |
-| [pendientes.md](pendientes.md) | Deuda técnica conocida, con archivos |
+| [faltaporhacer.md](../../faltaporhacer.md) | Deuda técnica conocida, con archivos |

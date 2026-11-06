@@ -37,5 +37,5 @@ usar en dos lugares, va al módulo central desde el primer día.
 
 ## Calidad
 - `npm run lint`: **0 errores**. Quedan 7 avisos de dependencias de hooks
-  documentados en [pendientes.md](pendientes.md).
+  documentados en [faltaporhacer.md](../../faltaporhacer.md).
 - `npm test` en verde antes de commitear.

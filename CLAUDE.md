@@ -22,7 +22,7 @@ los que dependen de él.
 | Login, permisos, secretos, archivos | [seguridad.md](docs/claude/seguridad.md) |
 | Seguir un flujo de punta a punta (pedido, paseo, match…) | [flujos.md](docs/claude/flujos.md) |
 | Probar lo que hiciste | [testing.md](docs/claude/testing.md) |
-| Saber qué deuda conocida queda | [pendientes.md](docs/claude/pendientes.md) |
+| Saber qué deuda conocida queda | [faltaporhacer.md](faltaporhacer.md) |
 
 ## Las 10 reglas
 
@@ -33,7 +33,7 @@ los que dependen de él.
 2. **Sólo `src/services/*` habla con Supabase.** Las pantallas llaman servicios.
 3. **La base decide lo que importa.** Identidad (JWT), permisos (RLS), precios,
    totales, stock y transiciones de estado se validan en Postgres
-   (`supabase/migrations/060`–`063`). La app valida para avisar rápido, nunca
+   (`supabase/SUPABASE_PEGAR_TODO.sql`, secciones 060–063). La app valida para avisar rápido, nunca
    como garantía.
 4. **Nada de colores hex sueltos** si el color está en la paleta: `colores.verde`.
 5. **Nada de `new Date('YYYY-MM-DD')`**: corre el día en Argentina. Usá
@@ -46,7 +46,7 @@ los que dependen de él.
 9. **Comentarios que explican el porqué**, y que sigan siendo verdad. Si cambiás
    el comportamiento, actualizá el comentario y el doc.
 10. **Antes de commitear:** `cd zooni-app && npm run lint && npm test`. Si tocaste
-    la base: `node supabase/scripts/probar-esquema.mjs` y regenerar los `.sql`.
+    la base: `node supabase/scripts/probar-esquema.mjs`.
 
 ## Comandos
 
@@ -59,6 +59,4 @@ npm test                  # tests + verify:pdf + verify:paseos
 
 ```bash
 node supabase/scripts/probar-esquema.mjs          # esquema desde cero + RLS (Postgres local)
-node supabase/scripts/armar-esquema.mjs           # regenera supabase/schema.sql
-node supabase/scripts/armar-paquete-supabase.mjs  # regenera supabase/APLICAR_EN_SUPABASE.sql
 ```

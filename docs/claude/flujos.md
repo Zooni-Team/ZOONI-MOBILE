@@ -52,4 +52,4 @@ filtra la salida. Si la función no está: `SERVICIO_NO_DISPONIBLE`.
 
 ## Chats
 Se actualizan consultando cada `INTERVALO_CHAT_MS` (4 s) con la pantalla abierta
-(`constants/intervalos.js`). Pasar a Supabase Realtime está en [pendientes](pendientes.md).
+(`constants/intervalos.js`). Pasar a Supabase Realtime está en [faltaporhacer](../../faltaporhacer.md).

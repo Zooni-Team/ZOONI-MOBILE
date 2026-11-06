@@ -9,7 +9,7 @@
  * Lo que protege los datos es la combinación de:
  *   · la sesión de Supabase Auth: tras el login, cada consulta viaja con un JWT
  *     firmado por Supabase (no con un id que diga la app), y
- *   · las políticas de Row Level Security (supabase/migrations/061_rls_por_usuario.sql),
+ *   · las políticas de Row Level Security (supabase/SUPABASE_PEGAR_TODO.sql (sección 061)),
  *     que deciden fila por fila con usuario_actual(), sacado de ese JWT.
  *
  * La sesión se guarda en localStorage (web) o en SecureStore (nativo) y se

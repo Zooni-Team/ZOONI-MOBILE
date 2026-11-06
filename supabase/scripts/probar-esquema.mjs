@@ -2,8 +2,7 @@
 // probar-esquema.mjs — ¿El esquema se puede reconstruir desde cero?
 //
 // Crea una base vacía en un Postgres LOCAL, carga tests/shim_supabase.sql (lo
-// mínimo de Supabase: roles, auth.uid(), storage) y corre todas las
-// migraciones en orden. Después las corre OTRA VEZ: si la segunda pasada falla,
+// mínimo de Supabase: roles, auth.uid(), storage) y corre SUPABASE_PEGAR_TODO.sql. Después las corre OTRA VEZ: si la segunda pasada falla,
 // alguna migración no es idempotente. Sale con código != 0 ante cualquier error.
 //
 // Uso:
@@ -14,7 +13,10 @@
 
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { DIR_MIGRACIONES, DIR_SUPABASE, listarMigraciones } from './migraciones.mjs';
+import { fileURLToPath } from 'node:url';
+
+const DIR_SUPABASE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const TODO = path.join(DIR_SUPABASE, 'SUPABASE_PEGAR_TODO.sql');
 
 const PSQL = process.env.PSQL ?? 'psql';
 const BASE = process.env.ZOONI_BASE_PRUEBA ?? 'zooni_prueba';
@@ -43,10 +45,9 @@ if (!creada.ok) {
 
 correrArchivo(path.join(DIR_SUPABASE, 'tests', 'shim_supabase.sql'));
 
-const migraciones = listarMigraciones();
 for (const pasada of [1, 2]) {
-  for (const m of migraciones) correrArchivo(path.join(DIR_MIGRACIONES, m));
-  console.log(`✓ pasada ${pasada}: ${migraciones.length} migraciones sin errores`);
+  correrArchivo(TODO);
+  console.log(`✓ pasada ${pasada}: SUPABASE_PEGAR_TODO.sql sin errores`);
 }
 
 const pruebas = path.join(DIR_SUPABASE, 'tests', 'pruebas_rls.sql');

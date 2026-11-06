@@ -3,7 +3,7 @@
  *
  * Son para AVISAR rápido en la pantalla. La garantía la da el servidor:
  * Supabase Auth valida la contraseña y la base el mail único
- * (supabase/migrations/053_mail_unico.sql).
+ * (supabase/SUPABASE_PEGAR_TODO.sql (sección 053)).
  */
 
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

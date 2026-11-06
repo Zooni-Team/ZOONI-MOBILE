@@ -34,7 +34,7 @@ export async function fetchMisTurnos() {
 | `comun.js` | `errorApp`, `errorBase`, `esEsquemaFaltante`, `esFuncionInexistente`, `esSinPermiso`, `notificar`, `resumir` |
 | `perfilesPublicos.js` | Lectura de otras personas vía la vista `perfil_publico` |
 | `authApi.js` | Login (`iniciarSesionConPassword`, `login`), registro (`crearCuentaConPassword`, `registro`), disponibilidad de mail/usuario, razas |
-| `authLegado.js` | **Transición**: login viejo si `migrar-cuenta` no está desplegada. Borrar después ([pendientes](pendientes.md)) |
+| `authLegado.js` | **Transición**: login viejo si `migrar-cuenta` no está desplegada. Borrar después ([faltaporhacer](../../faltaporhacer.md)) |
 | `socialAuthApi.js` | Google / Facebook (OAuth con PKCE) |
 | `api.js` | Home: usuario, mascota activa, notificaciones, configuración de botones |
 | `petsApi.js` | Mascotas: alta, edición, archivo, borrado lógico, fotos |

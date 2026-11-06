@@ -52,5 +52,5 @@ prop. Si creás uno que se va a usar en más de una pantalla, va a `components/u
 
 ## Elegir fotos
 Hoy cada pantalla llama a `expo-image-picker` por su cuenta (permiso + galería o
-cámara). Unificarlo en un helper es deuda conocida: ver [pendientes.md](pendientes.md).
+cámara). Unificarlo en un helper es deuda conocida: ver [faltaporhacer.md](../../faltaporhacer.md).
 Para **subir** la foto elegida: `utils/imagenStorage.subirImagenPublica(uri, carpeta)`.

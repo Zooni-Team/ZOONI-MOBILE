@@ -1,10 +1,25 @@
 -- =============================================================================
--- schema.sql — GENERADO por supabase/scripts/armar-esquema.mjs. NO EDITAR.
--- Esquema completo de Zooni para un proyecto Supabase vacío. Idempotente.
--- Fuente: supabase/migrations/ (en este mismo orden).
+-- SUPABASE_PEGAR_TODO.sql — ÚNICO archivo SQL de Zooni.
+-- Pegar ENTERO en Supabase → SQL Editor → Run. Una sola vez alcanza.
+-- =============================================================================
+-- Contiene TODA la base: tablas, relaciones, índices, funciones, triggers,
+-- políticas RLS, permisos, buckets de Storage y catálogos (secciones 000 → 063).
+-- · Sirve para un proyecto VACÍO y para el proyecto que YA tiene datos: todo es
+--   idempotente (IF NOT EXISTS / CREATE OR REPLACE / ON CONFLICT) y no borra
+--   datos de usuarios.
+-- · Corre en UNA transacción: si algo falla, no queda nada a medias.
+-- · Reemplaza TODAS las políticas RLS y de Storage por las de 061/063.
+--
+-- ANTES de correrlo (si no, las cuentas viejas no pueden entrar):
+--   supabase functions deploy migrar-cuenta --no-verify-jwt
+--   supabase secrets set GROQ_API_KEY=...
+--   supabase functions deploy zoonivet-chat
+-- Descripción de la base: docs/claude/base-de-datos.md
 -- =============================================================================
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 000_base.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+BEGIN;
+
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 000_base <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- 000_base.sql — Tablas originales de Zooni (PostgreSQL / Supabase).
 -- Primer archivo del esquema: crea las tablas núcleo que las migraciones
 -- siguientes amplían. Idempotente (IF NOT EXISTS / ON CONFLICT).
@@ -191,7 +206,7 @@ CREATE INDEX IF NOT EXISTS "IX_Match_MascotaDos" ON "Match"("idMascotaDos");
 CREATE INDEX IF NOT EXISTS "IX_Mensaje_Match" ON "Mensaje"("idMatch","fecha");
 CREATE INDEX IF NOT EXISTS "IX_Voto_Destino" ON "Voto"("idMascotaDestino");
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 010_supabase_live_setup.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 010_supabase_live_setup <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 010: Puesta en marcha real de Supabase para Zooni
 -- =============================================================================
@@ -630,7 +645,7 @@ WHERE NOT EXISTS (SELECT 1 FROM servicios LIMIT 1);
 -- el estado final: 060_auth_supabase.sql y 061_rls_por_usuario.sql lo vuelven a
 -- activar con políticas basadas en auth.uid().
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 011_mensajes_servicios.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 011_mensajes_servicios <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 011: Chat con servicios (veterinarias, paseadores, etc.)
 -- =============================================================================
@@ -658,7 +673,7 @@ BEGIN
   END IF;
 END $$;
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 012_sugerencias_por_perfil.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 012_sugerencias_por_perfil <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 012: Sugerencias de Vacunas/Tratamientos/Consejos según el perfil
 -- de la mascota (raza, edad, peso) — no solo por especie.
@@ -749,7 +764,7 @@ SELECT * FROM (VALUES
 ) AS v(especie, categoria, contenido, razas)
 WHERE NOT EXISTS (SELECT 1 FROM consejos_catalogo WHERE contenido = v.contenido AND especie = v.especie);
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 013_catalogo_especies_faltantes.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 013_catalogo_especies_faltantes <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 013: Vacunas/Tratamientos/Consejos para las especies que todavía
 -- no tenían NINGÚN contenido cargado (conejo, ave, reptil, pez, hamster, ratón).
@@ -828,7 +843,7 @@ SELECT * FROM (VALUES
 ) AS v(especie, categoria, contenido)
 WHERE NOT EXISTS (SELECT 1 FROM consejos_catalogo WHERE contenido = v.contenido AND especie = v.especie);
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 014_avatares_por_raza.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 014_avatares_por_raza <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 014: Avatares específicos por raza (empezando por Mestizo)
 -- =============================================================================
@@ -848,7 +863,7 @@ SELECT * FROM (VALUES
 ) AS v(especie, asset_name, nombre, orden, razas)
 WHERE NOT EXISTS (SELECT 1 FROM avatares_catalogo WHERE asset_name = v.asset_name);
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 015_perfil_social.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 015_perfil_social <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 015: Perfil social — @usuario y bio
 -- =============================================================================
@@ -861,7 +876,7 @@ WHERE NOT EXISTS (SELECT 1 FROM avatares_catalogo WHERE asset_name = v.asset_nam
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "NombreUsuario" VARCHAR(30);
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "Bio" VARCHAR(150);
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 016_historial_peso_y_consultas.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 016_historial_peso_y_consultas <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 016: Historial de peso + Consultas veterinarias
 -- Base de datos: Postgres (Supabase) — correr en el SQL Editor. Idempotente.
@@ -902,7 +917,7 @@ SELECT "Id_Mascota", "Peso" FROM "Mascota"
 WHERE "Peso" IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM historial_peso LIMIT 1);
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 017_ampliar_catalogo_razas.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 017_ampliar_catalogo_razas <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 017: Ampliar catálogo de razas al set completo de ZOONI-MVC
 -- =============================================================================
@@ -986,7 +1001,7 @@ WHERE NOT EXISTS (
   SELECT 1 FROM razas WHERE razas.especie = v.especie AND razas.nombre = v.nombre
 );
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 018_sos_veterinario.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 018_sos_veterinario <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 018: S.O.S Veterinario (Instruction-SOS, Rama B adaptada)
 -- Base de datos: Postgres (Supabase) — correr en el SQL Editor. Idempotente.
@@ -1131,7 +1146,7 @@ SELECT * FROM (VALUES
 ) AS v(name, phone, address, neighborhood, city, lat, lng, specialties, services, is_24h, emergency_service, opening_hours, rating_avg, rating_count, is_verified)
 WHERE NOT EXISTS (SELECT 1 FROM veterinary_clinics LIMIT 1);
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 019_configuracion.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 019_configuracion <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- ============================================================================
 -- 019_configuracion.sql — Esquema de Configuración (Instruction-Configuracion §4)
 --
@@ -1290,7 +1305,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 --   FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 -- ============================================================================
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 020_mis_mascotas.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 020_mis_mascotas <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- ============================================================================
 -- 020_mis_mascotas.sql — Ciclo de vida de mascotas (Instruction-MisMascotas §7)
 --
@@ -1356,7 +1371,7 @@ CREATE INDEX IF NOT EXISTS idx_estado_historial_mascota
 
 ALTER TABLE mascota_estado_historial DISABLE ROW LEVEL SECURITY;
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 021_seguridad.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 021_seguridad <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- ============================================================================
 -- 021_seguridad.sql — Endurecimiento de seguridad (ejecutar completo en
 -- Supabase → SQL Editor). Idempotente: se puede correr más de una vez.
@@ -1659,7 +1674,7 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 --   auth.uid() = auth_id en todas las tablas con datos personales.
 -- ============================================================================
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 022_fix_historial.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 022_fix_historial <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- ============================================================================
 -- 022_fix_historial.sql — Arregla el 401 al insertar en mascota_estado_historial
 --
@@ -1684,7 +1699,7 @@ BEGIN
   END IF;
 END $$;
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 023_notificaciones_mascota.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 023_notificaciones_mascota <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- ============================================================================
 -- 023_notificaciones_mascota.sql — Notificaciones ligadas a una mascota
 --
@@ -1699,7 +1714,7 @@ ALTER TABLE "Notificacion" ADD COLUMN IF NOT EXISTS "Id_Mascota" INTEGER;
 CREATE INDEX IF NOT EXISTS idx_notificacion_mascota
   ON "Notificacion" ("Id_Mascota");
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 023b_perfil_match_mascota.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 023b_perfil_match_mascota <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- ============================================================================
 -- 023_perfil_match_mascota.sql — Perfil de Match POR MASCOTA
 --
@@ -1724,7 +1739,7 @@ WHERE "PerfilMatchCreado" = FALSE
     OR "Id_Mascota" IN (SELECT "idMascotaDos" FROM "Match")
   );
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 024_notificaciones_deeplink.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 024_notificaciones_deeplink <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- ============================================================================
 -- 024_notificaciones_deeplink.sql — Datos de navegación en las notificaciones
 --
@@ -1736,7 +1751,7 @@ WHERE "PerfilMatchCreado" = FALSE
 
 ALTER TABLE "Notificacion" ADD COLUMN IF NOT EXISTS "DataExtra" JSONB;
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 025_username_cooldown.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 025_username_cooldown <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- ============================================================================
 -- 025_username_cooldown.sql — Bloqueo de cambio de @usuario por 30 días
 --
@@ -1752,7 +1767,7 @@ ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "NombreUsuarioCambiadoEn" TIMESTAMPT
 CREATE UNIQUE INDEX IF NOT EXISTS idx_user_nombreusuario
   ON "User" (lower("NombreUsuario")) WHERE "NombreUsuario" IS NOT NULL;
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 027_publicaciones.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 027_publicaciones <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- ============================================================================
 -- 027_publicaciones.sql — Borrado lógico de publicaciones del perfil
 --
@@ -1768,7 +1783,7 @@ ALTER TABLE "Publicacion" ADD COLUMN IF NOT EXISTS "Activo" BOOLEAN NOT NULL DEF
 CREATE INDEX IF NOT EXISTS idx_publicacion_user_activo
   ON "Publicacion" ("Id_User", "Activo");
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 028_mascota_fotos.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 028_mascota_fotos <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- ============================================================================
 -- 028_mascota_fotos.sql — Galería de fotos por mascota (varias fotos en Match)
 --
@@ -1795,7 +1810,7 @@ ALTER TABLE mascota_fotos DISABLE ROW LEVEL SECURITY;
 GRANT SELECT, INSERT, UPDATE, DELETE ON mascota_fotos TO anon, authenticated;
 GRANT USAGE, SELECT ON SEQUENCE mascota_fotos_id_seq TO anon, authenticated;
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 029_bloqueos_reportes.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 029_bloqueos_reportes <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- ============================================================================
 -- 029_bloqueos_reportes.sql — Bloquear y reportar usuarios (Match / Comunidad)
 --
@@ -1834,7 +1849,7 @@ GRANT INSERT ON reportes TO anon, authenticated;
 GRANT USAGE, SELECT ON SEQUENCE usuarios_bloqueados_id_seq TO anon, authenticated;
 GRANT USAGE, SELECT ON SEQUENCE reportes_id_seq TO anon, authenticated;
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 030_consultas_rls_e_imagen.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 030_consultas_rls_e_imagen <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 030: Arreglar consultas_veterinarias (insertar) + adjuntar imagen
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -1873,7 +1888,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON consultas_veterinarias TO anon;
 --       SELECT column_name FROM information_schema.columns
 --       WHERE table_name = 'consultas_veterinarias' AND column_name = 'imagen_url';     -- 1 fila
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 031_eventos_calendario_unico.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 031_eventos_calendario_unico <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 031: eventos_calendario — columnas de origen + índice único
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -1941,7 +1956,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON eventos_calendario TO anon;
 --       FROM eventos_calendario WHERE origen = 'eventos'
 --       GROUP BY 1, 2 HAVING COUNT(*) > 1;
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 032_mostrar_foto_mascota.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 032_mostrar_foto_mascota <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 032: Mascota.MostrarFoto — elegir entre la foto real y el avatar
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -1978,7 +1993,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON "Mascota" TO anon;
 --   · ¿Alguna mascota quedó sin valor? (debe devolver 0)
 --       SELECT COUNT(*) FROM "Mascota" WHERE "MostrarFoto" IS NULL;
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 033_calendario_vacunas_real.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 033_calendario_vacunas_real <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 033: calendario de vacunación realista (por edad)
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -2134,7 +2149,7 @@ WHERE "Especie" = 'ave' AND "Nombre" = 'Polyomavirus aviar';
 --         AND ("EdadMinMeses" IS NULL OR "EdadMinMeses" <= 36)
 --         AND ("EdadMaxMeses" IS NULL OR "EdadMaxMeses" >= 36);
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 034_timestamps_con_zona.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 034_timestamps_con_zona <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 034: timestamps con zona horaria (arregla el desfasaje de 3 horas)
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -2220,7 +2235,7 @@ ALTER TABLE eventos
 --       SELECT titulo, fecha_hora AT TIME ZONE 'America/Argentina/Buenos_Aires'
 --       FROM eventos ORDER BY fecha_hora;
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 035_paseadores.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 035_paseadores <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 035: Zooni Paseadores
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -2545,7 +2560,7 @@ GRANT EXECUTE ON FUNCTION aceptar_solicitud_paseo(INTEGER, INTEGER) TO anon;
 --   FROM "Mascota" m WHERE m."Id_Mascota" = 1;
 -- =============================================================================
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 036_paseador_zona_y_roles.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 036_paseador_zona_y_roles <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 036: zona de atención en el mapa + cuentas con rol sin perfil
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -2621,7 +2636,7 @@ END $$;
 
 GRANT EXECUTE ON FUNCTION completar_perfil_paseador(INTEGER, JSONB) TO anon;
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 037_lineas_emergencia_reales.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 037_lineas_emergencia_reales <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 037: líneas de emergencia REALES en S.O.S Veterinario
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -2669,7 +2684,7 @@ INSERT INTO emergency_lines (country_code, label, phone, kind, priority, schedul
 SELECT 'AR', 'Zoonosis y rabia (Inst. Pasteur)', '011 4958-9900', 'zoonosis', 2, 'Todos los días 8 a 18 h · CABA'
 WHERE NOT EXISTS (SELECT 1 FROM emergency_lines WHERE kind = 'zoonosis' AND country_code = 'AR');
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 038_paseadores_permisos.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 038_paseadores_permisos <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 038: permisos de las tablas de Zooni Paseadores
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -2736,7 +2751,7 @@ NOTIFY pgrst, 'reload schema';
 --   -- relrowsecurity tiene que dar false en las tres
 -- =============================================================================
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 039_paseador_genero_nacimiento.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 039_paseador_genero_nacimiento <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 039: género y fecha de nacimiento en el alta de paseador
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -2811,7 +2826,7 @@ NOTIFY pgrst, 'reload schema';
 --   SELECT "Id_User", "Genero", "FechaNacimiento" FROM "User"
 --   WHERE "Id_User" IN (SELECT id_user FROM paseador_perfil) ORDER BY 1 DESC LIMIT 5;
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 040_paseador_servicios.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 040_paseador_servicios <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 040: tiempos de paseo configurables por el paseador
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -2930,7 +2945,7 @@ NOTIFY pgrst, 'reload schema';
 -- Verificación:
 --   SELECT id_user, servicios, precio_30, precio_60 FROM paseador_perfil;
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 041_paseador_sin_tope_perros.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 041_paseador_sin_tope_perros <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 041: sin tope de perros por paseo
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -2945,7 +2960,7 @@ ALTER TABLE paseador_perfil ADD CONSTRAINT paseador_perros_ok CHECK (max_perros 
 
 NOTIFY pgrst, 'reload schema';
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 042_resenas_paseador.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 042_resenas_paseador <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 042: reseñas de paseadores "estilo Google Maps"
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -3014,7 +3029,7 @@ NOTIFY pgrst, 'reload schema';
 --   FROM "Paseo" WHERE "Rating" IS NOT NULL ORDER BY "ResenaFecha" DESC NULLS LAST LIMIT 5;
 --   SELECT id, public, file_size_limit FROM storage.buckets WHERE id = 'resenas';
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 043_login_social.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 043_login_social <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 043: entrar / registrarse con Google, Facebook y Apple
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -3245,7 +3260,7 @@ GRANT EXECUTE ON FUNCTION activar_paseador_social(JSONB) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 044_paseador_pagos.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 044_paseador_pagos <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 044: Pagos — cuenta corriente del paseador con cada dueño
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -3305,7 +3320,7 @@ NOTIFY pgrst, 'reload schema';
 -- Verificación:
 --   SELECT id_dueno, sum(monto) FROM paseo_pagos GROUP BY id_dueno;
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 045_paseo_cobro_proporcional.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 045_paseo_cobro_proporcional <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 045: Cobro proporcional al tiempo, comisión Zooni y cobro por período
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -3364,7 +3379,7 @@ NOTIFY pgrst, 'reload schema';
 --   SELECT "Id_Paseo", "PrecioPactado", "Precio", "Comision" FROM "Paseo" WHERE "Estado" = 'finalizado';
 --   SELECT * FROM paseo_cuenta_config;
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 046_negocios.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 046_negocios <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 046: Zooni Negocios — veterinarias, peluquerías y pet shops
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -3670,7 +3685,7 @@ NOTIFY pgrst, 'reload schema';
 --   SELECT * FROM negocio_turnos ORDER BY fecha DESC LIMIT 10;
 --   SELECT * FROM negocio_pedidos ORDER BY creado_en DESC LIMIT 10;
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 047_pagos_permisos_y_cobro_por_segundo.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 047_pagos_permisos_y_cobro_por_segundo <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 047: permisos de la cuenta corriente y cobro por segundo
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -3728,7 +3743,7 @@ NOTIFY pgrst, 'reload schema';
 --   SELECT "Id_Paseo", "SegundosAcumulados", "DuracionMin", "PrecioPactado", "Precio"
 --     FROM "Paseo" WHERE "Estado" = 'finalizado' ORDER BY "Id_Paseo" DESC LIMIT 10;
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 048_opiniones_paseador.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 048_opiniones_paseador <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 048: opiniones de un paseador sin paseo de por medio
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -3769,7 +3784,7 @@ NOTIFY pgrst, 'reload schema';
 -- Verificación:
 --   SELECT id, id_walker, id_autor, rating, resena, fecha FROM paseador_opiniones ORDER BY fecha DESC LIMIT 5;
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 049_negocios_permisos.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 049_negocios_permisos <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 049: permisos de las tablas de Zooni Negocios
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -3839,7 +3854,7 @@ NOTIFY pgrst, 'reload schema';
 --     WHERE lower(u."Mail") = 'tu@mail.com';
 -- =============================================================================
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 050_opiniones_permisos.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 050_opiniones_permisos <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 050: permisos de paseador_opiniones (arregla "no se pudo enviar")
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -3863,7 +3878,7 @@ NOTIFY pgrst, 'reload schema';
 -- Verificación (rls_activado tiene que dar false):
 --   SELECT relrowsecurity AS rls_activado FROM pg_class WHERE relname = 'paseador_opiniones';
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 051_contexto_zoonivet.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 051_contexto_zoonivet <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- migracion_22.sql — Contexto de la mascota para ZooniVet, calculado en el servidor.
 --
 -- Parte del refactor de seguridad de ZooniVet: la GROQ_API_KEY deja de vivir en
@@ -4069,7 +4084,7 @@ $$;
 -- poder ejecutar la función. (RLS sigue deshabilitado en este proyecto.)
 grant execute on function public.get_pet_chat_context(bigint) to anon, authenticated, service_role;
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 052_consultas_alta_ok.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 052_consultas_alta_ok <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 031: dejar andando el alta de consultas veterinarias
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -4128,7 +4143,7 @@ NOTIFY pgrst, 'reload schema';
 --   SELECT relrowsecurity FROM pg_class
 --   WHERE relname = 'consultas_veterinarias';               -- debe ser false
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 053_mail_unico.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 053_mail_unico <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- Migración 032: un mail = una cuenta (y teléfono opcional)
 -- Base de datos: Postgres (Supabase) — CORRER EN EL SQL EDITOR. Idempotente.
@@ -4279,7 +4294,7 @@ NOTIFY pgrst, 'reload schema';
 --   SELECT lower(trim("Mail")), COUNT(*) FROM "User"
 --     GROUP BY 1 HAVING COUNT(*) > 1;                            -- 0 filas
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 054_objetos_del_dashboard.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 054_objetos_del_dashboard <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- 054_objetos_del_dashboard.sql — Lo que existía en la base viva pero no en
 -- ningún script. Idempotente.
@@ -4306,7 +4321,7 @@ CREATE TABLE IF NOT EXISTS zooni_politica_tablas (
 
 ALTER TABLE zooni_politica_tablas ENABLE ROW LEVEL SECURITY;
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 060_auth_supabase.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 060_auth_supabase <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- 060_auth_supabase.sql — La identidad pasa a ser un JWT de Supabase Auth.
 -- Idempotente. Requiere 021, 043, 046.
@@ -4584,7 +4599,7 @@ GRANT EXECUTE ON FUNCTION _completar_migracion_cuenta(INTEGER, UUID) TO service_
 
 NOTIFY pgrst, 'reload schema';
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 061_rls_por_usuario.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 061_rls_por_usuario <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- 061_rls_por_usuario.sql — Row Level Security de verdad. Idempotente.
 -- Requiere 060 (usuario_actual()).
@@ -5064,7 +5079,7 @@ GRANT EXECUTE ON FUNCTION get_pet_chat_context(BIGINT) TO service_role;
 
 NOTIFY pgrst, 'reload schema';
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 062_reglas_negocio.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 062_reglas_negocio <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- 062_reglas_negocio.sql — La base es la fuente de verdad de lo que mueve plata.
 -- Idempotente. Requiere 035, 040, 045, 046, 060.
@@ -5592,7 +5607,7 @@ GRANT EXECUTE ON FUNCTION votar_mascota(INTEGER, INTEGER, BOOLEAN) TO authentica
 
 NOTIFY pgrst, 'reload schema';
 
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 063_storage.sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
+-- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 063_storage <<<<<<<<<<<<<<<<<<<<<<<<<<<<
 -- =============================================================================
 -- 063_storage.sql — Buckets de Storage y sus reglas, escritos en el repo.
 -- Idempotente. Requiere 060.
@@ -5651,3 +5666,18 @@ CREATE POLICY zooni_borrar_lo_mio ON storage.objects FOR DELETE TO authenticated
     bucket_id IN ('public-images', 'resenas')
     AND (storage.foldername(name))[1] = auth.uid()::TEXT
   );
+
+-- ─── Verificación final ─────────────────────────────────────────────────────
+DO $verificacion$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND qual = 'true'
+             AND policyname NOT IN ('catalogo_lectura', 'mascota_ver', 'mascota_fotos_ver', 'publicacion_ver',
+               'comentario_ver', 'carteles_ver', 'paseador_perfil_ver', 'paseador_opiniones_ver', 'negocio_ver',
+               'servicios_ver', 'items_ver', 'roles_ver')) THEN
+    RAISE EXCEPTION 'Quedó una política USING true inesperada: revisá pg_policies';
+  END IF;
+  RAISE NOTICE 'Zooni: cambios aplicados. Políticas RLS: %', (SELECT count(*) FROM pg_policies WHERE schemaname = 'public');
+END
+$verificacion$;
+
+COMMIT;

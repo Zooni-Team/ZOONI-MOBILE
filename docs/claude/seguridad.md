@@ -34,4 +34,4 @@ los valida el servidor.
 
 ## Lo que todavía no está
 Bucket privado para imágenes de consultas, límite de mensajes por usuario en
-ZooniVet: [pendientes.md](pendientes.md).
+ZooniVet: [faltaporhacer.md](../../faltaporhacer.md).

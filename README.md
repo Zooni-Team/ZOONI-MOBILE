@@ -48,8 +48,8 @@ clave pública que viaja en el bundle no protege nada sola.
 | `zooni-app/scripts` | Verificaciones: `verify:pdf` (ficha médica en PDF) y `verify:paseos`. | Desarrollo |
 | `zooni-app/wwwroot/img` | Ilustraciones de mascotas por especie/raza (las importa `src/constants`). | Sí |
 | `supabase/migrations` | **Esquema completo de la base**, en orden (000 → 063). Única fuente de verdad. | Sí |
-| `supabase/schema.sql` | Las migraciones juntas para un proyecto vacío (generado). | Sí |
-| `supabase/APLICAR_EN_SUPABASE.sql` | Paquete para el proyecto que ya existe: `051`–`063` en una transacción, con chequeo de prerrequisitos (generado). | Sí |
+| `supabase/SUPABASE_PEGAR_TODO.sql` | Las migraciones juntas para un proyecto vacío (generado). | Sí |
+| `supabase/SUPABASE_PEGAR_TODO.sql` | Paquete para el proyecto que ya existe: `051`–`063` en una transacción, con chequeo de prerrequisitos (generado). | Sí |
 | `CLAUDE.md` · `docs/claude/` | Documentación para el equipo y para Claude. | Documentación |
 | `supabase/functions` | Edge Functions: `zoonivet-chat` (Groq) y `migrar-cuenta`. | Sí |
 | `supabase/tests` | Pruebas de RLS y reglas de negocio contra un Postgres local. | Desarrollo |
@@ -79,7 +79,7 @@ MySQL y SQL Server) se borró; queda en el historial de git.
 ### 1. Base de datos (Supabase)
 
 1. Crear un proyecto nuevo en Supabase.
-2. **SQL Editor** → pegar `supabase/schema.sql` entero → Run.
+2. **SQL Editor** → pegar `supabase/SUPABASE_PEGAR_TODO.sql` entero → Run.
    Crea tablas, relaciones, índices, funciones, políticas RLS, permisos, los
    buckets de Storage y los catálogos (roles, razas, vacunas, consejos…). Es
    idempotente: se puede volver a correr sin romper nada.
@@ -150,8 +150,8 @@ no se vende dos veces y que dos turnos no se superponen.
   Server se quitaron.
 - **Orden**: el del nombre de archivo en `supabase/migrations`. Para cambiar la
   base se agrega una migración nueva (idempotente: `IF NOT EXISTS`,
-  `CREATE OR REPLACE`, `ON CONFLICT`) y se regenera `schema.sql` con
-  `node supabase/scripts/armar-esquema.mjs`. Nada se cambia "a mano en el
+  `CREATE OR REPLACE`, `ON CONFLICT`) como sección nueva al final de
+  `supabase/SUPABASE_PEGAR_TODO.sql`. Nada se cambia "a mano en el
   dashboard": si se hace, se escribe la migración.
 - Migraciones clave:
   - `060_auth_supabase.sql` — la identidad es el JWT de Supabase Auth;
@@ -186,7 +186,7 @@ contraseña (bcrypt) y borra el hash viejo.
 **Orden para aplicarlo en el proyecto que ya existe:**
 
 1. Desplegar las Edge Functions (paso 2 de arriba).
-2. Pegar **`supabase/APLICAR_EN_SUPABASE.sql`** entero en el SQL Editor → Run.
+2. Pegar **`supabase/SUPABASE_PEGAR_TODO.sql`** entero en el SQL Editor → Run.
    Corre en una sola transacción, verifica primero que la base tenga las
    migraciones anteriores y se puede volver a correr.
 3. Desplegar la app.

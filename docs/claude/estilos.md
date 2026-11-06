@@ -29,7 +29,7 @@ codemod sobre el AST: ~2.500 literales en 125 archivos, sin cambiar ningún valo
   Un color usado una sola vez puede quedar local.
 - Los grises `gris50`–`gris600` son los valores exactos que había; unificarlos
   en una escala más corta es una decisión de diseño pendiente
-  ([pendientes.md](pendientes.md)).
+  ([faltaporhacer.md](../../faltaporhacer.md)).
 
 ## Sombras (`theme/sombras.js`)
 `sombras.tarjeta`: la de las tarjetas de listas. `PaseadorUI` re-exporta la misma
