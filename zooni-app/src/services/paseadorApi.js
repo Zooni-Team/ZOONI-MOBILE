@@ -1171,7 +1171,7 @@ async function subirMediaResena(media, carpeta) {
   const subidos = [];
   for (const m of media.slice(0, MEDIA_RESENA_MAX)) {
     try {
-      // eslint-disable-next-line no-await-in-loop
+       
       subidos.push(await subirArchivoPublico(m.uri, carpeta, { bucket: 'resenas', mimeHint: m.mimeType }));
     } catch (e) {
       const msg = String(e?.message ?? '');

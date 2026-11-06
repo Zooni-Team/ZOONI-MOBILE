@@ -40,7 +40,6 @@ import {
   eliminarTratamiento as eliminarTratamientoApi,
 } from '../services/fichaMedicaApi';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
-import { haySesion } from '../config/session';
 import { MASCOTA_VACIA } from '../constants/mascotaVacia';
 import FechaPicker from '../components/FechaPicker';
 import { colores } from '../theme';
@@ -233,54 +232,6 @@ export default function TratamientosScreen() {
   const heroOpacity  = useRef(new Animated.Value(0)).current;
   const btnScale     = useRef(new Animated.Value(1)).current;
 
-  // ── Datos hardcodeados para preview visual ───────────────────────────────
-  const DEMO_MASCOTA = {
-    id: 1, nombre: 'Titán', especie: 'perro',
-    raza: 'Labrador Retriever', peso: 20.40,
-    fecha_nacimiento: '2022-02-15', imagen_asset: 'perro_default',
-  };
-
-  const DEMO_APLICADOS = [
-    {
-      id: 1,
-      nombre: 'Desparasitación Interna',
-      descripcion: 'Pastilla Milbemax administrada en consulta.',
-      fecha_inicio: '2026-03-19',
-      proximo_control: '2026-09-10',
-      veterinaria: 'Clínica Veterinaria Central',
-    },
-    {
-      id: 2,
-      nombre: 'Control de Pulgas y Garrapatas',
-      descripcion: null,
-      fecha_inicio: '2026-04-01',
-      proximo_control: '2026-06-30',
-      veterinaria: null,
-    },
-    {
-      id: 3,
-      nombre: 'Profilaxis Cardiaca',
-      descripcion: 'Heartgard Plus mensual.',
-      fecha_inicio: '2026-01-10',
-      proximo_control: '2026-06-28', // vence muy pronto → naranja/rojo según fecha actual
-      veterinaria: 'VetSalud Palermo',
-    },
-  ];
-
-  const DEMO_SUGERIDOS = [
-    { id: 1,  nombre: 'Desparasitación Interna',                frecuencia_descripcion: 'Cada 3 meses'  },
-    { id: 2,  nombre: 'Desparasitación Externa',                frecuencia_descripcion: 'Cada 2 meses'  },
-    { id: 3,  nombre: 'Control Dental',                         frecuencia_descripcion: 'Cada 6 meses'  },
-    { id: 4,  nombre: 'Chequeo General Veterinario',            frecuencia_descripcion: 'Cada 6 meses'  },
-    { id: 5,  nombre: 'Chequeo Articular y de Cadera',          frecuencia_descripcion: 'Cada 12 meses' },
-    { id: 6,  nombre: 'Control de Peso',                        frecuencia_descripcion: 'Cada 6 meses'  },
-    { id: 7,  nombre: 'Profilaxis Cardiaca',                    frecuencia_descripcion: 'Cada 6 meses'  },
-    { id: 8,  nombre: 'Control de Pulgas y Garrapatas',         frecuencia_descripcion: 'Cada 2 meses'  },
-    { id: 9,  nombre: 'Chequeo Dermatológico',                  frecuencia_descripcion: 'Cada 12 meses' },
-    { id: 10, nombre: 'Evaluación Conductual',                  frecuencia_descripcion: 'Cada 12 meses' },
-    { id: 11, nombre: 'Esterilización / Castración Preventiva', frecuencia_descripcion: 'Cada 12 meses' },
-  ];
-
   // ── Carga inicial ──────────────────────────────────────────────────────────
   const cargar = useCallback(async (silencioso = false) => {
     if (!silencioso) setLoading(true);
@@ -290,16 +241,12 @@ export default function TratamientosScreen() {
         setMascota(m);
         setTratamientosAplicados(aplicados);
         setTratamientosSugeridos(sugeridos);
-      } else if (haySesion()) {
+      } else {
         // Logueado pero sin mascota activa todavía: pantalla vacía, no la
         // mascota de demo (era la de OTRA cuenta, con tratamientos ajenos).
         setMascota(MASCOTA_VACIA);
         setTratamientosAplicados([]);
         setTratamientosSugeridos([]);
-      } else {
-        setMascota(DEMO_MASCOTA);
-        setTratamientosAplicados(DEMO_APLICADOS);
-        setTratamientosSugeridos(DEMO_SUGERIDOS);
       }
     } catch {
       // Un error de red no puede inventar la mascota ni sus tratamientos.

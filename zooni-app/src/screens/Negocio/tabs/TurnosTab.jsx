@@ -66,7 +66,7 @@ export default function TurnosTab({ negocio, setNegocio, tipo, avisar, abrirChat
     setRefrescando(false);
   };
 
-  const lista = turnos ?? [];
+  const lista = useMemo(() => turnos ?? [], [turnos]);
   const pendientes = useMemo(() => lista
     .filter((t) => t.estado === 'pendiente' && new Date(t.fecha).getTime() > Date.now() - 3600000)
     .sort((a, b) => (b.urgencia - a.urgencia) || (new Date(a.fecha) - new Date(b.fecha))), [lista]);

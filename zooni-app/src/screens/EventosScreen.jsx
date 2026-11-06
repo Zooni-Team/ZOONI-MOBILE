@@ -161,7 +161,7 @@ function EventoCard({
       duration: 200,
       useNativeDriver: false, // backgroundColor no admite nativeDriver
     }).start();
-  }, [yaAgregado]);
+  }, [btnColorAnim, yaAgregado]);
 
   const btnBackground = btnColorAnim.interpolate({
     inputRange: [0, 1],

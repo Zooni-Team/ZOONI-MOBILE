@@ -124,7 +124,7 @@ export default function PerfilScreen() {
     } catch {
       mostrarToast('No se pudo cargar el perfil');
     } finally { setLoading(false); }
-  }, []);
+  }, [mostrarToast]);
 
   useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
 

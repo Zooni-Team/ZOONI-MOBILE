@@ -14,7 +14,7 @@ export default function PopupServicio({ servicio, onClose }) {
       Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 60 }),
       Animated.timing(opacity,    { toValue: 1, duration: 200, useNativeDriver: true }),
     ]).start();
-  }, []);
+  }, [opacity, translateY]);
 
   // Un local traído del proveedor de mapas (OpenStreetMap o Google) existe en
   // el mundo real pero no tiene usuario en Zooni: el chat no iría a ninguna

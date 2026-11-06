@@ -76,7 +76,7 @@ function horaDe(ts) {
 
 // ─── Indicador de "escribiendo" (tres puntos) ───────────────────────────────
 function TypingDots() {
-  const dots = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current];
+  const dots = useRef([0, 1, 2].map(() => new Animated.Value(0))).current;
   useEffect(() => {
     const anims = dots.map((v, i) =>
       Animated.loop(
@@ -90,7 +90,7 @@ function TypingDots() {
     );
     anims.forEach((a) => a.start());
     return () => anims.forEach((a) => a.stop());
-  }, []);
+  }, [dots]);
   return (
     <View style={[styles.bubble, styles.bubbleBot, styles.typingBubble]}>
       {dots.map((v, i) => (

@@ -38,7 +38,6 @@ import PetHero from '../components/PetHero';
 import SelectorMascota from '../components/SelectorMascota';
 import { subirImagenPublica } from '../utils/imagenStorage';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
-import { haySesion } from '../config/session';
 import { MASCOTA_VACIA } from '../constants/mascotaVacia';
 import { fetchMascota, fetchConsultas, crearConsulta, eliminarConsulta } from '../services/fichaMedicaApi';
 import FechaPicker from '../components/FechaPicker';
@@ -153,30 +152,6 @@ export default function ConsultasScreen() {
   const heroOpacity  = useRef(new Animated.Value(0)).current;
   const btnScale     = useRef(new Animated.Value(1)).current;
 
-  // ── Datos hardcodeados para preview visual (sin backend) ─────────────────
-  const DEMO_MASCOTA = {
-    id: 1, nombre: 'Titán', especie: 'perro',
-    raza: 'Labrador Retriever', peso: 20.40,
-    fecha_nacimiento: '2022-02-15', imagen_asset: 'perro_default',
-  };
-
-  const DEMO_CONSULTAS = [
-    {
-      id: 1,
-      fecha: '2026-05-20',
-      motivo: 'Control anual + vacunación',
-      notas: 'Todo en orden. Se aplicó refuerzo séxtuple. Mantener antiparasitario mensual.',
-      veterinario: 'Dra. Paula Gómez — Clínica Veterinaria Central',
-    },
-    {
-      id: 2,
-      fecha: '2026-02-08',
-      motivo: 'Dermatitis en pata trasera',
-      notas: 'Se indicó crema con corticoide 2 veces por día durante 10 días. Volver si no mejora.',
-      veterinario: 'VetSalud Palermo',
-    },
-  ];
-
   // ── Carga ─────────────────────────────────────────────────────────────────
   const cargar = useCallback(async (silencioso = false) => {
     if (!silencioso) setLoading(true);
@@ -185,14 +160,11 @@ export default function ConsultasScreen() {
         const [m, lista] = await Promise.all([fetchMascota(idMascota), fetchConsultas(idMascota)]);
         setMascota(m);
         setConsultas(lista);
-      } else if (haySesion()) {
+      } else {
         // Logueado pero sin mascota activa todavía: pantalla vacía, no la
         // mascota de demo (era la de OTRA cuenta, con consultas ajenas).
         setMascota(MASCOTA_VACIA);
         setConsultas([]);
-      } else {
-        setMascota(DEMO_MASCOTA);
-        setConsultas(DEMO_CONSULTAS);
       }
     } catch {
       // Un error de red no puede inventar la mascota ni sus consultas.

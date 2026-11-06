@@ -54,7 +54,7 @@ export default function PedidosTab({ negocio, avisar, abrirChat, refrescarBadges
     setRefrescando(false);
   };
 
-  const lista = pedidos ?? [];
+  const lista = useMemo(() => pedidos ?? [], [pedidos]);
   const grupos = useMemo(() => ({
     nuevos: lista.filter((p) => p.estado === 'nuevo').sort((a, b) => new Date(a.creadoEn) - new Date(b.creadoEn)),
     curso: lista.filter((p) => ['preparando', 'listo', 'en_camino'].includes(p.estado)),

@@ -1,4 +1,4 @@
-import { colores } from '../theme';
+import { colores } from '../theme/colores';
 /**
  * categoriasConsejos.js — Sistema de categorías de consejos Zooni
  *

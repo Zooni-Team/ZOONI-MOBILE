@@ -26,10 +26,7 @@ import PetHero from '../components/PetHero';
 import SelectorMascota from '../components/SelectorMascota';
 import { colores } from '../theme';
 import Skeleton from '../components/ui/Skeleton';
-
-// Mascota de respaldo si no hay petId o falla la carga: los consejos generales
-// de perro son un punto de partida razonable.
-const DEMO_MASCOTA = { nombre: 'Tu mascota', especie: 'perro', raza: null, fotoUrl: null };
+import { MASCOTA_VACIA } from '../constants/mascotaVacia';
 
 // ─── SKELETON ─────────────────────────────────────────────────────────────────
 
@@ -150,7 +147,7 @@ export default function ConsejosScreen() {
       if (petId && petId !== 0) {
         m = await fetchMascota(petId).catch(() => null);
       }
-      const mascotaFinal = m ?? DEMO_MASCOTA;
+      const mascotaFinal = m ?? MASCOTA_VACIA;
       setMascota(mascotaFinal);
       setConsejos(generarConsejos({ especie: mascotaFinal.especie, raza: mascotaFinal.raza }));
       animarEntrada();

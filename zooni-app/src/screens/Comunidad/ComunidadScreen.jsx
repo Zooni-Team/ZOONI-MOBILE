@@ -369,7 +369,7 @@ export default function ComunidadScreen() {
       duration: 250,
       useNativeDriver: true,
     }).start();
-  }, [modoCartel]);
+  }, [bannerAnim, modoCartel]);
 
   const flyTo          = (lat, lng) => mapCall('flyTo', lat, lng);
   const zoomIn         = ()         => mapCall('zoomIn');

@@ -295,7 +295,7 @@ export default function NegocioPublicoScreen() {
   const d = negocio?.datos ?? {};
   const soloVista = vistaPrevia || (negocio && negocio.idUser === getCurrentUserId());
 
-  const items = negocio?.items ?? [];
+  const items = useMemo(() => negocio?.items ?? [], [negocio]);
   const categorias = useMemo(() => [...new Set(items.map((i) => i.categoria))], [items]);
   const visibles = useMemo(() => {
     const q = normalizarBusqueda(busqueda.trim());

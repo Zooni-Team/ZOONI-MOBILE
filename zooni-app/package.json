@@ -11,7 +11,9 @@
     "vercel-build": "expo export --platform web",
     "verify:pdf": "node scripts/verificar-ficha-pdf.mjs",
     "setup:home-assets": "node assets/setup-home-assets.js",
-    "verify:paseos": "node --no-warnings scripts/verificar-paseos.mjs"
+    "verify:paseos": "node --no-warnings scripts/verificar-paseos.mjs",
+    "lint": "eslint src App.jsx index.js scripts tests",
+    "test": "node --import ./tests/registrar.mjs --test \"tests/**/*.test.mjs\" && npm run -s verify:pdf && npm run -s verify:paseos"
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",

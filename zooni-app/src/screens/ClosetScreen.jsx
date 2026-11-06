@@ -41,7 +41,7 @@ function SkeletonBox({ style }) {
         Animated.timing(anim, { toValue: 0.4, duration: 700, useNativeDriver: true }),
       ])
     ).start();
-  }, []);
+  }, [anim]);
   return <Animated.View style={[{ backgroundColor: '#B8E8CA', opacity: anim }, style]} />;
 }
 
@@ -73,7 +73,7 @@ function AvatarThumbnail({ avatar, mascota, isSelected, isActual, onPress, entry
       Animated.timing(opacity, { toValue: 1, duration: 220, delay: entryDelay, useNativeDriver: true }),
       Animated.spring(scale, { toValue: 1, delay: entryDelay, useNativeDriver: true, tension: 180, friction: 10 }),
     ]).start();
-  }, []);
+  }, [entryDelay, opacity, scale]);
 
   const handlePressIn = () =>
     Animated.timing(pressScale, { toValue: 0.92, duration: 90, useNativeDriver: true }).start();
@@ -188,7 +188,7 @@ export default function ClosetScreen() {
       duration: 200,
       useNativeDriver: false,
     }).start();
-  }, [mascota]);
+  }, [botonColor, mascota?.imagen_asset, previewRotate, previewScale]);
 
   // ── Aplicar avatar ────────────────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-import { colores } from '../theme';
+import { colores } from '../theme/colores';
 /**
  * colorProximidad.js — Sistema de color por proximidad de fecha
  * Usado por la pantalla Calendario de Cuidados para colorear cards

@@ -21,7 +21,7 @@ export default function PopupCartel({ cartel, userId, onClose, onEliminado }) {
       Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 60 }),
       Animated.timing(opacity,    { toValue: 1, duration: 200, useNativeDriver: true }),
     ]).start();
-  }, []);
+  }, [opacity, translateY]);
 
   const desc  = cartel.descripcion || '';
   const corta = desc.length > 120 ? desc.slice(0, 120) + '…' : desc;

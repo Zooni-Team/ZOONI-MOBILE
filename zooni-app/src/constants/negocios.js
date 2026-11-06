@@ -1,4 +1,4 @@
-import { colores } from '../theme';
+import { colores } from '../theme/colores';
 /**
  * negocios.js — Qué cambia entre una veterinaria, una peluquería y un pet shop
  *

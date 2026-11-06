@@ -11,7 +11,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { colores } from '../theme';
+import { colores } from '../theme/colores';
 
 export const DURACION_TOAST_MS = 2500;
 

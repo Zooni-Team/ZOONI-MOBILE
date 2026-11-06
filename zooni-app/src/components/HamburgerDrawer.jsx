@@ -124,7 +124,7 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
         Animated.timing(overlayOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
       ]).start();
     }
-  }, [visible]);
+  }, [overlayOpacity, translateX, visible]);
 
   /**
    * handleNavigate — Cierra el drawer y navega a la pantalla del ítem tocado.

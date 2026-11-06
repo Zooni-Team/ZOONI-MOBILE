@@ -24,7 +24,6 @@ import { SkeletonBloque } from '../components/ui/Skeleton';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import { useMisMascotas } from '../hooks/useMisMascotas';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
-import { haySesion } from '../config/session';
 import { MASCOTA_VACIA } from '../constants/mascotaVacia';
 import { construirDocPdf, construirHtmlFicha, nombreArchivo } from '../utils/fichaPdf';
 import {
@@ -41,12 +40,6 @@ import { formatearFecha } from '../utils/fechaLocal';
 import { capitalizar } from '../utils/texto';
 
 // ─── DATOS DEMO (sin backend conectado — mismos datos que Vacunas/Tratamientos) ──
-
-const DEMO_MASCOTA = {
-  id: 1, nombre: 'Titán', especie: 'perro',
-  raza: 'Labrador Retriever', peso: 20.40,
-  fecha_nacimiento: '2022-02-15', imagen_asset: 'perro_default',
-};
 
 // ─── COMPONENTES ─────────────────────────────────────────────────────────────
 
@@ -263,7 +256,6 @@ export default function FichaMedicaScreen() {
   // Debajo del kilo se muestra en gramos ("120 g" y no "0,12 kg")
   const formatPeso = (p) => (p == null ? 'Sin registrar' : formatearPeso(p));
 
-
   // ── PDF ───────────────────────────────────────────────────────────────────
   // Se genera localmente con los datos ya disponibles, sin depender de un
   // backend que hoy no existe. Solo lo esencial: especie, raza, edad, peso,
@@ -335,7 +327,7 @@ export default function FichaMedicaScreen() {
   // Con sesión iniciada nunca se muestra la mascota de demo: si los datos no
   // llegaron, va el placeholder neutro. Titán solo aparece en la vista previa
   // sin login, que es para lo que estaba pensado.
-  const m = mascota ?? (haySesion() ? MASCOTA_VACIA : DEMO_MASCOTA);
+  const m = mascota ?? MASCOTA_VACIA;
   const edad = calcularEdad(m.fecha_nacimiento);
   const petImg = resolveMascotaVisual(m);
 

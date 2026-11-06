@@ -51,7 +51,7 @@ export default function ClientesPetshopTab({ negocio, avisar, abrirChat }) {
     setRefrescando(false);
   };
 
-  const lista = clientes ?? [];
+  const lista = useMemo(() => clientes ?? [], [clientes]);
   const visibles = useMemo(() => {
     const q = normalizarBusqueda(busqueda.trim());
     return lista.filter((c) => {

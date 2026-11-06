@@ -102,7 +102,7 @@ export default function HomeScreen() {
         Animated.timing(petNameOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
       }, 100);
     }
-  }, []);
+  }, [petNameOpacity]);
 
   // useEffect solo (mount-once) no alcanza: si volvés de Closet después de
   // aplicar un avatar nuevo, Home seguía mostrando los datos viejos porque

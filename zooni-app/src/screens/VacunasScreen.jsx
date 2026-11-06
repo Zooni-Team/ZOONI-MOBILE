@@ -34,7 +34,6 @@ import { parseFechaLocal } from '../utils/fechaLocal';
 import PetHero from '../components/PetHero';
 import SelectorMascota from '../components/SelectorMascota';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
-import { haySesion } from '../config/session';
 import { MASCOTA_VACIA } from '../constants/mascotaVacia';
 import FechaPicker from '../components/FechaPicker';
 import {
@@ -202,36 +201,6 @@ function CardSugerido({ sugerido, index, onMarcar }) {
 
 // ─── DATOS DEMO (sin backend de vacunas conectado) ───────────────────────────
 
-const DEMO_MASCOTA = {
-  id: 1, nombre: 'Titán', especie: 'perro',
-  raza: 'Labrador Retriever', peso: 20.40,
-  fecha_nacimiento: '2022-02-15', imagen_asset: 'perro_default',
-};
-
-const DEMO_APLICADAS = [
-  {
-    id: 1,
-    nombre: 'Rabia',
-    descripcion: null,
-    fecha_aplicacion: '2026-01-15',
-    proximo_refuerzo: '2027-01-15',
-    tipo: 'Vacuna',
-    veterinaria: 'Clínica Veterinaria del Centro',
-    vacuna_sugerida_id: 7,
-  },
-];
-
-const DEMO_SUGERIDAS = [
-  { id: 1, nombre: 'Moquillo Canino (Distemper)',                      frecuencia_descripcion: 'Cada 1 año(s)', applied: false, proximo_refuerzo: null },
-  { id: 2, nombre: 'Parvovirus Canino',                                frecuencia_descripcion: 'Cada 1 año(s)', applied: false, proximo_refuerzo: null },
-  { id: 3, nombre: 'Hepatitis Infecciosa Canina (Adenovirus tipo 1)',  frecuencia_descripcion: 'Cada 1 año(s)', applied: false, proximo_refuerzo: null },
-  { id: 4, nombre: 'Adenovirus tipo 2 (Tos de las Perreras)',          frecuencia_descripcion: 'Cada 1 año(s)', applied: false, proximo_refuerzo: null },
-  { id: 5, nombre: 'Parainfluenza Canina',                             frecuencia_descripcion: 'Cada 1 año(s)', applied: false, proximo_refuerzo: null },
-  { id: 6, nombre: 'Leptospirosis',                                    frecuencia_descripcion: 'Cada 1 año(s)', applied: false, proximo_refuerzo: null },
-  { id: 7, nombre: 'Rabia',                                            frecuencia_descripcion: 'Cada 1 año(s)', applied: true,  proximo_refuerzo: '2027-01-15' },
-  { id: 8, nombre: 'Bordetella (Tos de las Perreras)',                 frecuencia_descripcion: 'Cada 6 meses',  applied: false, proximo_refuerzo: null },
-];
-
 // ─── SCREEN PRINCIPAL ─────────────────────────────────────────────────────────
 
 export default function VacunasScreen() {
@@ -282,16 +251,12 @@ export default function VacunasScreen() {
         setMascota(m);
         setVacunasAplicadas(aplicadas);
         setVacunasSugeridas(sugeridas);
-      } else if (haySesion()) {
+      } else {
         // Logueado pero sin mascota activa todavía: pantalla vacía, no la
         // mascota de demo (era la de OTRA cuenta, con vacunas ajenas).
         setMascota(MASCOTA_VACIA);
         setVacunasAplicadas([]);
         setVacunasSugeridas([]);
-      } else {
-        setMascota(DEMO_MASCOTA);
-        setVacunasAplicadas(DEMO_APLICADAS);
-        setVacunasSugeridas(DEMO_SUGERIDAS);
       }
     } catch {
       // Un error de red no puede inventar la mascota ni sus vacunas: se conserva
@@ -303,7 +268,7 @@ export default function VacunasScreen() {
       Animated.timing(heroScale,   { toValue: 1, duration: 350, useNativeDriver: true }),
       Animated.timing(heroOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
     ]).start();
-  }, [idMascota]);
+  }, [heroOpacity, heroScale, idMascota]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
