@@ -22,8 +22,8 @@ import { MEDIOS_PAGO, aCentavos, formatoPlata } from '../../services/paseadorApi
 import { parseDecimal, sanitizarDecimal } from '../../utils/sanitizar';
 import { confirmar } from '../../utils/dialogo';
 import { colores } from '../../theme';
+import { formatearFecha } from '../../utils/fechaLocal';
 
-const fechaCorta = (d) => d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
 /** 20000 → "20000" · 166.66 → "166,66" (lo que se ve en el input) */
 const aTexto = (n) => {
   const v = aCentavos(n);
@@ -71,7 +71,7 @@ export default function PagoFormModal({
   };
 
   const borrar = async () => {
-    const ok = await confirmar('¿Borrar este pago?', `${formatoPlata(pago.monto)} del ${fechaCorta(new Date(pago.fecha))}. Vuelve a figurar como deuda.`,
+    const ok = await confirmar('¿Borrar este pago?', `${formatoPlata(pago.monto)} del ${formatearFecha(new Date(pago.fecha), 'larga')}. Vuelve a figurar como deuda.`,
       { textoOk: 'Borrar', destructivo: true });
     if (ok) onBorrar();
   };
@@ -131,7 +131,7 @@ export default function PagoFormModal({
           <Text style={s.label}>Fecha</Text>
           <TouchableOpacity style={s.fecha} onPress={() => setVerFecha(true)}>
             <Ionicons name="calendar-outline" size={18} color={C.teal} />
-            <Text style={s.fechaTxt}>{fechaCorta(fecha)}</Text>
+            <Text style={s.fechaTxt}>{formatearFecha(fecha, 'larga')}</Text>
           </TouchableOpacity>
 
           <Text style={s.label}>Nota (opcional)</Text>

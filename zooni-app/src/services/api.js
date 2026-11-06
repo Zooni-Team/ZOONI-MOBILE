@@ -25,9 +25,9 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
-import { calcularEdad, calcularEdadMeses } from '../utils/calcularEdad';
-import { parseFechaLocal } from '../utils/fechaLocal';
+import { calcularEdadMeses } from '../utils/calcularEdad';
 import { aplicaParaMascota } from '../utils/filtrarPorMascota';
+import { calcularEdadPartes } from '../utils/calcularEdad';
 
 // ─────────────────────────────────────────────
 // TOKEN JWT — se mantiene solo para no romper HamburgerDrawer/pantallas
@@ -80,20 +80,6 @@ function mapMascota(m) {
     edadAnios: edad.anios,
     edadMeses: edad.meses,
   };
-}
-
-function calcularEdadPartes(fechaNacimiento) {
-  if (!fechaNacimiento) return { anios: null, meses: null };
-  const nacimiento = parseFechaLocal(fechaNacimiento);
-  const hoy = new Date();
-  let anios = hoy.getFullYear() - nacimiento.getFullYear();
-  let meses = hoy.getMonth() - nacimiento.getMonth();
-  if (meses < 0) { anios -= 1; meses += 12; }
-  if (hoy.getDate() < nacimiento.getDate()) {
-    meses -= 1;
-    if (meses < 0) { anios -= 1; meses += 12; }
-  }
-  return { anios, meses };
 }
 
 function mapUsuario(u) {

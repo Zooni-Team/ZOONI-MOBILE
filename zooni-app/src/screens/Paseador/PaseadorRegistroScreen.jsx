@@ -54,8 +54,9 @@ import { volverOLogin } from '../../utils/volverOLogin';
 import { sanitizarDigitos } from '../../utils/sanitizar';
 import { toISODateLocal } from '../../utils/fechaLocal';
 import { colores } from '../../theme';
+import { EMAIL_REGEX } from '../../utils/validacion';
+import { PASSWORD_MIN } from '../../utils/validacion';
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EDAD_MINIMA = 18;
 const EDAD_MAXIMA = 100;
 const GENEROS = [
@@ -201,7 +202,7 @@ export default function PaseadorRegistroScreen() {
     // Con Google / Facebook / Apple el mail lo verificó el proveedor y no hay contraseña
     if (!social) {
       if (!EMAIL_REGEX.test(usuario.email.trim())) e.email = 'Es necesario un email válido';
-      if (usuario.password.length < 7) e.password = 'La contraseña necesita al menos 7 caracteres';
+      if (usuario.password.length < PASSWORD_MIN) e.password = `La contraseña necesita al menos ${PASSWORD_MIN} caracteres`;
       else if (usuario.password !== usuario.password2) e.password2 = 'Las contraseñas no coinciden';
     }
     if (!social && !e.email) {

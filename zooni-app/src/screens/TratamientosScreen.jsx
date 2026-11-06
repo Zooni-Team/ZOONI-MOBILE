@@ -47,34 +47,11 @@ import { colores } from '../theme';
 import Skeleton from '../components/ui/Skeleton';
 import Toast from '../components/ui/Toast';
 import { useToast } from '../hooks/useToast';
+import { diasHasta, formatearFecha, toISODateLocal } from '../utils/fechaLocal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
-
-/** "2026-03-19" → "19/3/2026" */
-function formatFecha(iso) {
-  if (!iso) return null;
-  const [y, m, d] = iso.split('-');
-  return `${parseInt(d)}/${parseInt(m)}/${y}`;
-}
-
-/** Date → "YYYY-MM-DD" */
-function toISO(date) {
-  if (!date) return null;
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-/** Días restantes hasta proximo_control */
-function calcularDiasRestantes(fechaISO) {
-  if (!fechaISO) return null;
-  const hoy   = new Date(); hoy.setHours(0, 0, 0, 0);
-  const fecha = parseFechaLocal(fechaISO); fecha.setHours(0, 0, 0, 0);
-  return Math.ceil((fecha - hoy) / (1000 * 60 * 60 * 24));
-}
 
 function formatearContadorDias(dias) {
   if (dias === null) return null;
@@ -82,13 +59,6 @@ function formatearContadorDias(dias) {
   if (dias === 1) return 'Falta 1 día';
   if (dias === 0) return 'Vence hoy';
   return `Vencido hace ${Math.abs(dias)} día(s)`;
-}
-
-function colorContador(dias) {
-  if (dias === null) return colores.texto;
-  if (dias < 0)   return colores.rojo;  // vencido
-  if (dias === 0) return colores.ambar;  // vence hoy
-  return colores.texto;
 }
 
 // ─── COMPONENTE: SKELETON ─────────────────────────────────────────────────────
@@ -105,7 +75,6 @@ function SkeletonCard() {
 
 // ─── COMPONENTE: TOAST ────────────────────────────────────────────────────────
 
-
 // ─── COMPONENTE: CARD TRATAMIENTO APLICADO ────────────────────────────────────
 
 function CardAplicado({ tratamiento, onEditar, onEliminar }) {
@@ -121,7 +90,7 @@ function CardAplicado({ tratamiento, onEditar, onEliminar }) {
     ]).start();
   }, [translateY, opacity]);
 
-  const dias   = calcularDiasRestantes(tratamiento.proximo_control);
+  const dias   = diasHasta(tratamiento.proximo_control);
   const cuenta = formatearContadorDias(dias);
   const colDias = dias !== null && dias <= 0 ? colores.rojo : dias === 0 ? colores.ambar : colores.texto;
 
@@ -143,9 +112,9 @@ function CardAplicado({ tratamiento, onEditar, onEliminar }) {
         {tratamiento.descripcion ? (
           <Text style={s.cardDesc}>{tratamiento.descripcion}</Text>
         ) : null}
-        <Text style={s.cardField}>Inicio: {formatFecha(tratamiento.fecha_inicio) ?? '—'}</Text>
+        <Text style={s.cardField}>Inicio: {formatearFecha(tratamiento.fecha_inicio) ?? '—'}</Text>
         <Text style={[s.cardField, { color: colorProxControl() }]}>
-          Próximo control: {tratamiento.proximo_control ? formatFecha(tratamiento.proximo_control) : 'Sin fecha'}
+          Próximo control: {tratamiento.proximo_control ? formatearFecha(tratamiento.proximo_control) : 'Sin fecha'}
         </Text>
         <Text style={s.cardField} numberOfLines={1} ellipsizeMode="tail">
           Veterinaria: {tratamiento.veterinaria ?? 'Sin registro'}
@@ -355,7 +324,6 @@ export default function TratamientosScreen() {
     ]).start();
   }
 
-
   // ── Modal ────────────────────────────────────────────────────────────────
   // nombrePrefill: al tocar "Registrar" en un tratamiento sugerido, se abre
   // el mismo modal con el nombre ya cargado (el usuario todavía puede
@@ -415,8 +383,8 @@ export default function TratamientosScreen() {
     const datos = {
       nombre:          formNombre.trim(),
       descripcion:     formDescripcion.trim() || null,
-      fecha_inicio:    toISO(formFechaInicio),
-      proximo_control: formProximoControl ? toISO(formProximoControl) : null,
+      fecha_inicio:    toISODateLocal(formFechaInicio),
+      proximo_control: formProximoControl ? toISODateLocal(formProximoControl) : null,
       veterinaria:     formVeterinaria.trim() || null,
     };
     try {
@@ -611,7 +579,7 @@ export default function TratamientosScreen() {
                     onPress={() => setShowPickerInicio(true)}
                   >
                     <Text style={[s.inputFechaTxt, !formFechaInicio && { color: colores.textoTenue }]}>
-                      {formFechaInicio ? toISO(formFechaInicio).split('-').reverse().join('/').replace(/^(\d+)\/(\d+)\/(\d+)$/, (_, d, m, y) => `${parseInt(d)}/${parseInt(m)}/${y}`) : 'dd/mm/aaaa'}
+                      {formFechaInicio ? formatearFecha(formFechaInicio) : 'dd/mm/aaaa'}
                     </Text>
                     <Text style={s.inputFechaLabel}>Inicio</Text>
                     <Ionicons name="calendar-outline" size={18} color={colores.textoSecundario} />
@@ -624,7 +592,7 @@ export default function TratamientosScreen() {
                     onPress={() => setShowPickerControl(true)}
                   >
                     <Text style={[s.inputFechaTxt, !formProximoControl && { color: colores.textoTenue }]}>
-                      {formProximoControl ? toISO(formProximoControl).split('-').reverse().join('/').replace(/^(\d+)\/(\d+)\/(\d+)$/, (_, d, m, y) => `${parseInt(d)}/${parseInt(m)}/${y}`) : 'Próximo control (opcional)'}
+                      {formProximoControl ? formatearFecha(formProximoControl) : 'Próximo control (opcional)'}
                     </Text>
                     <Ionicons name="calendar-outline" size={18} color={colores.textoSecundario} />
                   </TouchableOpacity>

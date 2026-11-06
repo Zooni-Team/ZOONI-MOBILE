@@ -22,17 +22,13 @@ import { resolveMascotaVisual } from '../../constants/petImages';
 import { MOTIVOS_REPORTE, bloquearUsuario, reportarUsuario } from '../../services/moderacionApi';
 import { alerta, confirmar } from '../../utils/dialogo';
 import { colores } from '../../theme';
+import { formatearFecha } from '../../utils/fechaLocal';
 
 const C = {
   bg: '#F4FBF6', surface: colores.blanco, text: colores.texto, textSoft: colores.textoSecundario,
   brand: colores.verde, brandText: colores.verdeOscuro, cta: colores.amarillo, divider: colores.mentaGris,
   chipBg: colores.mentaBorde,
 };
-
-function formatFecha(iso) {
-  if (!iso) return null;
-  return new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' });
-}
 
 export default function MatchInfoModal({ visible, matchId, onClose, onAbrirChat, onBloqueado }) {
   const [detalle, setDetalle] = useState(null);
@@ -136,7 +132,7 @@ export default function MatchInfoModal({ visible, matchId, onClose, onAbrirChat,
             {detalle.fechaMatch && (
               <View style={s.matchBadge}>
                 <Ionicons name="heart" size={13} color={C.brandText} />
-                <Text style={s.matchBadgeTxt}>Hicieron match el {formatFecha(detalle.fechaMatch)}</Text>
+                <Text style={s.matchBadgeTxt}>Hicieron match el {formatearFecha(detalle.fechaMatch, 'larga')}</Text>
               </View>
             )}
 

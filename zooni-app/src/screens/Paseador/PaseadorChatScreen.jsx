@@ -25,8 +25,7 @@ import {
 } from '../../services/paseadorApi';
 import { etiquetaDia, horaCorta, mismoDia } from '../../utils/tiempoRelativo';
 import { colores } from '../../theme';
-
-const POLL_MS = 4000;
+import { INTERVALO_CHAT_MS } from '../../constants/intervalos';
 
 // Respuestas rápidas del paseador según el estado del paseo, en el orden en
 // que conviene mandarlas. Se muestran RAPIDAS_VISIBLES a la vez: la que ya
@@ -133,7 +132,7 @@ export default function PaseadorChatScreen() {
 
   useFocusEffect(useCallback(() => {
     cargar();
-    const t = setInterval(cargar, POLL_MS);
+    const t = setInterval(cargar, INTERVALO_CHAT_MS);
     return () => clearInterval(t);
   }, [cargar]));
 

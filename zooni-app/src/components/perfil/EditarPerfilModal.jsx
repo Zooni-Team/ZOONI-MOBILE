@@ -18,10 +18,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator, Animated, Dimensions, KeyboardAvoidingView, Modal, Platform,
-  Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
-} from 'react-native';
+import { ActivityIndicator, Animated, Dimensions, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 

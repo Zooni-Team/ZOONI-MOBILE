@@ -20,8 +20,7 @@ import FichaPacienteModal from '../../../components/negocio/FichaPacienteModal';
 import InformeModal from '../../../components/negocio/InformeModal';
 import { cuandoTexto, diaTexto, fetchPacientes, guardarInforme } from '../../../services/negocioApi';
 import { colores } from '../../../theme';
-
-const normalizar = (t) => String(t ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+import { normalizarBusqueda } from '../../../utils/texto';
 
 export default function PacientesTab({ negocio, tipo, avisar, abrirChat }) {
   const esVet = tipo === 'veterinaria';
@@ -50,12 +49,12 @@ export default function PacientesTab({ negocio, tipo, avisar, abrirChat }) {
   };
 
   const visibles = useMemo(() => {
-    const q = normalizar(busqueda.trim());
+    const q = normalizarBusqueda(busqueda.trim());
     return (fichas ?? []).filter((f) => {
       if (filtro === 'turno' && !f.proximo) return false;
       if (filtro === 'control' && !f.proximoControl) return false;
       if (!q) return true;
-      return [f.mascota.nombre, f.mascota.raza, f.mascota.especie, f.dueno.nombre].some((x) => normalizar(x).includes(q));
+      return [f.mascota.nombre, f.mascota.raza, f.mascota.especie, f.dueno.nombre].some((x) => normalizarBusqueda(x).includes(q));
     });
   }, [fichas, busqueda, filtro]);
 

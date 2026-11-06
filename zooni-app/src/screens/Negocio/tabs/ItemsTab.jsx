@@ -24,8 +24,7 @@ import {
   agregarSugeridos, ajustarStock, borrarItem, fetchItems, formatoPlata, guardarItem, textoPrecioItem,
 } from '../../../services/negocioApi';
 import { colores } from '../../../theme';
-
-const normalizar = (t) => String(t ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+import { normalizarBusqueda } from '../../../utils/texto';
 
 function precioSugerido(x) {
   if (x.precios) return `desde ${formatoPlata(Math.min(...Object.values(x.precios)))}`;
@@ -61,9 +60,9 @@ export default function ItemsTab({ negocio, cfg, tipo, avisar }) {
   };
 
   const secciones = useMemo(() => {
-    const q = normalizar(busqueda.trim());
+    const q = normalizarBusqueda(busqueda.trim());
     const filtrados = (items ?? []).filter((it) => (!categoria || it.categoria === categoria)
-      && (!q || normalizar(it.nombre).includes(q) || normalizar(it.descripcion).includes(q)));
+      && (!q || normalizarBusqueda(it.nombre).includes(q) || normalizarBusqueda(it.descripcion).includes(q)));
     const grupos = new Map();
     filtrados.forEach((it) => {
       if (!grupos.has(it.categoria)) grupos.set(it.categoria, []);
@@ -118,8 +117,8 @@ export default function ItemsTab({ negocio, cfg, tipo, avisar }) {
 
   if (items === null) return <ActivityIndicator color={C.teal} style={{ marginTop: 40 }} />;
 
-  const tieneNombre = new Set(items.map((i) => normalizar(i.nombre)));
-  const sugeridosDisponibles = cfg.sugeridos.filter((x) => !tieneNombre.has(normalizar(x.nombre)));
+  const tieneNombre = new Set(items.map((i) => normalizarBusqueda(i.nombre)));
+  const sugeridosDisponibles = cfg.sugeridos.filter((x) => !tieneNombre.has(normalizarBusqueda(x.nombre)));
   const mostrarSugeridos = sugeridosDisponibles.length > 0 && (items.length === 0 || verSugeridos);
   const sinStock = items.filter((i) => i.activo && i.stock === 0).length;
 

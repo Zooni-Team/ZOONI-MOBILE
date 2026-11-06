@@ -8,7 +8,7 @@
  *   5. Fotos y videos del paseo (hasta MEDIA_RESENA_MAX)
  *
  * Al enviar, los archivos se suben a Storage y al paseador le llega una
- * notificación. Props: visible · paseo · onCerrar · onEnviado({ parcial })
+ * notificación. Props: visible · paseo · onCerrar · onEnviado()
  *
  * Opinión general (sin paseo): `paseo` = { libre: true, idWalker, paseador }.
  * Mismo formulario, se guarda con opinarPaseador (048).
@@ -95,10 +95,9 @@ export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviad
     setError(null);
     try {
       const datos = { rating, resena: texto, aspectos, respuestas, media };
-      const resultado = paseo?.libre
-        ? await opinarPaseador(paseo.idWalker, datos)
-        : await calificarPaseo(paseo, datos);
-      onEnviado?.(resultado);
+      if (paseo?.libre) await opinarPaseador(paseo.idWalker, datos);
+      else await calificarPaseo(paseo, datos);
+      onEnviado?.();
     } catch (e) {
       console.error('[Reseña]', e?.message ?? e, e?.detalle ?? '');
       const hayVideo = media.some((m) => m.tipo === 'video');

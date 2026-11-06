@@ -104,11 +104,9 @@ export default function MisPaseosScreen() {
     }
   };
 
-  const calificacionEnviada = ({ parcial }) => {
+  const calificacionEnviada = () => {
     setCalificando(null);
-    setAviso(parcial
-      ? '¡Gracias! Guardamos tus estrellas y tu opinión (las fotos y respuestas necesitan la migración 042).'
-      : '¡Gracias! Tu reseña ayuda a otros dueños a elegir.');
+    setAviso('¡Gracias! Tu reseña ayuda a otros dueños a elegir.');
     cargar();
   };
 

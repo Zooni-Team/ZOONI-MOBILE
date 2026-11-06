@@ -28,9 +28,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { resolveMascotaBasicoImage } from '../constants/registroImages';
 import { verificarDisponibilidad } from '../services/authApi';
 import { colores } from '../theme';
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PASSWORD_MIN = 7;
+import { EMAIL_REGEX } from '../utils/validacion';
+import { PASSWORD_MIN } from '../utils/validacion';
 
 export default function RegisterStep3Screen() {
   const navigation = useNavigation();

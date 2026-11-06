@@ -24,11 +24,11 @@ import { C, Card, PillButton, Vacio } from '../../../components/paseador/Paseado
 import { agregarFotoGaleria, borrarFotoGaleria, GALERIA_MAX } from '../../../services/negocioApi';
 import { alerta, confirmar } from '../../../utils/dialogo';
 import { colores } from '../../../theme';
+import { formatearFecha } from '../../../utils/fechaLocal';
 
 const GAP = 8;
 const PADDING = 20;
 const LADO = Math.floor((Math.min(Dimensions.get('window').width, 520) - PADDING * 2 - GAP * 2) / 3);
-const fechaCorta = (iso) => new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' });
 
 export default function GaleriaTab({ negocio, setNegocio, avisar }) {
   const fotos = negocio.datos?.galeria ?? [];
@@ -153,7 +153,7 @@ export default function GaleriaTab({ negocio, setNegocio, avisar }) {
           <View style={s.visorPie}>
             <View style={{ flex: 1 }}>
               {abierta?.nota ? <Text style={s.visorNota}>{abierta.nota}</Text> : null}
-              {abierta?.fecha ? <Text style={s.visorFecha}>{fechaCorta(abierta.fecha)}</Text> : null}
+              {abierta?.fecha ? <Text style={s.visorFecha}>{formatearFecha(abierta.fecha, 'corta')}</Text> : null}
             </View>
             <TouchableOpacity style={s.visorBorrar} onPress={borrar} disabled={borrando} accessibilityLabel="Borrar foto">
               {borrando ? <ActivityIndicator color={colores.blanco} /> : <Ionicons name="trash-outline" size={20} color={colores.blanco} />}

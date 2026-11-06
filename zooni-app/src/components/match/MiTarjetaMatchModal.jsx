@@ -18,10 +18,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text,
-  TouchableOpacity, View, useWindowDimensions,
-} from 'react-native';
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import MatchProfileCard from './MatchProfileCard';

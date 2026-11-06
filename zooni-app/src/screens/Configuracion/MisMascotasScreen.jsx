@@ -16,10 +16,7 @@
  */
 
 import React, { useCallback, useRef, useState } from 'react';
-import {
-  Alert, Image, Modal, Platform, Pressable, SafeAreaView, ScrollView,
-  StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
-} from 'react-native';
+import { Image, Modal, Platform, Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
@@ -31,6 +28,8 @@ import {
 } from '../../services/petsApi';
 import { alerta } from '../../utils/dialogo';
 import { colores } from '../../theme';
+import { formatearFecha } from '../../utils/fechaLocal';
+import { capitalizar } from '../../utils/texto';
 
 // ─── TOKENS (§3.1) ───────────────────────────────────────────────────────────
 const P = {
@@ -53,16 +52,6 @@ const P = {
   amberText: '#A05F00',
   ringMemorial: '#E8D9A8',
 };
-
-function capitalizar(str) {
-  return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
-}
-
-function formatFecha(iso) {
-  if (!iso) return null;
-  const d = new Date(iso);
-  return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
 
 // ─── TOAST CON DESHACER (§3.4.C — 6 segundos) ───────────────────────────────
 
@@ -182,7 +171,7 @@ function CardArchivada({ m, onPress, onRecuperar, onMenu, disabled }) {
             {capitalizar(m.especie)}{m.raza ? ` · ${m.raza}` : ''}
           </Text>
           {m.archivadaEn && (
-            <Text style={s.fechaArchivo}>Archivada el {formatFecha(m.archivadaEn)}</Text>
+            <Text style={s.fechaArchivo}>Archivada el {formatearFecha(m.archivadaEn, 'numericaCeros')}</Text>
           )}
           {motivo ? <Text style={s.motivoArchivo}>{motivo}</Text> : null}
         </View>

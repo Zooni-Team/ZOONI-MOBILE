@@ -25,27 +25,12 @@ import { subirArchivoPublico } from '../utils/imagenStorage';
 import { rpcSocial } from './socialAuthApi';
 import { perfilesPorId } from './perfilesPublicos';
 import { distanciaMetros } from '../utils/geo';
-import {
-  HORARIOS_DEFAULT,
-  formatoPlata,
-  aCentavos,
-  serviciosDe,
-  precioPara,
-  formatoDistancia,
-  cuandoDe,
-  segundosDePaseo,
-  formatoTiempoPaseado,
-  comisionDe,
-  inicioDePeriodo,
-  MEDIOS_PAGO,
-  medioDePago,
-  ultimoCierre,
-  proximoCierre,
-  experienciaEnZooni,
-  ASPECTOS_RESENA,
-  PREGUNTAS_RESENA,
-  MEDIA_RESENA_MAX,
-} from '../domain/paseos';
+import { HORARIOS_DEFAULT, formatoPlata, aCentavos, serviciosDe, precioPara, formatoDistancia, cuandoDe, segundosDePaseo, formatoTiempoPaseado, comisionDe, inicioDePeriodo, MEDIOS_PAGO, medioDePago, ultimoCierre, proximoCierre, ASPECTOS_RESENA, PREGUNTAS_RESENA, MEDIA_RESENA_MAX } from '../domain/paseos';
+import { errorApp, esEsquemaFaltante, esSinPermiso, notificar } from './comun';
+
+/** Aviso de paseos: `destino` es la pestaña de la app del paseador que abre. */
+const notificarPaseo = (idUser, titulo, mensaje, destino = null) =>
+  notificar(idUser, titulo, mensaje, { tipo: 'paseo', destino });
 
 // Reglas y formatos puros de paseos (re-exportados para no romper a quien ya
 // los importaba desde acá). La distancia vive en utils/geo.
@@ -56,151 +41,7 @@ export { distanciaMetros };
 // MODO DEMO
 // ─────────────────────────────────────────────
 
-let modoDemo = false;
-export function enModoDemo() {
-  return modoDemo;
-}
-
-/** ¿El error es "esto no existe en la base" (035 sin correr / sin .env)? */
-function esEsquemaFaltante(error) {
-  if (!error) return false;
-  const code = error.code ?? '';
-  const msg = String(error.message ?? '');
-  return ['42P01', '42703', 'PGRST205', 'PGRST204', 'PGRST202'].includes(code)
-    || /does not exist|schema cache|sin configurar/i.test(msg);
-}
-
-/**
- * La tabla existe pero la key pública no puede escribir: RLS activo sin
- * políticas (Supabase lo prende solo en tablas nuevas) o falta un GRANT. El
- * SELECT en ese caso vuelve vacío sin error, así que sólo se nota al guardar.
- */
-function esSinPermiso(error) {
-  return error?.code === '42501' || /row-level security|permission denied/i.test(String(error?.message ?? ''));
-}
-
-/**
- * Error con código para la pantalla + el mensaje real de Supabase en
- * `detalle`, para mostrar QUÉ falló en vez de un texto genérico.
- */
-function errorApp(codigo, original) {
-  const e = new Error(codigo);
-  e.detalle = original
-    ? [original.message, original.details, original.hint, original.code && `código ${original.code}`]
-      .filter(Boolean).join(' · ')
-    : null;
-  return e;
-}
-
-/** Si el error es de esquema → activa demo y devuelve true. Si es otro, lo tira. */
-function caerADemo(error) {
-  if (esEsquemaFaltante(error)) {
-    modoDemo = true;
-    return true;
-  }
-  throw error;
-}
-
 const HORA = 3600 * 1000;
-const hoyA = (h, m = 0) => {
-  const d = new Date();
-  d.setHours(h, m, 0, 0);
-  return d.toISOString();
-};
-const haceDias = (dias, h = 10) => {
-  const d = new Date();
-  d.setDate(d.getDate() - dias);
-  d.setHours(h, 0, 0, 0);
-  return d.toISOString();
-};
-
-function crearDemo() {
-  const duenos = {
-    901: { id: 901, nombre: 'Sofía García', foto: null, telefono: '11 5555-1234' },
-    902: { id: 902, nombre: 'Martín López', foto: null, telefono: '11 4444-9876' },
-    903: { id: 903, nombre: 'Lucía Fernández', foto: null, telefono: null },
-    904: { id: 904, nombre: 'Tomás Ruiz', foto: null, telefono: null },
-  };
-  const mascotas = {
-    801: { id: 801, nombre: 'Titán', especie: 'perro', raza: 'Golden Retriever', peso: 30, idDueno: 901 },
-    802: { id: 802, nombre: 'Luna', especie: 'perro', raza: 'Border Collie', peso: 18, idDueno: 902 },
-    803: { id: 803, nombre: 'Rocco', especie: 'perro', raza: 'Bulldog Francés', peso: 12, idDueno: 903 },
-    804: { id: 804, nombre: 'Nala', especie: 'perro', raza: 'Labrador', peso: 27, idDueno: 904 },
-  };
-  const base = (id, idMascota, extra) => ({
-    id, idMascota, idDueno: mascotas[idMascota].idDueno, idWalker: null,
-    duracionMin: 30, precio: 5000, direccion: null, lat: null, lng: null, notas: null,
-    distanciaMetros: 0, segundosAcumulados: 0, reanudadoEn: null,
-    horaInicio: null, horaFin: null, rating: null, resena: null,
-    creadoEn: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
-    ...extra,
-  });
-  const paseos = [
-    base(1, 802, { estado: 'pendiente', fecha: hoyA(17, 30), duracionMin: 60, precio: 9000,
-      direccion: 'Av. Rivadavia 5200, Caballito', lat: -34.6187, lng: -58.4370,
-      notas: 'Tira un poco de la correa. Llaves con el portero.' }),
-    base(2, 803, { estado: 'pendiente', fecha: hoyA(19), precio: 5000,
-      direccion: 'Acoyte 300, Caballito', lat: -34.6140, lng: -58.4366,
-      notas: 'No le gustan los perros grandes.', creadoEn: new Date(Date.now() - 3 * 60 * 1000).toISOString() }),
-    base(3, 801, { estado: 'aceptado', idWalker: 'yo', fecha: hoyA(15), duracionMin: 60, precio: 9000,
-      direccion: 'Pedro Goyena 900, Caballito', lat: -34.6260, lng: -58.4410 }),
-    base(10, 804, { estado: 'finalizado', idWalker: 'yo', fecha: haceDias(0, 9), duracionMin: 30, precio: 5000,
-      horaInicio: haceDias(0, 9), horaFin: haceDias(0, 9), distanciaMetros: 2100, segundosAcumulados: 1860,
-      rating: 5, resena: 'Nala volvió feliz y cansada. ¡Gracias!' }),
-    base(11, 801, { estado: 'finalizado', idWalker: 'yo', fecha: haceDias(1), duracionMin: 60, precio: 9000,
-      horaInicio: haceDias(1), horaFin: haceDias(1, 11), distanciaMetros: 4300, segundosAcumulados: 3640,
-      rating: 5, resena: 'Súper puntual y me mandó fotos del paseo.' }),
-    base(12, 802, { estado: 'finalizado', idWalker: 'yo', fecha: haceDias(2), duracionMin: 60, precio: 9000,
-      horaInicio: haceDias(2), horaFin: haceDias(2, 11), distanciaMetros: 3900, segundosAcumulados: 3600, rating: 4 }),
-    base(13, 803, { estado: 'finalizado', idWalker: 'yo', fecha: haceDias(4), precio: 5000,
-      horaInicio: haceDias(4), horaFin: haceDias(4), distanciaMetros: 1800, segundosAcumulados: 1800 }),
-    base(14, 804, { estado: 'finalizado', idWalker: 'yo', fecha: haceDias(9), precio: 5000,
-      horaInicio: haceDias(9), horaFin: haceDias(9), distanciaMetros: 2000, segundosAcumulados: 1900, rating: 5,
-      resena: 'Muy buena onda con Nala.' }),
-    base(15, 801, { estado: 'finalizado', idWalker: 'yo', fecha: haceDias(16), duracionMin: 60, precio: 9000,
-      horaInicio: haceDias(16), horaFin: haceDias(16, 11), distanciaMetros: 4100, segundosAcumulados: 3700 }),
-  ];
-  return {
-    duenos, mascotas, paseos,
-    rechazados: new Set(),
-    pagos: [],
-    cuentaConfig: {}, // idDueno → { modalidad, ultimoRecordatorio }
-    mensajes: {
-      3: [
-        { id: 1, idUser: 901, texto: '¡Hola! Titán ya está listo, te espera en la puerta 🐶', fecha: new Date(Date.now() - 40 * 60 * 1000).toISOString() },
-      ],
-    },
-    perfil: {
-      idUser: null, nombre: 'Paseador', apellido: 'Demo', foto: null,
-      bio: 'Amo a los perros. Paseos tranquilos por plazas de Caballito.',
-      zona: 'Caballito', zonas: ['Almagro', 'Flores'], lat: -34.6189, lng: -58.4380, radioKm: 3,
-      servicios: [{ minutos: 30, precio: 5000 }, { minutos: 60, precio: 9000 }], maxPerros: 3, tamanos: ['chico', 'mediano', 'grande'],
-      experienciaAnios: 2, disponible: true, horarios: HORARIOS_DEFAULT(), verificado: false,
-      desde: new Date().toISOString(),
-    },
-    notificaciones: [
-      { id: 1, titulo: 'Tenés una solicitud nueva', mensaje: 'Rocco (Bulldog Francés) para hoy a las 19:00', fecha: new Date(Date.now() - 3 * 60 * 1000).toISOString(), leido: false },
-    ],
-  };
-}
-
-let demo = null;
-function getDemo() {
-  if (!demo) demo = crearDemo();
-  return demo;
-}
-
-function mapDemoPaseo(p) {
-  const d = getDemo();
-  const m = d.mascotas[p.idMascota];
-  const du = d.duenos[p.idDueno];
-  return {
-    ...p,
-    abierta: p.idWalker == null,
-    mascota: { ...m, visual: resolveMascotaVisual({ especie: m.especie, raza: m.raza }) },
-    dueno: du,
-  };
-}
 
 // ─────────────────────────────────────────────
 // HELPERS DE FORMATO (compartidos por las pantallas)
@@ -231,12 +72,7 @@ export async function loginPaseador(email, password) {
   const { data: perfil, error: errPerfil } = await supabase
     .from('paseador_perfil').select('id_user').eq('id_user', usuario.id).maybeSingle();
 
-  if (errPerfil) {
-    // Sin la 035 no hay forma de saber si es paseador: se entra en demo.
-    caerADemo(errPerfil);
-    await entrarComoPaseador(usuario.id, mail);
-    return { usuario };
-  }
+  if (errPerfil) throw errorApp('error_base', errPerfil);
   if (!perfil) {
     // ¿Ya tiene el rol de paseador (ej. asignado a mano) y sólo le falta el
     // perfil? Entonces entra y lo completa, sin "activar" de nuevo.
@@ -369,17 +205,7 @@ export async function completarPerfilPaseador(perfil) {
   });
   if (error) {
     if (String(error.message ?? '').includes('no_es_paseador')) throw new Error('no_es_paseador');
-    if (!esEsquemaFaltante(error)) throw errorApp('error_base', error);
-    // La 036 todavía no se corrió: el rol ya existe en UserRole, así que se
-    // guarda el perfil directo en la tabla (la 035 la deja escribible).
-    const f = perfilParaRpc(perfil);
-    const { error: errDirecto } = await supabase.from('paseador_perfil').upsert({
-      id_user: getCurrentUserId(), bio: f.bio, zona: f.zona, lat: f.lat, lng: f.lng,
-      radio_km: f.radioKm, servicios: f.servicios,
-      max_perros: f.maxPerros, tamanos: f.tamanos, experiencia_anios: f.experienciaAnios,
-      horarios: f.horarios,
-    });
-    if (errDirecto) throw errorApp(esEsquemaFaltante(errDirecto) ? 'migracion_pendiente' : 'error_base', errDirecto);
+    throw errorApp('error_base', error);
   }
   await setModo(MODO_PASEADOR);
 }
@@ -544,11 +370,7 @@ export async function fetchPerfilPaseador() {
     supabase.from('paseador_perfil').select('*').eq('id_user', id).maybeSingle(),
     supabase.from('User').select('Nombre, Apellido, FotoPerfil, Telefono').eq('Id_User', id).maybeSingle(),
   ]);
-  if (error && caerADemo(error)) {
-    const p = getDemo().perfil;
-    if (user) Object.assign(p, { nombre: user.Nombre, apellido: user.Apellido, foto: user.FotoPerfil });
-    return { ...p, idUser: id };
-  }
+  if (error) throw errorApp('error_base', error);
   if (!row) return null;
   return mapPerfil(row, user);
 }
@@ -561,15 +383,10 @@ export async function actualizarPerfilPaseador(campos) {
     tamanos: 'tamanos', experienciaAnios: 'experiencia_anios',
     disponible: 'disponible', horarios: 'horarios',
   };
-  if (modoDemo) {
-    Object.assign(getDemo().perfil, campos);
-    return;
-  }
   const fila = { actualizado_en: new Date().toISOString() };
   Object.entries(campos).forEach(([k, v]) => { if (columnas[k]) fila[columnas[k]] = v; });
   const { error } = await supabase.from('paseador_perfil').update(fila).eq('id_user', getCurrentUserId());
-  if (error && !caerADemo(error)) throw error;
-  if (error) Object.assign(getDemo().perfil, campos);
+  if (error) throw error;
 }
 
 export function setDisponible(disponible) {
@@ -650,10 +467,6 @@ async function enriquecer(rows) {
   });
 }
 
-function demoPaseos(filtro) {
-  return getDemo().paseos.filter(filtro).map(mapDemoPaseo);
-}
-
 /** Solicitudes pendientes que puedo tomar: dirigidas a mí o abiertas. */
 export async function fetchSolicitudes() {
   const yo = getCurrentUserId();
@@ -662,11 +475,7 @@ export async function fetchSolicitudes() {
     .eq('Estado', 'pendiente')
     .or(`Id_Walker.is.null,Id_Walker.eq.${yo}`)
     .order('FechaProgramada', { ascending: true });
-
-  if (error && caerADemo(error)) {
-    const d = getDemo();
-    return demoPaseos((p) => p.estado === 'pendiente' && !d.rechazados.has(p.id));
-  }
+  if (error) throw errorApp('error_base', error);
 
   const { data: rechazos } = await supabase.from('paseo_rechazos').select('id_paseo').eq('id_walker', yo);
   const ocultas = new Set((rechazos ?? []).map((r) => r.id_paseo));
@@ -687,10 +496,7 @@ export async function fetchMisPaseos(estados, { desde } = {}) {
     .order('FechaProgramada', { ascending: true });
   if (desde) q = q.gte('FechaProgramada', desde.toISOString());
   const { data, error } = await q;
-  if (error && caerADemo(error)) {
-    return demoPaseos((p) => p.idWalker === 'yo' && estados.includes(p.estado)
-      && (!desde || new Date(p.fecha) >= desde));
-  }
+  if (error) throw errorApp('error_base', error);
   return enriquecer(data ?? []);
 }
 
@@ -705,17 +511,13 @@ export async function fetchPaseosEnCurso() {
 
 export async function fetchPaseo(id) {
   const { data, error } = await supabase.from('Paseo').select(COLUMNAS_PASEO).eq('Id_Paseo', id).maybeSingle();
-  if (error && caerADemo(error)) {
-    const p = getDemo().paseos.find((x) => x.id === id);
-    return p ? mapDemoPaseo(p) : null;
-  }
+  if (error) throw errorApp('error_base', error);
   if (!data) return null;
   return (await enriquecer([data]))[0];
 }
 
 /** Recorrido guardado del paseo: [{lat, lng}] en orden. */
 export async function fetchRecorrido(idPaseo) {
-  if (modoDemo) return [];
   const { data } = await supabase.from('PaseoTrack')
     .select('Lat, Lng').eq('Id_Paseo', idPaseo).order('Timestamp', { ascending: true });
   return (data ?? []).map((p) => ({ lat: Number(p.Lat), lng: Number(p.Lng) }));
@@ -725,33 +527,8 @@ export async function fetchRecorrido(idPaseo) {
 // PASEOS (acciones)
 // ─────────────────────────────────────────────
 
-/**
- * Avisa al dueño (tabla Notificacion de la app de dueños). Nunca rompe el flujo.
- *
- * `destino` queda guardado en DataExtra para que al tocar la notificación se
- * pueda abrir la pantalla correcta. Sin esto había que adivinar por el título
- * (ver destinoNotificacionPaseador, que sigue cubriendo las viejas).
- */
-async function notificar(idUser, titulo, mensaje, destino = null) {
-  if (modoDemo || !idUser) return;
-  try {
-    await supabase.from('Notificacion').insert({
-      Id_User: idUser, Titulo: titulo, Mensaje: mensaje, Tipo: 'paseo', Leido: false,
-      DataExtra: destino ? { destino } : null,
-    });
-  } catch {
-    // La notificación es un extra: el cambio de estado ya quedó guardado.
-  }
-}
-
 function notificarDueno(paseo, titulo, mensaje) {
-  return notificar(paseo?.idDueno, titulo, mensaje);
-}
-
-function demoUpdate(id, cambios) {
-  const p = getDemo().paseos.find((x) => x.id === id);
-  if (p) Object.assign(p, cambios);
-  return p ? mapDemoPaseo(p) : null;
+  return notificarPaseo(paseo?.idDueno, titulo, mensaje);
 }
 
 async function updatePaseo(id, fila) {
@@ -761,10 +538,6 @@ async function updatePaseo(id, fila) {
 
 /** Devuelve false si otro paseador la tomó antes. */
 export async function aceptarSolicitud(paseo) {
-  if (modoDemo) {
-    demoUpdate(paseo.id, { estado: 'aceptado', idWalker: 'yo' });
-    return true;
-  }
   const { data, error } = await supabase.rpc('aceptar_solicitud_paseo', {
     p_id_paseo: paseo.id, p_id_walker: getCurrentUserId(),
   });
@@ -777,10 +550,6 @@ export async function aceptarSolicitud(paseo) {
 }
 
 export async function rechazarSolicitud(paseo) {
-  if (modoDemo) {
-    getDemo().rechazados.add(paseo.id);
-    return;
-  }
   if (paseo.abierta) {
     const { error } = await supabase.from('paseo_rechazos')
       .upsert({ id_paseo: paseo.id, id_walker: getCurrentUserId() });
@@ -794,10 +563,6 @@ export async function rechazarSolicitud(paseo) {
 
 /** Cancela un paseo ya aceptado (antes de empezar). */
 export async function cancelarPaseo(paseo) {
-  if (modoDemo) {
-    demoUpdate(paseo.id, { estado: 'cancelado' });
-    return;
-  }
   await updatePaseo(paseo.id, { Estado: 'cancelado' });
   notificarDueno(paseo, 'Paseo cancelado',
     `El paseador canceló el paseo de ${paseo.mascota.nombre} (${cuandoDe(paseo.fecha)}).`);
@@ -806,7 +571,6 @@ export async function cancelarPaseo(paseo) {
 export async function iniciarPaseo(paseo) {
   const ahora = new Date().toISOString();
   const cambios = { estado: 'en_curso', horaInicio: ahora, reanudadoEn: ahora, segundosAcumulados: 0, distanciaMetros: 0 };
-  if (modoDemo) return demoUpdate(paseo.id, cambios);
   await updatePaseo(paseo.id, {
     Estado: 'en_curso', HoraInicio: ahora, ReanudadoEn: ahora, SegundosAcumulados: 0, DistanciaMetros: 0,
   });
@@ -817,14 +581,12 @@ export async function iniciarPaseo(paseo) {
 export async function pausarPaseo(paseo) {
   const segundos = Math.round(segundosDePaseo(paseo));
   const cambios = { segundosAcumulados: segundos, reanudadoEn: null };
-  if (modoDemo) return demoUpdate(paseo.id, cambios);
   await updatePaseo(paseo.id, { SegundosAcumulados: segundos, ReanudadoEn: null });
   return { ...paseo, ...cambios };
 }
 
 export async function reanudarPaseo(paseo) {
   const ahora = new Date().toISOString();
-  if (modoDemo) return demoUpdate(paseo.id, { reanudadoEn: ahora });
   await updatePaseo(paseo.id, { ReanudadoEn: ahora });
   return { ...paseo, reanudadoEn: ahora };
 }
@@ -847,20 +609,14 @@ export async function finalizarPaseo(paseo, distancia) {
     segundosAcumulados: segundos, distanciaMetros: metros,
     precio, precioPactado, comision,
   };
-  if (modoDemo) return demoUpdate(paseo.id, cambios);
   const fila = {
     Estado: 'finalizado', HoraFin: ahora, ReanudadoEn: null,
     SegundosAcumulados: segundos, DistanciaMetros: metros,
     Precio: precio, PrecioPactado: precioPactado, Comision: comision,
   };
-  try {
-    await updatePaseo(paseo.id, fila);
-  } catch (error) {
-    // Sin la 045: se cobra igual por tiempo, sin guardar pactado ni comisión
-    if (!esEsquemaFaltante(error)) throw error;
-    const { PrecioPactado, Comision, ...sin045 } = fila; // eslint-disable-line no-unused-vars
-    await updatePaseo(paseo.id, sin045);
-  }
+  // Precio y comisión los recalcula la base (trigger de 062): esto es lo que
+  // se muestra mientras tanto.
+  await updatePaseo(paseo.id, fila);
   notificarDueno(paseo, `${paseo.mascota.nombre} ya volvió a casa 🏠`,
     `Paseo de ${formatoTiempoPaseado(segundos)} · ${formatoDistancia(metros)} · ${formatoPlata(precio)}. ¡Dejale una reseña al paseador!`);
   return { ...paseo, ...cambios };
@@ -876,14 +632,9 @@ export async function retomarPaseo(paseo) {
   const ahora = new Date().toISOString();
   const precio = paseo.precioPactado ?? paseo.precio;
   const cambios = { estado: 'en_curso', horaFin: null, reanudadoEn: ahora, precio, comision: 0 };
-  if (modoDemo) return demoUpdate(paseo.id, cambios);
   const fila = { Estado: 'en_curso', HoraFin: null, ReanudadoEn: ahora, Precio: precio, Comision: 0 };
   const actualizar = (f) => supabase.from('Paseo').update(f).eq('Id_Paseo', paseo.id).eq('Estado', 'finalizado');
-  let { error } = await actualizar(fila);
-  if (error && esEsquemaFaltante(error)) {
-    const { Comision, ...sin045 } = fila; // eslint-disable-line no-unused-vars
-    ({ error } = await actualizar(sin045));
-  }
+  const { error } = await actualizar(fila);
   if (error) throw error;
   notificarDueno(paseo, `El paseo de ${paseo.mascota.nombre} sigue en curso 🦮`,
     'El paseador lo había finalizado sin querer. Podés seguirlo en vivo desde la app.');
@@ -892,10 +643,6 @@ export async function retomarPaseo(paseo) {
 
 /** Guarda un punto del recorrido y la distancia acumulada. */
 export async function registrarPunto(idPaseo, { lat, lng }, distanciaTotal) {
-  if (modoDemo) {
-    demoUpdate(idPaseo, { distanciaMetros: Math.round(distanciaTotal) });
-    return;
-  }
   await Promise.all([
     supabase.from('PaseoTrack').insert({ Id_Paseo: idPaseo, Lat: lat, Lng: lng, Timestamp: new Date().toISOString() }),
     supabase.from('Paseo').update({ DistanciaMetros: Math.round(distanciaTotal) }).eq('Id_Paseo', idPaseo),
@@ -921,10 +668,7 @@ function mapPago(r) {
 async function leerPagos() {
   const { data, error } = await supabase.from('paseo_pagos').select('*')
     .eq('id_walker', getCurrentUserId()).order('fecha', { ascending: true });
-  if (error) {
-    if (modoDemo) return getDemo().pagos;
-    throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
-  }
+  if (error) throw errorApp('error_base', error);
   return (data ?? []).map(mapPago);
 }
 
@@ -932,7 +676,6 @@ async function leerPagos() {
 
 /** { [idDueno]: { modalidad, ultimoRecordatorio } }. Sin la 045 → {}. */
 async function leerConfigCuentas() {
-  if (modoDemo) return getDemo().cuentaConfig;
   const { data, error } = await supabase.from('paseo_cuenta_config')
     .select('id_dueno, modalidad, ultimo_recordatorio').eq('id_walker', getCurrentUserId());
   if (error) return {};
@@ -948,10 +691,6 @@ async function leerConfigCuentas() {
  */
 export async function guardarModalidadCobro(idDueno, modalidad) {
   const ultimoRecordatorio = ultimoCierre(modalidad);
-  if (modoDemo) {
-    getDemo().cuentaConfig[String(idDueno)] = { modalidad, ultimoRecordatorio };
-    return;
-  }
   const { error } = await supabase.from('paseo_cuenta_config').upsert({
     id_walker: getCurrentUserId(), id_dueno: idDueno, modalidad,
     ultimo_recordatorio: ultimoRecordatorio, actualizado_en: new Date().toISOString(),
@@ -985,19 +724,11 @@ export async function revisarRecordatoriosCobro() {
         const periodo = c.modalidad === 'semanal' ? 'la semana' : 'el mes';
         const titulo = `${cuenta.dueno.nombre} te debe ${formatoPlata(cuenta.saldo)}`;
         const mensaje = `Terminó ${periodo}: tiene ${cuenta.pendientes} ${cuenta.pendientes === 1 ? 'paseo' : 'paseos'} sin pagar. Tocá para ver su cuenta.`;
-        if (modoDemo) {
-          getDemo().notificaciones.unshift({ id: Date.now() + enviados, titulo, mensaje, fecha: new Date().toISOString(), leido: false, dataExtra: { destino: 'pagos' } });
-        } else {
-          await notificar(getCurrentUserId(), titulo, mensaje, 'pagos');
-        }
+        await notificarPaseo(getCurrentUserId(), titulo, mensaje, 'pagos');
         enviados += 1;
       }
-      if (modoDemo) {
-        getDemo().cuentaConfig[idDueno].ultimoRecordatorio = cierre;
-      } else {
-        await supabase.from('paseo_cuenta_config').update({ ultimo_recordatorio: cierre })
-          .eq('id_walker', getCurrentUserId()).eq('id_dueno', Number(idDueno));
-      }
+      await supabase.from('paseo_cuenta_config').update({ ultimo_recordatorio: cierre })
+        .eq('id_walker', getCurrentUserId()).eq('id_dueno', Number(idDueno));
     }
     return enviados;
   } catch {
@@ -1023,7 +754,7 @@ export async function fetchCuentasCorrientes() {
   // Medio de pago que eligió el dueño en cada paseo (columna de la 044; si no
   // está, la cuenta igual se arma sin ese dato)
   const medios = {};
-  if (!modoDemo && paseos.length) {
+  if (paseos.length) {
     const { data } = await supabase.from('Paseo').select('"Id_Paseo","MedioPago"')
       .in('Id_Paseo', paseos.map((p) => p.id));
     (data ?? []).forEach((r) => { medios[r.Id_Paseo] = r.MedioPago; });
@@ -1118,25 +849,16 @@ function filaPago({ idDueno, monto, medio, fecha, nota }) {
 /** Anota un pago (total o parcial) de un dueño. Le avisa al dueño. */
 export async function registrarPago(pago) {
   const fila = filaPago(pago);
-  if (modoDemo) {
-    getDemo().pagos.push(mapPago({ ...fila, id: Date.now() }));
-    return;
-  }
   const { error } = await supabase.from('paseo_pagos').insert({ ...fila, id_walker: getCurrentUserId() });
   if (error) throw errorDePagos(error);
   const medio = medioDePago(fila.medio);
-  notificar(fila.id_dueno, 'Tu paseador registró un pago',
+  notificarPaseo(fila.id_dueno, 'Tu paseador registró un pago',
     `${formatoPlata(fila.monto)}${medio ? ` · ${medio.label}` : ''}. ¡Gracias!`);
 }
 
 /** Corrige un pago ya anotado (monto, medio, fecha o nota). */
 export async function editarPago(id, pago) {
   const fila = filaPago(pago);
-  if (modoDemo) {
-    const i = getDemo().pagos.findIndex((x) => x.id === id);
-    if (i >= 0) getDemo().pagos[i] = mapPago({ ...fila, id });
-    return;
-  }
   const { error } = await supabase.from('paseo_pagos')
     .update({ ...fila, actualizado_en: new Date().toISOString() })
     .eq('id', id).eq('id_walker', getCurrentUserId());
@@ -1144,10 +866,6 @@ export async function editarPago(id, pago) {
 }
 
 export async function borrarPago(id) {
-  if (modoDemo) {
-    getDemo().pagos = getDemo().pagos.filter((x) => x.id !== id);
-    return;
-  }
   const { error } = await supabase.from('paseo_pagos').delete()
     .eq('id', id).eq('id_walker', getCurrentUserId());
   if (error) throw errorDePagos(error);
@@ -1207,17 +925,9 @@ export async function getMensajesPaseo(idPaseo) {
   const ids = (Array.isArray(idPaseo) ? idPaseo : [idPaseo]).filter((x) => x != null);
   if (!ids.length) return [];
 
-  if (modoDemo) {
-    return ids
-      .flatMap((id) => (getDemo().mensajes[id] ?? []).map((m) => ({ ...m, idPaseo: id })))
-      .sort((a, b) => new Date(a.fecha) - new Date(b.fecha))
-      .map((m) => ({
-        id: m.id, idPaseo: m.idPaseo, texto: m.texto, fecha: m.fecha, autor: m.idUser === 'yo' ? 'yo' : 'otro',
-      }));
-  }
   const { data, error } = await supabase.from('paseo_mensajes')
     .select('*').in('id_paseo', ids).order('fecha', { ascending: true });
-  if (error && caerADemo(error)) return getMensajesPaseo(idPaseo);
+  if (error) throw errorApp('error_base', error);
   return (data ?? []).map((m) => ({
     id: m.id, idPaseo: m.id_paseo, texto: m.texto, fecha: m.fecha, leido: m.leido,
     autor: m.id_user === yo ? 'yo' : 'otro',
@@ -1227,19 +937,13 @@ export async function getMensajesPaseo(idPaseo) {
 export async function enviarMensajePaseo(paseo, texto) {
   const limpio = texto.trim().slice(0, 1000);
   if (!limpio) return getMensajesPaseo(paseo.id);
-  if (modoDemo) {
-    const d = getDemo();
-    if (!d.mensajes[paseo.id]) d.mensajes[paseo.id] = [];
-    d.mensajes[paseo.id].push({ id: Date.now(), idUser: 'yo', texto: limpio, fecha: new Date().toISOString() });
-    return getMensajesPaseo(paseo.id);
-  }
   const { error } = await supabase.from('paseo_mensajes').insert({
     id_paseo: paseo.id, id_user: getCurrentUserId(), texto: limpio, fecha: new Date().toISOString(),
   });
   if (error) throw error;
   const resumen = limpio.length > 80 ? `${limpio.slice(0, 80)}…` : limpio;
   if (getCurrentUserId() === paseo.idDueno) {
-    notificar(paseo.idWalker, `Mensaje del dueño de ${paseo.mascota.nombre}`, resumen, 'chats');
+    notificarPaseo(paseo.idWalker, `Mensaje del dueño de ${paseo.mascota.nombre}`, resumen, 'chats');
   } else {
     notificarDueno(paseo, `Mensaje del paseador de ${paseo.mascota.nombre}`, resumen);
   }
@@ -1248,7 +952,6 @@ export async function enviarMensajePaseo(paseo, texto) {
 
 /** Marca leídos los mensajes recibidos. Acepta un id o una lista (ver getMensajesPaseo). */
 export async function marcarLeidosPaseo(idPaseo) {
-  if (modoDemo) return;
   const ids = (Array.isArray(idPaseo) ? idPaseo : [idPaseo]).filter((x) => x != null);
   if (!ids.length) return;
   await supabase.from('paseo_mensajes').update({ leido: true })
@@ -1260,7 +963,6 @@ export async function marcarLeidosPaseo(idPaseo) {
 // ─────────────────────────────────────────────
 
 export async function fetchNotificacionesPaseador() {
-  if (modoDemo) return getDemo().notificaciones;
   // Tipo y DataExtra se traen para poder navegar al tocar la notificación,
   // igual que en el panel del Home de dueños.
   const { data } = await supabase.from('Notificacion')
@@ -1295,20 +997,11 @@ export function destinoNotificacionPaseador(n) {
 
 /** Marca UNA notificación como leída (al tocarla), sin tocar las demás. */
 export async function marcarNotificacionPaseadorLeida(id) {
-  if (modoDemo) {
-    const n = getDemo().notificaciones.find((x) => x.id === id);
-    if (n) n.leido = true;
-    return;
-  }
   await supabase.from('Notificacion').update({ Leido: true })
     .eq('Id', id).eq('Id_User', getCurrentUserId());
 }
 
 export async function marcarNotificacionesLeidas() {
-  if (modoDemo) {
-    getDemo().notificaciones.forEach((n) => { n.leido = true; });
-    return;
-  }
   await supabase.from('Notificacion').update({ Leido: true })
     .eq('Id_User', getCurrentUserId()).eq('Leido', false);
 }
@@ -1428,16 +1121,11 @@ export async function crearSolicitudPaseo({
     Estado: 'pendiente',
     MedioPago: medioPago ?? null,
   };
-  let { data, error } = await supabase.from('Paseo').insert(fila).select('Id_Paseo').single();
-  if (error && esEsquemaFaltante(error) && /MedioPago/i.test(String(error.message))) {
-    // Sin la 044: la solicitud sale igual, sin el medio de pago
-    const { MedioPago, ...sinMedio } = fila; // eslint-disable-line no-unused-vars
-    ({ data, error } = await supabase.from('Paseo').insert(sinMedio).select('Id_Paseo').single());
-  }
+  const { data, error } = await supabase.from('Paseo').insert(fila).select('Id_Paseo').single();
   if (error) throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
 
   const medio = MEDIOS_PAGO.find((m) => m.key === medioPago);
-  notificar(paseador.id, 'Tenés una solicitud nueva',
+  notificarPaseo(paseador.id, 'Tenés una solicitud nueva',
     `${mascota.nombre} · ${cuandoDe(fecha.toISOString())} · ${duracionMin} minutos · ${formatoPlata(precio)}${medio ? ` · paga con ${medio.label}` : ''}`,
     'solicitudes');
   return data.Id_Paseo;
@@ -1458,7 +1146,7 @@ export async function cancelarPaseoDueno(paseo) {
   const { error } = await supabase.from('Paseo').update({ Estado: 'cancelado' })
     .eq('Id_Paseo', paseo.id).in('Estado', ['pendiente', 'aceptado']);
   if (error) throw error;
-  notificar(paseo.idWalker, 'Paseo cancelado por el dueño',
+  notificarPaseo(paseo.idWalker, 'Paseo cancelado por el dueño',
     `${paseo.mascota.nombre} · ${cuandoDe(paseo.fecha)}`);
 }
 
@@ -1502,9 +1190,6 @@ async function subirMediaResena(media, carpeta) {
  * Calificación del dueño al terminar. `media` son los archivos elegidos con
  * el picker ([{ uri, mimeType }]): se suben al bucket "resenas" y se guardan
  * sus URLs. Al paseador le llega una notificación que lo lleva a su Perfil.
- *
- * Devuelve { parcial: true } si la base no tiene la 042: se guardaron las
- * estrellas y el texto, pero no aspectos, respuestas ni fotos.
  */
 export async function calificarPaseo(paseo, {
   rating, resena, aspectos = {}, respuestas = {}, media = [],
@@ -1512,7 +1197,6 @@ export async function calificarPaseo(paseo, {
   const texto = resena?.trim() || null;
   const subidos = await subirMediaResena(media, `paseo-${paseo.id}`);
 
-  let parcial = false;
   const { error } = await supabase.from('Paseo').update({
     Rating: rating,
     Resena: texto,
@@ -1521,15 +1205,7 @@ export async function calificarPaseo(paseo, {
     ResenaMedia: subidos,
     ResenaFecha: new Date().toISOString(),
   }).eq('Id_Paseo', paseo.id).eq('Estado', 'finalizado');
-  if (error) {
-    if (!esEsquemaFaltante(error)) throw errorApp(codigoErrorResena(error), error);
-    // Sin la 042: lo básico igual se guarda
-    const { error: errBasico } = await supabase.from('Paseo')
-      .update({ Rating: rating, Resena: texto })
-      .eq('Id_Paseo', paseo.id).eq('Estado', 'finalizado');
-    if (errBasico) throw errorApp(codigoErrorResena(errBasico), errBasico);
-    parcial = true;
-  }
+  if (error) throw errorApp(codigoErrorResena(error), error);
 
   const fotos = subidos.filter((x) => x.tipo === 'imagen').length;
   const videos = subidos.length - fotos;
@@ -1537,14 +1213,13 @@ export async function calificarPaseo(paseo, {
     fotos ? `${fotos} ${fotos === 1 ? 'foto' : 'fotos'}` : null,
     videos ? `${videos} ${videos === 1 ? 'video' : 'videos'}` : null,
   ].filter(Boolean).join(' y ');
-  notificar(
+  notificarPaseo(
     paseo.idWalker,
     `Nueva reseña: ${rating} ${rating === 1 ? 'estrella' : 'estrellas'}`,
     [texto ? `"${texto.slice(0, 80)}"` : `Paseo con ${paseo.mascota.nombre}`, adjuntos ? `con ${adjuntos}` : null]
       .filter(Boolean).join(' · '),
     'perfil',
   );
-  return { parcial };
 }
 
 /**
@@ -1567,7 +1242,7 @@ export async function fetchPaseosParaOpinar(idWalker) {
  */
 async function leerOpiniones(idsWalker) {
   const ids = (Array.isArray(idsWalker) ? idsWalker : [idsWalker]).filter((x) => x != null);
-  if (modoDemo || !ids.length) return [];
+  if (!ids.length) return [];
   const { data, error } = await supabase.from('paseador_opiniones').select('*').in('id_walker', ids);
   return error ? [] : (data ?? []);
 }
@@ -1590,10 +1265,9 @@ export async function opinarPaseador(idWalker, {
   });
   if (error) throw errorApp(codigoErrorResena(error), error);
   if (String(idWalker) !== String(yo)) {
-    notificar(idWalker, `Nueva reseña: ${rating} ${rating === 1 ? 'estrella' : 'estrellas'}`,
+    notificarPaseo(idWalker, `Nueva reseña: ${rating} ${rating === 1 ? 'estrella' : 'estrellas'}`,
       texto ? `"${texto.slice(0, 80)}"` : 'Te dejaron una opinión', 'perfil');
   }
-  return { parcial: false };
 }
 
 const COLUMNAS_RESENA ='"Id_Paseo","Id_Mascota","Id_Dueno","FechaProgramada","DuracionMin","Rating","Resena","ResenaAspectos","ResenaRespuestas","ResenaMedia","ResenaFecha"';
@@ -1604,14 +1278,8 @@ const COLUMNAS_RESENA ='"Id_Paseo","Id_Mascota","Id_Dueno","FechaProgramada","Du
  * pregunta y todas las fotos/videos juntos).
  */
 export async function fetchResenasPaseador(idWalker) {
-  let { data, error } = await supabase.from('Paseo').select(COLUMNAS_RESENA)
+  const { data, error } = await supabase.from('Paseo').select(COLUMNAS_RESENA)
     .eq('Id_Walker', idWalker).eq('Estado', 'finalizado').not('Rating', 'is', null);
-  if (error && esEsquemaFaltante(error)) {
-    // Sin la 042: sólo estrellas y texto
-    ({ data, error } = await supabase.from('Paseo')
-      .select('"Id_Paseo","Id_Mascota","Id_Dueno","FechaProgramada","DuracionMin","Rating","Resena"')
-      .eq('Id_Walker', idWalker).eq('Estado', 'finalizado').not('Rating', 'is', null));
-  }
   if (error) throw error;
   const filas = data ?? [];
   const opiniones = await leerOpiniones(idWalker);
@@ -1698,37 +1366,22 @@ export async function fetchResenasPaseador(idWalker) {
  */
 export async function fetchConversacionesPaseo(rol = 'paseador') {
   const yo = getCurrentUserId();
-  let paseos;
-  if (modoDemo && rol === 'paseador') {
-    paseos = demoPaseos((p) => p.idWalker === 'yo' && ['aceptado', 'en_curso', 'finalizado'].includes(p.estado));
-  } else {
-    const columna = rol === 'paseador' ? 'Id_Walker' : 'Id_Dueno';
-    const { data, error } = await supabase.from('Paseo').select(COLUMNAS_PASEO)
-      .eq(columna, yo)
-      .in('Estado', ['pendiente', 'aceptado', 'en_curso', 'finalizado'])
-      .order('CreadoEn', { ascending: false })
-      .limit(40);
-    if (error) {
-      if (rol === 'paseador' && caerADemo(error)) return fetchConversacionesPaseo(rol);
-      return [];
-    }
-    paseos = await enriquecer(data ?? []);
-  }
+  const columna = rol === 'paseador' ? 'Id_Walker' : 'Id_Dueno';
+  const { data: filas, error } = await supabase.from('Paseo').select(COLUMNAS_PASEO)
+    .eq(columna, yo)
+    .in('Estado', ['pendiente', 'aceptado', 'en_curso', 'finalizado'])
+    .order('CreadoEn', { ascending: false })
+    .limit(40);
+  if (error) return [];
+  const paseos = await enriquecer(filas ?? []);
   if (!paseos.length) return [];
 
-  let mensajes = [];
-  if (modoDemo) {
-    paseos.forEach((p) => (getDemo().mensajes[p.id] ?? []).forEach((m) => mensajes.push({
-      id_paseo: p.id, id_user: m.idUser === 'yo' ? yo : m.idUser, texto: m.texto, fecha: m.fecha, leido: true,
-    })));
-  } else {
-    const { data } = await supabase.from('paseo_mensajes')
-      .select('id_paseo, id_user, texto, fecha, leido')
-      .in('id_paseo', paseos.map((p) => p.id))
-      .order('fecha', { ascending: false })
-      .limit(500);
-    mensajes = data ?? [];
-  }
+  const { data: msjs } = await supabase.from('paseo_mensajes')
+    .select('id_paseo, id_user, texto, fecha, leido')
+    .in('id_paseo', paseos.map((p) => p.id))
+    .order('fecha', { ascending: false })
+    .limit(500);
+  const mensajes = msjs ?? [];
 
   const porPaseo = {};
   mensajes.forEach((m) => {

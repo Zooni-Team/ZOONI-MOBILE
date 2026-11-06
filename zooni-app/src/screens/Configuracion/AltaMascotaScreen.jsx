@@ -43,6 +43,7 @@ import { formatearPeso, pesoValido, rangoPeso, textoRangoPeso } from '../../cons
 import { alerta } from '../../utils/dialogo';
 import AppDialog from '../../components/AppDialog';
 import { colores } from '../../theme';
+import { capitalizar } from '../../utils/texto';
 
 const SEXOS = ['Macho', 'Hembra'];
 
@@ -57,10 +58,6 @@ const IMAGEN_ASSET_POR_ESPECIE = {
   hamster: 'hamster_default',
   raton: 'hamster_default',
 };
-
-function capitalizar(str) {
-  return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
-}
 
 /** Tile de especie — igual que en RegisterStep1 */
 function EspecieTile({ especie, seleccionada, onPress }) {

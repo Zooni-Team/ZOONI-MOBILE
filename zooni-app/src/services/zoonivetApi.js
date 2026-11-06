@@ -18,43 +18,15 @@ import { supabase } from '../lib/supabase';
 import { fetchMisMascotas } from './petsApi';
 import { fetchVacunas, fetchConsultas, fetchHistorialPeso } from './fichaMedicaApi';
 import { calcularEdad, calcularEdadMeses } from '../utils/calcularEdad';
-import { parseFechaLocal } from '../utils/fechaLocal';
-
-// ─── SANITIZACIÓN DEL BLOQUE DE DATOS (anti prompt-injection, 8.4) ───────────
-// Los campos de la mascota los escribe el usuario y pueden contener texto
-// malicioso. Se eliminan delimitadores y marcadores de rol antes de interpolar.
-
-function limpiarCampo(valor, maxLen = 200) {
-  if (valor == null) return null;
-  let s = String(valor)
-    .replace(/<<<|>>>|<\|>?|<\/?DATOS>/gi, ' ')
-    .replace(/^\s*(system|assistant|user)\s*:/gim, ' ')
-    .replace(/^\s*#{2,}.*/gim, ' ')
-    .replace(/[\u0000-\u001f\u007f]/g, ' ')
-    .replace(/\n{2,}/g, '\n')
-    .trim();
-  if (s.length > maxLen) s = s.slice(0, maxLen);
-  return s.length ? s : null;
-}
-
-function normalizar(txt) {
-  return String(txt ?? '').toLowerCase();
-}
+import { diasEntre, toISODateLocal } from '../utils/fechaLocal';
+import { sanitizarTexto } from '../utils/sanitizar';
+import { normalizarBusqueda } from '../utils/texto';
 
 // ─── CONSTRUCCIÓN DEL CONTEXTO DE LA MASCOTA ─────────────────────────────────
 
-const HOY_ISO = () => new Date().toISOString().slice(0, 10);
-
-function diasEntre(desdeISO, hastaISO) {
-  const a = parseFechaLocal(desdeISO);
-  const b = parseFechaLocal(hastaISO);
-  if (isNaN(a) || isNaN(b)) return null;
-  return Math.round((b - a) / (1000 * 60 * 60 * 24));
-}
-
 function esSenior(especie, edadMeses) {
   if (edadMeses == null) return false;
-  const esp = normalizar(especie);
+  const esp = normalizarBusqueda(especie);
   // Umbral simple; el modelo ya recibe el flag resuelto.
   if (esp.includes('gato')) return edadMeses >= 132; // ~11 años
   return edadMeses >= 96; // ~8 años (perros; varía por tamaño, se toma conservador)
@@ -93,7 +65,7 @@ export async function construirContextoMascota(petId) {
   if (!mascota) return null;
 
   const edadMeses = calcularEdadMeses(mascota.fecha_nacimiento);
-  const hoy = HOY_ISO();
+  const hoy = toISODateLocal(new Date());
 
   // Vacunas: aplicadas con su fecha, y pendientes/vencidas con días exactos.
   const vacunasAplicadas = (aplicadas ?? [])
@@ -111,7 +83,7 @@ export async function construirContextoMascota(petId) {
 
   return {
     id: mascota.id,
-    nombre: limpiarCampo(mascota.nombre, 30) ?? 'tu mascota',
+    nombre: sanitizarTexto(mascota.nombre, 30) ?? 'tu mascota',
     especie: mascota.especie ?? null,
     raza: mascota.raza ?? null,
     imagenAsset: mascota.imagen_asset ?? null,
@@ -130,7 +102,7 @@ export async function construirContextoMascota(petId) {
     vacunasPendientes,
     consultas: (consultas ?? []).slice(0, 3).map((c) => ({
       fecha: c.fecha,
-      motivo: limpiarCampo(c.motivo, 120),
+      motivo: sanitizarTexto(c.motivo, 120),
     })),
     fechaHoy: hoy,
   };

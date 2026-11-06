@@ -38,12 +38,12 @@ import {
 } from '../services/negocioApi';
 import { buscarLugar, direccionDe } from '../services/paseadorApi';
 import { colores, sombras } from '../theme';
+import { formatearFecha } from '../utils/fechaLocal';
 
 const kmTexto = (km) => `${km.toFixed(1).replace('.', ',')} km`;
 
 const DIAS_VISTA = 21;
 const NOMBRE_DIA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-const fechaLarga = (d) => d.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
 
 function proximosDias() {
   const hoy = new Date();
@@ -371,7 +371,7 @@ export default function ReservarTurnoScreen() {
               return (
                 <TouchableOpacity key={x.toISOString()} style={[s.dia, on && s.diaOn, !abierto && s.diaCerrado]}
                   onPress={() => setDia(x)} disabled={!abierto}
-                  accessibilityLabel={`${fechaLarga(x)}${abierto ? '' : ', cerrado'}`}>
+                  accessibilityLabel={`${formatearFecha(x, 'diaSemana')}${abierto ? '' : ', cerrado'}`}>
                   <Text style={[s.diaNombre, on && { color: colores.blanco }]}>{i === 0 ? 'Hoy' : i === 1 ? 'Mañ' : NOMBRE_DIA[x.getDay()]}</Text>
                   <Text style={[s.diaNum, on && { color: colores.blanco }]}>{x.getDate()}</Text>
                   <Text style={[s.diaMes, on && { color: colores.mentaFondo }]}>{abierto ? x.toLocaleDateString('es-AR', { month: 'short' }) : 'cerr.'}</Text>
@@ -381,7 +381,7 @@ export default function ReservarTurnoScreen() {
           </ScrollView>
 
           {/* 4. Horario */}
-          <Text style={s.label}>¿A qué hora?{dia ? <Text style={s.labelSub}> · {fechaLarga(dia)}</Text> : null}</Text>
+          <Text style={s.label}>¿A qué hora?{dia ? <Text style={s.labelSub}> · {formatearFecha(dia, 'diaSemana')}</Text> : null}</Text>
           {!item ? <Text style={s.ayuda}>Elegí primero el servicio.</Text>
             : cargandoLibres || libres === null ? <ActivityIndicator color={colores.verde} />
               : !grupos.length ? (
@@ -468,7 +468,7 @@ export default function ReservarTurnoScreen() {
             <View style={[s.card, { marginTop: 22 }]}>
               <Text style={s.resumenTitulo}>Tu turno</Text>
               <Text style={s.resumenFila}><Ionicons name="paw" size={14} color={colores.verde} /> {mascota.nombre} · {item.nombre}</Text>
-              <Text style={s.resumenFila}><Ionicons name="calendar" size={14} color={colores.verde} /> {fechaLarga(hora)} a las {horaTexto(hora)} ({item.duracionMin} min)</Text>
+              <Text style={s.resumenFila}><Ionicons name="calendar" size={14} color={colores.verde} /> {formatearFecha(hora, 'diaSemana')} a las {horaTexto(hora)} ({item.duracionMin} min)</Text>
               {aDomicilio ? <Text style={s.resumenFila}><Ionicons name="home" size={14} color={colores.verde} /> {esVet ? 'En tu casa' : 'Busca y lleva'}</Text> : null}
               {esVet && urgente ? <Text style={[s.resumenFila, { color: colores.rojo }]}><Ionicons name="alert-circle" size={14} color={colores.rojo} /> Urgencia</Text> : null}
               <View style={s.resumenTotal}>

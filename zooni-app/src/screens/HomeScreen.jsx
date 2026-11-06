@@ -169,14 +169,6 @@ export default function HomeScreen() {
     try { await saveHomeConfig({ botones: updated }); } catch { /* sin backend */ }
   };
 
-  const handleMoveButton = (index, direction) => {
-    const newBotones = [...botones];
-    const swapIndex = index + direction;
-    if (swapIndex < 0 || swapIndex >= newBotones.length) return;
-    [newBotones[index], newBotones[swapIndex]] = [newBotones[swapIndex], newBotones[index]];
-    setBotones(newBotones);
-  };
-
   const handleNotifNavigate = (ruta) => {
     // Destino con parámetros ({ screen, params }): ej. el chat de un match
     if (typeof ruta === 'object' && ruta?.screen) {

@@ -13,9 +13,9 @@
 
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
-import { parseFechaLocal } from '../utils/fechaLocal';
 import { enRango, sanitizarDigitos, sanitizarTexto } from '../utils/sanitizar';
 import { subirImagenPublica } from '../utils/imagenStorage';
+import { edadResumida } from '../utils/calcularEdad';
 
 export const LIMITE_ACTIVAS = 10;
 
@@ -35,18 +35,6 @@ export function labelMotivo(value) {
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
-function calcularEdadTexto(fechaNacimiento) {
-  if (!fechaNacimiento) return null;
-  const nac = parseFechaLocal(fechaNacimiento);
-  const hoy = new Date();
-  let anios = hoy.getFullYear() - nac.getFullYear();
-  let meses = hoy.getMonth() - nac.getMonth();
-  if (meses < 0) { anios -= 1; meses += 12; }
-  if (anios >= 1) return `${anios} ${anios === 1 ? 'año' : 'años'}`;
-  if (meses >= 1) return `${meses} ${meses === 1 ? 'mes' : 'meses'}`;
-  return 'Menos de 1 mes';
-}
-
 function mapMascota(m) {
   return {
     id: m.Id_Mascota,
@@ -61,7 +49,7 @@ function mapMascota(m) {
     mostrarFoto: m.MostrarFoto ?? true,
     peso: m.Peso != null ? Number(m.Peso) : null,
     fechaNacimiento: m.FechaNacimiento ?? null,
-    edadTexto: calcularEdadTexto(m.FechaNacimiento),
+    edadTexto: edadResumida(m.FechaNacimiento),
     tamano: m.Tamano ?? null,
     castrado: m.Castrado ?? null,
     microchip: m.Microchip ?? null,

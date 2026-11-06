@@ -35,8 +35,7 @@ import {
 } from '../services/negocioApi';
 import { confirmar } from '../utils/dialogo';
 import { colores } from '../theme';
-
-const POLL_MS = 30000;
+import { INTERVALO_LISTAS_MS } from '../constants/intervalos';
 
 // Mismos estados que ve el negocio, contados desde el lado del dueño
 const ESTADO_TURNO = {
@@ -214,7 +213,7 @@ export default function MisTurnosScreen() {
 
   useFocusEffect(useCallback(() => {
     cargar();
-    const t = setInterval(cargar, POLL_MS);
+    const t = setInterval(cargar, INTERVALO_LISTAS_MS);
     return () => clearInterval(t);
   }, [cargar]));
 

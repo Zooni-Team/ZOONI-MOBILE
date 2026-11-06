@@ -45,6 +45,7 @@
 
 import { buscarLugaresOsm, areaConsultable } from './lugaresOsm';
 import { distanciaMetros } from '../utils/geo';
+import { claveComparable } from '../utils/texto';
 
 const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 const ENDPOINT = 'https://places.googleapis.com/v1/places:searchText';
@@ -249,15 +250,6 @@ export function areaBuscable(bbox) {
 
 // ─── COMBINAR CON LOS SERVICIOS PROPIOS ───────────────────────────────────────
 
-/** Nombre comparable: sin tildes, sin mayúsculas, sin puntuación. */
-function normalizar(texto) {
-  return (texto ?? '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]/g, '');
-}
-
 /** Metros entre dos puntos; sin coordenadas, "infinitamente lejos" (no es el mismo local). */
 const distanciaM = (a, b) => distanciaMetros(a, b) ?? Infinity;
 
@@ -273,9 +265,9 @@ export function combinarServicios(propios = [], deGoogle = []) {
   const salida = [...propios];
 
   for (const g of deGoogle) {
-    const nombreG = normalizar(g.nombre);
+    const nombreG = claveComparable(g.nombre);
     const repetido = propios.find(
-      (p) => normalizar(p.nombre) === nombreG && distanciaM(p, g) < 150,
+      (p) => claveComparable(p.nombre) === nombreG && distanciaM(p, g) < 150,
     );
     if (repetido) {
       repetido.telefono ??= g.telefono;

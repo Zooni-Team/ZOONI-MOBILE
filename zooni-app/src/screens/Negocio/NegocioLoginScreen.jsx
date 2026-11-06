@@ -24,8 +24,7 @@ import { MASCOTAS_BIENVENIDA } from '../../constants/registroImages';
 import { configNegocio } from '../../constants/negocios';
 import { volverOLogin } from '../../utils/volverOLogin';
 import { colores } from '../../theme';
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { EMAIL_REGEX } from '../../utils/validacion';
 
 export default function NegocioLoginScreen() {
   const navigation = useNavigation();

@@ -31,8 +31,8 @@ import {
 } from '../../services/negocioApi';
 import { etiquetaDia, horaCorta, mismoDia } from '../../utils/tiempoRelativo';
 import { colores } from '../../theme';
+import { INTERVALO_CHAT_MS } from '../../constants/intervalos';
 
-const POLL_MS = 4000;
 const RAPIDAS_VISIBLES = 3;
 
 export default function NegocioChatScreen() {
@@ -74,7 +74,7 @@ export default function NegocioChatScreen() {
 
   useFocusEffect(useCallback(() => {
     cargar();
-    const t = setInterval(cargar, POLL_MS);
+    const t = setInterval(cargar, INTERVALO_CHAT_MS);
     return () => clearInterval(t);
   }, [cargar]));
 

@@ -42,9 +42,9 @@ import {
 import { direccionDe } from '../services/paseadorApi';
 import { alerta } from '../utils/dialogo';
 import { colores, sombras } from '../theme';
+import { normalizarBusqueda } from '../utils/texto';
 
 const DIA_JS = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
-const normalizar = (t) => String(t ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 /** "Abre mañana a las 09:00" / "Abre el lunes a las 09:00" (o null si nunca abre). */
 function proximaApertura(horarios, ahora = new Date()) {
@@ -298,9 +298,9 @@ export default function NegocioPublicoScreen() {
   const items = negocio?.items ?? [];
   const categorias = useMemo(() => [...new Set(items.map((i) => i.categoria))], [items]);
   const visibles = useMemo(() => {
-    const q = normalizar(busqueda.trim());
+    const q = normalizarBusqueda(busqueda.trim());
     return items.filter((i) => (!categoria || i.categoria === categoria)
-      && (!q || normalizar(i.nombre).includes(q) || normalizar(i.descripcion).includes(q)));
+      && (!q || normalizarBusqueda(i.nombre).includes(q) || normalizarBusqueda(i.descripcion).includes(q)));
   }, [items, busqueda, categoria]);
 
   const lineas = items.filter((i) => carrito[i.id] > 0).map((item) => ({ item, cantidad: carrito[item.id] }));

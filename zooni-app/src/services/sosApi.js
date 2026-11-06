@@ -175,14 +175,6 @@ export function distanciaM(lat1, lng1, lat2, lng2) {
   return m == null ? null : Math.round(m);
 }
 
-/** "veterinaría" → "veterinaria" (búsqueda insensible a tildes y mayúsculas). */
-export function normalizar(texto) {
-  return (texto ?? '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-}
-
 /** 1200 → "1,2 km" | 380 → "380 m" | null → null */
 export function formatearDistancia(metros) {
   if (metros == null) return null;

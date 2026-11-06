@@ -34,8 +34,7 @@ import { getUltimoMail, getUltimoMailWeb } from '../config/session';
 import { MASCOTAS_BIENVENIDA } from '../constants/registroImages';
 import BotonesSociales from '../components/BotonesSociales';
 import { colores } from '../theme';
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { EMAIL_REGEX } from '../utils/validacion';
 
 export default function LoginScreen() {
   const navigation = useNavigation();

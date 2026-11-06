@@ -212,7 +212,6 @@ export default function MatchScreen() {
   // Foto REAL obligatoria: si la mascota activa no tiene, no puede aparecer en
   // Match hasta subir una (aplica también a los perfiles ya existentes).
   const activaSinFoto = mascotaActivaMatch && !activaSinPerfil && !mascotaActivaMatch.fotoUrl;
-  const otrasSinPerfil = misMascotas.filter((m) => !m.perfilCreado && !m.esActiva);
 
   /*
     Cambio de mascota en Match.

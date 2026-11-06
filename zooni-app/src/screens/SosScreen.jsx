@@ -39,7 +39,6 @@ import {
   formatearDistancia,
   horarioSemanal,
   logLlamadaSos,
-  normalizar,
   obtenerCoordenadas,
   textoHorario,
   urlBuscarEnMaps,
@@ -47,6 +46,7 @@ import {
 } from '../services/sosApi';
 import { alerta } from '../utils/dialogo';
 import { colores } from '../theme';
+import { normalizarBusqueda } from '../utils/texto';
 
 // Ícono de cada tipo de línea de emergencia (emergency_lines.kind)
 const ICONO_LINEA = {
@@ -295,7 +295,7 @@ export default function SosScreen() {
   }, [vets]);
 
   const vetsFiltrados = useMemo(() => {
-    const q = normalizar(busqueda.trim());
+    const q = normalizarBusqueda(busqueda.trim());
     const conDistancia = vets.map((v) => ({
       ...v,
       distanciaM: coords ? distanciaM(coords.lat, coords.lng, v.lat, v.lng) : null,
@@ -303,7 +303,7 @@ export default function SosScreen() {
 
     const filtrados = conDistancia.filter((v) => {
       if (q && ![v.nombre, v.direccion, v.barrio, ...(v.especialidades ?? [])]
-        .some((campo) => normalizar(campo).includes(q))) return false;
+        .some((campo) => normalizarBusqueda(campo).includes(q))) return false;
       // Los filtros se combinan: tiene que cumplir TODOS los activos
       return filtros.every((f) => {
         if (f.startsWith('srv:')) return (v.servicios ?? []).includes(f.slice(4));

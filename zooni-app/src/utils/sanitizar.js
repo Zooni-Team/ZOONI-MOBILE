@@ -1,4 +1,4 @@
-﻿/**
+/**
  * sanitizar.js — Sanitización de inputs antes de mandarlos a la base
  *
  * Primera línea de defensa del cliente. La segunda (la que vale) son los
@@ -15,7 +15,7 @@
 export function sanitizarTexto(valor, maxLen = 200) {
   if (valor == null) return null;
   const limpio = String(valor)
-    .replace(/[\u0000-\u001f\u007f]/g, '') // caracteres de control
+    .replace(/\p{Cc}/gu, '') // caracteres de control (categoría Unicode Cc)
     .trim()
     .slice(0, maxLen);
   return limpio.length ? limpio : null;

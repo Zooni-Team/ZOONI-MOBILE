@@ -41,6 +41,7 @@
  *     la zona aparecen al instante y no se vuelve a consultar.
  */
 import { Platform } from 'react-native';
+import { claveComparable } from '../utils/texto';
 
 /*
   Espejos públicos: instancias distintas de la misma base de datos. Se les
@@ -316,15 +317,6 @@ async function consultarOverpass(consulta) {
   }
 }
 
-/** Nombre comparable: sin tildes, sin mayúsculas, sin puntuación. */
-function normalizar(texto) {
-  return (texto ?? '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]/g, '');
-}
-
 /*
   Un mismo local suele estar mapeado dos veces en OSM: como nodo (el punto del
   negocio) y como way (el polígono del edificio). Sin esto aparecen dos
@@ -333,7 +325,7 @@ function normalizar(texto) {
 function quitarRepetidos(lugares) {
   const vistos = new Set();
   return lugares.filter((l) => {
-    const clave = `${normalizar(l.nombre)}|${l.lat?.toFixed(3)},${l.lng?.toFixed(3)}`;
+    const clave = `${claveComparable(l.nombre)}|${l.lat?.toFixed(3)},${l.lng?.toFixed(3)}`;
     if (vistos.has(clave)) return false;
     vistos.add(clave);
     return true;

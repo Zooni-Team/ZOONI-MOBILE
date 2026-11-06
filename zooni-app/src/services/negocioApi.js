@@ -20,7 +20,7 @@
 
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId, setCurrentUserId, setModo, modoNegocio } from '../config/session';
-import { crearCuentaConPassword, esFuncionInexistente, iniciarSesionConPassword } from './authApi';
+import { crearCuentaConPassword, iniciarSesionConPassword } from './authApi';
 import { marcarPresencia } from './presenciaApi';
 import { perfilesPorId } from './perfilesPublicos';
 import { resolveMascotaVisual } from '../constants/petImages';
@@ -30,43 +30,15 @@ import {
 } from '../constants/negocios';
 import { aCentavos, formatoPlata } from '../domain/paseos';
 import { distanciaMetros } from '../utils/geo';
+import { errorApp, errorBase, esFuncionInexistente, notificar } from './comun';
+
+/** Aviso de un negocio (tipo 'negocio' salvo que se diga otro). */
+const notificarNegocio = (idUser, titulo, mensaje, opciones = {}) =>
+  notificar(idUser, titulo, mensaje, { tipo: 'negocio', ...opciones });
 
 // ─────────────────────────────────────────────
 // ERRORES
 // ─────────────────────────────────────────────
-
-function esEsquemaFaltante(error) {
-  if (!error) return false;
-  const code = error.code ?? '';
-  const msg = String(error.message ?? '');
-  return ['42P01', '42703', 'PGRST205', 'PGRST204', 'PGRST202'].includes(code)
-    || /does not exist|schema cache|sin configurar/i.test(msg);
-}
-
-/** Error con código para la pantalla + el mensaje real de Supabase en `detalle`. */
-function errorApp(codigo, original) {
-  const e = new Error(codigo);
-  e.detalle = original
-    ? [original.message, original.details, original.hint, original.code && `código ${original.code}`]
-      .filter(Boolean).join(' · ')
-    : null;
-  return e;
-}
-
-const errorBase = (error) => errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
-
-/** Avisa a alguien (tabla Notificacion). Nunca rompe el flujo. */
-async function notificar(idUser, titulo, mensaje, { tipo = 'negocio', destino = null, extra = null } = {}) {
-  if (!idUser) return;
-  try {
-    await supabase.from('Notificacion').insert({
-      Id_User: idUser, Titulo: titulo, Mensaje: mensaje, Tipo: tipo, Leido: false,
-      DataExtra: destino || extra ? { ...(extra ?? {}), ...(destino ? { destino } : {}) } : null,
-    });
-  } catch {
-    // La notificación es un extra: el cambio ya quedó guardado.
-  }
-}
 
 // ─────────────────────────────────────────────
 // FORMATO
@@ -651,7 +623,7 @@ export async function cambiarEstadoTurno(negocio, turno, estado, { informe, moti
       : ['¡Listo! 🛁', `${quien} ya está listo en ${negocio.nombre}.`],
   };
   if (avisos[estado]) {
-    notificar(turno.idDueno, avisos[estado][0], avisos[estado][1], { tipo: 'turno', extra: { idTurno: turno.id } });
+    notificarNegocio(turno.idDueno, avisos[estado][0], avisos[estado][1], { tipo: 'turno', extra: { idTurno: turno.id } });
   }
   return { ...turno, estado, informe: informe ?? turno.informe };
 }
@@ -735,7 +707,7 @@ export async function crearTurno({
     throw codigo ? new Error(codigo) : errorBase(error);
   }
 
-  notificar(negocio.idUser,
+  notificarNegocio(negocio.idUser,
     urgencia ? '🚨 Pedido de turno URGENTE' : 'Nuevo pedido de turno',
     `${mascota?.nombre ?? 'Una mascota'} · ${item.nombre} · ${cuandoTexto(fecha)}${aDomicilio ? ' · a domicilio' : ''}`,
     { destino: 'turnos' });
@@ -774,7 +746,7 @@ export async function cancelarTurnoDueno(turno) {
     .update({ estado: 'cancelado', actualizado_en: new Date().toISOString() })
     .eq('id', turno.id).eq('id_dueno', getCurrentUserId()).in('estado', ['pendiente', 'confirmado']);
   if (error) throw errorBase(error);
-  notificar(turno.negocio?.idUser, 'Turno cancelado por el cliente',
+  notificarNegocio(turno.negocio?.idUser, 'Turno cancelado por el cliente',
     `${turno.mascota?.nombre ?? 'Mascota'} · ${turno.servicio} · ${cuandoTexto(turno.fecha)}`, { destino: 'turnos' });
 }
 
@@ -890,7 +862,7 @@ export async function cambiarEstadoPedido(negocio, pedido, estado, { motivo } = 
     cancelado: ['Pedido cancelado', `${negocio.nombre} canceló el pedido ${n}.${motivo ? ` "${motivo}"` : ''}`],
   };
   if (avisos[estado]) {
-    notificar(pedido.idDueno, avisos[estado][0], avisos[estado][1], { tipo: 'pedido', extra: { idPedido: pedido.id } });
+    notificarNegocio(pedido.idDueno, avisos[estado][0], avisos[estado][1], { tipo: 'pedido', extra: { idPedido: pedido.id } });
   }
   return { ...pedido, estado };
 }
@@ -968,7 +940,7 @@ export async function crearPedido({ negocio, carrito, entrega, direccion, medioP
   }
 
   const unidades = items.reduce((a, x) => a + x.cantidad, 0);
-  notificar(negocio.idUser, `Nuevo pedido #${data.id} 🛍️`,
+  notificarNegocio(negocio.idUser, `Nuevo pedido #${data.id} 🛍️`,
     `${unidades} ${unidades === 1 ? 'producto' : 'productos'} · ${formatoPlata(data.total)} · ${entrega === 'envio' ? 'envío a domicilio' : 'retira en el local'}`,
     { destino: 'pedidos' });
   return data.id;
@@ -990,7 +962,7 @@ export async function cancelarPedidoDueno(pedido) {
     .select('id');
   if (error) throw errorBase(error);
   if (!data?.length) throw new Error('pedido_cambiado');
-  notificar(pedido.negocio?.idUser, `Pedido #${pedido.id} cancelado`, 'El cliente canceló el pedido antes de que lo prepararas.',
+  notificarNegocio(pedido.negocio?.idUser, `Pedido #${pedido.id} cancelado`, 'El cliente canceló el pedido antes de que lo prepararas.',
     { destino: 'pedidos' });
 }
 
@@ -1161,7 +1133,7 @@ export async function enviarMensajeNegocio(negocio, idDueno, texto) {
     fecha: new Date().toISOString(), deNegocio: true,
   });
   if (error) throw errorBase(error);
-  notificar(idDueno, `Mensaje de ${negocio.nombre}`, limpio.length > 80 ? `${limpio.slice(0, 80)}…` : limpio, {
+  notificarNegocio(idDueno, `Mensaje de ${negocio.nombre}`, limpio.length > 80 ? `${limpio.slice(0, 80)}…` : limpio, {
     tipo: 'mensaje',
     extra: { servicioId: negocio.idServicio, nombre: negocio.nombre, tipoServicio: configNegocio(negocio.tipo).label },
   });

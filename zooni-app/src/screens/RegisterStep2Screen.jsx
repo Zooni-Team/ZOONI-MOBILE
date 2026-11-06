@@ -39,12 +39,9 @@ import OpcionPicker from '../components/OpcionPicker';
 import FechaPicker from '../components/FechaPicker';
 import SliderAmarillo from '../components/SliderAmarillo';
 import { colores } from '../theme';
+import { capitalizar } from '../utils/texto';
 
 const SEXOS = ['Macho', 'Hembra'];
-
-function capitalizar(str) {
-  return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
-}
 
 export default function RegisterStep2Screen() {
   const navigation = useNavigation();

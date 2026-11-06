@@ -26,8 +26,7 @@ import { Avatar, C, PillButton } from './PaseadorUI';
 import ModalidadCobro from './ModalidadCobro';
 import { formatoTiempoPaseado, formatoPlata, medioDePago } from '../../services/paseadorApi';
 import { colores } from '../../theme';
-
-const fechaCorta = (iso) => new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: '2-digit' });
+import { formatearFecha } from '../../utils/fechaLocal';
 
 /** "45 min" o, si se cortó antes, "31 s de 120 min" (se cobró por tiempo) */
 function minutosDePaseo(p) {
@@ -143,7 +142,7 @@ export default function CuentaCorrienteModal({
                   <View style={{ flex: 1 }}>
                     <Text style={s.movTitulo}>Paseo con {p.mascota.nombre}</Text>
                     <Text style={s.movSub}>
-                      {fechaCorta(p.fecha)} · {minutosDePaseo(p)}{mp ? ` · ${mp.label}` : ''}
+                      {formatearFecha(p.fecha, 'corta')} · {minutosDePaseo(p)}{mp ? ` · ${mp.label}` : ''}
                     </Text>
                     <View style={[s.estado, { backgroundColor: est.fondo }]}>
                       <Text style={[s.estadoTxt, { color: est.color }]}>
@@ -168,7 +167,7 @@ export default function CuentaCorrienteModal({
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.movTitulo}>Pago · {mp?.label ?? pg.medio}</Text>
-                  <Text style={s.movSub}>{fechaCorta(pg.fecha)}{pg.nota ? ` · ${pg.nota}` : ''}</Text>
+                  <Text style={s.movSub}>{formatearFecha(pg.fecha, 'corta')}{pg.nota ? ` · ${pg.nota}` : ''}</Text>
                   <Text style={s.editar}>Tocá para modificar</Text>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>

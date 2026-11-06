@@ -18,11 +18,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { Avatar, C, Stat, Vacio } from './PaseadorUI';
 import { fetchMisPaseos, formatoDistancia, formatoTiempoPaseado, formatoPlata } from '../../services/paseadorApi';
 import { colores } from '../../theme';
+import { formatearFecha } from '../../utils/fechaLocal';
 
 const duracionDe = (p) => (p.segundosAcumulados ? formatoTiempoPaseado(p.segundosAcumulados) : `${p.duracionMin} minutos`);
-const fechaLarga = (iso) => new Date(iso).toLocaleDateString('es-AR', {
-  weekday: 'short', day: 'numeric', month: 'long', year: 'numeric',
-});
 
 export default function HistorialPerroModal({ visible, mascota, dueno, onCerrar }) {
   const [paseos, setPaseos] = useState(null);
@@ -63,7 +61,7 @@ export default function HistorialPerroModal({ visible, mascota, dueno, onCerrar 
             <Stat valor={formatoPlata(total)} etiqueta="cobrado" />
             <Stat valor={formatoDistancia(metros)} etiqueta="caminados" />
           </View>
-          <Text style={s.desde}>Primer paseo juntos: {fechaLarga(lista[lista.length - 1].fecha)}</Text>
+          <Text style={s.desde}>Primer paseo juntos: {formatearFecha(lista[lista.length - 1].fecha, 'diaSemanaCorto')}</Text>
         </>
       )}
     </View>
@@ -96,7 +94,7 @@ export default function HistorialPerroModal({ visible, mascota, dueno, onCerrar 
                 <View style={s.paseoTop}>
                   <View style={{ flex: 1 }}>
                     <Text style={s.paseoNum}>Paseo {lista.length - index}</Text>
-                    <Text style={s.paseoFecha}>{fechaLarga(item.fecha)}</Text>
+                    <Text style={s.paseoFecha}>{formatearFecha(item.fecha, 'diaSemanaCorto')}</Text>
                   </View>
                   <Text style={s.paseoPrecio}>{formatoPlata(item.precio)}</Text>
                 </View>

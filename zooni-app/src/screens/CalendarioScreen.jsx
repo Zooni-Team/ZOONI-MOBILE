@@ -101,7 +101,6 @@ function SkeletonCard() {
 
 // ─── COMPONENTE: TOAST ────────────────────────────────────────────────────────
 
-
 // ─── COMPONENTE: CARD EVENTO ───────────────────────────────────────────────────
 
 function EventoCard({ evento, index, onEditar, onEliminar, onVerDetalle }) {
@@ -285,19 +284,6 @@ const tp = StyleSheet.create({
 
 // ─── DATOS DEMO (sin backend de calendario conectado) ────────────────────────
 
-const DEMO_EVENTOS = [
-  {
-    id: 1,
-    origen: 'manual',
-    titulo: 'Veterinario',
-    descripcion: 'Veterinario para Titán',
-    fecha_hora: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-    tipo: 'Turno Veterinario',
-    emoji: '🩺',
-    color: colores.turquesa,
-  },
-];
-
 // ─── SCREEN PRINCIPAL ─────────────────────────────────────────────────────────
 
 export default function CalendarioScreen() {
@@ -401,7 +387,6 @@ export default function CalendarioScreen() {
       Animated.timing(fabFade,  { toValue: 1, duration: 400, useNativeDriver: true }),
     ]).start();
   }, [loading, fabScale, fabFade]);
-
 
   // ── Modal ────────────────────────────────────────────────────────────────
   function abrirModalAnadir() {

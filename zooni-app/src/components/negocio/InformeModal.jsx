@@ -26,9 +26,9 @@ import { subirImagenPublica } from '../../utils/imagenStorage';
 import { parseDecimal, sanitizarDecimal } from '../../utils/sanitizar';
 import { alerta } from '../../utils/dialogo';
 import { colores } from '../../theme';
+import { formatearFecha } from '../../utils/fechaLocal';
 
 const FOTOS_MAX = 4;
-const fechaLarga = (d) => new Date(d).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
 
 function Campo({ label, children }) {
   return (
@@ -178,7 +178,7 @@ export default function InformeModal({ visible, tipo, turno, editar = false, onG
                     <TouchableOpacity style={[s.input, s.fechaBtn, { flex: 1 }]} onPress={() => setVerFecha(true)}>
                       <Ionicons name="calendar-outline" size={18} color={C.teal} />
                       <Text style={[s.fechaTxt, !f.proximoControl && { color: C.gris }]}>
-                        {f.proximoControl ? fechaLarga(f.proximoControl) : 'Sin control programado'}
+                        {f.proximoControl ? formatearFecha(f.proximoControl, 'diaSemana') : 'Sin control programado'}
                       </Text>
                     </TouchableOpacity>
                     {f.proximoControl ? (

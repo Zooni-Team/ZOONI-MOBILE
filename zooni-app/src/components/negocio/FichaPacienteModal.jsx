@@ -20,8 +20,8 @@ import { Avatar, C, Stat } from '../paseador/PaseadorUI';
 import { cuandoTexto, formatoPlata } from '../../services/negocioApi';
 import { calcularEdad } from '../../utils/calcularEdad';
 import { colores } from '../../theme';
+import { formatearFecha } from '../../utils/fechaLocal';
 
-const fechaLarga = (d) => new Date(d).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
 const num = (n) => String(n).replace('.', ',');
 
 function edadTexto(nacimiento) {
@@ -96,7 +96,7 @@ export default function FichaPacienteModal({
       {esVet && ficha.proximoControl ? (
         <View style={[s.aviso, { backgroundColor: colores.ambarFondo }]}>
           <Ionicons name="alarm" size={16} color={colores.ambarOscuro} />
-          <Text style={s.avisoTxt}>Control indicado para el {fechaLarga(ficha.proximoControl)}</Text>
+          <Text style={s.avisoTxt}>Control indicado para el {formatearFecha(ficha.proximoControl, 'larga')}</Text>
         </View>
       ) : null}
 
@@ -140,7 +140,7 @@ export default function FichaPacienteModal({
                 <View style={s.visitaTop}>
                   <View style={{ flex: 1 }}>
                     <Text style={s.visitaTitulo}>{v.servicio}</Text>
-                    <Text style={s.sub}>{fechaLarga(v.fecha)} · {formatoPlata(v.precio)}</Text>
+                    <Text style={s.sub}>{formatearFecha(v.fecha, 'larga')} · {formatoPlata(v.precio)}</Text>
                   </View>
                   <TouchableOpacity style={s.editar} onPress={() => onEditarInforme(v)} accessibilityLabel="Editar informe">
                     <Ionicons name="create-outline" size={16} color={C.teal} />
@@ -156,7 +156,7 @@ export default function FichaPacienteModal({
                       <Dato icono="speedometer-outline" label="Signos"
                         valor={[i.peso ? `${num(i.peso)} kg` : null, i.temperatura ? `${num(i.temperatura)} °C` : null].filter(Boolean).join(' · ')} />
                     ) : null}
-                    <Dato icono="alarm-outline" label="Próximo control" valor={i.proximoControl ? fechaLarga(i.proximoControl) : null} />
+                    <Dato icono="alarm-outline" label="Próximo control" valor={i.proximoControl ? formatearFecha(i.proximoControl, 'larga') : null} />
                     <Dato icono="lock-closed-outline" label="Notas internas" valor={i.notas} />
                   </>
                 ) : (

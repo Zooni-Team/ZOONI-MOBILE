@@ -197,11 +197,9 @@ export default function ResenasPaseadorModal({ visible, idPaseador, nombre, onCe
   // Al cerrar, la próxima apertura arranca de cero
   useEffect(() => { if (!visible) setRecarga(0); }, [visible]);
 
-  const opinionEnviada = ({ parcial }) => {
+  const opinionEnviada = () => {
     setCalificando(null);
-    setGracias(parcial
-      ? '¡Gracias por tu opinión! Se guardaron las estrellas y el texto.'
-      : '¡Gracias por tu opinión!');
+    setGracias('¡Gracias por tu opinión!');
     setRecarga((n) => n + 1);
   };
 

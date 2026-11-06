@@ -29,11 +29,8 @@ import { useEffect, useState } from 'react';
 import { Modal, Text, TouchableOpacity, View } from 'react-native';
 
 import { Columna, rs as fp } from './RuedaSeleccion';
-
-const MESES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-];
+import { MESES } from '../utils/fechaLocal';
+import { capitalizar } from '../utils/texto';
 
 /** Date → "2026-8-14": identifica el día sin depender del objeto Date. */
 function toClave(d) {
@@ -108,7 +105,7 @@ export default function FechaPicker({
   const opcionesDia = Array.from({ length: diaMaximo }, (_, i) => ({
     valor: i + 1, texto: String(i + 1).padStart(2, '0'),
   }));
-  const opcionesMes = MESES.slice(0, mesMaximo).map((m, i) => ({ valor: i + 1, texto: m }));
+  const opcionesMes = MESES.slice(0, mesMaximo).map((m, i) => ({ valor: i + 1, texto: capitalizar(m) }));
   // Del más reciente al más viejo: lo habitual es elegir una fecha cercana
   const opcionesAnio = Array.from(
     { length: aniosAtras + adelante + 1 },

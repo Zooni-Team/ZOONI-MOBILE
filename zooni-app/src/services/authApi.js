@@ -21,6 +21,7 @@ import { toISODateLocal } from '../utils/fechaLocal';
 import { subirImagenPublica } from '../utils/imagenStorage';
 import { marcarPresencia } from './presenciaApi';
 import { loginLegado } from './authLegado';
+import { esPasswordValida } from '../utils/validacion';
 
 // ─────────────────────────────────────────────
 // RAZAS (catálogo para el Registro Paso 2)
@@ -50,11 +51,6 @@ function ordenarRazas(razas) {
 // ─────────────────────────────────────────────
 // SESIÓN (compartido por dueños, paseadores y negocios)
 // ─────────────────────────────────────────────
-
-/** PGRST202 = la función RPC no existe (falta correr una migración). */
-export function esFuncionInexistente(error) {
-  return error?.code === 'PGRST202' || /function .* does not exist/i.test(error?.message ?? '');
-}
 
 /**
  * Cuenta vieja → Supabase Auth. Devuelve:
@@ -121,7 +117,7 @@ export async function iniciarSesionConPassword(email, password) {
  */
 export async function crearCuentaConPassword(email, password) {
   const mail = email.trim().toLowerCase();
-  if ((password ?? '').length < 7) throw new Error('password_corta');
+  if (!esPasswordValida(password)) throw new Error('password_corta');
 
   const { data, error } = await supabase.auth.signUp({ email: mail, password });
   if (error) {
@@ -266,7 +262,7 @@ export async function registro(datos) {
   const { mascota, usuario, social } = datos;
   const mail = usuario.email.trim().toLowerCase();
 
-  if (!social && (usuario.password ?? '').length < 7) throw new Error('password_corta');
+  if (!social && !esPasswordValida(usuario.password)) throw new Error('password_corta');
 
   // Chequeo temprano (mail y @usuario): corta ANTES de crear nada.
   const nombreUsuario = usuario.nombreUsuario?.trim().replace(/^@/, '') || null;

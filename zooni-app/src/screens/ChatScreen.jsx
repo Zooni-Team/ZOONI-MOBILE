@@ -35,8 +35,7 @@ import {
 import MatchInfoModal from '../components/chat/MatchInfoModal';
 import { etiquetaDia, horaCorta, mismoDia } from '../utils/tiempoRelativo';
 import { colores } from '../theme';
-
-const POLL_MS = 4000;
+import { INTERVALO_CHAT_MS } from '../constants/intervalos';
 
 /**
  * Tildes de estado, solo en MIS mensajes (como WhatsApp):
@@ -91,7 +90,7 @@ export default function ChatScreen() {
       const interval = setInterval(() => {
         cargar();
         setAhora(new Date());
-      }, POLL_MS);
+      }, INTERVALO_CHAT_MS);
       return () => clearInterval(interval);
     }, [cargar])
   );

@@ -1,63 +1,60 @@
 /**
- * calcularEdad.js — Calcula la edad de una mascota desde su fecha de nacimiento
+ * calcularEdad.js — ÚNICO lugar donde se calcula una edad (mascotas y personas).
  *
- * @param {string | Date} fechaNacimiento - "YYYY-MM-DD" o instancia de Date
- * @returns {string} - Ej: "4 años y 4 meses" | "8 meses" | "1 año y 0 meses"
+ * Antes había cinco versiones (api.js, petsApi.js, fichaPdf.js, matchApi,
+ * perfilApi) y no coincidían: una no miraba el día del mes, así que una
+ * mascota nacida el 20 "cumplía" meses el 1.
+ *
+ *   calcularEdadPartes('2022-02-15') → { anios: 4, meses: 8 }
+ *   calcularEdad('2022-02-15')       → "4 años y 8 meses"
+ *   edadResumida('2022-02-15')       → "4 años"
+ *   calcularEdadMeses / calcularEdadAnios → números (para filtros)
+ *
+ * Los imports llevan ".js" a propósito: este módulo también lo cargan los
+ * scripts de verificación con Node puro (npm run test).
  */
-import { parseFechaLocal } from './fechaLocal';
+import { parseFechaLocal } from './fechaLocal.js';
 
-export function calcularEdad(fechaNacimiento) {
-  if (!fechaNacimiento) return 'Edad desconocida';
+const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
 
+/** Meses cumplidos (para filtrar catálogos por edad). null si no hay fecha o es futura. */
+export function calcularEdadMeses(fechaNacimiento, hoy = new Date()) {
   const nacimiento = parseFechaLocal(fechaNacimiento);
-  if (isNaN(nacimiento.getTime())) return 'Fecha inválida';
+  if (!nacimiento) return null;
+  let meses = (hoy.getFullYear() - nacimiento.getFullYear()) * 12 + (hoy.getMonth() - nacimiento.getMonth());
+  if (hoy.getDate() < nacimiento.getDate()) meses -= 1;
+  return meses < 0 ? null : meses;
+}
 
-  const hoy = new Date();
-  let anios = hoy.getFullYear() - nacimiento.getFullYear();
-  let meses = hoy.getMonth() - nacimiento.getMonth();
+/** { anios, meses } cumplidos, o { anios: null, meses: null } si no hay fecha válida o es futura. */
+export function calcularEdadPartes(fechaNacimiento, hoy = new Date()) {
+  const meses = calcularEdadMeses(fechaNacimiento, hoy);
+  if (meses == null) return { anios: null, meses: null };
+  return { anios: Math.floor(meses / 12), meses: meses % 12 };
+}
 
-  // Ajustar si el mes actual es anterior al mes de nacimiento
-  if (meses < 0) {
-    anios -= 1;
-    meses += 12;
-  }
-
-  // Ajustar si el día actual es anterior al día de nacimiento en el mismo mes
-  if (hoy.getDate() < nacimiento.getDate()) {
-    meses -= 1;
-    if (meses < 0) {
-      anios -= 1;
-      meses += 12;
-    }
-  }
-
-  if (anios === 0) {
-    return meses === 1 ? '1 mes' : `${meses} meses`;
-  }
-
-  const textoAnios = anios === 1 ? '1 año' : `${anios} años`;
-  const textoMeses = meses === 1 ? '1 mes' : `${meses} meses`;
-
-  return `${textoAnios} y ${textoMeses}`;
+/** Años cumplidos. null si no hay fecha válida. */
+export function calcularEdadAnios(fechaNacimiento, hoy = new Date()) {
+  const meses = calcularEdadMeses(fechaNacimiento, hoy);
+  return meses == null ? null : Math.floor(meses / 12);
 }
 
 /**
- * Igual que calcularEdad, pero como número de meses (para filtrar catálogos
- * de vacunas/tratamientos/consejos por rango de edad). null si no hay fecha.
+ * "4 años y 4 meses" | "8 meses" | "1 año y 0 meses".
+ * `vacio` es lo que se muestra si no hay fecha (o es inválida / futura).
  */
-export function calcularEdadMeses(fechaNacimiento) {
-  if (!fechaNacimiento) return null;
-  const nacimiento = parseFechaLocal(fechaNacimiento);
-  if (isNaN(nacimiento.getTime())) return null;
-
-  const hoy = new Date();
-  let meses = (hoy.getFullYear() - nacimiento.getFullYear()) * 12 + (hoy.getMonth() - nacimiento.getMonth());
-  if (hoy.getDate() < nacimiento.getDate()) meses -= 1;
-  return Math.max(0, meses);
+export function calcularEdad(fechaNacimiento, { vacio = 'Edad desconocida', hoy = new Date() } = {}) {
+  const { anios, meses } = calcularEdadPartes(fechaNacimiento, hoy);
+  if (anios == null) return vacio;
+  if (anios === 0) return plural(meses, 'mes', 'meses');
+  return `${plural(anios, 'año', 'años')} y ${plural(meses, 'mes', 'meses')}`;
 }
 
-/** Años cumplidos (para personas y mascotas). null si no hay fecha válida. */
-export function calcularEdadAnios(fechaNacimiento) {
-  const meses = calcularEdadMeses(fechaNacimiento);
-  return meses == null ? null : Math.floor(meses / 12);
+/** "4 años" | "8 meses" | "Menos de 1 mes" (para tarjetas chicas). null si no hay fecha. */
+export function edadResumida(fechaNacimiento, hoy = new Date()) {
+  const { anios, meses } = calcularEdadPartes(fechaNacimiento, hoy);
+  if (anios == null) return null;
+  if (anios >= 1) return plural(anios, 'año', 'años');
+  if (meses >= 1) return plural(meses, 'mes', 'meses');
+  return 'Menos de 1 mes';
 }

@@ -1,3 +1,4 @@
+import { DIAS_SEMANA, MESES, parseFechaLocal } from './fechaLocal';
 /**
  * tiempoRelativo.js — "hace 5 minutos", "ayer 21:40", "en línea"
  *
@@ -11,15 +12,9 @@ const MIN = 60 * 1000;
 const HORA = 60 * MIN;
 const DIA = 24 * HORA;
 
-function aFecha(valor) {
-  if (!valor) return null;
-  const d = valor instanceof Date ? valor : new Date(valor);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-
 /** "21:40" */
 export function horaCorta(valor) {
-  const d = aFecha(valor);
+  const d = parseFechaLocal(valor);
   if (!d) return '';
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
@@ -32,15 +27,11 @@ function esMismoDia(a, b) {
 
 /** ¿Los dos valores caen el mismo día calendario? (para agrupar el chat) */
 export function mismoDia(a, b) {
-  const da = aFecha(a);
-  const db = aFecha(b);
+  const da = parseFechaLocal(a);
+  const db = parseFechaLocal(b);
   if (!da || !db) return false;
   return esMismoDia(da, db);
 }
-
-const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
-const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
 /**
  * Etiqueta del separador de día del chat, como en WhatsApp:
@@ -54,7 +45,7 @@ const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
  * repetir el día en cada mensaje es ruido, y alcanza con la hora.
  */
 export function etiquetaDia(valor, ahora = new Date()) {
-  const d = aFecha(valor);
+  const d = parseFechaLocal(valor);
   if (!d) return '';
 
   if (esMismoDia(d, ahora)) return 'Hoy';
@@ -82,7 +73,7 @@ export function etiquetaDia(valor, ahora = new Date()) {
  *   resto    → "12/8 · 21:40"
  */
 export function tiempoRelativo(valor, ahora = new Date()) {
-  const d = aFecha(valor);
+  const d = parseFechaLocal(valor);
   if (!d) return '';
 
   const diff = ahora - d;
@@ -115,7 +106,7 @@ export function tiempoRelativo(valor, ahora = new Date()) {
  * Versión corta para listas (inbox, Comunidad): "5 min", "3 h", "ayer", "12/8".
  */
 export function tiempoRelativoCorto(valor, ahora = new Date()) {
-  const d = aFecha(valor);
+  const d = parseFechaLocal(valor);
   if (!d) return '';
 
   const diff = ahora - d;
@@ -139,7 +130,7 @@ export function tiempoRelativoCorto(valor, ahora = new Date()) {
 export const UMBRAL_EN_LINEA_MS = 5 * MIN;
 
 export function estadoPresencia(ultimaConexion, ahora = new Date()) {
-  const d = aFecha(ultimaConexion);
+  const d = parseFechaLocal(ultimaConexion);
   if (!d) return { enLinea: false, texto: 'Sin actividad reciente' };
   if (ahora - d < UMBRAL_EN_LINEA_MS) return { enLinea: true, texto: 'En línea' };
   return { enLinea: false, texto: `Últ. vez ${tiempoRelativo(d, ahora)}` };

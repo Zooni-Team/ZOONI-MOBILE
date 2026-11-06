@@ -4,7 +4,7 @@
  * Una conversación por dueño que le escribió (fetchConversacionesNegocio):
  * el último mensaje ("Vos: …" si lo mandó el negocio), hace cuánto y cuántos
  * sin leer. Arriba las que tienen mensajes sin leer. Buscador por nombre.
- * Se refresca sola cada POLL_MS mientras está abierta. Tocar una abre el chat
+ * Se refresca sola cada INTERVALO_BANDEJA_MS mientras está abierta. Tocar una abre el chat
  * (NegocioChat), con las respuestas rápidas del tipo de negocio.
  */
 
@@ -19,9 +19,8 @@ import { Avatar, C, Vacio, sombra } from '../../../components/paseador/PaseadorU
 import { fetchConversacionesNegocio } from '../../../services/negocioApi';
 import { tiempoRelativoCorto } from '../../../utils/tiempoRelativo';
 import { colores } from '../../../theme';
-
-const POLL_MS = 15000;
-const normalizar = (t) => String(t ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+import { normalizarBusqueda } from '../../../utils/texto';
+import { INTERVALO_BANDEJA_MS } from '../../../constants/intervalos';
 
 export default function MensajesNegocioTab({ negocio, cfg, abrirChat, refrescarBadges }) {
   const [conversaciones, setConversaciones] = useState(null);
@@ -43,7 +42,7 @@ export default function MensajesNegocioTab({ negocio, cfg, abrirChat, refrescarB
   }, [cargar])); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const t = setInterval(cargar, POLL_MS);
+    const t = setInterval(cargar, INTERVALO_BANDEJA_MS);
     return () => clearInterval(t);
   }, [cargar]);
 
@@ -54,9 +53,9 @@ export default function MensajesNegocioTab({ negocio, cfg, abrirChat, refrescarB
   };
 
   const visibles = useMemo(() => {
-    const q = normalizar(busqueda.trim());
+    const q = normalizarBusqueda(busqueda.trim());
     return (conversaciones ?? [])
-      .filter((c) => !q || normalizar(c.dueno.nombre).includes(q))
+      .filter((c) => !q || normalizarBusqueda(c.dueno.nombre).includes(q))
       .sort((a, b) => ((b.sinLeer > 0) - (a.sinLeer > 0)) || (new Date(b.fecha) - new Date(a.fecha)));
   }, [conversaciones, busqueda]);
 

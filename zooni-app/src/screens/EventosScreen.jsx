@@ -370,7 +370,6 @@ export default function EventosScreen() {
   const [eventos, setEventos]               = useState([]);
   const [loading, setLoading]               = useState(true);
   const [refreshing, setRefreshing]         = useState(false);
-  const [ciudad, setCiudad]                 = useState(null);
   // Mascotas del usuario y a cuál se le agregan los eventos. Con más de una,
   // el evento tiene que poder ir al calendario de la que el usuario elija — no
   // siempre a la activa (el calendario es por mascota, ver CalendarioScreen).
@@ -486,7 +485,6 @@ export default function EventosScreen() {
           datosHome?.usuario?.ubicacion ||
           datosHome?.usuario?.ciudad    ||
           null;
-        setCiudad(ciudadUsuario);
       } catch {
         // Si fetchHome falla, seguimos sin ciudad
       }

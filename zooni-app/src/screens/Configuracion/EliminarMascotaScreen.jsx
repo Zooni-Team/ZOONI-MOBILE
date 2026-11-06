@@ -7,9 +7,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import {
-  Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View,
-} from 'react-native';
+import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
@@ -18,6 +16,7 @@ import { resolveMascotaVisual } from '../../constants/petImages';
 import { archivarMascota, eliminarMascota } from '../../services/petsApi';
 import { alerta } from '../../utils/dialogo';
 import { colores } from '../../theme';
+import { normalizarBusqueda } from '../../utils/texto';
 
 const P = {
   text: colores.texto, textSoft: colores.textoSecundario, textSoftMint: colores.verdeGrisaceo,
@@ -33,11 +32,6 @@ const SE_BORRA = [
   'Su historial de peso y controles',
 ];
 
-// Comparación insensible a mayúsculas y tildes (§4.4)
-function normalizar(str) {
-  return str.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-}
-
 export default function EliminarMascotaScreen() {
   const navigation = useNavigation();
   const route = useRoute();
@@ -48,7 +42,7 @@ export default function EliminarMascotaScreen() {
   const [guardando, setGuardando] = useState(false);
 
   const nombreOk = useMemo(
-    () => mascota && normalizar(confirmacion) === normalizar(mascota.nombre),
+    () => mascota && normalizarBusqueda(confirmacion) === normalizarBusqueda(mascota.nombre),
     [confirmacion, mascota]
   );
   const puedeEliminar = nombreOk && entiendo && !guardando;

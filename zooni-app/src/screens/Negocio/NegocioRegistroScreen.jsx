@@ -47,8 +47,8 @@ import { volverOLogin } from '../../utils/volverOLogin';
 import { sanitizarDigitos } from '../../utils/sanitizar';
 import { alerta } from '../../utils/dialogo';
 import { colores } from '../../theme';
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { EMAIL_REGEX } from '../../utils/validacion';
+import { PASSWORD_MIN } from '../../utils/validacion';
 
 function Campo({ label, error, ayuda, children }) {
   return (
@@ -123,7 +123,7 @@ export default function NegocioRegistroScreen() {
     if (usuario.apellido.trim().length < 2) e.apellido = 'El apellido es obligatorio';
     if (!EMAIL_REGEX.test(usuario.email.trim())) e.email = 'Es necesario un email válido';
     if (usuario.telefono.length < 8) e.telefono = 'El teléfono es obligatorio (mínimo 8 números)';
-    if (usuario.password.length < 7) e.password = 'La contraseña necesita al menos 7 caracteres';
+    if (usuario.password.length < PASSWORD_MIN) e.password = `La contraseña necesita al menos ${PASSWORD_MIN} caracteres`;
     else if (usuario.password !== usuario.password2) e.password2 = 'Las contraseñas no coinciden';
     if (!e.email) {
       const { mailTomado } = await Promise.race([

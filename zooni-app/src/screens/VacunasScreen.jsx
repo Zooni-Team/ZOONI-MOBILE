@@ -48,33 +48,11 @@ import { colores } from '../theme';
 import Skeleton from '../components/ui/Skeleton';
 import Toast from '../components/ui/Toast';
 import { useToast } from '../hooks/useToast';
+import { diasHasta, formatearFecha, toISODateLocal } from '../utils/fechaLocal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
-
-/** "2026-03-19" → "19/3/2026" */
-function formatFecha(iso) {
-  if (!iso) return null;
-  const [y, m, d] = iso.split('-');
-  return `${parseInt(d)}/${parseInt(m)}/${y}`;
-}
-
-/** Date → "YYYY-MM-DD" */
-function toISO(date) {
-  if (!date) return null;
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-function diasHasta(fechaISO) {
-  if (!fechaISO) return null;
-  const hoy   = new Date(); hoy.setHours(0, 0, 0, 0);
-  const fecha = parseFechaLocal(fechaISO); fecha.setHours(0, 0, 0, 0);
-  return Math.ceil((fecha - hoy) / (1000 * 60 * 60 * 24));
-}
 
 /** Color de la línea "Próxima dosis" de un card aplicado. */
 function colorProximaDosis(fechaISO) {
@@ -109,7 +87,6 @@ function SkeletonCard() {
 
 // ─── COMPONENTE: TOAST ────────────────────────────────────────────────────────
 
-
 // ─── COMPONENTE: CARD VACUNA APLICADA ─────────────────────────────────────────
 
 function CardAplicado({ vacuna, onEditar, onEliminar }) {
@@ -135,9 +112,9 @@ function CardAplicado({ vacuna, onEditar, onEliminar }) {
         {vacuna.descripcion ? (
           <Text style={s.cardDesc}>{vacuna.descripcion}</Text>
         ) : null}
-        <Text style={s.cardField}>Aplicada: {formatFecha(vacuna.fecha_aplicacion) ?? '—'}</Text>
+        <Text style={s.cardField}>Aplicada: {formatearFecha(vacuna.fecha_aplicacion) ?? '—'}</Text>
         <Text style={[s.cardField, { color: colorProximaDosis(vacuna.proximo_refuerzo) }]}>
-          Próxima dosis: {vacuna.proximo_refuerzo ? formatFecha(vacuna.proximo_refuerzo) : '—'}
+          Próxima dosis: {vacuna.proximo_refuerzo ? formatearFecha(vacuna.proximo_refuerzo) : '—'}
         </Text>
         <Text style={s.cardField} numberOfLines={1} ellipsizeMode="tail">
           Veterinaria: {vacuna.veterinaria ?? 'Sin registro'}
@@ -336,7 +313,6 @@ export default function VacunasScreen() {
     setRefreshing(false);
   }, [cargar]);
 
-
   // ── Modal ────────────────────────────────────────────────────────────────
   // La fecha de aplicación arranca en el día de hoy (se calcula al abrir el
   // modal, así el valor sigue siendo correcto si la app quedó abierta de un
@@ -399,12 +375,12 @@ export default function VacunasScreen() {
 
     setGuardando(true);
 
-    const fechaISO = toISO(formFecha);
+    const fechaISO = toISODateLocal(formFecha);
     const frecuenciaMeses = vacunaPreseleccionada?.frecuencia_descripcion?.includes('6 meses') ? 6 : 12;
     const proximoRefuerzo = (() => {
       const d = new Date(formFecha);
       d.setMonth(d.getMonth() + frecuenciaMeses);
-      return toISO(d);
+      return toISODateLocal(d);
     })();
 
     try {
@@ -619,7 +595,7 @@ export default function VacunasScreen() {
                     onPress={() => setShowFechaPicker(true)}
                   >
                     <Text style={[s.inputFechaTxt, !formFecha && { color: colores.textoTenue }]}>
-                      {formFecha ? toISO(formFecha).split('-').reverse().join('/').replace(/^(\d+)\/(\d+)\/(\d+)$/, (_, d, mo, y) => `${parseInt(d)}/${parseInt(mo)}/${y}`) : 'dd/mm/aaaa'}
+                      {formFecha ? formatearFecha(formFecha) : 'dd/mm/aaaa'}
                     </Text>
                     <Ionicons name="calendar-outline" size={18} color={colores.textoSecundario} />
                   </TouchableOpacity>

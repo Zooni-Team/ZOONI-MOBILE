@@ -22,7 +22,7 @@ import MapaPaseoModal from '../../../components/paseador/MapaPaseoModal';
 import PaseoCard from '../../../components/paseador/PaseoCard';
 import { FilaPaseo } from './PaseoTab';
 import {
-  cuandoDe, enModoDemo, fetchMisPaseos, formatoDistancia, formatoPlata, setDisponible,
+  cuandoDe, fetchMisPaseos, formatoDistancia, formatoPlata, setDisponible,
 } from '../../../services/paseadorApi';
 import { colores } from '../../../theme';
 
@@ -101,13 +101,6 @@ export default function InicioTab({
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={refrescando} onRefresh={refrescar} tintColor={C.teal} />}
     >
-      {enModoDemo() && (
-        <View style={s.demo}>
-          <Ionicons name="flask-outline" size={16} color={C.ambar} />
-          <Text style={s.demoTxt}>Modo demo: los datos son de ejemplo hasta correr la migración 035.</Text>
-        </View>
-      )}
-
       {/* ── Disponible ─────────────────────────────────────────────── */}
       <View style={[s.disponible, disponible ? s.disponibleOn : s.disponibleOff]}>
         <View style={{ flex: 1 }}>
@@ -253,11 +246,6 @@ export default function InicioTab({
 const s = StyleSheet.create({
   scroll: { padding: 20, paddingBottom: 32 },
 
-  demo: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF6E5',
-    borderRadius: 12, padding: 10, marginBottom: 14,
-  },
-  demoTxt: { flex: 1, fontSize: 12, color: C.texto, fontWeight: '600' },
 
   disponible: {
     flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 20, padding: 18,

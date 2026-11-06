@@ -23,8 +23,8 @@ import {
   cuandoTexto, diaTexto, fetchClientesPetshop, formatoPlata, unidadesDe,
 } from '../../../services/negocioApi';
 import { colores } from '../../../theme';
+import { normalizarBusqueda } from '../../../utils/texto';
 
-const normalizar = (t) => String(t ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const EN_CURSO = ['nuevo', 'preparando', 'listo', 'en_camino'];
 
 export default function ClientesPetshopTab({ negocio, avisar, abrirChat }) {
@@ -53,13 +53,13 @@ export default function ClientesPetshopTab({ negocio, avisar, abrirChat }) {
 
   const lista = clientes ?? [];
   const visibles = useMemo(() => {
-    const q = normalizar(busqueda.trim());
+    const q = normalizarBusqueda(busqueda.trim());
     return lista.filter((c) => {
       if (filtro === 'frecuentes' && c.compras < 2) return false;
       if (filtro === 'curso' && !c.pedidos.some((p) => EN_CURSO.includes(p.estado))) return false;
       if (!q) return true;
-      return normalizar(c.dueno.nombre).includes(q)
-        || c.pedidos.some((p) => p.items.some((x) => normalizar(x.nombre).includes(q)));
+      return normalizarBusqueda(c.dueno.nombre).includes(q)
+        || c.pedidos.some((p) => p.items.some((x) => normalizarBusqueda(x.nombre).includes(q)));
     });
   }, [lista, busqueda, filtro]);
 

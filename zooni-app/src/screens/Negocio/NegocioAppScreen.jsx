@@ -11,7 +11,7 @@
  *
  * Acá vive lo que comparten las secciones: el negocio y los contadores del
  * menú (turnos por confirmar, pedidos nuevos, mensajes sin leer), que se
- * refrescan solos cada POLL_MS.
+ * refrescan solos cada INTERVALO_LISTAS_MS.
  *
  * Params: { tipo, tab?, bienvenida? }
  */
@@ -44,8 +44,7 @@ import ClientesPetshopTab from './tabs/ClientesPetshopTab';
 import MensajesNegocioTab from './tabs/MensajesNegocioTab';
 import MiNegocioTab from './tabs/MiNegocioTab';
 import { colores } from '../../theme';
-
-const POLL_MS = 30000;
+import { INTERVALO_LISTAS_MS } from '../../constants/intervalos';
 
 export default function NegocioAppScreen() {
   const navigation = useNavigation();
@@ -108,7 +107,7 @@ export default function NegocioAppScreen() {
   }, [recargarNegocio])); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const t = setInterval(() => refrescarBadges(), POLL_MS);
+    const t = setInterval(() => refrescarBadges(), INTERVALO_LISTAS_MS);
     return () => clearInterval(t);
   }, [refrescarBadges]);
 

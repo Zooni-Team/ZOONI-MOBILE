@@ -23,31 +23,17 @@
  * matriculado, y así lo aclara el recuadro legal del final.
  */
 
+import { calcularEdad } from './calcularEdad.js';
+import { diasHasta, formatearFecha } from './fechaLocal.js';
+import { capitalizar } from './texto.js';
+
 // ─── FORMATO ──────────────────────────────────────────────────────────────────
 
-const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio',
-  'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-
-/** "2026-08-14" → "14/08/2026" (sin pasar por Date: evita corrimientos de zona) */
-export function formatFecha(iso) {
-  if (!iso) return null;
-  const [y, m, d] = String(iso).split('T')[0].split('-');
-  if (!y || !m || !d) return null;
-  return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
-}
-
-/** "2026-08-14" → "14 de agosto de 2026" */
-export function formatFechaLarga(iso) {
-  if (!iso) return null;
-  const [y, m, d] = String(iso).split('T')[0].split('-');
-  if (!y || !m || !d) return null;
-  return `${parseInt(d, 10)} de ${MESES[parseInt(m, 10) - 1]} de ${y}`;
-}
-
-export function capitalizar(t) {
-  if (!t) return '';
-  return String(t).charAt(0).toUpperCase() + String(t).slice(1);
-}
+// Fechas, edades y texto salen de los módulos compartidos (con ".js": este
+// archivo también lo carga scripts/verificar-ficha-pdf.mjs con Node puro).
+const formatFecha = (iso) => formatearFecha(iso, 'numericaCeros');
+const formatFechaLarga = (iso) => formatearFecha(iso, 'larga');
+const calcularEdadTexto = (fecha) => calcularEdad(fecha, { vacio: 'No registrada' });
 
 /** Peso en kg, o en gramos si es menos de 1 kg (un canario pesa 35 g). */
 export function formatPesoPdf(peso) {
@@ -56,30 +42,6 @@ export function formatPesoPdf(peso) {
   if (!Number.isFinite(n)) return 'No registrado';
   if (n < 1) return `${Math.round(n * 1000)} g`;
   return `${n.toLocaleString('es-AR', { maximumFractionDigits: 2 })} kg`;
-}
-
-export function calcularEdadTexto(fechaNacimiento) {
-  if (!fechaNacimiento) return 'No registrada';
-  const [y, m, d] = String(fechaNacimiento).split('T')[0].split('-').map(Number);
-  if (!y) return 'No registrada';
-  const hoy = new Date();
-  let meses = (hoy.getFullYear() - y) * 12 + (hoy.getMonth() + 1 - m);
-  if (hoy.getDate() < d) meses -= 1;
-  if (meses < 0) return 'No registrada';
-  const anios = Math.floor(meses / 12);
-  const resto = meses % 12;
-  if (anios === 0) return `${resto} ${resto === 1 ? 'mes' : 'meses'}`;
-  return `${anios} ${anios === 1 ? 'año' : 'años'} y ${resto} ${resto === 1 ? 'mes' : 'meses'}`;
-}
-
-/** Días desde hoy hasta una fecha ISO (negativo = ya pasó). */
-function diasHasta(iso) {
-  if (!iso) return null;
-  const [y, m, d] = String(iso).split('T')[0].split('-').map(Number);
-  if (!y) return null;
-  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-  const objetivo = new Date(y, m - 1, d); objetivo.setHours(0, 0, 0, 0);
-  return Math.round((objetivo - hoy) / 86400000);
 }
 
 /** "Vencida hace 12 días" / "Vence en 30 días" / "Vence hoy" */

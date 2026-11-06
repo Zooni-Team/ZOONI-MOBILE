@@ -14,6 +14,7 @@
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
 import { perfilesPorId } from './perfilesPublicos';
+import { notificar, resumir } from './comun';
 
 function mapRow(row) {
   return {
@@ -66,13 +67,7 @@ export async function enviarMensaje({ matchId, servicioId, texto }) {
     const otroId = await resolverOtroUsuario(matchId);
     const { data: yo } = await supabase.from('User').select('Nombre, Apellido').eq('Id_User', getCurrentUserId()).single();
     const nombreMio = `${yo?.Nombre ?? ''} ${yo?.Apellido ?? ''}`.trim() || 'Alguien';
-    await supabase.from('Notificacion').insert({
-      Id_User: otroId,
-      Titulo: `Nuevo mensaje de ${nombreMio}`,
-      Mensaje: texto.length > 80 ? `${texto.slice(0, 80)}…` : texto,
-      Tipo: 'mensaje',
-      Leido: false,
-    });
+    await notificar(otroId, `Nuevo mensaje de ${nombreMio}`, resumir(texto), { tipo: 'mensaje' });
   }
 
   return getMensajes({ matchId, servicioId });
@@ -85,14 +80,7 @@ async function avisarAlNegocio(servicioId, texto) {
   if (!negocio?.id_user || negocio.id_user === getCurrentUserId()) return;
   const { data: yo } = await supabase.from('User').select('Nombre, Apellido').eq('Id_User', getCurrentUserId()).single();
   const nombreMio = `${yo?.Nombre ?? ''} ${yo?.Apellido ?? ''}`.trim() || 'Un cliente';
-  await supabase.from('Notificacion').insert({
-    Id_User: negocio.id_user,
-    Titulo: `Mensaje de ${nombreMio}`,
-    Mensaje: texto.length > 80 ? `${texto.slice(0, 80)}…` : texto,
-    Tipo: 'negocio',
-    Leido: false,
-    DataExtra: { destino: 'mensajes' },
-  });
+  await notificar(negocio.id_user, `Mensaje de ${nombreMio}`, resumir(texto), { tipo: 'negocio', destino: 'mensajes' });
 }
 
 /** El negocio de Zooni detrás de un servicio (pin de Comunidad), o null si es uno cargado a mano. */

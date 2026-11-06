@@ -12,6 +12,7 @@ import { subirImagenPublica } from '../../utils/imagenStorage';
 import { buscarLugares, combinarServicios } from '../../services/lugaresApi';
 import { consultarPerfiles, perfilesPorId } from '../../services/perfilesPublicos';
 import { distanciaKm } from '../../utils/geo';
+import { notificar } from '../../services/comun';
 
 function aplicarBbox(query, bbox, latCol = 'lat', lngCol = 'lng') {
   if (!bbox) return query;
@@ -160,13 +161,7 @@ export async function enviarSolicitud(usuarioDestinoId) {
   // sin este insert, la solicitud nunca aparecía ahí.
   const { data: yo } = await supabase.from('User').select('Nombre, Apellido').eq('Id_User', getCurrentUserId()).single();
   const nombreSolicitante = `${yo?.Nombre ?? ''} ${yo?.Apellido ?? ''}`.trim() || 'Alguien';
-  await supabase.from('Notificacion').insert({
-    Id_User: usuarioDestinoId,
-    Titulo: 'Nueva solicitud de amistad',
-    Mensaje: `${nombreSolicitante} te envió una solicitud de amistad`,
-    Tipo: 'amistad',
-    Leido: false,
-  });
+  await notificar(usuarioDestinoId, 'Nueva solicitud de amistad', `${nombreSolicitante} te envió una solicitud de amistad`, { tipo: 'amistad' });
 
   return { ok: true };
 }

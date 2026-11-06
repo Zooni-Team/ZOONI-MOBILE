@@ -6,22 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  Platform,
-  RefreshControl,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Image, Platform, RefreshControl, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Print from 'expo-print';
@@ -52,6 +37,8 @@ import FechaPicker from '../components/FechaPicker';
 import { formatearPeso, pesoValido, textoRangoPeso } from '../constants/pesoPorEspecie';
 import { imagenADataUri } from '../utils/imagenBase64';
 import { colores } from '../theme';
+import { formatearFecha } from '../utils/fechaLocal';
+import { capitalizar } from '../utils/texto';
 
 // ─── DATOS DEMO (sin backend conectado — mismos datos que Vacunas/Tratamientos) ──
 
@@ -276,19 +263,6 @@ export default function FichaMedicaScreen() {
   // Debajo del kilo se muestra en gramos ("120 g" y no "0,12 kg")
   const formatPeso = (p) => (p == null ? 'Sin registrar' : formatearPeso(p));
 
-  const capitalizar = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
-
-  const formatFecha = (iso) => {
-    if (!iso) return null;
-    const [y, mo, d] = iso.split('-').map(Number);
-    return `${d}/${mo}/${y}`;
-  };
-
-  // Timestamp completo (historial_peso.fecha) → "5/7/2026"
-  const formatFechaCorta = (ts) => {
-    const d = new Date(ts);
-    return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
-  };
 
   // ── PDF ───────────────────────────────────────────────────────────────────
   // Se genera localmente con los datos ya disponibles, sin depender de un
@@ -489,7 +463,7 @@ export default function FichaMedicaScreen() {
                       const delta = anterior ? h.peso - anterior.peso : null;
                       return (
                         <View key={h.id} style={[s.histRow, i === historialPeso.length - 1 && s.histRowLast]}>
-                          <Text style={s.histFecha}>{formatFechaCorta(h.fecha)}</Text>
+                          <Text style={s.histFecha}>{formatearFecha(h.fecha)}</Text>
                           <Text style={s.histPeso}>{formatPeso(h.peso)}</Text>
                           <Text style={[
                             s.histDelta,

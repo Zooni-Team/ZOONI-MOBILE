@@ -46,17 +46,11 @@ import { colores } from '../theme';
 import Skeleton from '../components/ui/Skeleton';
 import Toast from '../components/ui/Toast';
 import { useToast } from '../hooks/useToast';
+import { formatearFecha } from '../utils/fechaLocal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
-
-/** "2026-03-19" → "19/3/2026" */
-function formatFecha(iso) {
-  if (!iso) return null;
-  const [y, m, d] = iso.split('-');
-  return `${parseInt(d)}/${parseInt(m)}/${y}`;
-}
 
 // ─── COMPONENTE: SKELETON ─────────────────────────────────────────────────────
 
@@ -71,7 +65,6 @@ function SkeletonCard() {
 }
 
 // ─── COMPONENTE: TOAST ────────────────────────────────────────────────────────
-
 
 // ─── COMPONENTE: CARD CONSULTA ────────────────────────────────────────────────
 
@@ -95,7 +88,7 @@ function CardConsulta({ consulta, index, onEliminar }) {
       <View style={s.cardTop}>
         <View style={s.cardFechaChip}>
           <Ionicons name="calendar-outline" size={12} color={colores.verde} />
-          <Text style={s.cardFechaTxt}>{formatFecha(consulta.fecha) ?? '—'}</Text>
+          <Text style={s.cardFechaTxt}>{formatearFecha(consulta.fecha) ?? '—'}</Text>
         </View>
         <Animated.View style={{ transform: [{ scale }] }}>
           <Pressable
@@ -223,7 +216,6 @@ export default function ConsultasScreen() {
       Animated.timing(heroOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
     ]).start();
   }
-
 
   // ── Modal ────────────────────────────────────────────────────────────────
   function abrirModal() {
@@ -444,7 +436,7 @@ export default function ConsultasScreen() {
                     onPress={() => setShowPickerFecha(true)}
                   >
                     <Text style={[s.inputFechaTxt, !formFecha && { color: colores.textoTenue }]}>
-                      {formFecha ? formatFecha(toISODateLocal(formFecha)) : 'Fecha de la consulta'}
+                      {formFecha ? formatearFecha(toISODateLocal(formFecha)) : 'Fecha de la consulta'}
                     </Text>
                     <Ionicons name="calendar-outline" size={18} color={colores.textoSecundario} />
                   </TouchableOpacity>

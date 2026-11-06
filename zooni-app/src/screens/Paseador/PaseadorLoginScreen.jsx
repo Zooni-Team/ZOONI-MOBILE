@@ -21,8 +21,7 @@ import { MASCOTAS_BIENVENIDA } from '../../constants/registroImages';
 import BotonesSociales from '../../components/BotonesSociales';
 import { volverOLogin } from '../../utils/volverOLogin';
 import { colores } from '../../theme';
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { EMAIL_REGEX } from '../../utils/validacion';
 
 export default function PaseadorLoginScreen() {
   const navigation = useNavigation();

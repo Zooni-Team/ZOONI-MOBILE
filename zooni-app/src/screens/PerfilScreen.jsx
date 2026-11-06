@@ -44,12 +44,7 @@ import {
 import { colores } from '../theme';
 import Skeleton from '../components/ui/Skeleton';
 import { useToast } from '../hooks/useToast';
-
-function formatFecha(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
-}
+import { formatearFecha } from '../utils/fechaLocal';
 
 // ─── SKELETON ─────────────────────────────────────────────────────────────────
 
@@ -132,7 +127,6 @@ export default function PerfilScreen() {
   }, []);
 
   useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
-
 
   // ── Botón press animations ────────────────────────────────────────────────
   const pi = (sc) => Animated.timing(sc, { toValue: 0.97, duration: 100, useNativeDriver: true }).start();
@@ -251,7 +245,6 @@ export default function PerfilScreen() {
 
   // ── Nombre a mostrar bajo el avatar ──────────────────────────────────────
   const p = perfil ?? {};
-  const displayName = p.nombreUsuario || [p.nombre, p.apellido].filter(Boolean).join(' ') || 'Usuario';
   const displayNombreCompleto = [p.nombre, p.apellido].filter(Boolean).join(' ') || p.nombreUsuario || 'Usuario';
 
   // ── RENDER ───────────────────────────────────────────────────────────────
@@ -413,7 +406,7 @@ export default function PerfilScreen() {
                     : <View style={[s.listaImg,s.listaImgPH]}><Ionicons name="image-outline" size={36} color={colores.textoTenue}/></View>
                   }
                   {!!pub.descripcion && <Text style={s.listaDesc}>{pub.descripcion}</Text>}
-                  <Text style={s.listaFecha}>{formatFecha(pub.fecha)}</Text>
+                  <Text style={s.listaFecha}>{formatearFecha(pub.fecha)}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -506,7 +499,7 @@ export default function PerfilScreen() {
                 {pubAbierta.descripcion}
               </Text>
             )}
-            <Text style={s.pvFecha}>{formatFecha(pubAbierta?.fecha)}</Text>
+            <Text style={s.pvFecha}>{formatearFecha(pubAbierta?.fecha)}</Text>
 
             <TouchableOpacity style={s.pvBorrar} onPress={() => setConfirmarBorrar(pubAbierta)}
               accessibilityRole="button" accessibilityLabel="Eliminar publicación">
