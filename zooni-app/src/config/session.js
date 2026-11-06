@@ -1,31 +1,27 @@
 /**
- * session.js — Sesión del usuario actual (sin JWT propio todavía).
+ * session.js — Quién es el usuario actual de la app.
  *
- * Después del login, el id del usuario se guarda acá (memoria + storage) y
- * todos los servicios lo leen con getCurrentUserId() al momento de armar cada
- * query.
+ * La IDENTIDAD es la sesión de Supabase Auth (src/lib/supabase.js): un JWT
+ * firmado por Supabase que viaja en cada consulta y que la base traduce a un
+ * "Id_User" con usuario_actual() (060_auth_supabase.sql). Las políticas de RLS
+ * deciden con eso, no con nada que diga la app.
  *
- * IMPORTANTE — por qué el valor inicial es null y no un usuario de demo:
- * antes este archivo arrancaba con `currentUserId = 1` "para ver datos al
- * desarrollar", pero el id 1 es una CUENTA REAL de la base. Como
- * loadStoredUserId() es asíncrono, todo lo que consultara durante el arranque
- * (o después de un logout, que también volvía al id 1) leía y escribía la
- * cuenta de otra persona: de ahí que la app "cambiara de cuenta sola".
+ * Este módulo sólo guarda en memoria el Id_User de esa sesión, para que los
+ * servicios armen sus consultas (".eq('Id_User', getCurrentUserId())"). Ese
+ * número es una comodidad, no una prueba: si alguien lo cambiara, la base
+ * igual le devolvería sólo lo que su JWT permite.
  *
- * Ahora, mientras no haya sesión, el id es null: las queries no devuelven nada
- * en vez de devolver los datos de otro. Falla cerrado, que es lo correcto para
- * algo que decide de quién son los datos.
- *
- * Cuando se migre a Supabase Auth, este archivo pasa a leer
- * supabase.auth.getSession() y el resto de la app no cambia.
+ * Al arrancar, restaurarSesion() lee la sesión guardada por Supabase Auth y le
+ * pregunta a la base a qué cuenta corresponde (RPC login_social). Sin sesión,
+ * el id es null: las consultas no devuelven nada en vez de devolver datos de
+ * otro (falla cerrado).
  */
 
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
-import { supabase, supabaseSocial } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 
-const STORAGE_KEY = 'zooni_user_id';
 // Mail de la última cuenta que usó este dispositivo: el login lo muestra ya
 // escrito después de cerrar sesión. No se borra en el logout (es sólo el mail,
 // nunca la contraseña).
@@ -47,7 +43,7 @@ function marcarSesionResuelta() {
 }
 
 /**
- * Id del usuario logueado que usan todas las queries.
+ * Id_User de la sesión actual.
  * @returns {number|null} null si todavía no se restauró la sesión o no hay nadie.
  */
 export function getCurrentUserId() {
@@ -60,42 +56,36 @@ export function haySesion() {
 }
 
 /**
- * Espera a que la sesión esté restaurada desde el storage.
- * Resuelve con el id, o con null si no había sesión guardada.
+ * Espera a que la sesión esté restaurada.
+ * Resuelve con el id, o con null si no había sesión.
  */
 export function esperarSesion() {
   return sesionLista;
 }
 
-/** Guarda la sesión tras un login exitoso (y el mail, si se conoce). */
+/**
+ * Registra el Id_User de la sesión recién iniciada (lo llaman los flujos de
+ * login después de supabase.auth.signInWithPassword / OAuth + login_social).
+ */
 export async function setCurrentUserId(id, mail) {
   currentUserId = id;
   marcarSesionResuelta();
   if (mail) recordarUltimoMail(mail);
-  try {
-    if (Platform.OS === 'web') {
-      if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, String(id));
-    } else {
-      await SecureStore.setItemAsync(STORAGE_KEY, String(id));
-    }
-  } catch {
-    // Sin storage: la sesión dura lo que dure la app abierta.
-  }
 }
 
 /**
- * Lee la sesión guardada al arrancar la app.
- * Devuelve el id si hay sesión, o null si nunca se logueó nadie.
+ * Al arrancar la app: ¿hay una sesión de Supabase Auth guardada? Si la hay,
+ * se pregunta a la base qué cuenta es. Devuelve el Id_User o null.
  */
-export async function loadStoredUserId() {
+export async function restaurarSesion() {
   try {
-    const raw = Platform.OS === 'web'
-      ? (typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null)
-      : await SecureStore.getItemAsync(STORAGE_KEY);
-    // Number.isInteger descarta storage corrupto ("", "abc", "NaN"): con
-    // parseInt a secas quedaba NaN dando vueltas como si fuera un id.
-    const id = raw != null ? parseInt(raw, 10) : NaN;
-    currentUserId = Number.isInteger(id) && id > 0 ? id : null;
+    const { data } = await supabase.auth.getSession();
+    if (!data?.session) {
+      currentUserId = null;
+      return null;
+    }
+    const { data: cuenta, error } = await supabase.rpc('login_social');
+    currentUserId = !error && cuenta && !cuenta.nuevo ? cuenta.id : null;
     return currentUserId;
   } catch {
     currentUserId = null;
@@ -105,32 +95,23 @@ export async function loadStoredUserId() {
   }
 }
 
-/** Borra la sesión (logout). Queda sin usuario: nadie hereda datos ajenos. */
+
+/** Cierra la sesión (logout). Queda sin usuario: nadie hereda datos ajenos. */
 export async function clearCurrentUserId() {
-  // Antes de olvidar el id, guardar su mail para el próximo login (cubre las
-  // sesiones abiertas antes de que existiera ULTIMO_MAIL_KEY). Máx. 2 s: el
-  // logout no espera a una red lenta.
-  const id = currentUserId;
-  if (id != null) {
-    const mail = await Promise.race([
-      supabase.from('User').select('Mail').eq('Id_User', id).maybeSingle()
-        .then(({ data }) => data?.Mail ?? null).catch(() => null),
-      new Promise((resolve) => setTimeout(() => resolve(null), 2000)),
-    ]);
-    if (mail) await recordarUltimoMail(mail);
-  }
-  // Si entró con Google / Facebook / Apple, cortar también esa sesión
-  supabaseSocial.auth.signOut({ scope: 'local' }).catch(() => {});
+  // Antes de olvidar la cuenta, guardar su mail para el próximo login.
+  const { data } = await supabase.auth.getSession().catch(() => ({ data: null }));
+  const mail = data?.session?.user?.email;
+  if (mail) await recordarUltimoMail(mail);
+
+  // scope 'local': cierra la sesión de ESTE dispositivo (borra los tokens
+  // guardados). El refresh token deja de servir del lado del servidor.
+  await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
   currentUserId = null;
   modoActual = MODO_DUENO;
   try {
     if (Platform.OS === 'web') {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(MODO_KEY);
-      }
+      if (typeof localStorage !== 'undefined') localStorage.removeItem(MODO_KEY);
     } else {
-      await SecureStore.deleteItemAsync(STORAGE_KEY);
       await SecureStore.deleteItemAsync(MODO_KEY);
     }
   } catch {

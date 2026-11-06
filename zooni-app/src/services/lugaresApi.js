@@ -44,6 +44,7 @@
  */
 
 import { buscarLugaresOsm, areaConsultable } from './lugaresOsm';
+import { distanciaMetros } from '../utils/geo';
 
 const API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 const ENDPOINT = 'https://places.googleapis.com/v1/places:searchText';
@@ -257,17 +258,8 @@ function normalizar(texto) {
     .replace(/[^a-z0-9]/g, '');
 }
 
-/** Metros entre dos puntos (haversine). */
-function distanciaM(a, b) {
-  if ([a?.lat, a?.lng, b?.lat, b?.lng].some((v) => v == null)) return Infinity;
-  const R = 6371000;
-  const rad = (g) => (g * Math.PI) / 180;
-  const dLat = rad(b.lat - a.lat);
-  const dLng = rad(b.lng - a.lng);
-  const h = Math.sin(dLat / 2) ** 2 +
-    Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
-}
+/** Metros entre dos puntos; sin coordenadas, "infinitamente lejos" (no es el mismo local). */
+const distanciaM = (a, b) => distanciaMetros(a, b) ?? Infinity;
 
 /**
  * Une los servicios propios con los de Google, sin repetir.

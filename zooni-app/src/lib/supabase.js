@@ -1,43 +1,76 @@
 /**
  * supabase.js — Cliente único de Supabase para toda la app
  *
- * Lee la URL y la key pública desde las variables de entorno EXPO_PUBLIC_*
- * (ver .env en la raíz de zooni-app). La key pública (`sb_publishable_...`)
- * es segura para embeber en el cliente: el control de acceso real se hace
- * con Row Level Security en Postgres, no ocultando esta key.
+ * Lee la URL y la clave pública desde EXPO_PUBLIC_SUPABASE_URL y
+ * EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY. Todo lo EXPO_PUBLIC_* termina dentro
+ * del bundle que descarga cualquiera: esta clave es pública por diseño y NO
+ * protege nada por sí sola.
  *
- * La sesión de la app no usa Supabase Auth (ver src/config/session.js), así
- * que este cliente no usa supabase.auth. La única excepción es el login con
- * Google / Facebook / Apple, que va por `supabaseSocial` (abajo).
+ * Lo que protege los datos es la combinación de:
+ *   · la sesión de Supabase Auth: tras el login, cada consulta viaja con un JWT
+ *     firmado por Supabase (no con un id que diga la app), y
+ *   · las políticas de Row Level Security (supabase/migrations/061_rls_por_usuario.sql),
+ *     que deciden fila por fila con usuario_actual(), sacado de ese JWT.
+ *
+ * La sesión se guarda en localStorage (web) o en SecureStore (nativo) y se
+ * renueva sola (autoRefreshToken). El login con Google / Facebook usa este
+ * mismo cliente.
  */
 
 import { Platform } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!supabaseUrl || !supabaseKey) {
   console.warn(
-    'Faltan EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY en el .env de zooni-app.'
+    'Faltan EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY en el .env de zooni-app (ver .env.example).'
   );
 }
+
+/**
+ * SecureStore guarda como máximo ~2 KB por clave y una sesión de Supabase
+ * (JWT + refresh token + datos del usuario) suele pasarse. Se parte en trozos.
+ */
+const TROZO = 1800;
+const almacenNativo = {
+  async getItem(clave) {
+    const cantidad = Number(await SecureStore.getItemAsync(`${clave}_n`));
+    if (!cantidad) return SecureStore.getItemAsync(clave);
+    const partes = await Promise.all(
+      Array.from({ length: cantidad }, (_, i) => SecureStore.getItemAsync(`${clave}_${i}`))
+    );
+    return partes.some((p) => p == null) ? null : partes.join('');
+  },
+  async setItem(clave, valor) {
+    const partes = valor.match(new RegExp(`[\\s\\S]{1,${TROZO}}`, 'g')) ?? [''];
+    await Promise.all(partes.map((p, i) => SecureStore.setItemAsync(`${clave}_${i}`, p)));
+    await SecureStore.setItemAsync(`${clave}_n`, String(partes.length));
+  },
+  async removeItem(clave) {
+    const cantidad = Number(await SecureStore.getItemAsync(`${clave}_n`)) || 0;
+    await Promise.all([
+      SecureStore.deleteItemAsync(clave),
+      SecureStore.deleteItemAsync(`${clave}_n`),
+      ...Array.from({ length: cantidad }, (_, i) => SecureStore.deleteItemAsync(`${clave}_${i}`)),
+    ]);
+  },
+};
 
 /**
  * Sin .env, createClient(undefined) tira un error al importar el módulo y la
  * app entera muere antes de renderizar. En su lugar se exporta un stub donde
  * cualquier cadena (`.from().select().eq()...`) resuelve `{ data: null,
- * error }`, así cada pantalla activa su propio fallback de datos demo.
+ * error }`, así cada pantalla muestra su estado de error.
  */
 function crearStubSinConfig() {
   const error = new Error(
     'Supabase sin configurar (faltan las variables EXPO_PUBLIC_* en el .env)'
   );
-  // Cada nodo es a la vez invocable (`.from(...)`) y navegable
-  // (`.storage.from`), y al hacerle await resuelve como query fallida.
   const handler = {
     get(_target, prop) {
-      // `await cadena` llama a .then() → resuelve como una query fallida
       if (prop === 'then') {
         return (resolve) => resolve({ data: null, error });
       }
@@ -54,33 +87,15 @@ function crearStubSinConfig() {
 }
 
 export const supabase =
-  supabaseUrl && supabaseAnonKey
-    ? createClient(supabaseUrl, supabaseAnonKey, {
+  supabaseUrl && supabaseKey
+    ? createClient(supabaseUrl, supabaseKey, {
         auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-          detectSessionInUrl: false,
-        },
-      })
-    : crearStubSinConfig();
-
-/**
- * Cliente APARTE sólo para "Entrar con Google / Facebook / Apple"
- * (services/socialAuthApi.js). Guarda su propia sesión de Supabase Auth con
- * otra clave de storage, así el cliente principal sigue anónimo como siempre:
- * si compartieran sesión, todas las queries de la app pasarían a ir con el
- * rol `authenticated` y los permisos pensados para `anon` dejarían de aplicar.
- * El flujo PKCE devuelve un ?code= que se canjea a mano al volver a la app.
- */
-export const supabaseSocial =
-  supabaseUrl && supabaseAnonKey
-    ? createClient(supabaseUrl, supabaseAnonKey, {
-        auth: {
-          storageKey: 'zooni-social-auth',
-          // El login social es sólo web por ahora (sin expo-web-browser): en
-          // nativo no hay storage configurado para la sesión.
-          persistSession: Platform.OS === 'web',
+          storageKey: 'zooni-auth',
+          storage: Platform.OS === 'web' ? undefined : almacenNativo,
+          persistSession: true,
           autoRefreshToken: true,
+          // El retorno de Google / Facebook (?code=…) se canjea a mano en
+          // socialAuthApi.completarRetornoSocial().
           detectSessionInUrl: false,
           flowType: 'pkce',
         },

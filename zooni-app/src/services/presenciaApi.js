@@ -13,6 +13,7 @@
 
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
+import { perfilesPorId } from './perfilesPublicos';
 
 // Más seguido que esto no aporta: el umbral de "en línea" es de 5 minutos.
 const INTERVALO_MS = 2 * 60 * 1000;
@@ -56,12 +57,8 @@ export function iniciarLatidoPresencia() {
 export async function fetchUltimasConexiones(ids = []) {
   if (!ids.length) return new Map();
   try {
-    const { data, error } = await supabase
-      .from('User')
-      .select('Id_User, UltimaConexion')
-      .in('Id_User', ids);
-    if (error) return new Map();
-    return new Map((data ?? []).map((u) => [u.Id_User, u.UltimaConexion ?? null]));
+    const data = await perfilesPorId(ids, 'Id_User, UltimaConexion');
+    return new Map(data.map((u) => [u.Id_User, u.UltimaConexion ?? null]));
   } catch {
     return new Map();
   }

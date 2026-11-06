@@ -18,11 +18,39 @@
 
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId, setCurrentUserId, setModo, MODO_PASEADOR } from '../config/session';
-import { hashPassword } from './authApi';
+import { crearCuentaConPassword, iniciarSesionConPassword } from './authApi';
 import { marcarPresencia } from './presenciaApi';
 import { resolveMascotaVisual } from '../constants/petImages';
 import { subirArchivoPublico } from '../utils/imagenStorage';
 import { rpcSocial } from './socialAuthApi';
+import { perfilesPorId } from './perfilesPublicos';
+import { distanciaMetros } from '../utils/geo';
+import {
+  HORARIOS_DEFAULT,
+  formatoPlata,
+  aCentavos,
+  serviciosDe,
+  precioPara,
+  formatoDistancia,
+  cuandoDe,
+  segundosDePaseo,
+  formatoTiempoPaseado,
+  comisionDe,
+  inicioDePeriodo,
+  MEDIOS_PAGO,
+  medioDePago,
+  ultimoCierre,
+  proximoCierre,
+  experienciaEnZooni,
+  ASPECTOS_RESENA,
+  PREGUNTAS_RESENA,
+  MEDIA_RESENA_MAX,
+} from '../domain/paseos';
+
+// Reglas y formatos puros de paseos (re-exportados para no romper a quien ya
+// los importaba desde acá). La distancia vive en utils/geo.
+export * from '../domain/paseos';
+export { distanciaMetros };
 
 // ─────────────────────────────────────────────
 // MODO DEMO
@@ -178,172 +206,6 @@ function mapDemoPaseo(p) {
 // HELPERS DE FORMATO (compartidos por las pantallas)
 // ─────────────────────────────────────────────
 
-export const DIAS = [
-  { key: 'lun', label: 'Lunes' }, { key: 'mar', label: 'Martes' },
-  { key: 'mie', label: 'Miércoles' }, { key: 'jue', label: 'Jueves' },
-  { key: 'vie', label: 'Viernes' }, { key: 'sab', label: 'Sábado' },
-  { key: 'dom', label: 'Domingo' },
-];
-
-export function HORARIOS_DEFAULT() {
-  const h = {};
-  DIAS.forEach(({ key }) => {
-    const finde = key === 'sab' || key === 'dom';
-    h[key] = { activo: !finde, desde: '08:00', hasta: '19:00' };
-  });
-  return h;
-}
-
-/**
- * $12.500 · $166,66 — separador de miles manual (Hermes no siempre trae locale
- * es-AR). Los centavos aparecen sólo si los hay (paseos cobrados por tiempo).
- */
-export function formatoPlata(n) {
-  const centavos = Math.round((Number(n) || 0) * 100);
-  const signo = centavos < 0 ? '-' : '';
-  const abs = Math.abs(centavos);
-  const entero = String(Math.floor(abs / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  const resto = abs % 100;
-  return `${signo}$${entero}${resto ? `,${String(resto).padStart(2, '0')}` : ''}`;
-}
-
-/** Redondea a centavos (evita los 0,1 + 0,2 de los floats). */
-export const aCentavos = (n) => Math.round((Number(n) || 0) * 100) / 100;
-
-// ─────────────────────────────────────────────
-// SERVICIOS: cada paseador define sus tiempos de paseo y el precio de cada uno
-// ─────────────────────────────────────────────
-
-export const SERVICIO_MIN_MINUTOS = 10;
-export const SERVICIO_MAX_MINUTOS = 240;
-export const SERVICIOS_MAX = 4;
-
-/** 45 → "45 minutos" · 90 → "90 minutos" (mismo formato que el resto de la app) */
-export const formatoDuracion = (min) => `${min} minutos`;
-
-/**
- * Lista ordenada [{ minutos, precio }] de un perfil. Los perfiles anteriores a
- * la 040 no tienen `servicios`: se arman con los viejos precio_30 / precio_60.
- */
-export function serviciosDe(p) {
-  const lista = Array.isArray(p?.servicios) && p.servicios.length
-    ? p.servicios
-    : [{ minutos: 30, precio: p?.precio30 }, { minutos: 60, precio: p?.precio60 }];
-  return lista
-    .map((x) => ({ minutos: Number(x.minutos), precio: Number(x.precio) }))
-    .filter((x) => x.minutos > 0 && x.precio > 0)
-    .sort((a, b) => a.minutos - b.minutos);
-}
-
-/** Precio que cobra el paseador por un paseo de `minutos` (null si no lo ofrece). */
-export function precioPara(paseador, minutos) {
-  return serviciosDe(paseador).find((x) => x.minutos === Number(minutos))?.precio ?? null;
-}
-
-/**
- * Valida lo que cargó el paseador ([{ minutos, precio }] con strings o números).
- * Devuelve el mensaje del primer problema o null si está todo bien.
- */
-export function validarServicios(lista) {
-  if (!lista?.length) return 'Es necesario cargar al menos un tiempo de paseo con su precio';
-  for (const x of lista) {
-    const m = Number(x.minutos);
-    if (!(m >= SERVICIO_MIN_MINUTOS && m <= SERVICIO_MAX_MINUTOS)) {
-      return `Cada paseo tiene que durar entre ${SERVICIO_MIN_MINUTOS} y ${SERVICIO_MAX_MINUTOS} minutos`;
-    }
-    if (!(Number(x.precio) > 0)) return `Es necesario el precio del paseo de ${m} minutos`;
-  }
-  const minutos = lista.map((x) => Number(x.minutos));
-  if (new Set(minutos).size !== minutos.length) return 'Hay dos paseos con la misma duración';
-  return null;
-}
-
-/** 1.234 m → "1,2 km"; menos de 1 km → "850 m". */
-export function formatoDistancia(metros) {
-  const m = Math.max(0, Math.round(Number(metros) || 0));
-  if (m < 1000) return `${m} m`;
-  return `${(m / 1000).toFixed(1).replace('.', ',')} km`;
-}
-
-/** 3725 s → "1:02:05"; 125 s → "02:05". */
-export function formatoTimer(segundos) {
-  const s = Math.max(0, Math.floor(segundos));
-  const hh = Math.floor(s / 3600);
-  const mm = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
-  const ss = String(s % 60).padStart(2, '0');
-  return hh > 0 ? `${hh}:${mm}:${ss}` : `${mm}:${ss}`;
-}
-
-export function horaDe(iso) {
-  if (!iso) return '--:--';
-  const d = new Date(iso);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
-/** "Hoy 17:30" / "Mañana 09:00" / "Vie 12/10 18:00" */
-export function cuandoDe(iso) {
-  if (!iso) return 'Sin horario';
-  const d = new Date(iso);
-  const hoy = new Date();
-  const manana = new Date();
-  manana.setDate(hoy.getDate() + 1);
-  const mismo = (a, b) => a.toDateString() === b.toDateString();
-  if (mismo(d, hoy)) return `Hoy ${horaDe(iso)}`;
-  if (mismo(d, manana)) return `Mañana ${horaDe(iso)}`;
-  const dia = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d.getDay()];
-  return `${dia} ${d.getDate()}/${d.getMonth() + 1} ${horaDe(iso)}`;
-}
-
-/** Segundos caminados del paseo, contando el tramo que está corriendo ahora. */
-export function segundosDePaseo(paseo, ahora = Date.now()) {
-  if (!paseo) return 0;
-  const tramo = paseo.reanudadoEn ? (ahora - new Date(paseo.reanudadoEn).getTime()) / 1000 : 0;
-  return (paseo.segundosAcumulados ?? 0) + Math.max(0, tramo);
-}
-
-// ─────────────────────────────────────────────
-// COBRO: precio fijo, el pactado
-// ─────────────────────────────────────────────
-// Antes (045 / 047) se cobraba por segundo paseado, con tope en lo pactado, y
-// el monto iba subiendo en vivo. No es el modelo: el paseo cuesta lo que se
-// acordó al contratarlo, dure lo que dure.
-
-/**
- * Comisión de Zooni por paseo finalizado (0,10 = 10 %). TODAVÍA NO DEFINIDA:
- * mientras sea 0 no se muestra en ningún lado, pero ya se guarda por paseo.
- */
-export const COMISION_ZOONI = 0;
-
-/** Segundos enteros paseados (nunca negativos). */
-const segundosEnteros = (segundos) => Math.max(0, Math.round(Number(segundos) || 0));
-
-/**
- * Duración legible de un paseo: "31 s", "4 min 10 s", "1 h 5 min".
- */
-export function formatoTiempoPaseado(segundos) {
-  const s = segundosEnteros(segundos);
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const seg = s % 60;
-  if (h > 0) return m > 0 ? `${h} h ${m} min` : `${h} h`;
-  if (m > 0) return seg > 0 ? `${m} min ${seg} s` : `${m} min`;
-  return `${seg} s`;
-}
-
-/** Comisión de Zooni sobre lo cobrado en un paseo. */
-export const comisionDe = (cobrado) => aCentavos(Number(cobrado) * COMISION_ZOONI);
-
-/** Distancia en metros entre dos coordenadas (haversine). */
-export function distanciaMetros(a, b) {
-  const R = 6371000;
-  const rad = (x) => (x * Math.PI) / 180;
-  const dLat = rad(b.lat - a.lat);
-  const dLng = rad(b.lng - a.lng);
-  const h = Math.sin(dLat / 2) ** 2
-    + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-
 // ─────────────────────────────────────────────
 // AUTENTICACIÓN DEL PASEADOR
 // ─────────────────────────────────────────────
@@ -355,19 +217,16 @@ async function entrarComoPaseador(id, mail) {
 }
 
 /**
- * Login del paseador. A diferencia del login de dueños, NO guarda la sesión
+ * Login del paseador. A diferencia del login de dueños, NO entra a la app
  * hasta confirmar que la cuenta tiene perfil de paseador: si no lo tiene,
- * devuelve { necesitaActivar: true, email, hash } para ofrecer sumarlo. Si
- * tiene el rol pero no el perfil, devuelve { necesitaCompletar: true }.
+ * devuelve { necesitaActivar: true, email } para ofrecer sumarlo (la sesión de
+ * Auth queda abierta: activarPaseador la usa). Si tiene el rol pero no el
+ * perfil, devuelve { necesitaCompletar: true }.
  * Lanza Error('credenciales') si mail/contraseña no coinciden.
  */
 export async function loginPaseador(email, password) {
   const mail = email.trim().toLowerCase();
-  const hash = await hashPassword(password);
-
-  const { data: usuario, error } = await supabase.rpc('login_user', { p_mail: mail, p_hash: hash });
-  if (error) throw error;
-  if (!usuario) throw new Error('credenciales');
+  const usuario = await iniciarSesionConPassword(mail, password);
 
   const { data: perfil, error: errPerfil } = await supabase
     .from('paseador_perfil').select('id_user').eq('id_user', usuario.id).maybeSingle();
@@ -387,7 +246,7 @@ export async function loginPaseador(email, password) {
       await setCurrentUserId(usuario.id, mail);
       return { necesitaCompletar: true };
     }
-    return { necesitaActivar: true, email: mail, hash, nombre: usuario.nombre, fotoPerfil: usuario.fotoPerfil ?? null };
+    return { necesitaActivar: true, email: mail, nombre: usuario.nombre, fotoPerfil: usuario.fotoPerfil ?? null };
   }
 
   await entrarComoPaseador(usuario.id, mail);
@@ -416,19 +275,19 @@ function perfilParaRpc(perfil) {
  * Lanza Error('email_existente') si el mail ya tiene cuenta.
  */
 export async function registrarPaseador({ usuario, perfil }) {
-  if ((usuario.password ?? '').length < 7) throw new Error('password_corta');
-  const hash = await hashPassword(usuario.password);
+  // Primero la sesión de Auth (contraseña con bcrypt del lado de Supabase);
+  // después la misma RPC que el alta con Google/Facebook: toma el mail de la
+  // sesión, no de lo que mande la app.
+  await crearCuentaConPassword(usuario.email, usuario.password);
 
-  const { data, error } = await supabase.rpc('registrar_paseador', {
+  const { data, error } = await supabase.rpc('registrar_paseador_social', {
     p_usuario: {
       nombre: usuario.nombre.trim(),
       apellido: usuario.apellido.trim(),
-      email: usuario.email.trim().toLowerCase(),
       telefono: usuario.telefono?.trim() || null,
       genero: usuario.genero,
       fechaNacimiento: usuario.fechaNacimiento, // "YYYY-MM-DD"
     },
-    p_hash: hash,
     p_perfil: perfilParaRpc(perfil),
   });
 
@@ -483,13 +342,16 @@ export async function activarPaseadorSocial(perfil) {
   return data;
 }
 
-/** Cuenta de dueño existente que se suma como paseador (pide su contraseña). */
-export async function activarPaseador({ email, hash, perfil }) {
-  const { data, error } = await supabase.rpc('activar_paseador', {
-    p_mail: email, p_hash: hash, p_perfil: perfilParaRpc(perfil),
+/**
+ * Cuenta de dueño existente que se suma como paseador. Usa la sesión que dejó
+ * abierta loginPaseador (ya comprobó la contraseña).
+ */
+export async function activarPaseador({ email, perfil }) {
+  const { data, error } = await supabase.rpc('activar_paseador_social', {
+    p_perfil: perfilParaRpc(perfil),
   });
   if (error) {
-    if (String(error.message ?? '').includes('credenciales')) throw new Error('credenciales');
+    if (/sin_sesion_social|JWT|token/i.test(String(error.message ?? ''))) throw errorApp('migracion_pendiente', error);
     throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
   }
   await entrarComoPaseador(data.id, email);
@@ -734,9 +596,7 @@ async function enriquecer(rows) {
   const idsDueno = [...new Set(rows.map((r) => r.Id_Dueno ?? porMascota[r.Id_Mascota]?.Id_User).filter(Boolean))];
   const idsWalker = rows.map((r) => r.Id_Walker).filter(Boolean);
   const idsUsuarios = [...new Set([...idsDueno, ...idsWalker])];
-  const { data: duenos } = idsUsuarios.length
-    ? await supabase.from('User').select('Id_User, Nombre, Apellido, FotoPerfil, Telefono').in('Id_User', idsUsuarios)
-    : { data: [] };
+  const duenos = await perfilesPorId(idsUsuarios, 'Id_User, Nombre, Apellido, FotoPerfil, Telefono');
   const porDueno = Object.fromEntries((duenos ?? []).map((u) => [u.Id_User, u]));
 
   return rows.map((r) => {
@@ -1006,15 +866,6 @@ export async function finalizarPaseo(paseo, distancia) {
   return { ...paseo, ...cambios };
 }
 
-/** Minutos después de finalizar en los que todavía se puede retomar el paseo. */
-export const RETOMAR_MINUTOS = 15;
-
-/** ¿Este paseo recién finalizado se puede retomar todavía? */
-export function sePuedeRetomar(paseo, ahora = Date.now()) {
-  if (paseo?.estado !== 'finalizado' || !paseo.horaFin) return false;
-  return ahora - new Date(paseo.horaFin).getTime() < RETOMAR_MINUTOS * 60 * 1000;
-}
-
 /**
  * Deshace un "Finalizar" tocado sin querer: el paseo vuelve a estar en curso
  * con el tiempo y la distancia que llevaba (el rato que estuvo finalizado no
@@ -1055,34 +906,10 @@ export async function registrarPunto(idPaseo, { lat, lng }, distanciaTotal) {
 // GANANCIAS Y RESEÑAS
 // ─────────────────────────────────────────────
 
-/** Inicio del período: 'semana' (desde el lunes), 'mes' (día 1) o 'todo'. */
-export function inicioDePeriodo(periodo) {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  if (periodo === 'semana') {
-    const dow = (d.getDay() + 6) % 7; // lunes = 0
-    d.setDate(d.getDate() - dow);
-    return d;
-  }
-  if (periodo === 'mes') {
-    d.setDate(1);
-    return d;
-  }
-  return null;
-}
-
 /** Paseos finalizados del período, del más nuevo al más viejo. */
 // ─────────────────────────────────────────────
 // PAGOS: cuenta corriente del paseador con cada dueño (044)
 // ─────────────────────────────────────────────
-
-export const MEDIOS_PAGO = [
-  { key: 'efectivo', label: 'Efectivo', icono: 'cash-outline' },
-  { key: 'transferencia', label: 'Transferencia', icono: 'swap-horizontal-outline' },
-  { key: 'mercadopago', label: 'Mercado Pago', icono: 'phone-portrait-outline' },
-  { key: 'otro', label: 'Otro', icono: 'ellipsis-horizontal-circle-outline' },
-];
-export const medioDePago = (key) => MEDIOS_PAGO.find((m) => m.key === key) ?? null;
 
 function mapPago(r) {
   return {
@@ -1102,46 +929,6 @@ async function leerPagos() {
 }
 
 // ── Cada cuánto le cobra el paseador a cada dueño (045) ─────────────────────
-
-export const MODALIDADES_COBRO = [
-  { key: 'por_paseo', label: 'Cada paseo', corto: 'Paga cada paseo', icono: 'walk-outline' },
-  { key: 'semanal', label: 'Fin de semana', corto: 'Paga los domingos', icono: 'calendar-outline' },
-  { key: 'mensual', label: 'Fin de mes', corto: 'Paga a fin de mes', icono: 'calendar-number-outline' },
-];
-export const modalidadDeCobro = (key) => MODALIDADES_COBRO.find((m) => m.key === key) ?? MODALIDADES_COBRO[0];
-
-const fechaISO = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-/**
- * Último cierre de período (YYYY-MM-DD) hasta `hoy` inclusive:
- *   semanal → el domingo más reciente · mensual → el último día del mes
- *   (hoy si hoy es fin de mes; si no, el del mes anterior) · por_paseo → null
- */
-export function ultimoCierre(modalidad, hoy = new Date()) {
-  const d = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-  if (modalidad === 'semanal') {
-    d.setDate(d.getDate() - d.getDay());
-    return fechaISO(d);
-  }
-  if (modalidad === 'mensual') {
-    const manana = new Date(d);
-    manana.setDate(d.getDate() + 1);
-    if (manana.getMonth() !== d.getMonth()) return fechaISO(d);
-    return fechaISO(new Date(d.getFullYear(), d.getMonth(), 0));
-  }
-  return null;
-}
-
-/** Próximo cierre de período (para mostrar "te avisamos el …"). */
-export function proximoCierre(modalidad, hoy = new Date()) {
-  const d = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-  if (modalidad === 'semanal') {
-    d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
-    return d;
-  }
-  if (modalidad === 'mensual') return new Date(d.getFullYear(), d.getMonth() + 1, 0);
-  return null;
-}
 
 /** { [idDueno]: { modalidad, ultimoRecordatorio } }. Sin la 045 → {}. */
 async function leerConfigCuentas() {
@@ -1372,43 +1159,13 @@ export async function fetchGanancias(periodo) {
   return lista.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 }
 
-/**
- * Antigüedad en Zooni, contada desde la fecha más vieja que se conozca: el
- * alta como paseador (paseador_perfil.creado_en) o el primer paseo terminado.
- * No se pregunta al registrarse. → { valor, etiqueta } para un Stat:
- *   primera semana → "Nuevo" · después semanas · después meses · después años.
- */
-export function experienciaEnZooni(fechas, ahora = new Date()) {
-  const tiempos = (Array.isArray(fechas) ? fechas : [fechas])
-    .map((f) => (f ? new Date(f).getTime() : NaN))
-    .filter(Number.isFinite);
-  if (!tiempos.length) return { valor: 'Nuevo', etiqueta: 'en Zooni' };
-  const desde = new Date(Math.min(...tiempos));
-
-  // Días de calendario (no de 24 h): registrarse a las 23 h no adelanta un día
-  const dia = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const dias = Math.max(0, Math.round((dia(ahora) - dia(desde)) / 86400000));
-  if (dias < 7) return { valor: 'Nuevo', etiqueta: 'en Zooni' };
-
-  let meses = (ahora.getFullYear() - desde.getFullYear()) * 12 + (ahora.getMonth() - desde.getMonth());
-  if (ahora.getDate() < desde.getDate()) meses -= 1;
-  if (meses < 1) {
-    const semanas = Math.floor(dias / 7);
-    return { valor: String(semanas), etiqueta: semanas === 1 ? 'semana en Zooni' : 'semanas en Zooni' };
-  }
-  if (meses < 12) return { valor: String(meses), etiqueta: meses === 1 ? 'mes en Zooni' : 'meses en Zooni' };
-  const anios = Math.floor(meses / 12);
-  return { valor: String(anios), etiqueta: anios === 1 ? 'año en Zooni' : 'años en Zooni' };
-}
 
 export async function fetchResenas() {
   const yo = getCurrentUserId();
   const [lista, opiniones] = await Promise.all([fetchMisPaseos(['finalizado']), leerOpiniones(yo)]);
   const fechas = lista.map((p) => new Date(p.horaInicio ?? p.fecha).getTime()).filter(Number.isFinite);
   const autores = [...new Set(opiniones.map((o) => o.id_autor))];
-  const { data: usuarios } = autores.length
-    ? await supabase.from('User').select('Id_User, Nombre, Apellido, FotoPerfil').in('Id_User', autores)
-    : { data: [] };
+  const usuarios = await perfilesPorId(autores);
   const porUser = Object.fromEntries((usuarios ?? []).map((u) => [u.Id_User, u]));
   // Opiniones sin paseo (048), con la misma forma que un paseo calificado
   const libres = opiniones.map((o) => {
@@ -1581,8 +1338,8 @@ export async function fetchPaseadoresZona(bbox) {
   if (!filas.length) return [];
 
   const ids = filas.map((r) => r.id_user);
-  const [{ data: usuarios }, { data: calificados }, opiniones] = await Promise.all([
-    supabase.from('User').select('Id_User, Nombre, Apellido, FotoPerfil').in('Id_User', ids),
+  const [usuarios, { data: calificados }, opiniones] = await Promise.all([
+    perfilesPorId(ids),
     supabase.from('Paseo').select('Id_Walker, Rating').in('Id_Walker', ids).eq('Estado', 'finalizado'),
     leerOpiniones(ids),
   ]);
@@ -1615,14 +1372,6 @@ export async function fetchPaseadoresZona(bbox) {
   });
 }
 
-function distanciaKm(a, b) {
-  const rad = (g) => (g * Math.PI) / 180;
-  const dLat = rad(b.lat - a.lat);
-  const dLng = rad(b.lng - a.lng);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 6371 * 2 * Math.asin(Math.sqrt(h));
-}
-
 /**
  * Los paseadores que te pueden atender: los que tienen tu ubicación DENTRO de
  * su radio de cobertura (el círculo verde que dibujan en Comunidad), ordenados
@@ -1643,7 +1392,8 @@ export async function fetchPaseadoresParaMi(pos) {
   const todos = await fetchPaseadoresZona(null);
   if (!yo) return todos;
   return todos
-    .map((p) => ({ ...p, distanciaKm: distanciaKm(yo, p) }))
+    // Sin coordenadas no se puede saber si te cubre: queda afuera (Infinity)
+    .map((p) => ({ ...p, distanciaKm: (distanciaMetros(yo, p) ?? Infinity) / 1000 }))
     .filter((p) => p.radioKm > 0 && p.distanciaKm <= p.radioKm)
     .sort((a, b) => a.distanciaKm - b.distanciaKm);
 }
@@ -1716,22 +1466,6 @@ export async function cancelarPaseoDueno(paseo) {
 // ─────────────────────────────────────────────
 // RESEÑAS (estilo Google Maps): estrellas + aspectos + preguntas + fotos/videos
 // ─────────────────────────────────────────────
-
-/** Aspectos que el dueño puede puntuar de 1 a 5 (opcionales). */
-export const ASPECTOS_RESENA = [
-  { key: 'puntualidad', label: 'Puntualidad' },
-  { key: 'trato', label: 'Trato con tu mascota' },
-  { key: 'comunicacion', label: 'Comunicación' },
-];
-
-/** Preguntas de sí / no (opcionales). `resumen` es como se muestra el % de "sí". */
-export const PREGUNTAS_RESENA = [
-  { key: 'fotos', pregunta: '¿Te mandó fotos o novedades durante el paseo?', resumen: 'manda novedades' },
-  { key: 'contenta', pregunta: '¿Tu mascota volvió tranquila y contenta?', resumen: 'mascotas contentas' },
-  { key: 'repetiria', pregunta: '¿Lo volverías a contratar?', resumen: 'lo volvería a contratar' },
-];
-
-export const MEDIA_RESENA_MAX = 6;
 
 /** Código de app para un error de Postgres al guardar una reseña (ver CalificarPaseoModal). */
 function codigoErrorResena(error) {
@@ -1885,10 +1619,8 @@ export async function fetchResenasPaseador(idWalker) {
 
   const idsDuenos = [...new Set([...filas.map((r) => r.Id_Dueno), ...opiniones.map((o) => o.id_autor)].filter(Boolean))];
   const idsMascotas = [...new Set(filas.map((r) => r.Id_Mascota).filter(Boolean))];
-  const [{ data: duenos }, { data: mascotas }] = await Promise.all([
-    idsDuenos.length
-      ? supabase.from('User').select('Id_User, Nombre, Apellido, FotoPerfil').in('Id_User', idsDuenos)
-      : { data: [] },
+  const [duenos, { data: mascotas }] = await Promise.all([
+    perfilesPorId(idsDuenos),
     idsMascotas.length
       ? supabase.from('Mascota').select('Id_Mascota, Nombre, Especie, Raza, Foto, ImagenAsset, MostrarFoto').in('Id_Mascota', idsMascotas)
       : { data: [] },

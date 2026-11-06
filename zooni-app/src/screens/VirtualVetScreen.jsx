@@ -463,10 +463,10 @@ function mensajeBienvenida(ctx) {
 
 function mensajeError(e) {
   let content = 'No pude responderte. Probá de nuevo.';
-  if (e?.code === 'SIN_API_KEY') {
-    content = 'No tengo configurada la API key de Groq. Avisale al equipo para poder responderte.';
-  } else if (e?.code === 'API_KEY_INVALIDA') {
-    content = 'Mi API key de Groq no es válida (Groq la rechazó). Avisale al equipo: hay que revisarla en el .env.';
+  if (e?.code === 'SIN_API_KEY' || e?.code === 'SERVICIO_NO_DISPONIBLE') {
+    content = 'ZooniVet no está disponible en este momento. Probá de nuevo más tarde.';
+  } else if (e?.code === 'API_KEY_INVALIDA' || e?.code === 'GROQ_ERROR') {
+    content = 'El servicio que me hace pensar no respondió. Probá de nuevo en un rato.';
   } else if (e?.code === 'RATE_LIMIT') {
     content = 'Llegaste al límite de mensajes por ahora. Probá de nuevo en un rato.';
   } else if (e?.name === 'AbortError') {

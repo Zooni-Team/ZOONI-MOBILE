@@ -37,7 +37,7 @@ export default function PaseadorLoginScreen() {
   const [cargando, setCargando] = useState(false);
   // Si volvió de Google / Facebook / Apple con un error, se muestra acá
   const [error, setError] = useState(route.params?.errorSocial ?? null);
-  const [activar, setActivar] = useState(null); // { email, hash, nombre }
+  const [activar, setActivar] = useState(null); // { email, nombre }
 
   const ingresar = useCallback(async () => {
     const mail = email.trim();

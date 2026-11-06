@@ -55,3 +55,9 @@ export function calcularEdadMeses(fechaNacimiento) {
   if (hoy.getDate() < nacimiento.getDate()) meses -= 1;
   return Math.max(0, meses);
 }
+
+/** Años cumplidos (para personas y mascotas). null si no hay fecha válida. */
+export function calcularEdadAnios(fechaNacimiento) {
+  const meses = calcularEdadMeses(fechaNacimiento);
+  return meses == null ? null : Math.floor(meses / 12);
+}

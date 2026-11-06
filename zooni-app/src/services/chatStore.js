@@ -13,6 +13,7 @@
 
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
+import { perfilesPorId } from './perfilesPublicos';
 
 function mapRow(row) {
   return {
@@ -170,8 +171,8 @@ export async function fetchMisConversacionesMatch() {
   );
   const otroIds = [...new Set(otroIdPorMatch.values())];
 
-  const [{ data: usuarios }, { data: mensajes }] = await Promise.all([
-    supabase.from('User').select('Id_User, Nombre, Apellido, FotoPerfil').in('Id_User', otroIds),
+  const [usuarios, { data: mensajes }] = await Promise.all([
+    perfilesPorId(otroIds),
     supabase.from('Mensaje').select('*').in('idMatch', matches.map((m) => m.id)).order('fecha', { ascending: false }),
   ]);
   const usuarioPorId = new Map((usuarios ?? []).map((u) => [u.Id_User, u]));

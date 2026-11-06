@@ -18,6 +18,9 @@ import { getCurrentUserId } from '../config/session';
 import { fetchIdsBloqueados } from './moderacionApi';
 import { DEFAULT_FILTROS } from '../data/matchDemo';
 import { subirImagenPublica } from '../utils/imagenStorage';
+import { distanciaKm } from '../utils/geo';
+import { calcularEdadAnios } from '../utils/calcularEdad';
+import { mapaPerfilesPorId, perfilPorId } from './perfilesPublicos';
 
 const FILTROS_KEY = 'zooni_match_filtros';
 
@@ -49,25 +52,7 @@ async function guardarFiltrosStorage(filtros) {
 // HELPERS
 // ─────────────────────────────────────────────
 
-function haversineKm(lat1, lng1, lat2, lng2) {
-  if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return null;
-  const R = 6371;
-  const toRad = (v) => (v * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a = Math.sin(dLat / 2) ** 2
-    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
-}
-
-function edadDesde(fecha) {
-  if (!fecha) return null;
-  const n = new Date(fecha);
-  const h = new Date();
-  let a = h.getFullYear() - n.getFullYear();
-  if (h.getMonth() < n.getMonth() || (h.getMonth() === n.getMonth() && h.getDate() < n.getDate())) a -= 1;
-  return a;
-}
+const puntoDe = (u) => ({ lat: u?.Lat, lng: u?.Lng });
 
 async function miMascotaActiva() {
   const { data, error } = await supabase
@@ -90,17 +75,17 @@ function mapPerfil(mascota, miUsuario, fotosPorMascota) {
     nombre: user.Nombre,
     nombre_usuario: user.NombreUsuario ?? null,
     genero: user.Genero ?? null,
-    edad: edadDesde(user.FechaNacimiento),
+    edad: user.Edad ?? null,
     foto_perfil_url: user.FotoPerfil ?? null,
     barrio: user.Ubicacion ?? null,
     ciudad: user.Ubicacion ?? null,
-    distancia_km: haversineKm(miUsuario?.Lat, miUsuario?.Lng, user.Lat, user.Lng),
+    distancia_km: distanciaKm(puntoDe(miUsuario), puntoDe(user)),
     mascota: {
       id: mascota.Id_Mascota,
       nombre: mascota.Nombre,
       especie: mascota.Especie,
       raza: mascota.Raza,
-      edad_anios: edadDesde(mascota.FechaNacimiento),
+      edad_anios: calcularEdadAnios(mascota.FechaNacimiento),
       foto_real_url: mascota.Foto ?? null,
       // Todas las fotos (portada + galería) para el carrusel de la tarjeta
       fotos,
@@ -157,10 +142,10 @@ async function obtenerCandidatos() {
   const miMascota = await miMascotaActiva();
 
   const [{ data: miUsuario }, { data: candidatos, error }, { data: votos }, { data: matches }] = await Promise.all([
-    supabase.from('User').select('*').eq('Id_User', getCurrentUserId()).single(),
+    supabase.from('User').select('Lat, Lng').eq('Id_User', getCurrentUserId()).single(),
     // Nunca mascotas propias, ni archivadas/en memoria/eliminadas,
     // ni las que su dueño sacó del pool de Match
-    supabase.from('Mascota').select('*, User(*)')
+    supabase.from('Mascota').select('*')
       .neq('Id_User', getCurrentUserId())
       .eq('Estado', 'active')
       .eq('VisibleEnMatch', true),
@@ -173,6 +158,11 @@ async function obtenerCandidatos() {
       : Promise.resolve({ data: [] }),
   ]);
   if (error) throw error;
+
+  // Dueños de los candidatos: sólo lo que muestra la tarjeta (perfil_publico)
+  const duenos = await mapaPerfilesPorId((candidatos ?? []).map((m) => m.Id_User),
+    'Id_User, Nombre, NombreUsuario, Genero, Edad, FotoPerfil, Ubicacion, Lat, Lng, Intereses');
+  (candidatos ?? []).forEach((m) => { m.User = duenos.get(m.Id_User) ?? null; });
 
   const vistoIds = new Set([
     ...(votos ?? []).map((v) => v.idMascotaDestino),
@@ -286,7 +276,8 @@ export async function fetchDetalleMatch(matchId) {
 
   const [{ data: yo }, { data: otro }, { data: mascota }] = await Promise.all([
     supabase.from('User').select('Lat, Lng').eq('Id_User', miId).maybeSingle(),
-    supabase.from('User').select('*').eq('Id_User', otroUserId).single(),
+    perfilPorId(otroUserId, 'Id_User, Nombre, Apellido, NombreUsuario, Edad, Genero, FotoPerfil, Ubicacion, Lat, Lng, Intereses')
+      .then((data) => ({ data })),
     otraMascotaId
       ? supabase.from('Mascota').select('*').eq('Id_Mascota', otraMascotaId).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -299,11 +290,11 @@ export async function fetchDetalleMatch(matchId) {
       id: otro.Id_User,
       nombre: `${otro.Nombre ?? ''} ${otro.Apellido ?? ''}`.trim() || 'Usuario',
       nombreUsuario: otro.NombreUsuario ?? null,
-      edad: edadDesde(otro.FechaNacimiento),
+      edad: otro.Edad ?? null,
       genero: otro.Genero ?? null,
       fotoPerfil: otro.FotoPerfil ?? null,
       ubicacion: otro.Ubicacion ?? null,
-      distanciaKm: haversineKm(yo?.Lat, yo?.Lng, otro.Lat, otro.Lng),
+      distanciaKm: distanciaKm(puntoDe(yo), puntoDe(otro)),
       intereses: otro.Intereses ?? [],
     },
     mascota: mascota
@@ -312,7 +303,7 @@ export async function fetchDetalleMatch(matchId) {
           nombre: mascota.Nombre,
           especie: mascota.Especie,
           raza: mascota.Raza,
-          edad: edadDesde(mascota.FechaNacimiento),
+          edad: calcularEdadAnios(mascota.FechaNacimiento),
           sexo: mascota.Sexo ?? null,
           descripcion: mascota.Descripcion ?? null,
           fotoUrl: mascota.Foto ?? null,
@@ -418,106 +409,32 @@ export async function fetchMatchPerfiles() {
   return { perfiles: aplicarFiltros(candidatos, filtros), cursor_siguiente: null, hay_mas: false };
 }
 
-/** Da like a la mascota `mascotaDestinoId`. Si hay like recíproco, crea el Match. */
-export async function postMatchLike(mascotaDestinoId) {
+/**
+ * Vota una mascota (me gusta / no me gusta) con la mascota activa.
+ *
+ * Todo lo decide la base en una transacción (votar_mascota, 062): guarda el
+ * voto; si el otro ya había dicho que sí, crea el Match UNA vez y notifica a
+ * los dos. Antes la app hacía cuatro pasos sueltos (votar, leer, crear Match,
+ * notificar) y dos likes simultáneos podían crear dos Match o ninguno.
+ */
+async function votar(mascotaDestinoId, leGusta) {
   const miMascota = await miMascotaActiva();
   if (!miMascota) return { match: false };
-
-  await supabase.from('Voto').insert({
-    idMascotaOrigen: miMascota.Id_Mascota,
-    idMascotaDestino: mascotaDestinoId,
-    leGusta: true,
+  const { data, error } = await supabase.rpc('votar_mascota', {
+    p_origen: miMascota.Id_Mascota, p_destino: mascotaDestinoId, p_le_gusta: leGusta,
   });
-
-  const { data: votoReciproco } = await supabase
-    .from('Voto')
-    .select('*')
-    .eq('idMascotaOrigen', mascotaDestinoId)
-    .eq('idMascotaDestino', miMascota.Id_Mascota)
-    .eq('leGusta', true)
-    .maybeSingle();
-
-  if (!votoReciproco) return { match: false };
-
-  const { data: mascotaDestino } = await supabase
-    .from('Mascota')
-    .select('*, User(*)')
-    .eq('Id_Mascota', mascotaDestinoId)
-    .single();
-
-  const { data: matchCreado, error } = await supabase
-    .from('Match')
-    .insert({
-      idMascotaUno: miMascota.Id_Mascota,
-      idMascotaDos: mascotaDestinoId,
-      idUsuarioUno: getCurrentUserId(),
-      idUsuarioDos: mascotaDestino.Id_User,
-    })
-    .select()
-    .single();
   if (error) throw error;
+  return data ?? { match: false };
+}
 
-  // Notificación para los DOS usuarios, cada una ligada a SU mascota
-  // (si el match fue con el perfil de tu perro, la campana dice tu perro,
-  // aunque estés parado en el perfil de tu gato). DataExtra guarda el chat
-  // del match para que el toque abra la conversación directa. Best-effort.
-  try {
-    const { data: miUsuario } = await supabase
-      .from('User').select('"Nombre","FotoPerfil"')
-      .eq('Id_User', getCurrentUserId()).single();
-
-    await supabase.from('Notificacion').insert([
-      {
-        Id_User: getCurrentUserId(),
-        Id_Mascota: miMascota.Id_Mascota,
-        Titulo: '¡Nuevo match!',
-        Mensaje: `${miMascota.Nombre} hizo match con ${mascotaDestino.Nombre}`,
-        Tipo: 'match',
-        Leido: false,
-        Fecha: new Date().toISOString(),
-        DataExtra: {
-          chatId: matchCreado.id,
-          nombre: mascotaDestino.User?.Nombre ?? 'Usuario',
-          fotoPerfilUrl: mascotaDestino.User?.FotoPerfil ?? null,
-        },
-      },
-      {
-        Id_User: mascotaDestino.Id_User,
-        Id_Mascota: mascotaDestino.Id_Mascota,
-        Titulo: '¡Nuevo match!',
-        Mensaje: `${mascotaDestino.Nombre} hizo match con ${miMascota.Nombre}`,
-        Tipo: 'match',
-        Leido: false,
-        Fecha: new Date().toISOString(),
-        DataExtra: {
-          chatId: matchCreado.id,
-          nombre: miUsuario?.Nombre ?? 'Usuario',
-          fotoPerfilUrl: miUsuario?.FotoPerfil ?? null,
-        },
-      },
-    ]);
-  } catch { /* la notificación nunca bloquea el match */ }
-
-  return {
-    match: true,
-    match_id: matchCreado.id,
-    chat_id: matchCreado.id,
-    usuario_match: {
-      nombre: mascotaDestino.User?.Nombre ?? 'Usuario',
-      foto_perfil_url: mascotaDestino.User?.FotoPerfil ?? null,
-    },
-  };
+/** Da like a la mascota `mascotaDestinoId`. Si hay like recíproco, hay Match. */
+export function postMatchLike(mascotaDestinoId) {
+  return votar(mascotaDestinoId, true);
 }
 
 /** Descarta la mascota `mascotaDestinoId` (no vuelve a aparecer en el swipe). */
 export async function postMatchSkip(mascotaDestinoId) {
-  const miMascota = await miMascotaActiva();
-  if (!miMascota) return;
-  await supabase.from('Voto').insert({
-    idMascotaOrigen: miMascota.Id_Mascota,
-    idMascotaDestino: mascotaDestinoId,
-    leGusta: false,
-  });
+  await votar(mascotaDestinoId, false);
 }
 
 /**
@@ -536,17 +453,13 @@ export async function chatDeMatchPorMascota(idMascota) {
     .maybeSingle();
   if (!match) return null;
 
-  const otraMascotaId = match.idMascotaUno === idMascota ? match.idMascotaDos : match.idMascotaUno;
-  const { data: otra } = await supabase
-    .from('Mascota')
-    .select('*, User(*)')
-    .eq('Id_Mascota', otraMascotaId)
-    .single();
+  const otroUsuario = match.idMascotaUno === idMascota ? match.idUsuarioDos : match.idUsuarioUno;
+  const otro = await perfilPorId(otroUsuario, 'Id_User, Nombre, FotoPerfil');
 
   return {
     chatId: match.id,
-    nombre: otra?.User?.Nombre ?? 'Usuario',
-    fotoPerfilUrl: otra?.User?.FotoPerfil ?? null,
+    nombre: otro?.Nombre ?? 'Usuario',
+    fotoPerfilUrl: otro?.FotoPerfil ?? null,
   };
 }
 

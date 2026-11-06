@@ -4,7 +4,7 @@
  *   Paso 1 · Tus datos      (nombre, apellido, género, nacimiento, mail, teléfono, contraseña)
  *   Paso 2 · Cómo trabajás  (zona, tiempos de paseo y precios, perros por paseo, tamaños, bio)
  *
- * Con route.params.activar ({ email, hash, nombre }) viene de una cuenta de
+ * Con route.params.activar ({ email, nombre }) viene de una cuenta de
  * dueño existente: se saltea el paso 1 y sólo se suma el perfil de paseador.
  * Con route.params.social ({ email, nombre, apellido, foto, proveedor }) viene
  * de "Continuar con Google / Facebook / Apple" sin cuenta: el paso 1 no pide
@@ -259,7 +259,7 @@ export default function PaseadorRegistroScreen() {
         if (completar) {
           await completarPerfilPaseador(datosPerfil);
         } else if (activar) {
-          await activarPaseador({ email: activar.email, hash: activar.hash, perfil: datosPerfil });
+          await activarPaseador({ email: activar.email, perfil: datosPerfil });
         } else if (activarSocial) {
           await activarPaseadorSocial(datosPerfil);
         } else if (social) {
@@ -327,6 +327,11 @@ export default function PaseadorRegistroScreen() {
         setErrorGeneral(`No se pudo guardar tu perfil: a la base de datos le falta algo de Zooni Paseadores. Es necesario correr las migraciones 035 y 036 en el SQL Editor de Supabase.${detalle}`);
       } else if (msg === 'no_es_paseador') {
         setErrorGeneral('Esta cuenta todavía no tiene el rol de paseador. Iniciá sesión desde "Registrarse como Proveedor".');
+      } else if (msg === 'confirmar_mail') {
+        setErrorGeneral('Te mandamos un mail para confirmar la cuenta. Confirmalo y volvé a registrarte con el mismo mail y contraseña para terminar.');
+      } else if (msg === 'password_corta') {
+        setPaso(1);
+        setErrores({ password: 'La contraseña debe tener al menos 7 caracteres.' });
       } else if (msg === 'credenciales') {
         setErrorGeneral('Es necesario volver a iniciar sesión: tu contraseña no coincide.');
       } else {

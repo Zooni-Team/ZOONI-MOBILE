@@ -20,14 +20,16 @@
 
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId, setCurrentUserId, setModo, modoNegocio } from '../config/session';
-import { hashPassword } from './authApi';
+import { crearCuentaConPassword, esFuncionInexistente, iniciarSesionConPassword } from './authApi';
 import { marcarPresencia } from './presenciaApi';
+import { perfilesPorId } from './perfilesPublicos';
 import { resolveMascotaVisual } from '../constants/petImages';
 import { subirImagenPublica } from '../utils/imagenStorage';
 import {
   DIA_DE_JS, HORARIOS_NEGOCIO_DEFAULT, TAMANOS, configNegocio, tamanoPorPeso,
 } from '../constants/negocios';
-import { aCentavos, distanciaMetros, formatoPlata } from './paseadorApi';
+import { aCentavos, formatoPlata } from '../domain/paseos';
+import { distanciaMetros } from '../utils/geo';
 
 // ─────────────────────────────────────────────
 // ERRORES
@@ -188,20 +190,18 @@ async function entrarComoNegocio(id, mail, tipo) {
 
 /**
  * Login de un negocio. Si la cuenta existe pero todavía no tiene un negocio de
- * este tipo, NO entra: devuelve { necesitaActivar, email, hash, nombre } para
- * ofrecer sumarlo a la misma cuenta. Error('credenciales') si no coinciden.
+ * este tipo, NO entra: devuelve { necesitaActivar, email, nombre } para
+ * ofrecer sumarlo a la misma cuenta (la sesión de Auth queda abierta para
+ * activarNegocio). Error('credenciales') si no coinciden.
  */
 export async function loginNegocio(email, password, tipo) {
   const mail = email.trim().toLowerCase();
-  const hash = await hashPassword(password);
-  const { data: usuario, error } = await supabase.rpc('login_user', { p_mail: mail, p_hash: hash });
-  if (error) throw error;
-  if (!usuario) throw new Error('credenciales');
+  const usuario = await iniciarSesionConPassword(mail, password);
 
   const { data: negocio, error: errNeg } = await supabase.from('negocio_perfil')
     .select('id').eq('id_user', usuario.id).eq('tipo', tipo).maybeSingle();
   if (errNeg) throw errorBase(errNeg);
-  if (!negocio) return { necesitaActivar: true, email: mail, hash, nombre: usuario.nombre };
+  if (!negocio) return { necesitaActivar: true, email: mail, nombre: usuario.nombre };
 
   await entrarComoNegocio(usuario.id, mail, tipo);
   return { usuario };
@@ -225,6 +225,7 @@ function negocioParaRpc(n) {
 function errorDeAlta(error) {
   const msg = String(error?.message ?? '');
   if (msg.includes('email_existente') || error?.code === '23505') return new Error('email_existente');
+  if (esFuncionInexistente(error) || /sin_sesion_social|JWT|token/i.test(msg)) return errorApp('migracion_pendiente', error);
   if (msg.includes('credenciales')) return new Error('credenciales');
   if (msg.includes('ubicacion_invalida')) return errorApp('ubicacion_invalida', error);
   if (msg.includes('nombre_invalido')) return errorApp('nombre_invalido', error);
@@ -233,16 +234,14 @@ function errorDeAlta(error) {
 
 /** Cuenta nueva con su negocio. Entra directo a trabajar. */
 export async function registrarNegocio({ usuario, negocio }) {
-  if ((usuario.password ?? '').length < 7) throw new Error('password_corta');
-  const hash = await hashPassword(usuario.password);
-  const { data, error } = await supabase.rpc('registrar_negocio', {
+  // Sesión de Auth primero; la RPC toma el mail de la sesión (060).
+  await crearCuentaConPassword(usuario.email, usuario.password);
+  const { data, error } = await supabase.rpc('registrar_negocio_sesion', {
     p_usuario: {
       nombre: usuario.nombre.trim(),
       apellido: usuario.apellido.trim(),
-      email: usuario.email.trim().toLowerCase(),
       telefono: usuario.telefono?.trim() || null,
     },
-    p_hash: hash,
     p_negocio: negocioParaRpc(negocio),
   });
   if (error) throw errorDeAlta(error);
@@ -250,10 +249,13 @@ export async function registrarNegocio({ usuario, negocio }) {
   return data;
 }
 
-/** Cuenta que ya existe (dueño, paseador u otro negocio) y suma este negocio. */
-export async function activarNegocio({ email, hash, negocio }) {
-  const { data, error } = await supabase.rpc('activar_negocio', {
-    p_mail: email, p_hash: hash, p_negocio: negocioParaRpc(negocio),
+/**
+ * Cuenta que ya existe (dueño, paseador u otro negocio) y suma este negocio.
+ * Usa la sesión que dejó abierta loginNegocio.
+ */
+export async function activarNegocio({ email, negocio }) {
+  const { data, error } = await supabase.rpc('activar_negocio_sesion', {
+    p_negocio: negocioParaRpc(negocio),
   });
   if (error) throw errorDeAlta(error);
   await entrarComoNegocio(data.id, email, negocio.tipo);
@@ -536,8 +538,9 @@ async function mascotasPorId(ids) {
 async function usuariosPorId(ids) {
   const lista = [...new Set(ids.filter(Boolean))];
   if (!lista.length) return {};
-  const { data } = await supabase.from('User').select('Id_User, Nombre, Apellido, FotoPerfil, Telefono').in('Id_User', lista);
-  return Object.fromEntries((data ?? []).map((u) => [u.Id_User, {
+  // El teléfono sólo llega si hay un turno/pedido en común (perfil_publico)
+  const data = await perfilesPorId(lista, 'Id_User, Nombre, Apellido, FotoPerfil, Telefono');
+  return Object.fromEntries(data.map((u) => [u.Id_User, {
     id: u.Id_User,
     nombre: `${u.Nombre ?? ''} ${u.Apellido ?? ''}`.trim() || 'Cliente',
     foto: u.FotoPerfil ?? null,
@@ -691,9 +694,10 @@ export function precioTurno(negocio, item, tamano, aDomicilio = false) {
 
 /**
  * El dueño pide un turno. El precio sale del servicio elegido (y del tamaño de
- * la mascota en peluquería), más el busca y lleva si lo pidió. Antes de
- * guardar se vuelve a chequear que el horario siga libre: dos dueños pueden
- * estar mirando el mismo.
+ * la mascota en peluquería), más el busca y lleva si lo pidió. El chequeo de
+ * horario libre de acá es para avisar rápido; la garantía es el trigger
+ * _turno_al_crear (062), que serializa las reservas de cada negocio y valida
+ * que el precio sea uno de los del servicio.
  */
 export async function crearTurno({
   negocio, item, mascota, fecha, tamano, urgencia = false, aDomicilio = false, direccion = null, notas = '',
@@ -723,7 +727,13 @@ export async function crearTurno({
     direccion: aDomicilio ? direccion?.trim() || null : null,
     notas_dueno: notas?.trim().slice(0, 500) || null,
   }).select('id').single();
-  if (error) throw errorBase(error);
+  if (error) {
+    // La base re-chequea con un candado por negocio: si otro reservó ese
+    // horario entre la consulta de arriba y este insert, gana el primero.
+    const codigo = ['horario_ocupado', 'precio_invalido', 'servicio_inexistente', 'negocio_cerrado']
+      .find((c) => String(error.message ?? '').includes(c));
+    throw codigo ? new Error(codigo) : errorBase(error);
+  }
 
   notificar(negocio.idUser,
     urgencia ? '🚨 Pedido de turno URGENTE' : 'Nuevo pedido de turno',
@@ -852,8 +862,10 @@ export function siguienteEstadoPedido(pedido) {
 }
 
 /**
- * El pet shop avanza (o rechaza) un pedido y le avisa al dueño. Al aceptarlo
- * (nuevo → preparando) se descuenta el stock de cada producto.
+ * El pet shop avanza (o rechaza) un pedido y le avisa al dueño.
+ * El stock ya se reservó al crear el pedido (trigger de 062); si se rechaza o
+ * cancela, la base lo devuelve sola. El chequeo de transición de acá es para
+ * dar un buen mensaje: la base vuelve a validarla.
  */
 export async function cambiarEstadoPedido(negocio, pedido, estado, { motivo } = {}) {
   const permitido = estado === 'rechazado' ? pedido.estado === 'nuevo'
@@ -867,18 +879,6 @@ export async function cambiarEstadoPedido(negocio, pedido, estado, { motivo } = 
     .select('id');
   if (error) throw errorBase(error);
   if (!data?.length) throw new Error('pedido_cambiado');
-
-  if (estado === 'preparando') {
-    const ids = pedido.items.map((x) => x.idItem).filter(Boolean);
-    if (ids.length) {
-      const { data: actuales } = await supabase.from('negocio_items').select('id, stock').in('id', ids);
-      await Promise.all((actuales ?? []).filter((it) => it.stock != null).map((it) => {
-        const pedidoItem = pedido.items.find((x) => x.idItem === it.id);
-        const nuevo = Math.max(0, it.stock - (Number(pedidoItem?.cantidad) || 0));
-        return supabase.from('negocio_items').update({ stock: nuevo }).eq('id', it.id);
-      }));
-    }
-  }
 
   const n = `#${pedido.id}`;
   const avisos = {
@@ -905,8 +905,14 @@ export function costoEnvio(negocio, subtotal) {
 }
 
 /**
- * El dueño hace un pedido. `carrito` = [{ item, cantidad }]. Se revisa el
- * stock y el pedido mínimo con los datos del momento (no los de la pantalla).
+ * El dueño hace un pedido. `carrito` = [{ item, cantidad }].
+ *
+ * Quién decide qué: la app revisa stock y mínimo para avisar rápido, pero
+ * los números que valen los pone la BASE (trigger _pedido_al_crear, 062):
+ * relee los precios del catálogo, recalcula subtotal, envío y total, y
+ * reserva el stock en la misma transacción. Si dos personas piden el último
+ * producto a la vez, una recibe 'sin_stock'. Lo que mande la app en
+ * subtotal/envio/total se ignora.
  */
 export async function crearPedido({ negocio, carrito, entrega, direccion, medioPago, notas }) {
   if (!negocio.abierto) throw new Error('negocio_cerrado');
@@ -947,12 +953,23 @@ export async function crearPedido({ negocio, carrito, entrega, direccion, medioP
     direccion: entrega === 'envio' ? direccion?.trim() || null : null,
     medio_pago: medioPago ?? null,
     notas: notas?.trim().slice(0, 500) || null,
-  }).select('id').single();
-  if (error) throw errorBase(error);
+  }).select('id, total').single();
+  if (error) {
+    const msg = String(error.message ?? '');
+    const codigo = ['sin_stock', 'pedido_minimo', 'sin_envios', 'negocio_cerrado', 'carrito_vacio']
+      .find((c) => msg.includes(c));
+    if (codigo === 'sin_stock') {
+      const e = new Error('sin_stock');
+      e.productos = String(error.details ?? '').split(', ').filter(Boolean);
+      throw e;
+    }
+    if (codigo) throw new Error(codigo);
+    throw errorBase(error);
+  }
 
   const unidades = items.reduce((a, x) => a + x.cantidad, 0);
   notificar(negocio.idUser, `Nuevo pedido #${data.id} 🛍️`,
-    `${unidades} ${unidades === 1 ? 'producto' : 'productos'} · ${formatoPlata(subtotal + envio)} · ${entrega === 'envio' ? 'envío a domicilio' : 'retira en el local'}`,
+    `${unidades} ${unidades === 1 ? 'producto' : 'productos'} · ${formatoPlata(data.total)} · ${entrega === 'envio' ? 'envío a domicilio' : 'retira en el local'}`,
     { destino: 'pedidos' });
   return data.id;
 }

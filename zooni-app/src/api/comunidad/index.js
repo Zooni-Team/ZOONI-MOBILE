@@ -10,17 +10,9 @@ import { supabase } from '../../lib/supabase';
 import { getCurrentUserId } from '../../config/session';
 import { subirImagenPublica } from '../../utils/imagenStorage';
 import { buscarLugares, combinarServicios } from '../../services/lugaresApi';
+import { consultarPerfiles, perfilesPorId } from '../../services/perfilesPublicos';
+import { distanciaKm } from '../../utils/geo';
 
-function haversineKm(lat1, lng1, lat2, lng2) {
-  if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return null;
-  const R = 6371;
-  const toRad = (v) => (v * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a = Math.sin(dLat / 2) ** 2
-    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
-  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
-}
 
 function aplicarBbox(query, bbox, latCol = 'lat', lngCol = 'lng') {
   if (!bbox) return query;
@@ -96,9 +88,9 @@ export async function fetchAmigos() {
   const idsAmigos = (amistades ?? []).map((a) => (a.usuario_a_id === getCurrentUserId() ? a.usuario_b_id : a.usuario_a_id));
   if (idsAmigos.length === 0) return { amigos: [] };
 
-  const [{ data: usuarios }, { data: mascotas }, { data: ubicaciones }, miUbi] = await Promise.all([
-    supabase.from('User').select('*').in('Id_User', idsAmigos),
-    supabase.from('Mascota').select('*').in('Id_User', idsAmigos),
+  const [usuarios, { data: mascotas }, { data: ubicaciones }, miUbi] = await Promise.all([
+    perfilesPorId(idsAmigos, 'Id_User, Nombre, Apellido, UltimaConexion'),
+    supabase.from('Mascota').select('Id_User, Nombre').in('Id_User', idsAmigos),
     supabase.from('ubicaciones_usuarios').select('*').in('usuario_id', idsAmigos),
     miUbicacion(),
   ]);
@@ -124,7 +116,7 @@ export async function fetchAmigos() {
       usuario_id: u.Id_User,
       nombre: `${u.Nombre ?? ''} ${u.Apellido ?? ''}`.trim(),
       mascota_nombre: mascotaPorUsuario.get(u.Id_User)?.Nombre ?? null,
-      distancia_km: miUbi && ubi ? haversineKm(miUbi.lat, miUbi.lng, ubi.lat, ubi.lng) : null,
+      distancia_km: distanciaKm(miUbi, ubi),
       online,
       ultima_conexion: ultimaConexion,
       lat: ubi?.lat != null ? Number(ubi.lat) : null,
@@ -145,7 +137,7 @@ export async function fetchSolicitudes() {
   if (!data?.length) return { solicitudes: [] };
 
   const ids = data.map((s) => s.usuario_a_id);
-  const { data: usuarios } = await supabase.from('User').select('*').in('Id_User', ids);
+  const usuarios = await perfilesPorId(ids, 'Id_User, Nombre, Apellido');
   const nombrePorId = new Map((usuarios ?? []).map((u) => [u.Id_User, `${u.Nombre ?? ''} ${u.Apellido ?? ''}`.trim()]));
 
   return { solicitudes: data.map((s) => ({ id: s.id, nombre: nombrePorId.get(s.usuario_a_id) ?? 'Usuario' })) };
@@ -187,16 +179,22 @@ export async function responderSolicitud(id, accion) {
   return { ok: true };
 }
 
+/**
+ * Buscador de personas. Trae SÓLO lo que muestra la lista (nombre, barrio y
+ * el nombre de una mascota), desde perfil_publico: antes traía la fila
+ * entera de "User" (mail, teléfono, coordenadas…) de 20 desconocidos.
+ */
 export async function buscarUsuarios(q) {
-  let query = supabase.from('User').select('*').neq('Id_User', getCurrentUserId()).limit(20);
-  if (q) query = query.ilike('Nombre', `%${q}%`);
-  const { data: usuarios, error } = await query;
-  if (error) throw error;
-  if (!usuarios?.length) return { resultados: [] };
+  const usuarios = await consultarPerfiles('Id_User, Nombre, Apellido, Ubicacion', (query) => {
+    let x = query.neq('Id_User', getCurrentUserId()).limit(20);
+    if (q) x = x.ilike('Nombre', `%${q}%`);
+    return x;
+  });
+  if (!usuarios.length) return { resultados: [] };
 
   const ids = usuarios.map((u) => u.Id_User);
   const [{ data: mascotas }, { data: amistades }] = await Promise.all([
-    supabase.from('Mascota').select('*').in('Id_User', ids),
+    supabase.from('Mascota').select('Id_User, Nombre').in('Id_User', ids),
     supabase.from('amistades').select('*')
       .or(`usuario_a_id.eq.${getCurrentUserId()},usuario_b_id.eq.${getCurrentUserId()}`),
   ]);
@@ -264,7 +262,7 @@ export async function crearCartel(datos) {
     .single();
   if (error) throw error;
 
-  const { data: usuario } = await supabase.from('User').select('*').eq('Id_User', getCurrentUserId()).single();
+  const { data: usuario } = await supabase.from('User').select('Nombre, Apellido').eq('Id_User', getCurrentUserId()).single();
   const nombre = `${usuario?.Nombre ?? ''} ${usuario?.Apellido ?? ''}`.trim();
 
   return { cartel: mapCartel(row, nombre, null) };
@@ -294,10 +292,8 @@ export async function fetchCarteles(bbox) {
   const usuarioIds = [...new Set((cartelesRaw ?? []).map((c) => c.usuario_id))];
   const mascotaIds = [...new Set((cartelesRaw ?? []).map((c) => c.mascota_id).filter(Boolean))];
   // Autores y mascotas no dependen entre sí: en paralelo
-  const [{ data: usuarios }, { data: mascotas }] = await Promise.all([
-    usuarioIds.length
-      ? supabase.from('User').select('*').in('Id_User', usuarioIds)
-      : { data: [] },
+  const [usuarios, { data: mascotas }] = await Promise.all([
+    perfilesPorId(usuarioIds, 'Id_User, Nombre, Apellido'),
     mascotaIds.length
       ? supabase.from('Mascota').select('*').in('Id_Mascota', mascotaIds)
       : { data: [] },

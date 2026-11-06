@@ -97,6 +97,8 @@ export default function LoginScreen() {
     } catch (err) {
       if (err?.message === 'credenciales') {
         setErrorLogin('Email o contraseña incorrectos');
+      } else if (err?.message === 'registro_incompleto') {
+        setErrorLogin('El registro de esta cuenta quedó a medias. Registrate de nuevo con el mismo mail y contraseña para terminarlo.');
       } else {
         setErrorLogin('No se pudo conectar. Revisá tu internet e intentá de nuevo.');
       }

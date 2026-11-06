@@ -15,7 +15,7 @@
  *   · Pet shop: envíos (costo, gratis desde, radio, demora), pedido mínimo y
  *     medios de pago.
  *
- * Con params.activar ({ email, hash, nombre }) es una cuenta que ya existe:
+ * Con params.activar ({ email, nombre }) es una cuenta que ya existe:
  * se saltea el paso 1 y sólo se suma el negocio.
  * Al terminar entra directo a la app del negocio, donde un checklist lo guía
  * para cargar sus servicios o su catálogo.
@@ -170,7 +170,7 @@ export default function NegocioRegistroScreen() {
     setCargando(true);
     try {
       if (!cuentaCreadaRef.current) {
-        if (activar) await activarNegocio({ email: activar.email, hash: activar.hash, negocio: datosNegocio });
+        if (activar) await activarNegocio({ email: activar.email, negocio: datosNegocio });
         else await registrarNegocio({ usuario, negocio: datosNegocio });
         cuentaCreadaRef.current = true;
       }
@@ -199,6 +199,11 @@ export default function NegocioRegistroScreen() {
       if (msg === 'email_existente') {
         setPaso(1);
         setErrores({ email: 'Ya hay una cuenta con este mail.' });
+      } else if (msg === 'confirmar_mail') {
+        setErrorGeneral('Te mandamos un mail para confirmar la cuenta. Confirmalo y volvé a registrarte con el mismo mail y contraseña para terminar.');
+      } else if (msg === 'password_corta') {
+        setPaso(1);
+        setErrores({ password: 'La contraseña debe tener al menos 7 caracteres.' });
       } else if (msg === 'credenciales') {
         setErrorGeneral('Es necesario volver a iniciar sesión: tu contraseña no coincide.');
       } else if (msg === 'ubicacion_invalida') {

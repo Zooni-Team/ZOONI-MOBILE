@@ -8,7 +8,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View, ActivityIndicator, AppState, StyleSheet } from 'react-native';
 
-import { loadStoredUserId, loadStoredModo, esperarSesion, haySesion, setModo, MODO_PASEADOR } from './src/config/session';
+import { restaurarSesion, loadStoredModo, esperarSesion, haySesion, setModo, MODO_PASEADOR } from './src/config/session';
 import { ThemeProvider, useTheme } from './src/config/theme';
 import { iniciarLatidoPresencia, marcarPresencia } from './src/services/presenciaApi';
 import HomeScreen        from './src/screens/HomeScreen';
@@ -125,7 +125,7 @@ export default function App() {
   // Sin sesión → Login.
   useEffect(() => {
     (async () => {
-      const [userId, modo] = await Promise.all([loadStoredUserId(), loadStoredModo()]);
+      const [userId, modo] = await Promise.all([restaurarSesion(), loadStoredModo()]);
       if (hayRetornoSocial()) {
         const [ruta, params] = await rutaTrasLoginSocial();
         setInitialParams(params);
@@ -148,7 +148,7 @@ export default function App() {
   // dormida, el último latido puede ser de hace rato).
   //
   // Espera a que la sesión esté restaurada ANTES de latir: este efecto corría en
-  // paralelo con loadStoredUserId(), así que el primer latido salía con el id
+  // paralelo con restaurarSesion(), así que el primer latido salía con el id
   // que hubiera en ese momento y le escribía UltimaConexion a la cuenta
   // equivocada. Si no hay nadie logueado no late (el Login no tiene presencia).
   useEffect(() => {

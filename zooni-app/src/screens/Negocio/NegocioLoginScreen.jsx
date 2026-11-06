@@ -39,7 +39,7 @@ export default function NegocioLoginScreen() {
   const [verPassword, setVerPassword] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
-  const [activar, setActivar] = useState(null); // { email, hash, nombre }
+  const [activar, setActivar] = useState(null); // { email, nombre }
 
   const ingresar = useCallback(async () => {
     const mail = email.trim();

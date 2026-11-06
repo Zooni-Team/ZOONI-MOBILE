@@ -8,14 +8,14 @@
  *      paseador) y manda al navegador al login del proveedor.
  *   2. El proveedor vuelve a la app con ?code=… . App.jsx detecta ese retorno
  *      (hayRetornoSocial) y llama a completarRetornoSocial(), que canjea el
- *      código por una sesión de Supabase Auth en el cliente `supabaseSocial`.
+ *      código por una sesión de Supabase Auth (el mismo cliente de toda la app).
  *   3. login_social() (043) busca la cuenta por el mail VERIFICADO del
  *      proveedor (lo lee el servidor, no lo manda la app):
  *        · existe → se inicia la sesión de Zooni como en el login normal
  *        · no existe → { nuevo, perfil } y la app sigue al registro con nombre,
  *          mail y foto ya cargados y sin pedir contraseña.
- *   4. Las altas sociales (registrarSocial… / activarPaseadorSocial) también
- *      van por `supabaseSocial`, que todavía tiene la sesión del proveedor.
+ *   4. Las altas sociales (registrarSocial… / activarPaseadorSocial) usan esa
+ *      misma sesión: el JWT dice quién es, el mail lo lee el servidor.
  *
  * En la app nativa no está habilitado todavía: necesita expo-web-browser y un
  * "scheme" de deep link para volver del navegador.
@@ -23,7 +23,7 @@
 
 import { Platform } from 'react-native';
 
-import { supabaseSocial } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { setCurrentUserId } from '../config/session';
 
 export const PROVEEDORES = {
@@ -76,7 +76,7 @@ export async function iniciarConProveedor(proveedor, intencion = 'dueno') {
   if (await proveedorHabilitado(proveedor) === false) throw new Error('provider is not enabled');
   guardarIntencion({ intencion, proveedor });
   const redirectTo = `${window.location.origin}${window.location.pathname}`;
-  const { error } = await supabaseSocial.auth.signInWithOAuth({
+  const { error } = await supabase.auth.signInWithOAuth({
     provider: proveedor,
     options: {
       redirectTo,
@@ -144,9 +144,9 @@ export async function completarRetornoSocial() {
   }
 
   try {
-    const { error: errCanje } = await supabaseSocial.auth.exchangeCodeForSession(q.get('code'));
+    const { error: errCanje } = await supabase.auth.exchangeCodeForSession(q.get('code'));
     if (errCanje) throw errCanje;
-    const { data, error } = await supabaseSocial.rpc('login_social');
+    const { data, error } = await supabase.rpc('login_social');
     if (error) throw error;
     if (data?.nuevo) {
       return {
@@ -172,7 +172,7 @@ export async function completarRetornoSocial() {
 
 /** Llamada a una RPC del alta social (necesita la sesión del proveedor). */
 export async function rpcSocial(nombre, params) {
-  const { data, error } = await supabaseSocial.rpc(nombre, params);
+  const { data, error } = await supabase.rpc(nombre, params);
   if (error) {
     const msg = String(error.message ?? '');
     if (msg.includes('sin_sesion_social') || /JWT|token/i.test(msg)) throw new Error('sesion_social_vencida');
@@ -183,5 +183,5 @@ export async function rpcSocial(nombre, params) {
 
 /** Corta la sesión del proveedor (al cerrar sesión en Zooni o si algo falló). */
 export function cerrarSesionSocial() {
-  return supabaseSocial.auth.signOut({ scope: 'local' }).catch(() => {});
+  return supabase.auth.signOut({ scope: 'local' }).catch(() => {});
 }

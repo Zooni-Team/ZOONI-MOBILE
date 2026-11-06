@@ -10,8 +10,10 @@
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
 import { subirImagenPublica } from '../utils/imagenStorage';
-import { hashPassword } from './authApi';
 import { sanitizarEmail, sanitizarDigitos, sanitizarTexto } from '../utils/sanitizar';
+import { perfilPorId } from './perfilesPublicos';
+import { distanciaKm } from '../utils/geo';
+import { calcularEdadAnios } from '../utils/calcularEdad';
 
 function mapUsuarioPerfil(u) {
   if (!u) return null;
@@ -74,47 +76,31 @@ export async function fetchMiPerfil() {
  * activa e intereses. Nunca expone datos privados (mail, teléfono, etc.).
  */
 export async function fetchPerfilPublico(usuarioId) {
-  const [{ data: u, error }, { data: mascotas }, { data: yo }] = await Promise.all([
-    supabase.from('User')
-      .select('Id_User, Nombre, Apellido, NombreUsuario, Bio, FotoPerfil, Ubicacion, FechaNacimiento, Intereses, Lat, Lng')
-      .eq('Id_User', usuarioId).single(),
+  const [u, { data: mascotas }, { data: yo }] = await Promise.all([
+    perfilPorId(usuarioId, 'Id_User, Nombre, Apellido, NombreUsuario, Bio, FotoPerfil, Ubicacion, Edad, Intereses, Lat, Lng'),
     supabase.from('Mascota').select('*').eq('Id_User', usuarioId).eq('Estado', 'active').order('EsActiva', { ascending: false }),
     supabase.from('User').select('Lat, Lng').eq('Id_User', getCurrentUserId()).maybeSingle(),
   ]);
-  if (error) throw error;
+  if (!u) throw new Error('perfil_inexistente');
 
   const mascota = mascotas?.find((m) => m.EsActiva) ?? mascotas?.[0] ?? null;
-  const edad = (fecha) => {
-    if (!fecha) return null;
-    const n = parseFechaLocal(fecha), h = new Date();
-    let a = h.getFullYear() - n.getFullYear();
-    if (h.getMonth() < n.getMonth() || (h.getMonth() === n.getMonth() && h.getDate() < n.getDate())) a -= 1;
-    return a;
-  };
-  const distanciaKm = (() => {
-    if (yo?.Lat == null || yo?.Lng == null || u.Lat == null || u.Lng == null) return null;
-    const R = 6371, toRad = (d) => (d * Math.PI) / 180;
-    const dLat = toRad(u.Lat - yo.Lat), dLng = toRad(u.Lng - yo.Lng);
-    const x = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(yo.Lat)) * Math.cos(toRad(u.Lat)) * Math.sin(dLng / 2) ** 2;
-    return Math.round(R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x)) * 10) / 10;
-  })();
 
   return {
     persona: {
       id: u.Id_User,
       nombre: `${u.Nombre ?? ''} ${u.Apellido ?? ''}`.trim() || 'Usuario',
       nombreUsuario: u.NombreUsuario ?? null,
-      edad: edad(u.FechaNacimiento),
+      edad: u.Edad ?? null,
       bio: u.Bio ?? null,
       fotoPerfil: u.FotoPerfil ?? null,
       ubicacion: u.Ubicacion ?? null,
-      distanciaKm,
+      distanciaKm: distanciaKm({ lat: yo?.Lat, lng: yo?.Lng }, { lat: u.Lat, lng: u.Lng }),
       intereses: u.Intereses ?? [],
     },
     mascota: mascota
       ? {
           id: mascota.Id_Mascota, nombre: mascota.Nombre, especie: mascota.Especie,
-          raza: mascota.Raza, edad: edad(mascota.FechaNacimiento), sexo: mascota.Sexo ?? null,
+          raza: mascota.Raza, edad: calcularEdadAnios(mascota.FechaNacimiento), sexo: mascota.Sexo ?? null,
           descripcion: mascota.Descripcion ?? null, fotoUrl: mascota.Foto ?? null,
           imagenAsset: mascota.ImagenAsset ?? null,
         }
@@ -266,15 +252,18 @@ export async function actualizarBio(bio) {
   if (error) throw error;
 }
 
-/** Cambia el correo, validando formato y que no esté en uso por otra cuenta. */
+/**
+ * Cambia el correo. El mail es el usuario de Supabase Auth: se cambia ahí
+ * (Supabase manda un mail de confirmación a la dirección nueva) y un trigger
+ * de la base (060) copia el mail confirmado a "User".Mail. Por eso la app ya
+ * no escribe "User".Mail directamente.
+ */
 export async function actualizarEmail(email) {
-  const userId = getCurrentUserId();
   const limpio = sanitizarEmail(email);
   if (!limpio) { const e = new Error('email_invalido'); e.code = 'EMAIL_INVALIDO'; throw e; }
-  const { data: existente } = await supabase
-    .from('User').select('Id_User').ilike('Mail', limpio).neq('Id_User', userId).maybeSingle();
-  if (existente) { const e = new Error('email_existente'); e.code = 'EMAIL_EXISTENTE'; throw e; }
-  const { error } = await supabase.from('User').update({ Mail: limpio }).eq('Id_User', userId);
+  const { data: disp } = await supabase.rpc('disponibilidad_registro', { p_mail: limpio, p_usuario: null });
+  if (disp?.mailTomado) { const e = new Error('email_existente'); e.code = 'EMAIL_EXISTENTE'; throw e; }
+  const { error } = await supabase.auth.updateUser({ email: limpio });
   if (error) throw error;
   return limpio;
 }
@@ -290,33 +279,20 @@ export async function actualizarTelefono(codigoTelefono, telefono) {
 }
 
 /**
- * Cambia la contraseña: verifica la actual y guarda la nueva, hasheadas.
- * Usa la RPC del servidor (021_seguridad.sql); si no está, cae al método
- * legacy sobre la columna "Contrasena".
+ * Cambia la contraseña en Supabase Auth. Primero confirma la actual
+ * (volviendo a iniciar sesión con ella): si alguien agarra el teléfono
+ * desbloqueado no puede cambiarla sin saberla.
  * Devuelve true si se cambió, false si la contraseña actual es incorrecta.
  */
 export async function cambiarMiContrasena(actual, nueva) {
-  const { data: u } = await supabase
-    .from('User').select('"Mail"').eq('Id_User', getCurrentUserId()).single();
-  const hashActual = await hashPassword(actual);
-  const hashNueva = await hashPassword(nueva);
-
-  const { data, error } = await supabase.rpc('cambiar_contrasena', {
-    p_mail: u?.Mail, p_hash_actual: hashActual, p_hash_nueva: hashNueva,
-  });
-  if (!error) return data === true;
-
-  // Fallback legacy (021 sin correr): comparar y actualizar Contrasena
-  if (error.code === 'PGRST202' || /function .* does not exist/i.test(error.message ?? '')) {
-    const { data: fila } = await supabase
-      .from('User').select('"Contrasena"').eq('Id_User', getCurrentUserId()).single();
-    if (!fila || (fila.Contrasena !== hashActual && fila.Contrasena !== actual)) return false;
-    const { error: errUp } = await supabase.from('User')
-      .update({ Contrasena: hashNueva }).eq('Id_User', getCurrentUserId());
-    if (errUp) throw errUp;
-    return true;
-  }
-  throw error;
+  const { data } = await supabase.auth.getSession();
+  const mail = data?.session?.user?.email;
+  if (!mail) throw new Error('sin_sesion');
+  const { error: errActual } = await supabase.auth.signInWithPassword({ email: mail, password: actual });
+  if (errActual) return false;
+  const { error } = await supabase.auth.updateUser({ password: nueva });
+  if (error) throw error;
+  return true;
 }
 
 /** Sube y guarda una nueva foto de perfil. Devuelve la URL pública guardada. */

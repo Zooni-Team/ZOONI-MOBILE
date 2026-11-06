@@ -178,6 +178,8 @@ export default function RegisterStep4Screen() {
         alerta('Ese usuario ya está tomado', 'Volvé atrás y elegí otro nombre de usuario.');
       } else if (err?.message === 'sesion_social_vencida') {
         alerta('Se venció el inicio de sesión', `Volvé al inicio y entrá de nuevo con ${datos.social?.proveedor ?? 'tu cuenta'}.`);
+      } else if (err?.message === 'confirmar_mail') {
+        alerta('Confirmá tu mail', 'Te mandamos un mail para confirmar la cuenta. Confirmalo y volvé a registrarte con el mismo mail y contraseña para terminar.');
       } else if (err?.message === 'password_corta') {
         alerta('Contraseña inválida', 'La contraseña debe tener al menos 7 caracteres.');
       } else {

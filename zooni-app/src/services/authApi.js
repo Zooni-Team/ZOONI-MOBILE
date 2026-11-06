@@ -1,28 +1,26 @@
 /**
- * authApi.js — Login y Registro contra Supabase (tabla "User" + "Mascota")
+ * authApi.js — Login y registro con Supabase Auth.
  *
- * No hay backend propio ni Supabase Auth todavía: el login es contra la
- * columna "User"."Contrasena". Las contraseñas se guardan hasheadas con
- * SHA-256 (expo-crypto) — es un interim razonable mientras no hay servidor
- * donde correr bcrypt; al migrar a Supabase Auth esto se reemplaza entero.
+ * Qué viaja y quién lo verifica:
+ *   · Login: mail + contraseña van por HTTPS a Supabase Auth
+ *     (signInWithPassword). Supabase compara contra un hash bcrypt (con sal y
+ *     costo) y devuelve un JWT firmado. La app nunca hashea ni compara nada.
+ *   · Con ese JWT, la RPC login_social() devuelve a qué cuenta de Zooni
+ *     ("User") corresponde. Desde ahí, cada consulta lleva el JWT y RLS decide.
+ *   · Registro: signUp crea el usuario de Auth (y la sesión); después una RPC
+ *     crea "User" + mascota + rol en UNA transacción (registrar_social_con_mascota,
+ *     043): si algo falla a mitad de camino, la base deshace todo.
  *
- * Nota sobre el "registro transaccional": supabase-js no puede abrir
- * transacciones desde el cliente, así que si el INSERT de la mascota falla
- * después de crear el usuario, se hace un rollback manual (DELETE del
- * usuario recién creado) para no dejar cuentas huérfanas.
+ * Cuentas creadas antes del cambio (contraseña como SHA-256 en
+ * user_credentials): el primer login las migra solo, ver migrarCuentaVieja().
  */
 
-import * as Crypto from 'expo-crypto';
 import { supabase } from '../lib/supabase';
 import { setCurrentUserId, setModo, MODO_DUENO } from '../config/session';
 import { toISODateLocal } from '../utils/fechaLocal';
 import { subirImagenPublica } from '../utils/imagenStorage';
-import { rpcSocial } from './socialAuthApi';
 import { marcarPresencia } from './presenciaApi';
-
-export async function hashPassword(password) {
-  return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, password);
-}
+import { loginLegado } from './authLegado';
 
 // ─────────────────────────────────────────────
 // RAZAS (catálogo para el Registro Paso 2)
@@ -50,52 +48,111 @@ function ordenarRazas(razas) {
 }
 
 // ─────────────────────────────────────────────
-// LOGIN
+// SESIÓN (compartido por dueños, paseadores y negocios)
+// ─────────────────────────────────────────────
+
+/** PGRST202 = la función RPC no existe (falta correr una migración). */
+export function esFuncionInexistente(error) {
+  return error?.code === 'PGRST202' || /function .* does not exist/i.test(error?.message ?? '');
+}
+
+/**
+ * Cuenta vieja → Supabase Auth. Devuelve:
+ *   true   la cuenta se migró (ya se puede hacer signInWithPassword)
+ *   false  no había cuenta vieja con ese mail y contraseña
+ *   null   la Edge Function no está desplegada (o no hay red)
+ */
+async function migrarCuentaVieja(mail, password) {
+  const { data, error } = await supabase.functions.invoke('migrar-cuenta', {
+    body: { email: mail, password },
+  });
+  if (error) return null;
+  return !!data?.migrada;
+}
+
+/** Traduce la sesión de Auth a la cuenta de Zooni. */
+async function cuentaDeLaSesion() {
+  const { data, error } = await supabase.rpc('login_social');
+  if (error) {
+    if (String(error.message ?? '').includes('cuenta_sin_migrar')) throw new Error('credenciales');
+    throw error;
+  }
+  if (!data || data.nuevo) throw new Error('registro_incompleto');
+  return data;
+}
+
+/**
+ * Inicia sesión con mail y contraseña. NO elige el modo de la app: eso lo
+ * hace quien llama (login de dueño, de paseador o de negocio).
+ * @returns {{ id, nombre, apellido, email, fotoPerfil, legado?: boolean }}
+ * Lanza Error('credenciales') si mail o contraseña no coinciden (sin decir cuál).
+ */
+export async function iniciarSesionConPassword(email, password) {
+  const mail = email.trim().toLowerCase();
+
+  let { error } = await supabase.auth.signInWithPassword({ email: mail, password });
+  if (error && /invalid login credentials|invalid_credentials/i.test(`${error.code} ${error.message}`)) {
+    const migrada = await migrarCuentaVieja(mail, password);
+    if (migrada) {
+      ({ error } = await supabase.auth.signInWithPassword({ email: mail, password }));
+    } else if (migrada === null) {
+      // TRANSICIÓN: la Edge Function migrar-cuenta todavía no está desplegada.
+      // Mientras tanto se entra como antes, sin JWT. Borrar authLegado.js y
+      // este bloque cuando la función esté desplegada (ver README → Supabase).
+      return loginLegado(mail, password);
+    }
+  }
+  if (error) {
+    if (/invalid login credentials|invalid_credentials/i.test(`${error.code} ${error.message}`)) {
+      throw new Error('credenciales');
+    }
+    throw error;
+  }
+  return cuentaDeLaSesion();
+}
+
+/**
+ * Crea el usuario de Supabase Auth para un registro con contraseña y deja la
+ * sesión abierta (las RPC de alta la necesitan).
+ *
+ * Si el mail ya está en Auth pero nunca terminó el alta (se cortó la red
+ * entre el signUp y la RPC), se retoma con la misma contraseña en vez de
+ * dejar a la persona sin poder registrarse.
+ */
+export async function crearCuentaConPassword(email, password) {
+  const mail = email.trim().toLowerCase();
+  if ((password ?? '').length < 7) throw new Error('password_corta');
+
+  const { data, error } = await supabase.auth.signUp({ email: mail, password });
+  if (error) {
+    if (!/already registered|already exists|user_already_exists/i.test(`${error.code} ${error.message}`)) {
+      throw error;
+    }
+    const { error: errLogin } = await supabase.auth.signInWithPassword({ email: mail, password });
+    if (errLogin) throw new Error('email_existente');
+    const { data: cuenta, error: errCuenta } = await supabase.rpc('login_social');
+    if (errCuenta || !cuenta?.nuevo) {
+      await supabase.auth.signOut({ scope: 'local' });
+      throw new Error('email_existente');
+    }
+    return;
+  }
+  // Con "Confirm email" activado en Supabase, signUp no devuelve sesión
+  // hasta que se confirma el mail (ver README → Supabase Auth).
+  if (!data?.session) throw new Error('confirmar_mail');
+}
+
+// ─────────────────────────────────────────────
+// LOGIN DE DUEÑOS
 // ─────────────────────────────────────────────
 
 /**
- * Autentica contra la tabla "User". Si es correcto, guarda la sesión
- * (setCurrentUserId) y devuelve { usuario, mascotaActiva }.
+ * Login de la app de dueños. Devuelve { usuario, mascotaActiva }.
  * Lanza Error('credenciales') si el mail o la contraseña no coinciden.
  */
 export async function login(email, password) {
   const mail = email.trim().toLowerCase();
-  const hash = await hashPassword(password);
-
-  // Camino seguro: la comparación de hash se hace en el SERVIDOR
-  // (RPC login_user de 021_seguridad.sql). El cliente nunca ve el hash
-  // guardado. Devuelve null si mail o contraseña no coinciden, sin
-  // distinguir cuál (no se revela si el mail existe).
-  let usuario = null;
-  const { data: rpcData, error: rpcError } = await supabase
-    .rpc('login_user', { p_mail: mail, p_hash: hash });
-
-  if (!rpcError) {
-    if (!rpcData) throw new Error('credenciales');
-    usuario = rpcData;
-  } else if (esFuncionInexistente(rpcError)) {
-    // Fallback LEGACY: el 021 todavía no se ejecutó en esta base.
-    // Se mantiene solo para no romper el login en bases viejas — borrar
-    // este bloque cuando la migración esté corrida en todos lados.
-    const { data: filaUser, error } = await supabase
-      .from('User')
-      .select('*')
-      .ilike('Mail', mail)
-      .maybeSingle();
-    if (error) throw error;
-    if (!filaUser) throw new Error('credenciales');
-    const coincide = filaUser.Contrasena === hash || filaUser.Contrasena === password;
-    if (!coincide) throw new Error('credenciales');
-    usuario = {
-      id: filaUser.Id_User,
-      nombre: filaUser.Nombre,
-      apellido: filaUser.Apellido,
-      email: filaUser.Mail,
-      fotoPerfil: filaUser.FotoPerfil ?? null,
-    };
-  } else {
-    throw rpcError;
-  }
+  const usuario = await iniciarSesionConPassword(mail, password);
 
   await setCurrentUserId(usuario.id, mail);
   // Entró por el login de dueños: la app arranca en modo dueño aunque la
@@ -108,7 +165,7 @@ export async function login(email, password) {
 
   const { data: mascotas } = await supabase
     .from('Mascota')
-    .select('*')
+    .select('Id_Mascota, Nombre, Especie, Raza, ImagenAsset')
     .eq('Id_User', usuario.id)
     .order('EsActiva', { ascending: false });
 
@@ -134,77 +191,41 @@ export async function login(email, password) {
   };
 }
 
-/** PGRST202 = la función RPC no existe (todavía no se corrió el 021). */
-function esFuncionInexistente(error) {
-  return error?.code === 'PGRST202' || /function .* does not exist/i.test(error?.message ?? '');
-}
-
-/** 23505 = unique_violation: chocó con el índice único del mail (migración 032). */
-function esMailDuplicado(error) {
-  const msg = String(error?.message ?? '');
-  return error?.code === '23505'
-    && (/idx_user_mail_unico/i.test(msg) || /mail/i.test(msg));
-}
-
-/**
- * ¿Ya existe una cuenta con ese mail?
- *
- * Ojo con dos cosas que hacían que el chequeo viejo dejara pasar duplicados:
- *   · .maybeSingle() DEVUELVE ERROR si hay más de una fila — como el error se
- *     ignoraba, `data` quedaba en null y parecía que el mail estaba libre.
- *   · .ilike() trata `%` y `_` como comodines; un mail con guion bajo
- *     (juan_perez@…) matcheaba cualquier otra cosa. Se compara con .eq() sobre
- *     el mail ya normalizado a minúsculas (la app siempre guarda en minúscula).
- *
- * Filas viejas guardadas con otra capitalización se le escapan a este chequeo,
- * pero no al servidor: la RPC compara con lower(trim(Mail)) y el índice único
- * de la 032 está sobre esa misma expresión.
- */
-async function mailYaRegistrado(mail) {
-  const { data, error } = await supabase
-    .from('User').select('Id_User').eq('Mail', mail).limit(1);
-  if (error) return false; // sin conexión: que decida el índice único del servidor
-  return (data?.length ?? 0) > 0;
-}
+// ─────────────────────────────────────────────
+// DISPONIBILIDAD DE MAIL Y @USUARIO
+// ─────────────────────────────────────────────
 
 /**
  * Chequeo de disponibilidad para el PASO 3 del registro (mail y @usuario).
  *
- * El registro real ocurre recién en el paso 4, cuando ya cargaste país,
- * provincia y teléfono. Si el mail estaba tomado, el error saltaba ahí: tres
- * pantallas después de haberlo escrito, y encima había que volver atrás. Con
- * esto el aviso aparece en la misma pantalla donde se escribe.
+ * Avisa temprano, en la misma pantalla donde se escribe. No es la garantía:
+ * entre el paso 3 y el 4 alguien más puede quedarse con ese mail. La garantía
+ * es el índice único del servidor (053_mail_unico.sql).
  *
- * No reemplaza la validación del registro: entre el paso 3 y el 4 alguien más
- * puede quedarse con ese mail. Es para avisar temprano en el caso normal; la
- * garantía sigue siendo el índice único del servidor.
- *
- * Ante un error de red devuelve todo libre a propósito: no tiene sentido
- * bloquear el registro por no haber podido consultar.
+ * Se pregunta con la RPC disponibilidad_registro (060): con RLS un anónimo ya
+ * no puede leer la tabla "User", y esta función sólo responde sí/no.
+ * Ante un error devuelve todo libre a propósito: no tiene sentido bloquear el
+ * registro por no haber podido consultar.
  *
  * @returns {Promise<{mailTomado: boolean, usuarioTomado: boolean}>}
  */
 export async function verificarDisponibilidad({ email, nombreUsuario }) {
   const mail = (email ?? '').trim().toLowerCase();
   const usuario = (nombreUsuario ?? '').trim().replace(/^@/, '');
-
-  const [mailTomado, usuarioTomado] = await Promise.all([
-    mail ? mailYaRegistrado(mail) : Promise.resolve(false),
-    usuario
-      ? supabase.from('User').select('Id_User').ilike('NombreUsuario', usuario).maybeSingle()
-        .then(({ data }) => !!data, () => false)
-      : Promise.resolve(false),
-  ]);
-
-  return { mailTomado, usuarioTomado };
+  const { data, error } = await supabase.rpc('disponibilidad_registro', {
+    p_mail: mail || null,
+    p_usuario: usuario || null,
+  });
+  if (error || !data) return { mailTomado: false, usuarioTomado: false };
+  return { mailTomado: !!data.mailTomado, usuarioTomado: !!data.usuarioTomado };
 }
 
 // ─────────────────────────────────────────────
-// REGISTRO
+// REGISTRO DE DUEÑOS
 // ─────────────────────────────────────────────
 
 /**
- * Fecha de nacimiento de la mascota. El registro ahora la pide directamente
+ * Fecha de nacimiento de la mascota. El registro la pide directamente
  * (Paso 2); `edadMeses` queda solo como respaldo para cualquier pantalla vieja
  * que todavía mande una edad en meses.
  */
@@ -234,14 +255,12 @@ const IMAGEN_ASSET_POR_ESPECIE = {
  *   {
  *     mascota: { nombre, especie, sexo, razaNombre, pesoKg, fechaNacimiento, fotoUri },
  *     usuario: { nombre, apellido, email, password, pais, paisCodigo,
- *                provincia, ciudad, codigoTelefono, telefono }
+ *                provincia, ciudad, codigoTelefono, telefono, nombreUsuario },
+ *     social:  { foto } si vino de Google / Facebook (ya hay sesión, sin contraseña)
  *   }
  * Lanza Error('email_existente') si ya hay una cuenta con ese mail.
- * NO inicia sesión: el flujo vuelve al Login con banner de éxito.
- *
- * Con `datos.social` (vino de Google / Facebook / Apple) no hay contraseña:
- * la RPC registrar_social_con_mascota (043) toma el mail verificado de la
- * sesión del proveedor y guarda su foto como foto de perfil.
+ * Con contraseña NO deja la sesión abierta: el flujo vuelve al Login con un
+ * banner de éxito.
  */
 export async function registro(datos) {
   const { mascota, usuario, social } = datos;
@@ -249,171 +268,69 @@ export async function registro(datos) {
 
   if (!social && (usuario.password ?? '').length < 7) throw new Error('password_corta');
 
-  // Chequeo temprano del mail: corta el registro ANTES de subir la foto a
-  // Storage (si no, cada intento repetido dejaba una imagen huérfana).
-  // No es la garantía — esa es el índice único de la 032 — pero da el mensaje
-  // correcto en el caso normal.
-  if (await mailYaRegistrado(mail)) throw new Error('email_existente');
-
-  const hash = social ? null : await hashPassword(usuario.password);
-  const ubicacionDisplay = [usuario.ciudad, usuario.provincia].filter(Boolean).join(', ') || null;
-
-  // @usuario: chequeo de disponibilidad previo (el índice único del 025 es la
-  // garantía final). En el registro NO se setea NombreUsuarioCambiadoEn: el
-  // cooldown de 30 días es solo para cambios desde Configuración.
+  // Chequeo temprano (mail y @usuario): corta ANTES de crear nada.
   const nombreUsuario = usuario.nombreUsuario?.trim().replace(/^@/, '') || null;
-  if (nombreUsuario) {
-    const { data: usado } = await supabase
-      .from('User').select('Id_User').ilike('NombreUsuario', nombreUsuario).maybeSingle();
-    if (usado) throw new Error('usuario_existente');
-  }
+  const { mailTomado, usuarioTomado } = await verificarDisponibilidad({ email: mail, nombreUsuario });
+  if (mailTomado) throw new Error('email_existente');
+  if (usuarioTomado) throw new Error('usuario_existente');
 
-  // Setea el @usuario recién creado; si chocó con el índice único, avisa
-  const setUsuario = async (userId) => {
-    if (!nombreUsuario) return;
-    const { error } = await supabase.from('User')
-      .update({ NombreUsuario: nombreUsuario }).eq('Id_User', userId);
-    if (error && String(error.message ?? '').includes('idx_user_nombreusuario')) {
-      throw new Error('usuario_existente');
-    }
-  };
+  // 1. Sesión de Auth (con proveedor ya existe; con contraseña se crea acá)
+  if (!social) await crearCuentaConPassword(mail, usuario.password);
 
-  // Foto REAL de la mascota: se sube a Storage y se guarda en Mascota.Foto
-  // (obligatoria — la valida el Paso 2 del registro). Es la que muestra Match.
+  // 2. Foto real de la mascota (Storage exige sesión: va después del signUp)
   const fotoMascotaUrl = mascota.fotoUri
     ? await subirImagenPublica(mascota.fotoUri, 'mascotas')
     : null;
-  const setFotoMascota = async (userId) => {
-    if (!fotoMascotaUrl) return;
-    await supabase.from('Mascota').update({ Foto: fotoMascotaUrl }).eq('Id_User', userId);
-  };
 
-  // Camino seguro: RPC atómica del servidor (021_seguridad.sql).
-  // Usuario + credencial + mascota + rol en una sola transacción: si algo
-  // falla, Postgres revierte todo solo — sin rollback manual con DELETEs.
-  const pUsuario = {
-    nombre: usuario.nombre.trim(),
-    apellido: usuario.apellido.trim(),
-    email: mail,
-    telefono: usuario.telefono?.trim() || null,
-    codigoTelefono: usuario.codigoTelefono?.trim() || null,
-    pais: usuario.pais ?? null,
-    paisCodigo: usuario.paisCodigo ?? null,
-    provincia: usuario.provincia?.trim() || null,
-    ciudad: usuario.ciudad?.trim() || null,
-    ubicacion: ubicacionDisplay,
-  };
-  const pMascota = {
-    nombre: mascota.nombre.trim(),
-    especie: mascota.especie,
-    sexo: mascota.sexo,
-    raza: mascota.razaNombre,
-    peso: mascota.pesoKg ?? null,
-    fechaNacimiento: resolverFechaNacimiento(mascota),
-    imagenAsset: IMAGEN_ASSET_POR_ESPECIE[mascota.especie] ?? 'perro_default',
-  };
-
-  if (social) {
-    let data;
-    try {
-      data = await rpcSocial('registrar_social_con_mascota', {
-        p_usuario: { ...pUsuario, fotoPerfil: social.foto ?? null },
-        p_mascota: pMascota,
-      });
-    } catch (err) {
-      if (String(err?.message ?? '').includes('email_existente')) throw new Error('email_existente');
-      throw err;
+  // 3. Usuario + mascota + rol en una transacción del servidor
+  const ubicacionDisplay = [usuario.ciudad, usuario.provincia].filter(Boolean).join(', ') || null;
+  const { data, error } = await supabase.rpc('registrar_social_con_mascota', {
+    p_usuario: {
+      nombre: usuario.nombre.trim(),
+      apellido: usuario.apellido.trim(),
+      telefono: usuario.telefono?.trim() || null,
+      codigoTelefono: usuario.codigoTelefono?.trim() || null,
+      pais: usuario.pais ?? null,
+      paisCodigo: usuario.paisCodigo ?? null,
+      provincia: usuario.provincia?.trim() || null,
+      ciudad: usuario.ciudad?.trim() || null,
+      ubicacion: ubicacionDisplay,
+      fotoPerfil: social?.foto ?? null,
+    },
+    p_mascota: {
+      nombre: mascota.nombre.trim(),
+      especie: mascota.especie,
+      sexo: mascota.sexo,
+      raza: mascota.razaNombre,
+      peso: mascota.pesoKg ?? null,
+      fechaNacimiento: resolverFechaNacimiento(mascota),
+      imagenAsset: IMAGEN_ASSET_POR_ESPECIE[mascota.especie] ?? 'perro_default',
+    },
+  });
+  if (error) {
+    if (String(error.message ?? '').includes('email_existente') || error.code === '23505') {
+      throw new Error('email_existente');
     }
-    await setUsuario(data.id);
-    await setFotoMascota(data.id);
-    return {
-      mensaje: 'Cuenta creada exitosamente',
-      usuario: { id: data.id, nombre: pUsuario.nombre, apellido: pUsuario.apellido, email: data.email },
-    };
+    if (/JWT|token|sin_sesion_social/i.test(String(error.message ?? ''))) throw new Error('sesion_social_vencida');
+    throw error;
   }
 
-  const { data: rpcData, error: rpcError } = await supabase.rpc(
-    'registrar_usuario_con_mascota',
-    { p_usuario: pUsuario, p_hash: hash, p_mascota: pMascota }
-  );
-
-  if (!rpcError) {
-    await setUsuario(rpcData.id);
-    await setFotoMascota(rpcData.id);
-    return {
-      mensaje: 'Cuenta creada exitosamente',
-      usuario: {
-        id: rpcData.id,
-        nombre: usuario.nombre.trim(),
-        apellido: usuario.apellido.trim(),
-        email: rpcData.email,
-      },
-    };
+  // 4. Detalles que la RPC no recibe (con la sesión de la cuenta nueva)
+  if (nombreUsuario) {
+    const { error: errUsuario } = await supabase.from('User')
+      .update({ NombreUsuario: nombreUsuario }).eq('Id_User', data.id);
+    if (errUsuario && String(errUsuario.message ?? '').includes('idx_user_nombreusuario')) {
+      throw new Error('usuario_existente');
+    }
+  }
+  if (fotoMascotaUrl) {
+    await supabase.from('Mascota').update({ Foto: fotoMascotaUrl }).eq('Id_User', data.id);
   }
 
-  if (String(rpcError.message ?? '').includes('email_existente') || esMailDuplicado(rpcError)) {
-    throw new Error('email_existente');
-  }
-  if (!esFuncionInexistente(rpcError)) throw rpcError;
-
-  // Fallback LEGACY (el 021 no está corrido): flujo viejo con rollback
-  // manual. Borrar cuando la migración esté aplicada en todos lados.
-  if (await mailYaRegistrado(mail)) throw new Error('email_existente');
-
-  const { data: nuevoUsuario, error: errUsuario } = await supabase
-    .from('User')
-    .insert({
-      Nombre: usuario.nombre.trim(),
-      Apellido: usuario.apellido.trim(),
-      Mail: mail,
-      Contrasena: hash,
-      Telefono: usuario.telefono?.trim() || null,
-      CodigoTelefono: usuario.codigoTelefono?.trim() || null,
-      Pais: usuario.pais ?? null,
-      PaisCodigo: usuario.paisCodigo ?? null,
-      Provincia: usuario.provincia?.trim() || null,
-      Ciudad: usuario.ciudad?.trim() || null,
-      Ubicacion: ubicacionDisplay,
-    })
-    .select()
-    .single();
-  // El índice único de la 032 es lo que realmente impide dos cuentas con el
-  // mismo mail; acá su error se traduce al mensaje que muestra la pantalla.
-  if (errUsuario) throw esMailDuplicado(errUsuario) ? new Error('email_existente') : errUsuario;
-
-  const nuevoUserId = nuevoUsuario.Id_User;
-
-  try {
-    const { error: errMascota } = await supabase.from('Mascota').insert({
-      Id_User: nuevoUserId,
-      Foto: fotoMascotaUrl,
-      Nombre: mascota.nombre.trim(),
-      Especie: mascota.especie,
-      Sexo: mascota.sexo,
-      Raza: mascota.razaNombre,
-      Peso: mascota.pesoKg,
-      FechaNacimiento: resolverFechaNacimiento(mascota),
-      ImagenAsset: IMAGEN_ASSET_POR_ESPECIE[mascota.especie] ?? 'perro_default',
-      EsActiva: true,
-    });
-    if (errMascota) throw errMascota;
-
-    await supabase.from('UserRole').insert({ Id_User: nuevoUserId, Id_Role: 1 });
-    await setUsuario(nuevoUserId);
-  } catch (err) {
-    await supabase.from('UserRole').delete().eq('Id_User', nuevoUserId);
-    await supabase.from('Mascota').delete().eq('Id_User', nuevoUserId);
-    await supabase.from('User').delete().eq('Id_User', nuevoUserId);
-    throw err;
-  }
+  if (!social) await supabase.auth.signOut({ scope: 'local' });
 
   return {
     mensaje: 'Cuenta creada exitosamente',
-    usuario: {
-      id: nuevoUserId,
-      nombre: nuevoUsuario.Nombre,
-      apellido: nuevoUsuario.Apellido,
-      email: nuevoUsuario.Mail,
-    },
+    usuario: { id: data.id, nombre: usuario.nombre.trim(), apellido: usuario.apellido.trim(), email: data.email ?? mail },
   };
 }
