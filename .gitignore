@@ -1,1 +1,7 @@
 node_modules
+
+# Secrets locales de las Edge Functions (ver supabase/functions/.env.example)
+supabase/functions/.env
+
+# Variables de entorno locales: nunca al repo (usar los .env.example)
+.env
