@@ -13,7 +13,6 @@ import { subirImagenPublica } from '../utils/imagenStorage';
 import { sanitizarEmail, sanitizarDigitos, sanitizarTexto } from '../utils/sanitizar';
 import { perfilPorId } from './perfilesPublicos';
 import { distanciaKm } from '../utils/geo';
-import { calcularEdadAnios } from '../utils/calcularEdad';
 
 function mapUsuarioPerfil(u) {
   if (!u) return null;
@@ -54,7 +53,7 @@ export async function fetchMiPerfil() {
     supabase.from('User').select('*').eq('Id_User', userId).single(),
     supabase.from('Mascota').select('*').eq('Id_User', userId).order('EsActiva', { ascending: false }),
     supabase.from('Publicacion').select('*', { count: 'exact', head: true }).eq('Id_User', userId),
-    supabase.from('amistades').select('*').or(`usuario_a_id.eq.${userId},usuario_b_id.eq.${userId}`).eq('estado', 'aceptada'),
+    supabase.from('amistades').select('*').or(`usuario_a_id.eq.${Number(userId)},usuario_b_id.eq.${Number(userId)}`).eq('estado', 'aceptada'),
   ]);
   if (errUsuario) throw errUsuario;
 
@@ -78,7 +77,9 @@ export async function fetchMiPerfil() {
 export async function fetchPerfilPublico(usuarioId) {
   const [u, { data: mascotas }, { data: yo }] = await Promise.all([
     perfilPorId(usuarioId, 'Id_User, Nombre, Apellido, NombreUsuario, Bio, FotoPerfil, Ubicacion, Edad, Intereses, Lat, Lng'),
-    supabase.from('Mascota').select('*').eq('Id_User', usuarioId).eq('Estado', 'active').order('EsActiva', { ascending: false }),
+    // De otra persona: "Mascota" ahora sólo devuelve la fila propia (#12),
+    // así que va por "mascota_publica" (ya filtra Estado = 'active').
+    supabase.from('mascota_publica').select('*').eq('Id_User', usuarioId).order('EsActiva', { ascending: false }),
     supabase.from('User').select('Lat, Lng').eq('Id_User', getCurrentUserId()).maybeSingle(),
   ]);
   if (!u) throw new Error('perfil_inexistente');
@@ -100,7 +101,7 @@ export async function fetchPerfilPublico(usuarioId) {
     mascota: mascota
       ? {
           id: mascota.Id_Mascota, nombre: mascota.Nombre, especie: mascota.Especie,
-          raza: mascota.Raza, edad: calcularEdadAnios(mascota.FechaNacimiento), sexo: mascota.Sexo ?? null,
+          raza: mascota.Raza, edad: mascota.EdadAnios ?? null, sexo: mascota.Sexo ?? null,
           descripcion: mascota.Descripcion ?? null, fotoUrl: mascota.Foto ?? null,
           imagenAsset: mascota.ImagenAsset ?? null,
         }

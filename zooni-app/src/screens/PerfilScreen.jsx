@@ -27,7 +27,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
+import { elegirImagen } from '../utils/elegirImagen';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import AppDialog from '../components/AppDialog';
 // El editor de perfil es compartido con "Así te ven" de Match: mismo
@@ -151,19 +151,8 @@ export default function PerfilScreen() {
 
   // ── Cambiar foto ─────────────────────────────────────────────────────────
   async function elegirFotoPerfil(modo) {
-    const perm = modo === 'galeria'
-      ? await ImagePicker.requestMediaLibraryPermissionsAsync()
-      : await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      if (Platform.OS === 'web') window.alert('Habilitá el acceso para elegir una foto.');
-      else Alert.alert('Sin permiso', 'Habilitá el acceso desde la configuración del dispositivo.');
-      return;
-    }
-    const res = modo === 'galeria'
-      ? await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 })
-      : await ImagePicker.launchCameraAsync({ quality: 0.8 });
-    if (res.canceled || !res.assets?.[0]?.uri) return;
-    await subirFoto(res.assets[0].uri);
+    const uri = await elegirImagen({ origen: modo, calidad: 0.8 });
+    if (uri) await subirFoto(uri);
   }
   function cambiarFoto() {
     if (Platform.OS === 'web') {
@@ -188,19 +177,8 @@ export default function PerfilScreen() {
 
   // ── Publicar ─────────────────────────────────────────────────────────────
   async function elegirImagenPublicar(modo) {
-    const perm = modo === 'galeria'
-      ? await ImagePicker.requestMediaLibraryPermissionsAsync()
-      : await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      if (Platform.OS === 'web') window.alert('Habilitá el acceso para elegir una foto.');
-      else Alert.alert('Sin permiso', 'Habilitá el acceso desde la configuración del dispositivo.');
-      return;
-    }
-    const res = modo === 'galeria'
-      ? await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 })
-      : await ImagePicker.launchCameraAsync({ quality: 0.8 });
-    if (res.canceled || !res.assets?.[0]?.uri) return;
-    setFImagen({ uri: res.assets[0].uri }); setImgErr(false);
+    const uri = await elegirImagen({ origen: modo, calidad: 0.8 });
+    if (uri) { setFImagen({ uri }); setImgErr(false); }
   }
   function abrirPickerPublicar() {
     if (Platform.OS === 'web') {

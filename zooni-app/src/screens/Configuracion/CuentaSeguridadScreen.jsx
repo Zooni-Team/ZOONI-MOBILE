@@ -17,10 +17,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
+import { elegirImagen } from '../../utils/elegirImagen';
 
 import {
-  SettingsAction, SettingsGroup, SettingsRow, SettingsScreen, T,
+  SettingsAction, SettingsGroup, SettingsRow, SettingsScreen, SettingsToggle, T,
 } from '../../components/settings/SettingsKit';
 import AppDialog from '../../components/AppDialog';
 import {
@@ -28,7 +28,8 @@ import {
   actualizarNombreUsuario, actualizarTelefono, fechaProximoCambioUsuario, fetchMiCuenta,
 } from '../../services/perfilApi';
 import { clearToken } from '../../services/api';
-import { clearCurrentUserId } from '../../config/session';
+import { clearCurrentUserId, olvidarUltimoMail } from '../../config/session';
+import { getSettings, patchSettings } from '../../services/settingsStore';
 import { alerta } from '../../utils/dialogo';
 import { colores } from '../../theme';
 import { formatearFecha } from '../../utils/fechaLocal';
@@ -110,6 +111,13 @@ export default function CuentaSeguridadScreen() {
   const [cargando, setCargando] = useState(true);
   const [modal, setModal] = useState(null);   // editor de campo { titulo, campos, onGuardar }
   const [dialogo, setDialogo] = useState(null); // cartel Zooni { titulo, mensaje, botones }
+  const [recordarMail, setRecordarMail] = useState(() => getSettings().device.recordar_mail);
+
+  const cambiarRecordarMail = (valor) => {
+    patchSettings('device', { recordar_mail: valor });
+    setRecordarMail(valor);
+    if (!valor) olvidarUltimoMail();
+  };
 
   const cargar = useCallback(async () => {
     try {
@@ -129,11 +137,9 @@ export default function CuentaSeguridadScreen() {
   // ── Foto de perfil: sube la imagen elegida (cámara o galería) ──
   const tomarFoto = async (desdeGaleria) => {
     try {
-      const res = desdeGaleria
-        ? await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 })
-        : await ImagePicker.launchCameraAsync({ quality: 0.7 });
-      if (res.canceled || !res.assets?.[0]?.uri) return;
-      await actualizarMiFotoPerfil(res.assets[0].uri);
+      const uri = await elegirImagen({ origen: desdeGaleria ? 'galeria' : 'camara' });
+      if (!uri) return;
+      await actualizarMiFotoPerfil(uri);
       refrescar();
     } catch {
       alerta('No pudimos actualizar la foto', 'Revisá los permisos y tu conexión.');
@@ -298,6 +304,9 @@ export default function CuentaSeguridadScreen() {
       </SettingsGroup>
 
       <SettingsGroup label="Sesión">
+        <SettingsToggle label="Recordar mi mail en este dispositivo"
+          apoyo="Si lo apagás, el login no va a precargar tu mail después de cerrar sesión."
+          value={recordarMail} onChange={cambiarRecordarMail} />
         <SettingsAction label="Cerrar sesión" destructive
           onPress={() => setDialogo({
             titulo: '¿Cerrar sesión?',

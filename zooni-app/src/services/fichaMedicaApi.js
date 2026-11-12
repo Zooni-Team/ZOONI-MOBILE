@@ -7,6 +7,20 @@
 import { supabase } from '../lib/supabase';
 import { calcularEdadMeses } from '../utils/calcularEdad';
 import { aplicaParaMascota } from '../utils/filtrarPorMascota';
+import {
+  obtenerUrlsFirmadas, subirImagenPrivada, borrarArchivoPrivado, borrarImagenPublica,
+} from '../utils/imagenStorage';
+
+// Bucket PRIVADO (informe de seguridad #13/#14): las imágenes de consultas
+// veterinarias no se muestran por URL pública, sólo con firma de corta
+// duración (`obtenerUrlFirmada`/`obtenerUrlsFirmadas`, abajo).
+const BUCKET_FICHAS = 'fichas-medicas';
+
+/** Sube la foto de una consulta al bucket privado. Para mostrarla después,
+ * `fetchConsultas` ya la devuelve con su URL firmada resuelta. */
+export function subirImagenConsulta(uri) {
+  return subirImagenPrivada(uri, 'consultas', BUCKET_FICHAS);
+}
 
 function mapMascota(m) {
   if (!m) return null;
@@ -297,6 +311,13 @@ function mapConsulta(row) {
   };
 }
 
+/** `imagen_url` puede ser una ruta del bucket privado "fichas-medicas" (desde
+ * esta migración) o, en consultas viejas, una URL pública entera (bucket
+ * "public-images", de antes del informe de seguridad #13/#14). */
+function esUrlCompleta(v) {
+  return typeof v === 'string' && /^https?:\/\//i.test(v);
+}
+
 /** Trae las consultas registradas de la mascota (más reciente primero). */
 export async function fetchConsultas(petId) {
   const { data, error } = await supabase
@@ -305,7 +326,17 @@ export async function fetchConsultas(petId) {
     .eq('mascota_id', petId)
     .order('fecha', { ascending: false });
   if (error) throw error;
-  return (data ?? []).map(mapConsulta);
+  const filas = data ?? [];
+
+  const rutas = filas.map((f) => f.imagen_url).filter((v) => v && !esUrlCompleta(v));
+  const firmadas = rutas.length
+    ? await obtenerUrlsFirmadas(rutas, BUCKET_FICHAS).catch(() => new Map())
+    : new Map();
+
+  return filas.map((row) => mapConsulta({
+    ...row,
+    imagen_url: esUrlCompleta(row.imagen_url) ? row.imagen_url : (firmadas.get(row.imagen_url) ?? null),
+  }));
 }
 
 /** PGRST204 = PostgREST no encontró una columna del insert en el esquema. */
@@ -348,6 +379,14 @@ export async function crearConsulta(petId, datos) {
 }
 
 export async function eliminarConsulta(id) {
+  const { data: fila } = await supabase
+    .from('consultas_veterinarias').select('imagen_url').eq('id', id).maybeSingle();
   const { error } = await supabase.from('consultas_veterinarias').delete().eq('id', id);
   if (error) throw error;
+  if (fila?.imagen_url) {
+    // Ruta del bucket privado (consultas nuevas) o URL pública completa
+    // (consultas de antes del informe de seguridad #13/#14).
+    if (esUrlCompleta(fila.imagen_url)) borrarImagenPublica(fila.imagen_url);
+    else borrarArchivoPrivado(fila.imagen_url, BUCKET_FICHAS);
+  }
 }

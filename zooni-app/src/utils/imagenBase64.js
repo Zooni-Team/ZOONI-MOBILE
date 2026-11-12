@@ -41,11 +41,17 @@ async function desdeUrl(url) {
     return blobADataUri(await res.blob());
   }
   // En nativo se baja a un archivo temporal y se lee en base64: fetch + Blob
-  // en React Native no siempre soporta readAsDataURL.
+  // en React Native no siempre soporta readAsDataURL. El temporal se borra
+  // al terminar, se use o no (informe de seguridad #129: si no, queda la
+  // foto de la mascota suelta en el caché del dispositivo).
   const destino = `${FileSystem.cacheDirectory}ficha-mascota-${Date.now()}`;
-  const { uri: local } = await FileSystem.downloadAsync(url, destino);
-  const base64 = await FileSystem.readAsStringAsync(local, { encoding: FileSystem.EncodingType.Base64 });
-  return `data:${tipoMime(url)};base64,${base64}`;
+  try {
+    const { uri: local } = await FileSystem.downloadAsync(url, destino);
+    const base64 = await FileSystem.readAsStringAsync(local, { encoding: FileSystem.EncodingType.Base64 });
+    return `data:${tipoMime(url)};base64,${base64}`;
+  } finally {
+    FileSystem.deleteAsync(destino, { idempotent: true }).catch(() => {});
+  }
 }
 
 async function desdeAssetLocal(modulo) {

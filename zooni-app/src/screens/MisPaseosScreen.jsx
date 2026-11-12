@@ -26,6 +26,7 @@ import {
 } from '../services/paseadorApi';
 import { confirmar } from '../utils/dialogo';
 import { colores } from '../theme';
+import Estrellas from '../components/ui/Estrellas';
 
 const ESTADOS = {
   pendiente: { txt: 'Esperando respuesta', icono: 'hourglass-outline', color: colores.ambar, fondo: colores.ambarFondo },
@@ -35,19 +36,6 @@ const ESTADOS = {
   rechazado: { txt: 'Rechazado', icono: 'close-circle', color: colores.rojo, fondo: colores.rojoFondo },
   cancelado: { txt: 'Cancelado', icono: 'ban', color: colores.textoSecundario, fondo: colores.gris100 },
 };
-
-function Estrellas({ valor, onCambio, size = 30 }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: 6, justifyContent: 'center' }}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <TouchableOpacity key={i} onPress={() => onCambio?.(i)} disabled={!onCambio} hitSlop={4}
-          accessibilityLabel={`${i} ${i === 1 ? 'estrella' : 'estrellas'}`}>
-          <Ionicons name={valor >= i ? 'star' : 'star-outline'} size={size} color={colores.amarillo} />
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-}
 
 export default function MisPaseosScreen() {
   const navigation = useNavigation();

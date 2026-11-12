@@ -32,6 +32,8 @@ export default function PaseadorHeader({
   const navigation = useNavigation();
   const contarRef = useRef(contarChats);
   contarRef.current = contarChats;
+  const onChatsSinLeerRef = useRef(onChatsSinLeer);
+  onChatsSinLeerRef.current = onChatsSinLeer;
   const [notifs, setNotifs] = useState([]);
   const [abierto, setAbierto] = useState(false);
 
@@ -42,7 +44,7 @@ export default function PaseadorHeader({
         contarRef.current ? contarRef.current() : contarNoLeidosPaseo('paseador'),
       ]);
       setNotifs(n);
-      onChatsSinLeer?.(c);
+      onChatsSinLeerRef.current?.(c);
     } catch {
       // sin red: los íconos quedan sin badge
     }

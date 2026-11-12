@@ -28,9 +28,22 @@ export default function PopupServicio({ servicio, onClose }) {
     navigation.navigate('NegocioPublico', { idNegocio });
   };
 
+  // google_maps_url la escribe el dueño del negocio (servicios.google_maps_url,
+  // #10 del informe de seguridad): sólo se abre si de verdad es un link de
+  // Google Maps, nunca lo que sea que haya puesto ahí.
+  const HOSTS_MAPS = ['google.com', 'www.google.com', 'maps.google.com', 'goo.gl', 'maps.app.goo.gl'];
+  function esUrlDeMaps(url) {
+    try {
+      const u = new URL(url);
+      return u.protocol === 'https:' && HOSTS_MAPS.includes(u.hostname);
+    } catch {
+      return false;
+    }
+  }
+
   const abrirMaps = () => {
-    const url = servicio.google_maps_url ||
-      `https://www.google.com/maps/search/?api=1&query=${servicio.lat},${servicio.lng}`;
+    const url = esUrlDeMaps(servicio.google_maps_url) ? servicio.google_maps_url
+      : `https://www.google.com/maps/search/?api=1&query=${servicio.lat},${servicio.lng}`;
     Linking.openURL(url);
   };
 

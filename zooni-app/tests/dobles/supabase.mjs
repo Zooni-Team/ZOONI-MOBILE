@@ -75,7 +75,21 @@ export const supabase = {
       return resolver(estado.funciones.get(nombre) ?? { data: null, error: { name: 'FunctionsHttpError', context: { status: 404, json: async () => ({}) } } }, op);
     },
   },
-  storage: { from: () => ({ upload: async () => ({ error: null }), getPublicUrl: (p) => ({ data: { publicUrl: `https://cdn.test/${p}` } }) }) },
+  storage: {
+    from: () => ({
+      upload: async () => ({ error: null }),
+      getPublicUrl: (p) => ({ data: { publicUrl: `https://cdn.test/${p}` } }),
+      createSignedUrl: async (p) => ({ data: { signedUrl: `https://cdn.test/${p}?firmada=1` }, error: null }),
+      createSignedUrls: async (paths) => ({
+        data: paths.map((p) => ({ path: p, signedUrl: `https://cdn.test/${p}?firmada=1` })),
+        error: null,
+      }),
+    }),
+  },
 };
+
+// Mismo origen que usan los dobles de getPublicUrl/createSignedUrl de arriba,
+// para que esUrlPropia() (imagenStorage.js) reconozca las urls de prueba.
+export const SUPABASE_ORIGIN = 'https://cdn.test';
 
 export default { supabase };

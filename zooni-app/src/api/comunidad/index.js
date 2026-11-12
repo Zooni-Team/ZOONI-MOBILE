@@ -78,10 +78,11 @@ async function miUbicacion() {
 }
 
 export async function fetchAmigos() {
+  const miId = Number(getCurrentUserId());
   const { data: amistades, error } = await supabase
     .from('amistades')
     .select('*')
-    .or(`usuario_a_id.eq.${getCurrentUserId()},usuario_b_id.eq.${getCurrentUserId()}`)
+    .or(`usuario_a_id.eq.${miId},usuario_b_id.eq.${miId}`)
     .eq('estado', 'aceptada');
   if (error) throw error;
 
@@ -90,7 +91,7 @@ export async function fetchAmigos() {
 
   const [usuarios, { data: mascotas }, { data: ubicaciones }, miUbi] = await Promise.all([
     perfilesPorId(idsAmigos, 'Id_User, Nombre, Apellido, UltimaConexion'),
-    supabase.from('Mascota').select('Id_User, Nombre').in('Id_User', idsAmigos),
+    supabase.from('mascota_publica').select('Id_User, Nombre').in('Id_User', idsAmigos),
     supabase.from('ubicaciones_usuarios').select('*').in('usuario_id', idsAmigos),
     miUbicacion(),
   ]);
@@ -143,17 +144,19 @@ export async function fetchSolicitudes() {
   return { solicitudes: data.map((s) => ({ id: s.id, nombre: nombrePorId.get(s.usuario_a_id) ?? 'Usuario' })) };
 }
 
-export async function enviarSolicitud(usuarioDestinoId) {
+export async function enviarSolicitud(usuarioDestinoIdParam) {
+  const usuarioDestinoId = Number(usuarioDestinoIdParam);
+  const miId = Number(getCurrentUserId());
   const { data: existente } = await supabase
     .from('amistades')
     .select('*')
-    .or(`and(usuario_a_id.eq.${getCurrentUserId()},usuario_b_id.eq.${usuarioDestinoId}),and(usuario_a_id.eq.${usuarioDestinoId},usuario_b_id.eq.${getCurrentUserId()})`)
+    .or(`and(usuario_a_id.eq.${miId},usuario_b_id.eq.${usuarioDestinoId}),and(usuario_a_id.eq.${usuarioDestinoId},usuario_b_id.eq.${miId})`)
     .maybeSingle();
   if (existente) return { ok: true };
 
   const { error } = await supabase
     .from('amistades')
-    .insert({ usuario_a_id: getCurrentUserId(), usuario_b_id: usuarioDestinoId, estado: 'pendiente' });
+    .insert({ usuario_a_id: miId, usuario_b_id: usuarioDestinoId, estado: 'pendiente' });
   if (error) throw error;
 
   // La pestaña "Solicitudes" de Comunidad ya lee esto de "amistades" directo,
@@ -173,24 +176,34 @@ export async function responderSolicitud(id, accion) {
   return { ok: true };
 }
 
+/** Escapa los comodines de ILIKE (`%`, `_`) para que una búsqueda literal no
+ * se interprete como patrón, y la barra que los escapa. */
+function escaparComodinesIlike(texto) {
+  return texto.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
 /**
  * Buscador de personas. Trae SÓLO lo que muestra la lista (nombre, barrio y
  * el nombre de una mascota), desde perfil_publico: antes traía la fila
  * entera de "User" (mail, teléfono, coordenadas…) de 20 desconocidos.
  */
 export async function buscarUsuarios(q) {
-  const usuarios = await consultarPerfiles('Id_User, Nombre, Apellido, Ubicacion', (query) => {
-    let x = query.neq('Id_User', getCurrentUserId()).limit(20);
-    if (q) x = x.ilike('Nombre', `%${q}%`);
-    return x;
-  });
+  // Sin texto (o muy corto) no se lista todo el mundo: BuscadorUsuarios.jsx
+  // ya pide 2 caracteres antes de llamar, esto es la misma regla del lado
+  // de la base por si se llama de otro lado.
+  const texto = (q ?? '').trim();
+  if (texto.length < 2) return { resultados: [] };
+
+  const usuarios = await consultarPerfiles('Id_User, Nombre, Apellido, Ubicacion', (query) =>
+    query.neq('Id_User', getCurrentUserId()).limit(20)
+      .ilike('Nombre', `%${escaparComodinesIlike(texto)}%`));
   if (!usuarios.length) return { resultados: [] };
 
   const ids = usuarios.map((u) => u.Id_User);
   const [{ data: mascotas }, { data: amistades }] = await Promise.all([
-    supabase.from('Mascota').select('Id_User, Nombre').in('Id_User', ids),
+    supabase.from('mascota_publica').select('Id_User, Nombre').in('Id_User', ids),
     supabase.from('amistades').select('*')
-      .or(`usuario_a_id.eq.${getCurrentUserId()},usuario_b_id.eq.${getCurrentUserId()}`),
+      .or(`usuario_a_id.eq.${Number(getCurrentUserId())},usuario_b_id.eq.${Number(getCurrentUserId())}`),
   ]);
 
   const mascotaPorUsuario = new Map();
@@ -289,7 +302,7 @@ export async function fetchCarteles(bbox) {
   const [usuarios, { data: mascotas }] = await Promise.all([
     perfilesPorId(usuarioIds, 'Id_User, Nombre, Apellido'),
     mascotaIds.length
-      ? supabase.from('Mascota').select('*').in('Id_Mascota', mascotaIds)
+      ? supabase.from('mascota_publica').select('Id_Mascota, Nombre, Especie, Raza').in('Id_Mascota', mascotaIds)
       : { data: [] },
   ]);
   const nombrePorUsuario = new Map((usuarios ?? []).map((u) => [u.Id_User, `${u.Nombre ?? ''} ${u.Apellido ?? ''}`.trim()]));

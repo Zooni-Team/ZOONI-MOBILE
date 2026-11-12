@@ -35,7 +35,7 @@ export default function BotonesSociales({ intencion = 'dueno', titulo }) {
       await iniciarConProveedor(proveedor, intencion);
       // Si todo va bien, el navegador ya se está yendo al proveedor
     } catch (err) {
-      console.error('[Login social]', err?.message ?? err);
+      if (__DEV__) console.error('[Login social]', err?.message ?? err);
       setYendo(null);
       setError(/provider is not enabled|Unsupported provider/i.test(String(err?.message))
         ? `${PROVEEDORES[proveedor].nombre} todavía no está habilitado en Zooni.`

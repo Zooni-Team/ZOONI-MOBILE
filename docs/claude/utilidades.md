@@ -48,6 +48,11 @@ ordenar al final).
 comisión** (`062`): si cambia una regla, cambiala en los dos lados.
 
 ## Archivos y PDF
+- `utils/elegirImagen.js` — `elegirImagen(opciones)` (una foto) y
+  `elegirMultimedia(opciones)` (varias, foto o video): piden permiso, abren
+  `expo-image-picker` y devuelven la(s) uri(s) ya recomprimidas sin EXIF (sin
+  la ubicación GPS de quien la sacó) vía `expo-image-manipulator`. Único punto
+  de la app que llama a `expo-image-picker`.
 - `utils/imagenStorage.js` — `subirImagenPublica(uri, carpeta)`,
   `subirArchivoPublico(uri, carpeta, { bucket, mimeHint })`. Sube a
   `<auth uid>/<carpeta>/` (lo exige Storage, ver [seguridad](seguridad.md#storage)).

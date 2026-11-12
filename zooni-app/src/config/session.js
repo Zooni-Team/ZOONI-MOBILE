@@ -21,6 +21,7 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 import { supabase } from '../lib/supabase';
+import { getSettings } from '../services/settingsStore';
 
 // Mail de la última cuenta que usó este dispositivo: el login lo muestra ya
 // escrito después de cerrar sesión. No se borra en el logout (es sólo el mail,
@@ -123,6 +124,9 @@ export async function clearCurrentUserId() {
 // ─────────────────────────────────────────────
 
 export async function recordarUltimoMail(mail) {
+  // Opt-out en Configuración › dispositivo (informe de seguridad #82): si
+  // está apagado, ni se guarda ni queda el que ya hubiera de antes.
+  if (!getSettings().device.recordar_mail) { await olvidarUltimoMail(); return; }
   const limpio = String(mail ?? '').trim().toLowerCase();
   if (!limpio.includes('@')) return;
   try {
@@ -130,6 +134,19 @@ export async function recordarUltimoMail(mail) {
       if (typeof localStorage !== 'undefined') localStorage.setItem(ULTIMO_MAIL_KEY, limpio);
     } else {
       await SecureStore.setItemAsync(ULTIMO_MAIL_KEY, limpio);
+    }
+  } catch {
+    // noop
+  }
+}
+
+/** Borra el mail recordado (al apagar la preferencia, o si no está activa). */
+export async function olvidarUltimoMail() {
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof localStorage !== 'undefined') localStorage.removeItem(ULTIMO_MAIL_KEY);
+    } else {
+      await SecureStore.deleteItemAsync(ULTIMO_MAIL_KEY);
     }
   } catch {
     // noop

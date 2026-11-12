@@ -12,9 +12,28 @@
  * En nativo (file://...) sí hay extensión, y no es un data URI.
  */
 
-import { supabase } from '../lib/supabase';
+import { supabase, SUPABASE_ORIGIN } from '../lib/supabase';
 
 const BUCKET = 'public-images';
+
+/**
+ * ¿Esta URL apunta a nuestro propio Storage? Para mostrar contenido que viene
+ * de una fila de la base (foto de perfil, media de una reseña…) escrita por
+ * CUALQUIER usuario, no por código propio: quien controla un link externo
+ * puede registrar la IP de cada persona que lo vea (informe de seguridad
+ * #42, #68, #138). `data:` también se acepta (imágenes ya en memoria).
+ */
+export function esUrlPropia(url) {
+  if (typeof url !== 'string' || !url) return false;
+  if (url.startsWith('data:')) return true;
+  if (!SUPABASE_ORIGIN) return false;
+  try {
+    const u = new URL(url);
+    return u.origin === SUPABASE_ORIGIN;
+  } catch {
+    return false;
+  }
+}
 
 /** Carpeta propia en Storage: el id de Supabase Auth de la sesión. */
 async function carpetaPropia(uso) {
@@ -34,7 +53,11 @@ function tipoDeImagen(uri) {
     const mime = dataUri[1].toLowerCase();
     return { mime, ext: mime === 'image/jpeg' ? 'jpg' : mime.split('/')[1] };
   }
-  const ext = (uri.split('.').pop() || 'jpg').split('?')[0].toLowerCase();
+  const candidato = (uri.split('.').pop() || '').split('?')[0].toLowerCase();
+  // Una uri sin extensión (content://…, blob:…) deja como "candidato" la uri
+  // entera, con barras y dos puntos: eso rompería la key de Storage (ver
+  // subirArchivoPublico, que ya validaba esto).
+  const ext = /^[a-z0-9]{1,5}$/.test(candidato) ? candidato : 'jpg';
   return { mime: `image/${ext === 'jpg' ? 'jpeg' : ext}`, ext };
 }
 
@@ -54,6 +77,74 @@ export async function subirImagenPublica(uri, carpeta) {
 
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
   return data.publicUrl;
+}
+
+/**
+ * Sube una imagen a un bucket PRIVADO (ej. "fichas-medicas") y devuelve la
+ * ruta de Storage, no una URL: un bucket privado no tiene URL pública. Para
+ * mostrarla hace falta `obtenerUrlFirmada`.
+ */
+export async function subirImagenPrivada(uri, carpeta, bucket) {
+  const { mime, ext } = tipoDeImagen(uri);
+  const path = `${await carpetaPropia(carpeta)}/${nombreArchivo(ext)}`;
+  const arraybuffer = await fetch(uri).then((res) => res.arrayBuffer());
+
+  const { error } = await supabase.storage.from(bucket).upload(path, arraybuffer, {
+    contentType: mime,
+  });
+  if (error) throw error;
+  return path;
+}
+
+/**
+ * URL firmada (de corta duración) para un archivo de un bucket privado.
+ * `segundos`: cuánto dura el acceso (300 = 5 min: alcanza para ver/cargar la
+ * imagen en pantalla, no para dejar el link circulando).
+ */
+export async function obtenerUrlFirmada(path, bucket, segundos = 300) {
+  if (!path) return null;
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, segundos);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+/** Como `obtenerUrlFirmada`, pero para varias rutas en una sola llamada. */
+export async function obtenerUrlsFirmadas(paths, bucket, segundos = 300) {
+  const lista = [...new Set(paths.filter(Boolean))];
+  if (!lista.length) return new Map();
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrls(lista, segundos);
+  if (error) throw error;
+  return new Map((data ?? []).filter((d) => !d.error).map((d) => [d.path, d.signedUrl]));
+}
+
+/**
+ * Borra un archivo de un bucket PRIVADO por su ruta. Nunca tira: borrar la
+ * fila de la base ya pasó, y si el archivo no se pudo borrar sólo queda
+ * ocupando espacio, no es un error para quien llama (informe de seguridad
+ * #70 — antes nada se borraba nunca de Storage).
+ */
+export async function borrarArchivoPrivado(path, bucket) {
+  if (!path) return;
+  await supabase.storage.from(bucket).remove([path]).catch(() => {});
+}
+
+/**
+ * Borra un archivo del bucket PÚBLICO a partir de la URL que devolvió
+ * `subirImagenPublica`/`subirArchivoPublico`. Ignora silenciosamente
+ * cualquier URL que no sea del Storage propio (no hay nada que borrar ahí) o
+ * que no tenga la forma esperada. Nunca tira (ver `borrarArchivoPrivado`).
+ */
+export async function borrarImagenPublica(url) {
+  if (!esUrlPropia(url) || typeof url !== 'string' || url.startsWith('data:')) return;
+  const m = /\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/.exec(url);
+  if (!m) return;
+  const [, bucket, pathCodificado] = m;
+  await borrarArchivoPrivado(decodeURIComponent(pathCodificado), bucket);
+}
+
+/** Como `borrarImagenPublica`, pero para varias URLs. */
+export async function borrarImagenesPublicas(urls) {
+  await Promise.all((urls ?? []).map(borrarImagenPublica));
 }
 
 const EXT_VIDEO = { mp4: 'video/mp4', mov: 'video/quicktime', m4v: 'video/x-m4v', webm: 'video/webm', '3gp': 'video/3gpp' };

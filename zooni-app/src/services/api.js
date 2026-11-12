@@ -12,7 +12,7 @@
  * cambios más allá de eso.
  *
  * Funciones exportadas:
- *   Token:         getStoredToken, saveToken, clearToken (compat con HamburgerDrawer)
+ *   Token:         clearToken (limpieza de un token legado, no hay backend propio)
  *   Home:          fetchHome, fetchHomeConfig, saveHomeConfig
  *   Mascotas:      activarMascota
  *   Avatares:      fetchAvatares, aplicarAvatar
@@ -30,25 +30,10 @@ import { aplicaParaMascota } from '../utils/filtrarPorMascota';
 import { calcularEdadPartes } from '../utils/calcularEdad';
 
 // ─────────────────────────────────────────────
-// TOKEN JWT — se mantiene solo para no romper HamburgerDrawer/pantallas
-// que todavía llaman clearToken() al hacer "logout". No hay backend propio
-// emitiendo JWT: esto queda vacío hasta que se implemente Supabase Auth.
+// TOKEN JWT — clearToken se mantiene sólo para borrar, al cerrar sesión,
+// cualquier token legado que haya quedado guardado de antes de Supabase
+// Auth. No hay backend propio emitiendo JWT, así que nada lo vuelve a crear.
 // ─────────────────────────────────────────────
-
-export async function getStoredToken() {
-  if (Platform.OS === 'web') {
-    return typeof localStorage !== 'undefined' ? localStorage.getItem('jwt_token') : null;
-  }
-  return SecureStore.getItemAsync('jwt_token');
-}
-
-export async function saveToken(token) {
-  if (Platform.OS === 'web') {
-    if (typeof localStorage !== 'undefined') localStorage.setItem('jwt_token', token);
-    return;
-  }
-  await SecureStore.setItemAsync('jwt_token', token);
-}
 
 export async function clearToken() {
   if (Platform.OS === 'web') {

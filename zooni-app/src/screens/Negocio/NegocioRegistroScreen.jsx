@@ -29,7 +29,6 @@ import {
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { C, PillButton, sombra } from '../../components/paseador/PaseadorUI';
@@ -45,37 +44,12 @@ import {
 import { verificarDisponibilidad } from '../../services/authApi';
 import { volverOLogin } from '../../utils/volverOLogin';
 import { sanitizarDigitos } from '../../utils/sanitizar';
-import { alerta } from '../../utils/dialogo';
+import { elegirImagen } from '../../utils/elegirImagen';
 import { colores } from '../../theme';
 import { EMAIL_REGEX } from '../../utils/validacion';
 import { PASSWORD_MIN } from '../../utils/validacion';
-
-function Campo({ label, error, ayuda, children }) {
-  return (
-    <View style={{ marginBottom: 14 }}>
-      <Text style={s.label}>{label}</Text>
-      {children}
-      {ayuda && !error ? <Text style={s.ayuda}>{ayuda}</Text> : null}
-      {error ? <Text style={s.errorCampo}>{error}</Text> : null}
-    </View>
-  );
-}
-
-function InputPassword({ value, onChangeText, placeholder, error }) {
-  const [ver, setVer] = useState(false);
-  return (
-    <View style={[s.input, s.inputPassWrap, error && s.inputError]}>
-      <TextInput style={s.inputPass} value={value} onChangeText={onChangeText}
-        placeholder={placeholder} placeholderTextColor={C.gris}
-        secureTextEntry={!ver} autoCapitalize="none" autoCorrect={false}
-        autoComplete="new-password" textContentType="newPassword" />
-      <TouchableOpacity onPress={() => setVer((v) => !v)} hitSlop={8}
-        accessibilityLabel={ver ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
-        <Ionicons name={ver ? 'eye-off-outline' : 'eye-outline'} size={20} color={C.texto2} />
-      </TouchableOpacity>
-    </View>
-  );
-}
+import Campo from '../../components/ui/Campo';
+import InputPassword from '../../components/ui/InputPassword';
 
 export default function NegocioRegistroScreen() {
   const navigation = useNavigation();
@@ -106,15 +80,8 @@ export default function NegocioRegistroScreen() {
   const setN = (k, v) => { setNegocio((p) => ({ ...p, [k]: v })); limpiar(k); };
 
   const elegirLogo = async () => {
-    const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permiso.granted) {
-      alerta('Sin permiso', 'Habilitá el acceso a la galería desde la configuración del dispositivo.');
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, allowsEditing: true, aspect: [1, 1],
-    });
-    if (!res.canceled && res.assets?.[0]?.uri) setLogo(res.assets[0].uri);
+    const uri = await elegirImagen({ allowsEditing: true, aspect: [1, 1] });
+    if (uri) setLogo(uri);
   };
 
   const validarPaso1 = async () => {
@@ -189,14 +156,17 @@ export default function NegocioRegistroScreen() {
           await subirLogoNegocio(creado, logo);
         } catch (errLogo) {
           // El negocio ya quedó: el logo se puede subir después desde "Mi negocio"
-          console.error('[Registro negocio] logo', errLogo);
+          if (__DEV__) console.error('[Registro negocio] logo', errLogo);
         }
       }
       navigation.reset({ index: 0, routes: [{ name: 'NegocioApp', params: { tipo, bienvenida: true } }] });
     } catch (err) {
       const msg = err?.message;
-      console.error('[Registro negocio]', msg, err?.detalle ?? err);
-      const detalle = err?.detalle ? `\n\nDetalle: ${err.detalle}` : '';
+      if (__DEV__) console.error('[Registro negocio]', msg, err?.detalle ?? err);
+      // El detalle real de Postgres (nombres de columnas, de constraints…)
+      // sólo se muestra en desarrollo: a quien usa la app en producción no le
+      // dice nada y es información interna de la base (informe #126/#127).
+      const detalle = __DEV__ && err?.detalle ? `\n\nDetalle: ${err.detalle}` : '';
       if (msg === 'email_existente') {
         setPaso(1);
         setErrores({ email: 'Ya hay una cuenta con este mail.' });
@@ -214,7 +184,7 @@ export default function NegocioRegistroScreen() {
       } else if (msg === 'migracion_pendiente') {
         setErrorGeneral(`A la base de datos le falta Zooni Negocios: es necesario correr la migración 046 en el SQL Editor de Supabase.${detalle}`);
       } else {
-        setErrorGeneral(`No se pudo registrar tu ${cfg.label.toLowerCase()}.${detalle || `\n\nDetalle: ${msg ?? 'error desconocido'}`}`);
+        setErrorGeneral(`No se pudo registrar tu ${cfg.label.toLowerCase()}. Revisá tu conexión y probá de nuevo.${detalle}`);
       }
     } finally {
       setCargando(false);
@@ -257,35 +227,35 @@ export default function NegocioRegistroScreen() {
               </Text>
               <View style={s.fila}>
                 <View style={{ flex: 1 }}>
-                  <Campo label="Nombre" error={errores.nombre}>
+                  <Campo styles={s} label="Nombre" error={errores.nombre}>
                     <TextInput style={[s.input, errores.nombre && s.inputError]} value={usuario.nombre}
                       onChangeText={(v) => setU('nombre', v.slice(0, 50))} placeholder="Ana" placeholderTextColor={C.gris} />
                   </Campo>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Campo label="Apellido" error={errores.apellido}>
+                  <Campo styles={s} label="Apellido" error={errores.apellido}>
                     <TextInput style={[s.input, errores.apellido && s.inputError]} value={usuario.apellido}
                       onChangeText={(v) => setU('apellido', v.slice(0, 50))} placeholder="Gómez" placeholderTextColor={C.gris} />
                   </Campo>
                 </View>
               </View>
-              <Campo label="Correo electrónico" error={errores.email}>
+              <Campo styles={s} label="Correo electrónico" error={errores.email}>
                 <TextInput style={[s.input, errores.email && s.inputError]} value={usuario.email}
                   onChangeText={(v) => setU('email', v.trim())} placeholder="vos@mail.com" placeholderTextColor={C.gris}
                   keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
                   autoComplete="username" textContentType="username" />
               </Campo>
-              <Campo label="Teléfono" error={errores.telefono}>
+              <Campo styles={s} label="Teléfono" error={errores.telefono}>
                 <TextInput style={[s.input, errores.telefono && s.inputError]} value={usuario.telefono}
                   onChangeText={(v) => setU('telefono', sanitizarDigitos(v, 15))} placeholder="11 2345 6789" placeholderTextColor={C.gris}
                   keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber" />
               </Campo>
-              <Campo label="Contraseña" error={errores.password}>
-                <InputPassword value={usuario.password} error={errores.password}
+              <Campo styles={s} label="Contraseña" error={errores.password}>
+                <InputPassword styles={s} colores={C} value={usuario.password} error={errores.password}
                   onChangeText={(v) => setU('password', v)} placeholder="Mínimo 7 caracteres" />
               </Campo>
-              <Campo label="Repetí la contraseña" error={errores.password2}>
-                <InputPassword value={usuario.password2} error={errores.password2}
+              <Campo styles={s} label="Repetí la contraseña" error={errores.password2}>
+                <InputPassword styles={s} colores={C} value={usuario.password2} error={errores.password2}
                   onChangeText={(v) => setU('password2', v)} placeholder="Repetila" />
               </Campo>
             </View>
@@ -315,17 +285,17 @@ export default function NegocioRegistroScreen() {
                   </View>
                 </View>
 
-                <Campo label={`Nombre de tu ${cfg.label.toLowerCase()}`} error={errores.nombreNegocio}>
+                <Campo styles={s} label={`Nombre de tu ${cfg.label.toLowerCase()}`} error={errores.nombreNegocio}>
                   <TextInput style={[s.input, errores.nombreNegocio && s.inputError]} value={negocio.nombre}
                     onChangeText={(v) => { setN('nombre', v.slice(0, 150)); limpiar('nombreNegocio'); }}
                     placeholder={cfg.placeholderNombre} placeholderTextColor={C.gris} />
                 </Campo>
-                <Campo label="Contales a los clientes qué hacen (opcional)">
+                <Campo styles={s} label="Contales a los clientes qué hacen (opcional)">
                   <TextInput style={[s.input, s.textarea]} value={negocio.descripcion} multiline maxLength={600}
                     onChangeText={(v) => setN('descripcion', v)} placeholderTextColor={C.gris}
                     placeholder={cfg.placeholderDescripcion} />
                 </Campo>
-                <Campo label="Teléfono del local" ayuda="Lo ven los clientes en tu ficha.">
+                <Campo styles={s} label="Teléfono del local" ayuda="Lo ven los clientes en tu ficha.">
                   <TextInput style={s.input} value={negocio.telefono}
                     onChangeText={(v) => setN('telefono', sanitizarDigitos(v, 15))} placeholder="11 2345 6789"
                     placeholderTextColor={C.gris} keyboardType="phone-pad" />
@@ -334,7 +304,7 @@ export default function NegocioRegistroScreen() {
 
               <View style={[s.card, { marginTop: 14 }]}>
                 <Text style={s.cardTitulo}>¿Dónde está?</Text>
-                <Campo label="Dirección" error={errores.direccion}>
+                <Campo styles={s} label="Dirección" error={errores.direccion}>
                   <TextInput style={[s.input, errores.direccion && s.inputError]} value={negocio.direccion}
                     onChangeText={(v) => setN('direccion', v.slice(0, 300))} placeholder="Ej: Av. Díaz Vélez 3820"
                     placeholderTextColor={C.gris} />

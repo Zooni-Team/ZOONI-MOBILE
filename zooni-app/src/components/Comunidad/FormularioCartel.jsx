@@ -4,9 +4,9 @@ import {
   ScrollView, ActivityIndicator, Alert, Modal, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import { crearCartel } from '../../api/comunidad';
 import { colores } from '../../theme';
+import { elegirImagen } from '../../utils/elegirImagen';
 
 const TIPOS = [
   { v: 'perdida',       l: 'Mascota Perdida',    icono: 'alert-circle-outline', color: colores.rojo },
@@ -30,23 +30,13 @@ export default function FormularioCartel({ coordenadas, onExito, onCancelar }) {
   };
 
   const elegirDeGaleria = async () => {
-    const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permiso.granted) {
-      Alert.alert('Sin permiso', 'Habilitá el acceso a la galería desde la configuración del dispositivo.');
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
-    if (!res.canceled && res.assets?.[0]?.uri) setFotoUri(res.assets[0].uri);
+    const uri = await elegirImagen();
+    if (uri) setFotoUri(uri);
   };
 
   const abrirCamara = async () => {
-    const permiso = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permiso.granted) {
-      Alert.alert('Sin permiso', 'Habilitá el acceso a la cámara desde la configuración del dispositivo.');
-      return;
-    }
-    const res = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-    if (!res.canceled && res.assets?.[0]?.uri) setFotoUri(res.assets[0].uri);
+    const uri = await elegirImagen({ origen: 'camara' });
+    if (uri) setFotoUri(uri);
   };
 
   const submit = async () => {

@@ -24,7 +24,6 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 
 import FilterChip from './FilterChip';
 import { INTEREST_OPTIONS, GENDER_OPTIONS } from '../../data/matchDemo';
@@ -33,6 +32,7 @@ import { colores } from '../../theme';
 import FechaPicker from '../FechaPicker';
 import { calcularEdadAnios } from '../../utils/calcularEdad';
 import { formatearFecha, parseFechaLocal, toISODateLocal } from '../../utils/fechaLocal';
+import { elegirImagen } from '../../utils/elegirImagen';
 
 const GENEROS = GENDER_OPTIONS.filter((g) => g.key !== 'todos');
 const EDAD_MINIMA = 18;
@@ -71,23 +71,13 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
   };
 
   const elegirDeGaleria = async () => {
-    const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permiso.granted) {
-      Alert.alert('Sin permiso', 'Habilitá el acceso a la galería desde la configuración del dispositivo.');
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
-    if (!res.canceled && res.assets?.[0]?.uri) { setFotoUri(res.assets[0].uri); setError(null); }
+    const uri = await elegirImagen();
+    if (uri) { setFotoUri(uri); setError(null); }
   };
 
   const abrirCamara = async () => {
-    const permiso = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permiso.granted) {
-      Alert.alert('Sin permiso', 'Habilitá el acceso a la cámara desde la configuración del dispositivo.');
-      return;
-    }
-    const res = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-    if (!res.canceled && res.assets?.[0]?.uri) { setFotoUri(res.assets[0].uri); setError(null); }
+    const uri = await elegirImagen({ origen: 'camara' });
+    if (uri) { setFotoUri(uri); setError(null); }
   };
 
   /** Qué falta en el paso actual (null = se puede avanzar). */

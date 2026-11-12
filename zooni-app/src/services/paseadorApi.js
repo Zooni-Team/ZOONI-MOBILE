@@ -404,9 +404,13 @@ const COLUMNAS_PASEO = '"Id_Paseo","Id_Mascota","Id_Walker","Id_Dueno","Estado",
 async function enriquecer(rows) {
   if (!rows?.length) return [];
   const idsMascota = [...new Set(rows.map((r) => r.Id_Mascota))];
+  // La mascota es del dueño, no del paseador: "Mascota" ahora sólo devuelve la
+  // fila propia (informe de seguridad #12), así que va por "mascota_publica"
+  // — no expone Peso (pendiente del lado de la base para paseadores con un
+  // paseo en común; acá sólo se pierde ese dato informativo en la tarjeta).
   const { data: mascotas } = await supabase
-    .from('Mascota')
-    .select('Id_Mascota, Id_User, Nombre, Especie, Raza, Peso, Foto, ImagenAsset, MostrarFoto')
+    .from('mascota_publica')
+    .select('Id_Mascota, Id_User, Nombre, Especie, Raza, Foto, ImagenAsset, MostrarFoto')
     .in('Id_Mascota', idsMascota);
   const porMascota = Object.fromEntries((mascotas ?? []).map((m) => [m.Id_Mascota, m]));
 
@@ -446,7 +450,7 @@ async function enriquecer(rows) {
         nombre: m.Nombre ?? 'Mascota',
         especie: m.Especie,
         raza: m.Raza,
-        peso: m.Peso != null ? Number(m.Peso) : null,
+        peso: null,
         visual: resolveMascotaVisual({
           fotoUrl: m.Foto, imagenAsset: m.ImagenAsset, especie: m.Especie,
           raza: m.Raza, mostrarFoto: m.MostrarFoto,
@@ -473,7 +477,7 @@ export async function fetchSolicitudes() {
   const { data, error } = await supabase
     .from('Paseo').select(COLUMNAS_PASEO)
     .eq('Estado', 'pendiente')
-    .or(`Id_Walker.is.null,Id_Walker.eq.${yo}`)
+    .or(`Id_Walker.is.null,Id_Walker.eq.${Number(yo)}`)
     .order('FechaProgramada', { ascending: true });
   if (error) throw errorApp('error_base', error);
 
@@ -831,7 +835,7 @@ export async function fetchCuentaCorriente(idDueno) {
 
 /** Error de paseo_pagos con un código que la pantalla sabe explicar. */
 function errorDePagos(error) {
-  console.error('[paseo_pagos]', error);
+  if (__DEV__) console.error('[paseo_pagos]', error);
   return errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente'
     : esSinPermiso(error) ? 'sin_permiso' : 'error_base', error);
 }
@@ -1289,7 +1293,7 @@ export async function fetchResenasPaseador(idWalker) {
   const [duenos, { data: mascotas }] = await Promise.all([
     perfilesPorId(idsDuenos),
     idsMascotas.length
-      ? supabase.from('Mascota').select('Id_Mascota, Nombre, Especie, Raza, Foto, ImagenAsset, MostrarFoto').in('Id_Mascota', idsMascotas)
+      ? supabase.from('mascota_publica').select('Id_Mascota, Nombre, Especie, Raza, Foto, ImagenAsset, MostrarFoto').in('Id_Mascota', idsMascotas)
       : { data: [] },
   ]);
   const porDueno = Object.fromEntries((duenos ?? []).map((u) => [u.Id_User, u]));

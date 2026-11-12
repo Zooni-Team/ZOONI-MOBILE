@@ -209,7 +209,7 @@ export async function buscarLugaresGoogle(bbox, tipo = 'todos', { signal } = {})
   const lugares = [];
   for (const r of resultados) {
     if (r.status === 'fulfilled') lugares.push(...r.value);
-    else if (r.reason?.name !== 'AbortError') console.warn('[lugares] Google Places:', r.reason?.message);
+    else if (r.reason?.name !== 'AbortError' && __DEV__) console.warn('[lugares] Google Places:', r.reason?.message);
   }
   return lugares;
 }

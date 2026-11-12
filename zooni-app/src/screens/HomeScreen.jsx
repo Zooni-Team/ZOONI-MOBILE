@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
-  View, Text, Image, ImageBackground, StyleSheet, TouchableOpacity,
-  Animated, ScrollView, Dimensions, SafeAreaView, StatusBar, Platform,
+  View, Text, ImageBackground, StyleSheet, TouchableOpacity,
+  Animated, ScrollView, Dimensions, SafeAreaView, StatusBar,
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +15,7 @@ import NotificationsPanel from '../components/NotificationsPanel';
 import AddButtonModal from '../components/AddButtonModal';
 import NavButton from '../components/NavButton';
 import DraggableList from '../components/DraggableList';
+import PetIllustration from '../components/ui/PetIllustration';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
 import { resolveMascotaVisual } from '../constants/petImages';
 import { actualizarMascota } from '../services/petsApi';
@@ -92,7 +93,7 @@ export default function HomeScreen() {
     } catch (error) {
       // Nunca se reemplazan los datos del usuario por datos inventados: se deja
       // lo último bueno y se marca el error para poder reintentar.
-      console.log('No se pudo actualizar Home:', error.message);
+      if (__DEV__) console.log('No se pudo actualizar Home:', error.message);
       setBotones((prev) => (prev.length ? prev : BOTONES_POR_DEFECTO));
       setErrorCarga(true);
     } finally {
@@ -426,7 +427,12 @@ export default function HomeScreen() {
                       // el look/avatar aplicado en Closet (ver resolveMascotaVisual).
                       source={resolveMascotaVisual(mascota ?? {})}
                       esFoto={mostrandoFoto}
+                      estiloFoto={styles.petFoto}
                       label={mascota ? `Imagen de ${mascota.nombre}` : 'Mascota'}
+                      style={styles.petImage}
+                      sombra
+                      estiloSombraWeb={styles.petImageDropShadow}
+                      estiloSombraIOS={styles.petImageWithShadow}
                     />
                   </TouchableOpacity>
                 </Animated.View>
@@ -614,60 +620,6 @@ export default function HomeScreen() {
         onAdd={handleAddButton}
       />
     </SafeAreaView>
-  );
-}
-
-/**
- * Sombra que sigue la silueta del PNG (no un cuadrado del contenedor).
- *
- * `esFoto` cambia el tratamiento: una foto real es rectangular y opaca, así que
- * va recortada en redondo y con marco blanco — sin eso quedaba un rectángulo
- * pegado sobre el fondo, muy distinto del resto del Home. Los avatares del
- * Closet son PNG transparentes y siguen yendo tal cual, con `contain`.
- */
-function PetIllustration({ source, label, esFoto }) {
-  if (esFoto) {
-    return (
-      <Image
-        source={source}
-        style={[styles.petImage, styles.petFoto]}
-        resizeMode="cover"
-        accessibilityLabel={label}
-      />
-    );
-  }
-
-  if (Platform.OS === 'web') {
-    return (
-      <Image
-        source={source}
-        style={[styles.petImage, styles.petImageDropShadow]}
-        resizeMode="contain"
-        accessibilityLabel={label}
-      />
-    );
-  }
-
-  if (Platform.OS === 'ios') {
-    return (
-      <Image
-        source={source}
-        style={[styles.petImage, styles.petImageWithShadow]}
-        resizeMode="contain"
-        accessibilityLabel={label}
-      />
-    );
-  }
-
-  // Android: `elevation` dibuja la sombra como un rectángulo detrás del PNG
-  // transparente (no sigue el alfa), así que se omite para no mostrar un cuadrado.
-  return (
-    <Image
-      source={source}
-      style={styles.petImage}
-      resizeMode="contain"
-      accessibilityLabel={label}
-    />
   );
 }
 

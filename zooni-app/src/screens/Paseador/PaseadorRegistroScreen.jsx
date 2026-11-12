@@ -33,7 +33,7 @@ import {
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { elegirImagen } from '../../utils/elegirImagen';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { C, PillButton, sombra } from '../../components/paseador/PaseadorUI';
@@ -43,11 +43,12 @@ import {
   registrarPaseador, validarServicios,
 } from '../../services/paseadorApi';
 import CantidadPerros from '../../components/paseador/CantidadPerros';
+import Campo from '../../components/ui/Campo';
+import InputPassword from '../../components/ui/InputPassword';
 import ServiciosEditor, { filasDesdeServicios, serviciosDesdeFilas } from '../../components/paseador/ServiciosEditor';
 import FechaPicker from '../../components/FechaPicker';
 import ZonaMapaPicker, { RADIO_MAX, RADIO_MIN } from '../../components/paseador/ZonaMapaPicker';
 import { actualizarMiFotoPerfil } from '../../services/perfilApi';
-import { alerta } from '../../utils/dialogo';
 import { verificarDisponibilidad } from '../../services/authApi';
 import BotonesSociales from '../../components/BotonesSociales';
 import { volverOLogin } from '../../utils/volverOLogin';
@@ -79,48 +80,13 @@ function edadDe(nacimiento, hoy = new Date()) {
   return edad;
 }
 
-function Campo({ label, error, children }) {
-  return (
-    <View style={{ marginBottom: 14 }}>
-      <Text style={s.label}>{label}</Text>
-      {children}
-      {error ? <Text style={s.errorCampo}>{error}</Text> : null}
-    </View>
-  );
-}
-
-/** Input de contraseña con el ojito para mostrarla u ocultarla. */
-function InputPassword({ value, onChangeText, placeholder, error }) {
-  const [ver, setVer] = useState(false);
-  return (
-    <View style={[s.input, s.inputPassWrap, error && s.inputError]}>
-      <TextInput style={s.inputPass} value={value} onChangeText={onChangeText}
-        placeholder={placeholder} placeholderTextColor={C.gris}
-        secureTextEntry={!ver} autoCapitalize="none" autoCorrect={false}
-        autoComplete="new-password" textContentType="newPassword" />
-      <TouchableOpacity onPress={() => setVer((v) => !v)} hitSlop={8}
-        accessibilityLabel={ver ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
-        <Ionicons name={ver ? 'eye-off-outline' : 'eye-outline'} size={20} color={C.texto2} />
-      </TouchableOpacity>
-    </View>
-  );
-}
-
 /** Campo "Foto de tu cara": círculo con la vista previa + cámara / galería. */
 function CampoFoto({ uri, error, onElegir }) {
   const elegir = async (camara) => {
-    const permiso = camara
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permiso.granted) {
-      alerta('Sin permiso', `Habilitá el acceso a la ${camara ? 'cámara' : 'galería'} desde la configuración del dispositivo.`);
-      return;
-    }
-    const opciones = { quality: 0.7, allowsEditing: true, aspect: [1, 1] };
-    const res = camara
-      ? await ImagePicker.launchCameraAsync({ ...opciones, cameraType: ImagePicker.CameraType.front })
-      : await ImagePicker.launchImageLibraryAsync({ ...opciones, mediaTypes: ImagePicker.MediaTypeOptions.Images });
-    if (!res.canceled && res.assets?.[0]?.uri) onElegir(res.assets[0].uri);
+    const uri = await elegirImagen({
+      origen: camara ? 'camara' : 'galeria', allowsEditing: true, aspect: [1, 1], frontal: camara,
+    });
+    if (uri) onElegir(uri);
   };
 
   return (
@@ -288,7 +254,7 @@ export default function PaseadorRegistroScreen() {
         try {
           fotoUrl = await actualizarMiFotoPerfil(foto);
         } catch (errFoto) {
-          console.error('[Registro paseador] foto', errFoto);
+          if (__DEV__) console.error('[Registro paseador] foto', errFoto);
           setErrorGeneral('Tu cuenta quedó creada, pero no se pudo subir la foto. Es necesario subirla para continuar: tocá el botón de nuevo.');
           return;
         }
@@ -311,9 +277,13 @@ export default function PaseadorRegistroScreen() {
       });
     } catch (err) {
       const msg = err?.message;
-      // El detalle real de Supabase queda en la consola y en pantalla
-      console.error('[Registro paseador]', msg, err?.detalle ?? err);
-      const detalle = err?.detalle ? `\n\nDetalle: ${err.detalle}` : '';
+      // El detalle real de Supabase queda en la consola sólo en desarrollo
+      // (informe de seguridad #126/#127); en pantalla, sólo en migracion_pendiente
+      // y en el catch-all genérico, también sólo en desarrollo. El resto de la
+      // lógica abajo SÍ sigue mirando err.detalle (ids de constraint) para
+      // decidir qué campo marcar: eso no es exponer el detalle, es leerlo.
+      if (__DEV__) console.error('[Registro paseador]', msg, err?.detalle ?? err);
+      const detalle = __DEV__ && err?.detalle ? `\n\nDetalle: ${err.detalle}` : '';
       if (msg === 'email_existente') {
         setPaso(1);
         setErrores({ email: 'Ya hay una cuenta con este mail.' });
@@ -396,19 +366,19 @@ export default function PaseadorRegistroScreen() {
                 onElegir={(u) => { setFoto(u); setErrores((e) => ({ ...e, foto: null })); }} />
               <View style={s.fila}>
                 <View style={{ flex: 1 }}>
-                  <Campo label="Nombre" error={errores.nombre}>
+                  <Campo styles={s} label="Nombre" error={errores.nombre}>
                     <TextInput style={[s.input, errores.nombre && s.inputError]} value={usuario.nombre}
                       onChangeText={(v) => setU('nombre', v.slice(0, 50))} placeholder="Juan" placeholderTextColor={C.gris} />
                   </Campo>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Campo label="Apellido" error={errores.apellido}>
+                  <Campo styles={s} label="Apellido" error={errores.apellido}>
                     <TextInput style={[s.input, errores.apellido && s.inputError]} value={usuario.apellido}
                       onChangeText={(v) => setU('apellido', v.slice(0, 50))} placeholder="Pérez" placeholderTextColor={C.gris} />
                   </Campo>
                 </View>
               </View>
-              <Campo label="Género" error={errores.genero}>
+              <Campo styles={s} label="Género" error={errores.genero}>
                 <View style={s.generos}>
                   {GENEROS.map((g) => {
                     const on = usuario.genero === g.key;
@@ -422,7 +392,7 @@ export default function PaseadorRegistroScreen() {
                   })}
                 </View>
               </Campo>
-              <Campo label="Fecha de nacimiento" error={errores.fechaNacimiento}>
+              <Campo styles={s} label="Fecha de nacimiento" error={errores.fechaNacimiento}>
                 <TouchableOpacity style={[s.input, s.fechaBtn, errores.fechaNacimiento && s.inputError]}
                   onPress={() => setVerFecha(true)} accessibilityLabel="Elegir fecha de nacimiento">
                   <Text style={[s.fechaTxt, !usuario.fechaNacimiento && { color: C.gris }]}>
@@ -435,7 +405,7 @@ export default function PaseadorRegistroScreen() {
                 {edad != null && !errores.fechaNacimiento ? <Text style={s.ayuda}>Tenés {edad} años</Text> : null}
               </Campo>
               {!social && (
-                <Campo label="Correo electrónico" error={errores.email}>
+                <Campo styles={s} label="Correo electrónico" error={errores.email}>
                   <TextInput style={[s.input, errores.email && s.inputError]} value={usuario.email}
                     onChangeText={(v) => setU('email', v.trim())} placeholder="vos@mail.com" placeholderTextColor={C.gris}
                     keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
@@ -444,19 +414,19 @@ export default function PaseadorRegistroScreen() {
                     autoComplete="username" textContentType="username" />
                 </Campo>
               )}
-              <Campo label="Teléfono" error={errores.telefono}>
+              <Campo styles={s} label="Teléfono" error={errores.telefono}>
                 <TextInput style={[s.input, errores.telefono && s.inputError]} value={usuario.telefono}
                   onChangeText={(v) => setU('telefono', sanitizarDigitos(v, 15))} placeholder="11 2345 6789" placeholderTextColor={C.gris}
                   keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber" />
               </Campo>
               {!social && (
                 <>
-                  <Campo label="Contraseña" error={errores.password}>
-                    <InputPassword value={usuario.password} error={errores.password}
+                  <Campo styles={s} label="Contraseña" error={errores.password}>
+                    <InputPassword styles={s} colores={C} value={usuario.password} error={errores.password}
                       onChangeText={(v) => setU('password', v)} placeholder="Mínimo 7 caracteres" />
                   </Campo>
-                  <Campo label="Repetí la contraseña" error={errores.password2}>
-                    <InputPassword value={usuario.password2} error={errores.password2}
+                  <Campo styles={s} label="Repetí la contraseña" error={errores.password2}>
+                    <InputPassword styles={s} colores={C} value={usuario.password2} error={errores.password2}
                       onChangeText={(v) => setU('password2', v)} placeholder="Repetila" />
                   </Campo>
                 </>
@@ -518,7 +488,7 @@ export default function PaseadorRegistroScreen() {
               </View>
               {errores.tamanos && <Text style={s.errorCampo}>{errores.tamanos}</Text>}
 
-              <Campo label="Contales a los dueños sobre vos (opcional)">
+              <Campo styles={s} label="Contales a los dueños sobre vos (opcional)">
                 <TextInput style={[s.input, s.textarea]} value={perfil.bio} multiline maxLength={500}
                   onChangeText={(v) => setP('bio', v)} placeholderTextColor={C.gris}
                   placeholder="Ej: Paseo por Parque Centenario, mando fotos durante el paseo." />

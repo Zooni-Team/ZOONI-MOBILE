@@ -376,7 +376,7 @@ export async function buscarLugaresOsm(bbox, tipo = 'todos') {
     const lugares = await buscarTodos(bbox);
     return tipo === 'todos' ? lugares : lugares.filter((l) => l.tipo === tipo);
   } catch (e) {
-    if (e?.name !== 'AbortError') console.warn('[lugares] OpenStreetMap:', e?.message);
+    if (e?.name !== 'AbortError' && __DEV__) console.warn('[lugares] OpenStreetMap:', e?.message);
     return [];
   }
 }

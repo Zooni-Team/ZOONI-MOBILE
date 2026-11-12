@@ -25,6 +25,7 @@ import { Platform } from 'react-native';
 
 import { supabase } from '../lib/supabase';
 import { setCurrentUserId } from '../config/session';
+import { subirImagenPublica } from '../utils/imagenStorage';
 
 export const PROVEEDORES = {
   google: { nombre: 'Google' },
@@ -107,6 +108,31 @@ const MENSAJES_ERROR = {
   sin_sesion_social: 'Se cortó el inicio de sesión. Probá de nuevo.',
 };
 
+/**
+ * Copia la foto de perfil del proveedor (Google/Facebook) a nuestro propio
+ * Storage, en vez de guardar el link externo: quien lo controla no debe
+ * poder registrar la IP de cada persona que vea ese perfil o el mapa
+ * (informe de seguridad #68, #138). Si falla (sin red, CORS del proveedor),
+ * se sigue con la URL original: nunca bloquea el registro por esto.
+ */
+async function copiarFotoSocial(url) {
+  if (!url) return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return url;
+    const blob = await res.blob();
+    const dataUri = await new Promise((resolve, reject) => {
+      const lector = new FileReader();
+      lector.onload = () => resolve(lector.result);
+      lector.onerror = reject;
+      lector.readAsDataURL(blob);
+    });
+    return await subirImagenPublica(dataUri, 'perfiles');
+  } catch {
+    return url;
+  }
+}
+
 function mensajeDe(err) {
   const msg = String(err?.message ?? err ?? '');
   const clave = Object.keys(MENSAJES_ERROR).find((k) => msg.includes(k));
@@ -134,7 +160,7 @@ export async function completarRetornoSocial() {
 
   const errorProveedor = q.get('error_description') || h.get('error_description') || q.get('error') || h.get('error');
   if (errorProveedor) {
-    console.error('[Login social] el proveedor volvió con error:', errorProveedor);
+    if (__DEV__) console.error('[Login social] el proveedor volvió con error:', errorProveedor);
     // Cancelar en el proveedor no es un error para mostrar en rojo
     if (/cancel|denied/i.test(errorProveedor)) return { error: null, intencion };
     // Facebook sin mail (cuentas creadas con el teléfono, o el permiso de mail
@@ -156,7 +182,7 @@ export async function completarRetornoSocial() {
           email: data.email,
           nombre: data.nombre ?? '',
           apellido: data.apellido ?? '',
-          foto: data.foto ?? null,
+          foto: await copiarFotoSocial(data.foto),
           proveedor: PROVEEDORES[guardada?.proveedor]?.nombre ?? 'tu cuenta',
         },
       };
@@ -164,7 +190,7 @@ export async function completarRetornoSocial() {
     await setCurrentUserId(data.id, data.email);
     return { usuario: data, intencion };
   } catch (err) {
-    console.error('[Login social]', err?.message ?? err);
+    if (__DEV__) console.error('[Login social]', err?.message ?? err);
     cerrarSesionSocial();
     return { error: mensajeDe(err), intencion };
   }

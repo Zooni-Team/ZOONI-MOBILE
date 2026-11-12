@@ -6,7 +6,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
-import * as ImagePicker from 'expo-image-picker';
 
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import SelectorMascota from '../components/SelectorMascota';
@@ -33,6 +32,7 @@ import { setFotoPrincipalMascota } from '../services/petsApi';
 import { activarMascota } from '../services/api';
 import { resolveMascotaVisual } from '../constants/petImages';
 import { alerta } from '../utils/dialogo';
+import { elegirImagen } from '../utils/elegirImagen';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
 import { getMatchCardLayout } from '../utils/matchLayout';
@@ -249,14 +249,10 @@ export default function MatchScreen() {
 
   const subirFotoMascota = async () => {
     try {
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) { alerta('Sin permiso', 'Habilitá el acceso a la galería.'); return; }
-      const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7,
-      });
-      if (res.canceled || !res.assets?.[0]?.uri) return;
+      const uri = await elegirImagen();
+      if (!uri) return;
       setSubiendoFoto(true);
-      const url = await setFotoPrincipalMascota(mascotaActivaMatch.id, res.assets[0].uri);
+      const url = await setFotoPrincipalMascota(mascotaActivaMatch.id, uri);
       setMisMascotas((prev) => prev.map((m) => (m.id === mascotaActivaMatch.id ? { ...m, fotoUrl: url } : m)));
     } catch {
       alerta('No pudimos subir la foto', 'Probá de nuevo.');

@@ -54,16 +54,17 @@ function ordenarRazas(razas) {
 
 /**
  * Cuenta vieja → Supabase Auth. Devuelve:
- *   true   la cuenta se migró (ya se puede hacer signInWithPassword)
- *   false  no había cuenta vieja con ese mail y contraseña
- *   null   la Edge Function no está desplegada (o no hay red)
+ *   { migrada: true, debeCambiarContrasena }  se migró (la vieja no cumplía
+ *     la política nueva de contraseñas → hay que pedirle que la cambie)
+ *   { migrada: false }                        no había cuenta vieja con ese mail/contraseña
+ *   null                                       la Edge Function no está desplegada (o no hay red)
  */
 async function migrarCuentaVieja(mail, password) {
   const { data, error } = await supabase.functions.invoke('migrar-cuenta', {
     body: { email: mail, password },
   });
   if (error) return null;
-  return !!data?.migrada;
+  return { migrada: !!data?.migrada, debeCambiarContrasena: !!data?.debeCambiarContrasena };
 }
 
 /** Traduce la sesión de Auth a la cuenta de Zooni. */
@@ -80,18 +81,20 @@ async function cuentaDeLaSesion() {
 /**
  * Inicia sesión con mail y contraseña. NO elige el modo de la app: eso lo
  * hace quien llama (login de dueño, de paseador o de negocio).
- * @returns {{ id, nombre, apellido, email, fotoPerfil, legado?: boolean }}
+ * @returns {{ id, nombre, apellido, email, fotoPerfil, legado?: boolean, debeCambiarContrasena?: boolean }}
  * Lanza Error('credenciales') si mail o contraseña no coinciden (sin decir cuál).
  */
 export async function iniciarSesionConPassword(email, password) {
   const mail = email.trim().toLowerCase();
 
+  let debeCambiarContrasena = false;
   let { error } = await supabase.auth.signInWithPassword({ email: mail, password });
   if (error && /invalid login credentials|invalid_credentials/i.test(`${error.code} ${error.message}`)) {
-    const migrada = await migrarCuentaVieja(mail, password);
-    if (migrada) {
+    const resultado = await migrarCuentaVieja(mail, password);
+    if (resultado?.migrada) {
+      debeCambiarContrasena = resultado.debeCambiarContrasena;
       ({ error } = await supabase.auth.signInWithPassword({ email: mail, password }));
-    } else if (migrada === null) {
+    } else if (resultado === null) {
       // TRANSICIÓN: la Edge Function migrar-cuenta todavía no está desplegada.
       // Mientras tanto se entra como antes, sin JWT. Borrar authLegado.js y
       // este bloque cuando la función esté desplegada (ver README → Supabase).
@@ -104,7 +107,10 @@ export async function iniciarSesionConPassword(email, password) {
     }
     throw error;
   }
-  return cuentaDeLaSesion();
+  const cuenta = await cuentaDeLaSesion();
+  // Cuenta recién migrada con una contraseña que no cumple la política nueva
+  // (informe de seguridad #90): quien llama debe mandar a cambiarla.
+  return debeCambiarContrasena ? { ...cuenta, debeCambiarContrasena: true } : cuenta;
 }
 
 /**

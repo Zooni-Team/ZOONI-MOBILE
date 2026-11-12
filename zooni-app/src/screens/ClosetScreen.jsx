@@ -146,16 +146,7 @@ export default function ClosetScreen() {
 
   // ── Carga inicial ──────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (!petId) {
-      Alert.alert('Error', 'No se recibió el ID de la mascota.');
-      navigation.goBack();
-      return;
-    }
-    cargarDatos();
-  }, [petId]);
-
-  async function cargarDatos() {
+  const cargarDatos = useCallback(async () => {
     try {
       setLoading(true);
       const data = await fetchAvatares(petId);
@@ -167,7 +158,16 @@ export default function ClosetScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [petId]);
+
+  useEffect(() => {
+    if (!petId) {
+      Alert.alert('Error', 'No se recibió el ID de la mascota.');
+      navigation.goBack();
+      return;
+    }
+    cargarDatos();
+  }, [petId, navigation, cargarDatos]);
 
   // ── Animar preview al seleccionar ─────────────────────────────────────────
 

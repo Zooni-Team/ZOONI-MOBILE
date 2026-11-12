@@ -24,6 +24,11 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
+/** El origen (protocolo + host) del propio proyecto, para validar que una URL
+ * que viene de la base (no de código propio) de verdad apunte a nuestro
+ * Storage y no a otro servidor (informe de seguridad #42, #68). */
+export const SUPABASE_ORIGIN = supabaseUrl ? new URL(supabaseUrl).origin : null;
+
 if (!supabaseUrl || !supabaseKey) {
   console.warn(
     'Faltan EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY en el .env de zooni-app (ver .env.example).'
@@ -33,28 +38,43 @@ if (!supabaseUrl || !supabaseKey) {
 /**
  * SecureStore guarda como máximo ~2 KB por clave y una sesión de Supabase
  * (JWT + refresh token + datos del usuario) suele pasarse. Se parte en trozos.
+ *
+ * `OPCIONES`: sólo accesible con el teléfono desbloqueado y sin pasar a un
+ * backup/restore a otro dispositivo (informe de seguridad #84 — por defecto
+ * SecureStore no fija esto).
  */
 const TROZO = 1800;
+const OPCIONES = { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY };
 const almacenNativo = {
   async getItem(clave) {
-    const cantidad = Number(await SecureStore.getItemAsync(`${clave}_n`));
-    if (!cantidad) return SecureStore.getItemAsync(clave);
+    const cantidad = Number(await SecureStore.getItemAsync(`${clave}_n`, OPCIONES));
+    if (!cantidad) return SecureStore.getItemAsync(clave, OPCIONES);
     const partes = await Promise.all(
-      Array.from({ length: cantidad }, (_, i) => SecureStore.getItemAsync(`${clave}_${i}`))
+      Array.from({ length: cantidad }, (_, i) => SecureStore.getItemAsync(`${clave}_${i}`, OPCIONES))
     );
     return partes.some((p) => p == null) ? null : partes.join('');
   },
   async setItem(clave, valor) {
+    // Cuántos trozos había antes: si la sesión nueva ocupa menos, hay que
+    // borrar los sobrantes (informe de seguridad #83 — si no, quedan trozos
+    // viejos de una sesión anterior dando vueltas en el keychain).
+    const cantidadAntes = Number(await SecureStore.getItemAsync(`${clave}_n`, OPCIONES)) || 0;
     const partes = valor.match(new RegExp(`[\\s\\S]{1,${TROZO}}`, 'g')) ?? [''];
-    await Promise.all(partes.map((p, i) => SecureStore.setItemAsync(`${clave}_${i}`, p)));
-    await SecureStore.setItemAsync(`${clave}_n`, String(partes.length));
+    await Promise.all(partes.map((p, i) => SecureStore.setItemAsync(`${clave}_${i}`, p, OPCIONES)));
+    await SecureStore.setItemAsync(`${clave}_n`, String(partes.length), OPCIONES);
+    await Promise.all(
+      Array.from(
+        { length: Math.max(0, cantidadAntes - partes.length) },
+        (_, i) => SecureStore.deleteItemAsync(`${clave}_${partes.length + i}`, OPCIONES),
+      ),
+    );
   },
   async removeItem(clave) {
-    const cantidad = Number(await SecureStore.getItemAsync(`${clave}_n`)) || 0;
+    const cantidad = Number(await SecureStore.getItemAsync(`${clave}_n`, OPCIONES)) || 0;
     await Promise.all([
-      SecureStore.deleteItemAsync(clave),
-      SecureStore.deleteItemAsync(`${clave}_n`),
-      ...Array.from({ length: cantidad }, (_, i) => SecureStore.deleteItemAsync(`${clave}_${i}`)),
+      SecureStore.deleteItemAsync(clave, OPCIONES),
+      SecureStore.deleteItemAsync(`${clave}_n`, OPCIONES),
+      ...Array.from({ length: cantidad }, (_, i) => SecureStore.deleteItemAsync(`${clave}_${i}`, OPCIONES)),
     ]);
   },
 };

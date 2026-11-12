@@ -15,22 +15,26 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colores } from '../../theme';
+import { esUrlPropia } from '../../utils/imagenStorage';
 
 const esWeb = Platform.OS === 'web';
 
 export function MiniaturaMedia({ item, size = 76, onPress, extra }) {
+  // Sólo de nuestro Storage: el media de una reseña lo escribe la base, pero
+  // no se valida que la URL sea del propio bucket (informe de seguridad #42).
+  const url = esUrlPropia(item.url ?? item.uri) ? (item.url ?? item.uri) : null;
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={[s.mini, { width: size, height: size }]}
       accessibilityLabel={item.tipo === 'video' ? 'Ver video' : 'Ver foto'}>
       {item.tipo === 'video' ? (
         esWeb
           ? createElement('video', {
-            src: item.url ?? item.uri, muted: true, preload: 'metadata', playsInline: true,
+            src: url, muted: true, preload: 'metadata', playsInline: true,
             style: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
           })
           : <View style={[StyleSheet.absoluteFill, { backgroundColor: colores.texto }]} />
       ) : (
-        <Image source={{ uri: item.url ?? item.uri }} style={StyleSheet.absoluteFill} />
+        <Image source={{ uri: url }} style={StyleSheet.absoluteFill} />
       )}
       {item.tipo === 'video' && (
         <View style={s.play} pointerEvents="none">
@@ -47,7 +51,8 @@ export function VisorMedia({ items, indice, onCerrar }) {
   useEffect(() => { setI(indice ?? 0); }, [indice]);
   const visible = indice != null && items?.length > 0;
   const item = visible ? items[Math.min(i, items.length - 1)] : null;
-  const url = item?.url ?? item?.uri;
+  const urlCruda = item?.url ?? item?.uri;
+  const url = esUrlPropia(urlCruda) ? urlCruda : null;
 
   return (
     <Modal visible={visible} animationType="fade" onRequestClose={onCerrar} transparent={false}>
@@ -66,7 +71,7 @@ export function VisorMedia({ items, indice, onCerrar }) {
               key: url, src: url, controls: true, autoPlay: true, playsInline: true,
               style: { width: '100%', height: '100%', objectFit: 'contain', background: colores.negro },
             }) : (
-              <TouchableOpacity style={s.videoNativo} onPress={() => Linking.openURL(url)}>
+              <TouchableOpacity style={s.videoNativo} onPress={() => { if (url) Linking.openURL(url); }}>
                 <Ionicons name="play-circle" size={72} color={colores.blanco} />
                 <Text style={s.videoNativoTxt}>Reproducir video</Text>
               </TouchableOpacity>

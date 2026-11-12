@@ -86,7 +86,7 @@ export default function PaseadorAppScreen() {
       try {
         p = await fetchPerfilPaseador();
       } catch (err) {
-        console.error('[PaseadorApp] no se pudo leer el perfil', err);
+        if (__DEV__) console.error('[PaseadorApp] no se pudo leer el perfil', err);
       }
       if (!p && perfilLocalRef.current) {
         // Recién registrado pero la base no devuelve el perfil: permisos/RLS

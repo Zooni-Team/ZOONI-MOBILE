@@ -31,15 +31,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
 
 import { toISODateLocal } from '../utils/fechaLocal';
 import PetHero from '../components/PetHero';
 import SelectorMascota from '../components/SelectorMascota';
-import { subirImagenPublica } from '../utils/imagenStorage';
+import { elegirImagen } from '../utils/elegirImagen';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { MASCOTA_VACIA } from '../constants/mascotaVacia';
-import { fetchMascota, fetchConsultas, crearConsulta, eliminarConsulta } from '../services/fichaMedicaApi';
+import { fetchMascota, fetchConsultas, crearConsulta, eliminarConsulta, subirImagenConsulta } from '../services/fichaMedicaApi';
 import FechaPicker from '../components/FechaPicker';
 import { colores } from '../theme';
 import Skeleton from '../components/ui/Skeleton';
@@ -153,6 +152,13 @@ export default function ConsultasScreen() {
   const btnScale     = useRef(new Animated.Value(1)).current;
 
   // ── Carga ─────────────────────────────────────────────────────────────────
+  const animarHero = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(heroScale,   { toValue: 1, duration: 350, useNativeDriver: true }),
+      Animated.timing(heroOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
+    ]).start();
+  }, [heroScale, heroOpacity]);
+
   const cargar = useCallback(async (silencioso = false) => {
     if (!silencioso) setLoading(true);
     try {
@@ -172,7 +178,7 @@ export default function ConsultasScreen() {
     }
     setLoading(false);
     animarHero();
-  }, [idMascota]);
+  }, [idMascota, animarHero]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -181,13 +187,6 @@ export default function ConsultasScreen() {
     await cargar(true);
     setRefreshing(false);
   }, [cargar]);
-
-  function animarHero() {
-    Animated.parallel([
-      Animated.timing(heroScale,   { toValue: 1, duration: 350, useNativeDriver: true }),
-      Animated.timing(heroOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
-    ]).start();
-  }
 
   // ── Modal ────────────────────────────────────────────────────────────────
   function abrirModal() {
@@ -216,17 +215,9 @@ export default function ConsultasScreen() {
   }
 
   // ── Elegir imagen (galería) ────────────────────────────────────────────────
-  async function elegirImagen() {
-    const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permiso.granted) {
-      mostrarToast('Habilitá el acceso a la galería', colores.rojo);
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.7,
-    });
-    if (!res.canceled && res.assets?.[0]?.uri) setFormImagenUri(res.assets[0].uri);
+  async function elegirFotoConsulta() {
+    const uri = await elegirImagen();
+    if (uri) setFormImagenUri(uri);
   }
 
   // ── Guardar consulta ──────────────────────────────────────────────────────
@@ -243,7 +234,7 @@ export default function ConsultasScreen() {
       let imagenUrl = null;
       if (formImagenUri) {
         try {
-          imagenUrl = await subirImagenPublica(formImagenUri, 'consultas');
+          imagenUrl = await subirImagenConsulta(formImagenUri);
         } catch {
           mostrarToast('No se pudo subir la imagen, guardo sin ella', colores.ambar);
         }
@@ -449,7 +440,7 @@ export default function ConsultasScreen() {
                       </TouchableOpacity>
                     </View>
                   ) : (
-                    <TouchableOpacity style={s.btnImagen} onPress={elegirImagen}>
+                    <TouchableOpacity style={s.btnImagen} onPress={elegirFotoConsulta}>
                       <Ionicons name="image-outline" size={18} color={colores.verde} />
                       <Text style={s.btnImagenTxt}>Adjuntar imagen (opcional)</Text>
                     </TouchableOpacity>

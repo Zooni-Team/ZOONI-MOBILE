@@ -8,8 +8,15 @@ tablas, relaciones, índices, funciones, triggers, RLS, permisos, Storage y
 catálogos. Se pega entero en Supabase → SQL Editor → Run.
 - Idempotente: sirve para un proyecto vacío y para el que ya tiene datos.
 - Corre en una transacción: si algo falla, no se aplica nada.
-- Está dividido en secciones `000` → `063` (marcadas `>>>> NNN_nombre <<<<`).
+- Está dividido en secciones `000` → `070` (marcadas `>>>> NNN_nombre <<<<`).
+  `070_endurecimiento_seguridad` es la auditoría de nov-2026 (150 hallazgos,
+  `INFORME_SEGURIDAD_ZOONI.md`): en vez de reescribir las secciones viejas,
+  corrige "encima" con `CREATE OR REPLACE` / `DROP POLICY IF EXISTS` +
+  `CREATE POLICY`, que corren después en la misma transacción.
 - Antes: desplegar las Edge Functions `migrar-cuenta` y `zoonivet-chat`.
+- `supabase/config.toml` documenta (y, si se usa `supabase link` +
+  `supabase config push`, también aplica) la configuración de Authentication
+  que hoy se toca a mano en el dashboard — ver seguridad.md.
 
 ### Cambiar la base
 1. Agregá una sección nueva **al final** (antes de "Verificación final"),
@@ -36,7 +43,12 @@ catálogos. Se pega entero en Supabase → SQL Editor → Run.
 | Internas | `__MigrationLog`, `zooni_politica_tablas` | nadie desde la app |
 
 Vista **`perfil_publico`**: lo que se ve de otra persona (sin mail, edad en vez
-de fecha, ubicación a ~1 km, teléfono sólo con un paseo/turno/pedido en común).
+de fecha, ubicación a ~1 km, teléfono sólo con un paseo/turno/pedido en común
+y vigente — no caduco ni cancelado/rechazado —, nada si hay un bloqueo de por
+medio). Vista **`mascota_publica`**: lo que se ve de la mascota de otra
+persona (sin microchip, señas particulares, estado de salud, fallecimiento ni
+archivado — para eso, `"Mascota"` directa sólo responde filas propias desde
+`070_endurecimiento_seguridad`).
 
 ## Funciones y triggers importantes
 | Qué | Dónde (sección) |

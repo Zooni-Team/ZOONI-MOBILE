@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
 
 import { fetchRazas } from '../../services/authApi';
 import {
@@ -27,6 +26,7 @@ import FechaPicker from '../../components/FechaPicker';
 import { alerta } from '../../utils/dialogo';
 import { colores } from '../../theme';
 import { formatearFecha } from '../../utils/fechaLocal';
+import { elegirImagen } from '../../utils/elegirImagen';
 
 const P = {
   bgTop: '#E4F9EA', text: colores.texto, textSoft: colores.textoSecundario, textSoftMint: colores.verdeGrisaceo,
@@ -124,14 +124,10 @@ export default function EditarMascotaScreen() {
 
   const agregarFoto = async () => {
     try {
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) { alerta('Sin permiso', 'Habilitá el acceso a la galería.'); return; }
-      const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7,
-      });
-      if (res.canceled || !res.assets?.[0]?.uri) return;
+      const uri = await elegirImagen();
+      if (!uri) return;
       setSubiendoFoto(true);
-      const nueva = await agregarFotoMascota(original.id, res.assets[0].uri);
+      const nueva = await agregarFotoMascota(original.id, uri);
       setFotos((prev) => [...prev, nueva]);
     } catch {
       alerta('No pudimos subir la foto', 'Probá de nuevo.');

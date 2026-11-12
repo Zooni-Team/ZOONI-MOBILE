@@ -24,7 +24,7 @@ import { crearCuentaConPassword, iniciarSesionConPassword } from './authApi';
 import { marcarPresencia } from './presenciaApi';
 import { perfilesPorId } from './perfilesPublicos';
 import { resolveMascotaVisual } from '../constants/petImages';
-import { subirImagenPublica } from '../utils/imagenStorage';
+import { subirImagenPublica, borrarImagenPublica } from '../utils/imagenStorage';
 import {
   DIA_DE_JS, HORARIOS_NEGOCIO_DEFAULT, TAMANOS, configNegocio, tamanoPorPeso,
 } from '../constants/negocios';
@@ -444,6 +444,8 @@ export async function guardarItem(negocio, item) {
 }
 
 export async function borrarItem(negocio, id) {
+  const { data: fila } = await supabase.from('negocio_items').select('foto')
+    .eq('id', id).eq('id_negocio', negocio.id).maybeSingle();
   const { error } = await supabase.from('negocio_items').delete().eq('id', id).eq('id_negocio', negocio.id);
   if (error) {
     // Con turnos que lo referencian igual se puede (ON DELETE SET NULL); si
@@ -451,6 +453,8 @@ export async function borrarItem(negocio, id) {
     const { error: e2 } = await supabase.from('negocio_items').update({ activo: false })
       .eq('id', id).eq('id_negocio', negocio.id);
     if (e2) throw errorBase(error);
+  } else if (fila?.foto) {
+    borrarImagenPublica(fila.foto);
   }
 }
 
@@ -491,16 +495,22 @@ export async function agregarSugeridos(negocio, sugeridos, existentes = []) {
 async function mascotasPorId(ids) {
   const lista = [...new Set(ids.filter(Boolean))];
   if (!lista.length) return {};
-  const { data } = await supabase.from('Mascota')
-    .select('Id_Mascota, Id_User, Nombre, Especie, Raza, Peso, Foto, ImagenAsset, MostrarFoto, FechaNacimiento')
+  // Mascotas de OTRAS personas (los pacientes del negocio): "Mascota" ahora
+  // sólo devuelve la fila propia (informe de seguridad #12), así que esto va
+  // por "mascota_publica" — que no expone Peso ni FechaNacimiento. Pendiente
+  // del lado de la base: una vista/política para negocios con un turno/pedido
+  // en común que sí incluya esos dos campos (hoy sólo se pierde el prellenado
+  // del peso en InformeModal, no es un error visible).
+  const { data } = await supabase.from('mascota_publica')
+    .select('Id_Mascota, Id_User, Nombre, Especie, Raza, Foto, ImagenAsset, MostrarFoto')
     .in('Id_Mascota', lista);
   return Object.fromEntries((data ?? []).map((m) => [m.Id_Mascota, {
     id: m.Id_Mascota,
     nombre: m.Nombre ?? 'Mascota',
     especie: m.Especie,
     raza: m.Raza,
-    peso: m.Peso != null ? Number(m.Peso) : null,
-    nacimiento: m.FechaNacimiento ?? null,
+    peso: null,
+    nacimiento: null,
     visual: resolveMascotaVisual({
       fotoUrl: m.Foto, imagenAsset: m.ImagenAsset, especie: m.Especie, raza: m.Raza, mostrarFoto: m.MostrarFoto,
     }),

@@ -10,7 +10,6 @@
 import { useRef, useState } from 'react';
 import {
   Animated,
-  Image,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -28,37 +27,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { ESPECIES } from '../constants/registroAssets';
 import { volverOLogin } from '../utils/volverOLogin';
 import BotonesSociales from '../components/BotonesSociales';
+import EspecieTile from '../components/ui/EspecieTile';
 import { colores } from '../theme';
-
-function EspecieTile({ especie, seleccionada, onPress }) {
-  const scale = useRef(new Animated.Value(1)).current;
-
-  const handlePress = () => {
-    Animated.sequence([
-      Animated.timing(scale, { toValue: 0.95, duration: 80, useNativeDriver: true }),
-      Animated.timing(scale, { toValue: 1, duration: 100, useNativeDriver: true }),
-    ]).start();
-    onPress();
-  };
-
-  return (
-    <Animated.View style={[s.tileWrap, { transform: [{ scale }] }]}>
-      <TouchableOpacity
-        style={[s.tile, seleccionada && s.tileOn]}
-        onPress={handlePress}
-        activeOpacity={0.85}
-        accessibilityLabel={`Tipo de mascota: ${especie.label}`}
-      >
-        {especie.imagen ? (
-          <Image source={especie.imagen} style={s.tileImg} resizeMode="contain" />
-        ) : (
-          <Text style={s.tileEmoji}>{especie.icono}</Text>
-        )}
-        <Text style={[s.tileLabel, seleccionada && s.tileLabelOn]}>{especie.label}</Text>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-}
 
 export default function RegisterStep1Screen() {
   const navigation = useNavigation();
@@ -128,6 +98,7 @@ export default function RegisterStep1Screen() {
               {ESPECIES.map((e) => (
                 <EspecieTile
                   key={e.key}
+                  styles={s}
                   especie={e}
                   seleccionada={especie === e.key}
                   onPress={() => setEspecie(e.key)}

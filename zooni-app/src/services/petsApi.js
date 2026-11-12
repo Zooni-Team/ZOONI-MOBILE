@@ -14,7 +14,7 @@
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
 import { enRango, sanitizarDigitos, sanitizarTexto } from '../utils/sanitizar';
-import { subirImagenPublica } from '../utils/imagenStorage';
+import { subirImagenPublica, borrarImagenPublica } from '../utils/imagenStorage';
 import { edadResumida } from '../utils/calcularEdad';
 
 export const LIMITE_ACTIVAS = 10;
@@ -322,8 +322,10 @@ export async function agregarFotoMascota(idMascota, uri) {
 
 /** Elimina una foto de la galería (no la portada). */
 export async function eliminarFotoMascota(fotoId) {
+  const { data: fila } = await supabase.from('mascota_fotos').select('url').eq('id', fotoId).maybeSingle();
   const { error } = await supabase.from('mascota_fotos').delete().eq('id', fotoId);
   if (error) throw error;
+  if (fila?.url) borrarImagenPublica(fila.url);
   return true;
 }
 

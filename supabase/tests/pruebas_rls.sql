@@ -40,7 +40,7 @@ DECLARE
   ana INTEGER; beto INTEGER;
   mascota_ana INTEGER; mascota_beto INTEGER;
   negocio INTEGER; item INTEGER; servicio_item INTEGER;
-  pedido INTEGER; paseo INTEGER;
+  pedido INTEGER; paseo INTEGER; paseo_abierto INTEGER; amistad INTEGER;
   n INTEGER; v NUMERIC; r JSONB; t TEXT;
   fallo BOOLEAN;
 BEGIN
@@ -255,6 +255,68 @@ BEGIN
   UPDATE auth.users SET email = 'beto.nuevo.' || sufijo || '@prueba.test' WHERE id = beto_auth;
   SELECT "Mail" INTO t FROM "User" WHERE "Id_User" = beto;
   ASSERT t = 'beto.nuevo.' || sufijo || '@prueba.test', 'el mail confirmado en Auth se copia a "User"';
+
+  -- ── 070_endurecimiento_seguridad: amistades (#2, #112) ────────────────────
+  PERFORM pg_temp.como(ana_auth);
+  INSERT INTO amistades (usuario_a_id, usuario_b_id) VALUES (ana, beto) RETURNING id INTO amistad;
+  fallo := FALSE;
+  BEGIN
+    UPDATE amistades SET estado = 'aceptada' WHERE id = amistad;
+  EXCEPTION WHEN raise_exception THEN fallo := SQLERRM = 'transicion_invalida';
+  END;
+  ASSERT fallo, 'quien pide la amistad no se la puede autoaceptar';
+  PERFORM pg_temp.salir();
+
+  PERFORM pg_temp.como(beto_auth);
+  UPDATE amistades SET estado = 'aceptada' WHERE id = amistad;
+  SELECT estado INTO t FROM amistades WHERE id = amistad;
+  ASSERT t = 'aceptada', 'el destinatario sí puede aceptar';
+  fallo := FALSE;
+  BEGIN
+    UPDATE amistades SET estado = 'pendiente' WHERE id = amistad;
+  EXCEPTION WHEN raise_exception THEN fallo := SQLERRM = 'transicion_invalida';
+  END;
+  ASSERT fallo, 'una amistad ya aceptada no se puede "reabrir" con un UPDATE';
+  PERFORM pg_temp.salir();
+
+  -- ── 070: "Mascota" de otros sólo por mascota_publica, sin datos de salud (#12) ──
+  PERFORM pg_temp.como(beto_auth);
+  SELECT count(*) INTO n FROM "Mascota" WHERE "Id_Mascota" = mascota_ana;
+  ASSERT n = 0, '"Mascota" directa no devuelve mascotas ajenas';
+  SELECT count(*) INTO n FROM mascota_publica WHERE "Id_Mascota" = mascota_ana;
+  ASSERT n = 1, 'mascota_publica sí muestra la mascota de Ana (sin datos de salud)';
+  ASSERT NOT EXISTS (SELECT 1 FROM information_schema.columns
+                     WHERE table_name = 'mascota_publica'
+                       AND column_name IN ('EstadoSalud', 'ChipId', 'Microchip', 'SenasParticulares', 'FechaNacimiento')),
+         'mascota_publica no expone columnas de salud/identificación';
+  PERFORM pg_temp.salir();
+
+  -- ── 070: paseador_perfil.verificado no se autoasigna (#9) ─────────────────
+  PERFORM pg_temp.como(ana_auth);
+  UPDATE paseador_perfil SET verificado = TRUE WHERE id_user = ana;
+  SELECT verificado INTO fallo FROM paseador_perfil WHERE id_user = ana;
+  ASSERT NOT fallo, 'un paseador no puede marcarse "verificado" a sí mismo';
+  PERFORM pg_temp.salir();
+
+  -- ── 070: un paseador no puede aceptar su propio pedido de paseo (#64) ─────
+  PERFORM pg_temp.como(ana_auth);
+  INSERT INTO "Paseo" ("Id_Mascota", "Id_Dueno", "FechaProgramada", "DuracionMin", "Precio")
+  VALUES (mascota_ana, ana, now() + interval '2 days', 30, 1) RETURNING "Id_Paseo" INTO paseo_abierto;
+  fallo := FALSE;
+  BEGIN
+    PERFORM aceptar_solicitud_paseo(paseo_abierto, NULL);
+  EXCEPTION WHEN raise_exception THEN fallo := SQLERRM = 'no_podes_aceptar_tu_propio_paseo';
+  END;
+  ASSERT fallo, 'Ana (dueña Y paseadora) no puede aceptar su propio pedido';
+  PERFORM pg_temp.salir();
+
+  -- ── 070: funciones internas, inalcanzables desde el cliente (#1, #3, #7) ──
+  ASSERT NOT has_function_privilege('anon', 'completar_perfil_paseador(integer,jsonb)', 'EXECUTE'),
+    'completar_perfil_paseador ya no es ejecutable por anon';
+  ASSERT NOT has_function_privilege('authenticated', '_upsert_paseador_perfil(integer,jsonb)', 'EXECUTE'),
+    '_upsert_paseador_perfil sigue siendo sólo interna';
+  ASSERT NOT has_function_privilege('authenticated', '_devolver_stock(jsonb)', 'EXECUTE'),
+    '_devolver_stock sigue siendo sólo interna';
 
   RAISE NOTICE 'pruebas_rls: todo OK';
 END $$;

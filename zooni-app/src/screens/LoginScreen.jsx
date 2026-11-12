@@ -93,7 +93,11 @@ export default function LoginScreen() {
       // qué app entrar (o entra directo si tiene una sola)
       const roles = await fetchRolesCuenta(usuario.id).catch(() => null);
       const [ruta, params] = await rutaSegunRoles(roles ?? { esDueno: true, esPaseador: false, negocios: [] });
-      navigation.reset({ index: 0, routes: [{ name: ruta, params }] });
+      const rutas = [{ name: ruta, params }];
+      // Cuenta recién migrada con una contraseña vieja y débil: de paso por
+      // "Cambiar contraseña" antes de entrar (informe de seguridad #90).
+      if (usuario.debeCambiarContrasena) rutas.push({ name: 'ConfigCambiarContrasena', params: { forzado: true } });
+      navigation.reset({ index: rutas.length - 1, routes: rutas });
     } catch (err) {
       if (err?.message === 'credenciales') {
         setErrorLogin('Email o contraseña incorrectos');

@@ -382,11 +382,6 @@ export default function EventosScreen() {
   // Map de eventoId → boolean (procesando la llamada POST)
   const [procesandoIds, setProcesandoIds]   = useState(new Map());
 
-  // ── Carga inicial ────────────────────────────────────────────
-  useEffect(() => {
-    cargarDatos();
-  }, []);
-
   /**
    * sincronizarAgregados — el estado de "ya agregado" se deriva del
    * calendario compartido (calendarioStore), no de un flag local fijo.
@@ -471,7 +466,7 @@ export default function EventosScreen() {
    * para la vista previa sin sesión — con sesión iniciada nunca se muestran
    * eventos inventados, igual que en CalendarioScreen y FichaMedicaScreen.
    */
-  async function cargarDatos(silencioso = false) {
+  const cargarDatos = useCallback(async (silencioso = false) => {
     if (!silencioso) setLoading(true);
     try {
       // 1. Obtener datos del usuario (ciudad + mascota activa)
@@ -518,7 +513,7 @@ export default function EventosScreen() {
       // selector queda listo).
       await sincronizarAgregados(mascotaSel ?? datosHome?.mascotaActiva?.id);
     } catch (error) {
-      console.error('Error al cargar eventos:', error);
+      if (__DEV__) console.error('Error al cargar eventos:', error);
 
       // 403 → token inválido → ir a Login
       if (error?.response?.status === 403) {
@@ -533,7 +528,17 @@ export default function EventosScreen() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [mascotaSel, sincronizarAgregados, navigation]);
+
+  // La carga inicial corre UNA sola vez al montar: cambiar de mascota ya lo
+  // cubre el useFocusEffect de sincronizarAgregados (más arriba), así que acá
+  // un ref evita el cierre viejo sin recargar todo de nuevo en cada cambio.
+  const cargarDatosRef = useRef(cargarDatos);
+  cargarDatosRef.current = cargarDatos;
+
+  useEffect(() => {
+    cargarDatosRef.current();
+  }, []);
 
   // ── Toggle descripción expandida ─────────────────────────────
   const toggleDescripcion = useCallback((eventoId) => {
@@ -584,7 +589,7 @@ export default function EventosScreen() {
         // Actualizar estado local: agregar al Set
         setEventosAgregados((prev) => new Set(prev).add(evento.id));
       } catch (error) {
-        console.error('Error al agregar al calendario:', error);
+        if (__DEV__) console.error('Error al agregar al calendario:', error);
 
         if (error?.response?.status === 403) {
           navigation.reset({ index: 0, routes: [{ name: 'Login' }] });

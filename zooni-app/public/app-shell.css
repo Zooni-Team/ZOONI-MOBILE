@@ -1,0 +1,61 @@
+/* These styles make the body full-height */
+html,
+body {
+  height: 100%;
+}
+/* These styles disable body scrolling if you are using <ScrollView> */
+body {
+  overflow: hidden;
+}
+/* These styles make the root element full-height */
+#root {
+  display: flex;
+  height: 100%;
+  flex: 1;
+}
+
+html,
+body,
+#root {
+  /* Sin el rebote elástico ni el "pull to refresh" del navegador */
+  overscroll-behavior: none;
+  /* iOS agranda el texto solo al rotar si no se fija */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  background-color: #c8f0d8;
+}
+
+body {
+  /* El doble tap deja de hacer zoom y los taps responden sin los 300ms */
+  touch-action: manipulation;
+  /* Sin el flash gris de Android al tocar */
+  -webkit-tap-highlight-color: transparent;
+  margin: 0;
+}
+
+/* Nada de selección larga de texto en la interfaz… */
+body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* …salvo donde el usuario escribe o donde hay texto para copiar */
+input,
+textarea,
+[contenteditable='true'] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/*
+  Solo en pantallas táctiles: iOS acerca la vista al enfocar un input con
+  letra menor a 16px y después no vuelve. React Native Web escribe el
+  font-size inline, así que hace falta !important para ganarle.
+  En desktop no aplica y el diseño queda igual.
+*/
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}

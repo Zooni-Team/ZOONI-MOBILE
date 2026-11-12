@@ -1,0 +1,36 @@
+# supabase/config.toml — documenta (y, si en algún momento se usa
+# `supabase link` + `supabase config push`, también aplica) la configuración
+# de seguridad de Authentication que hoy sólo vive en el dashboard.
+#
+# El flujo actual del proyecto (ver README.md) es pegar
+# SUPABASE_PEGAR_TODO.sql a mano en el SQL Editor y tocar estos toggles a
+# mano en Authentication → Providers / Policies. Este archivo es la versión
+# "en código" de esos mismos valores (informe de seguridad, hallazgo #75:
+# "la configuración de Auth no está en el repo: no es auditable ni
+# reproducible"). Si se verifica a mano en el dashboard que coincide, se
+# puede ignorar la parte de CLI; lo importante es que estos VALORES sean los
+# que están activos.
+
+[auth]
+# Hallazgo #21 (ALTA): sin esto, alguien puede hacer signUp con el mail de
+# otra persona (login_social no vincula cuentas sin confirmar, pero evita el
+# problema de raíz confirmando que el mail es de quien dice ser).
+enable_confirmations = true
+
+# Hallazgo #76 (BAJA): hoy la app valida 7-8 caracteres en el cliente nada
+# más; esto lo exige también del lado del servidor.
+minimum_password_length = 8
+password_requirements = "lower_upper_letters_digits"
+
+[auth.rate_limit]
+# Igual de espíritu que el límite de intentos agregado a migrar-cuenta
+# (hallazgo #8): que Auth también limite intentos de login / señales de uso.
+sign_in_sign_ups = 30   # por hora, por IP (valor por defecto de Supabase)
+token_refresh = 150     # por hora, por IP
+
+[auth.mfa]
+# Hallazgo #79 (BAJA): no hay ningún segundo factor, ni para negocios ni para
+# paseadores (cuentas que mueven pagos/datos sensibles). Dejarlo disponible
+# como opción no rompe a nadie que no lo active.
+totp.enroll_enabled = true
+totp.verify_enabled = true

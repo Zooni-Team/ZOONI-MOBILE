@@ -9,9 +9,9 @@ import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
-import { SettingsGroup, SettingsScreen, T } from '../../components/settings/SettingsKit';
+import { SettingsBanner, SettingsGroup, SettingsScreen, T } from '../../components/settings/SettingsKit';
 import { cambiarMiContrasena } from '../../services/perfilApi';
 import AppDialog from '../../components/AppDialog';
 
@@ -27,6 +27,8 @@ function fuerza(pass) {
 
 export default function CambiarContrasenaScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
+  const forzado = !!route.params?.forzado;
   const [actual, setActual] = useState('');
   const [nueva, setNueva] = useState('');
   const [repetir, setRepetir] = useState('');
@@ -65,6 +67,13 @@ export default function CambiarContrasenaScreen() {
 
   return (
     <SettingsScreen title="Cambiar contraseña">
+
+      {forzado && (
+        <SettingsBanner
+          icon="shield-checkmark-outline"
+          text="Tu contraseña anterior no cumple el mínimo de seguridad actual. Elegí una nueva para seguir usando Zooni con esta cuenta."
+        />
+      )}
 
       <SettingsGroup>
         <View style={s.campo}>

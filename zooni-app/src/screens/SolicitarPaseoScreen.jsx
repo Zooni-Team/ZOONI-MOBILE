@@ -128,10 +128,11 @@ export default function SolicitarPaseoScreen() {
       });
       navigation.replace('MisPaseos', { enviada: paseador.nombreCompleto });
     } catch (err) {
-      console.error('[Solicitar paseo]', err?.message, err?.detalle ?? err);
+      if (__DEV__) console.error('[Solicitar paseo]', err?.message, err?.detalle ?? err);
+      const detalle = __DEV__ && err?.detalle ? `\n\nDetalle: ${err.detalle}` : '';
       setErrorGeneral(err?.message === 'migracion_pendiente'
-        ? `A la base de datos le falta Zooni Paseadores: es necesario correr las migraciones 035 y 038.${err?.detalle ? `\n\nDetalle: ${err.detalle}` : ''}`
-        : `No se pudo enviar la solicitud.${err?.detalle ? `\n\nDetalle: ${err.detalle}` : ''}`);
+        ? `A la base de datos le falta Zooni Paseadores: es necesario correr las migraciones 035 y 038.${detalle}`
+        : `No se pudo enviar la solicitud.${detalle}`);
     } finally {
       enviandoRef.current = false;
       setEnviando(false);

@@ -115,7 +115,7 @@ async function contarNoLeidosMatch(miId) {
   const { data: matches } = await supabase
     .from('Match')
     .select('id')
-    .or(`idUsuarioUno.eq.${miId},idUsuarioDos.eq.${miId}`)
+    .or(`idUsuarioUno.eq.${Number(miId)},idUsuarioDos.eq.${Number(miId)}`)
     .eq('activo', true);
   const matchIds = (matches ?? []).map((m) => m.id);
   if (!matchIds.length) return 0;
@@ -150,7 +150,7 @@ export async function fetchMisConversacionesMatch() {
   const { data: matches, error } = await supabase
     .from('Match')
     .select('*')
-    .or(`idUsuarioUno.eq.${miId},idUsuarioDos.eq.${miId}`)
+    .or(`idUsuarioUno.eq.${Number(miId)},idUsuarioDos.eq.${Number(miId)}`)
     .eq('activo', true);
   if (error || !matches?.length) return [];
 

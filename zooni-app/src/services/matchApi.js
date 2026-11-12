@@ -85,7 +85,10 @@ function mapPerfil(mascota, miUsuario, fotosPorMascota) {
       nombre: mascota.Nombre,
       especie: mascota.Especie,
       raza: mascota.Raza,
-      edad_anios: calcularEdadAnios(mascota.FechaNacimiento),
+      // De otras personas viene por `mascota_publica`, que no expone
+      // FechaNacimiento (dato sensible) y da "EdadAnios" ya calculada; la
+      // propia tarjeta ("Así te ven") sigue viniendo de "Mascota" directo.
+      edad_anios: mascota.EdadAnios ?? calcularEdadAnios(mascota.FechaNacimiento),
       foto_real_url: mascota.Foto ?? null,
       // Todas las fotos (portada + galería) para el carrusel de la tarjeta
       fotos,
@@ -143,18 +146,18 @@ async function obtenerCandidatos() {
 
   const [{ data: miUsuario }, { data: candidatos, error }, { data: votos }, { data: matches }] = await Promise.all([
     supabase.from('User').select('Lat, Lng').eq('Id_User', getCurrentUserId()).single(),
-    // Nunca mascotas propias, ni archivadas/en memoria/eliminadas,
-    // ni las que su dueño sacó del pool de Match
-    supabase.from('Mascota').select('*')
+    // Nunca mascotas propias, ni archivadas/en memoria/eliminadas
+    // (mascota_publica ya filtra Estado = 'active'), ni las que su dueño
+    // sacó del pool de Match. De otra persona: sólo columnas no sensibles.
+    supabase.from('mascota_publica').select('*')
       .neq('Id_User', getCurrentUserId())
-      .eq('Estado', 'active')
       .eq('VisibleEnMatch', true),
     miMascota
       ? supabase.from('Voto').select('idMascotaDestino').eq('idMascotaOrigen', miMascota.Id_Mascota)
       : Promise.resolve({ data: [] }),
     miMascota
       ? supabase.from('Match').select('idMascotaUno,idMascotaDos')
-          .or(`idMascotaUno.eq.${miMascota.Id_Mascota},idMascotaDos.eq.${miMascota.Id_Mascota}`)
+          .or(`idMascotaUno.eq.${Number(miMascota.Id_Mascota)},idMascotaDos.eq.${Number(miMascota.Id_Mascota)}`)
       : Promise.resolve({ data: [] }),
   ]);
   if (error) throw error;
@@ -180,9 +183,7 @@ async function obtenerCandidatos() {
     // ilustración grande). Las mascotas viejas sin foto quedan fuera hasta que
     // su dueño suba una.
     && !!m.Foto
-    // Solo mascotas activas y visibles en Match (las archivadas/eliminadas
-    // del ciclo de vida y las que apagaron la visibilidad no aparecen)
-    && (m.Estado ?? 'active') === 'active'
+    // Visibles en Match (mascota_publica ya excluye las archivadas/eliminadas)
     && m.VisibleEnMatch !== false);
 
   // Galería de fotos de todas las mascotas visibles, en una sola consulta
@@ -279,7 +280,7 @@ export async function fetchDetalleMatch(matchId) {
     perfilPorId(otroUserId, 'Id_User, Nombre, Apellido, NombreUsuario, Edad, Genero, FotoPerfil, Ubicacion, Lat, Lng, Intereses')
       .then((data) => ({ data })),
     otraMascotaId
-      ? supabase.from('Mascota').select('*').eq('Id_Mascota', otraMascotaId).maybeSingle()
+      ? supabase.from('mascota_publica').select('*').eq('Id_Mascota', otraMascotaId).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
 
@@ -303,7 +304,7 @@ export async function fetchDetalleMatch(matchId) {
           nombre: mascota.Nombre,
           especie: mascota.Especie,
           raza: mascota.Raza,
-          edad: calcularEdadAnios(mascota.FechaNacimiento),
+          edad: mascota.EdadAnios ?? null,
           sexo: mascota.Sexo ?? null,
           descripcion: mascota.Descripcion ?? null,
           fotoUrl: mascota.Foto ?? null,
@@ -443,7 +444,11 @@ export async function postMatchSkip(mascotaDestinoId) {
  * tienen DataExtra (creadas antes de la migración 024, o si falló el insert).
  * Devuelve { chatId, nombre, fotoPerfilUrl } o null.
  */
-export async function chatDeMatchPorMascota(idMascota) {
+export async function chatDeMatchPorMascota(idMascotaParam) {
+  // idMascota puede venir de DataExtra (datos que escribió otra cuenta): se
+  // fuerza a número antes de armar el filtro para no poder inyectar sintaxis
+  // de PostgREST en el .or() (informe de seguridad #124).
+  const idMascota = Number(idMascotaParam);
   const { data: match } = await supabase
     .from('Match')
     .select('*')
@@ -477,13 +482,3 @@ export async function previewMatchFiltros(filtros) {
   return { cantidad: aplicarFiltros(candidatos, filtros).length };
 }
 
-/**
- * Reinicia el historial de likes/skips de mi mascota activa (útil tras
- * cambiar filtros, para que reaparezcan perfiles ya descartados). Esto borra
- * decisiones reales en Voto — solo tiene sentido mientras se prueba la app.
- */
-export async function resetDemoMatchState() {
-  const miMascota = await miMascotaActiva();
-  if (!miMascota) return;
-  await supabase.from('Voto').delete().eq('idMascotaOrigen', miMascota.Id_Mascota);
-}

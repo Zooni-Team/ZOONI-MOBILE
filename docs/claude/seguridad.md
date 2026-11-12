@@ -28,10 +28,34 @@
   la inyecta Supabase. Ver `supabase/functions/.env.example`.
 
 ## Storage
-Buckets `public-images` (5 MB, imágenes) y `resenas` (50 MB, imágenes y
-video). Sólo con sesión y dentro de `<auth uid>/…` (`063`). El tipo y tamaño
-los valida el servidor.
+Buckets `public-images` (5 MB, imágenes), `resenas` (50 MB, imágenes y video,
+con cuota de 500 MB por usuario) y `fichas-medicas` (10 MB, privado: imágenes
+de consultas veterinarias — se lee con `createSignedUrl`, nunca con una URL
+pública). Sólo con sesión y dentro de `<auth uid>/…` (`063`, `070`). El tipo
+y tamaño los valida el servidor.
+
+## Notificaciones entre personas
+Nunca por `INSERT` directo del cliente en `"Notificacion"` (eso es spam/
+phishing abierto). Las crean los triggers/RPC de un evento real (match,
+paseo aceptado…) o, para un aviso puntual legítimo, la RPC
+`crear_notificacion(destino, mascota, titulo, mensaje, tipo, dataExtra)`, que
+exige amistad, match o un trato en común con el destino.
+
+## Auditoría
+`auditoria_acciones` (sólo `service_role`) registra altas/activaciones de
+negocio y paseador y aceptar un paseo. Se escribe con `_auditar_interno()`
+desde dentro de esas mismas funciones.
 
 ## Lo que todavía no está
-Bucket privado para imágenes de consultas, límite de mensajes por usuario en
-ZooniVet: [faltaporhacer.md](../../faltaporhacer.md).
+- Límite de mensajes por usuario en ZooniVet.
+- Firma real del contenido de un archivo subido (hoy se confía en el
+  `contentType` que declara el cliente + lo que el bucket permite).
+- Purga programada de `PaseoTrack`/`sos_call_logs` (la función
+  `_purgar_datos_antiguos()` existe; falta activar `pg_cron` y programarla).
+- Límite de frecuencia general en toda escritura (mensajes, votos, reportes…):
+  hoy sólo está donde el informe de seguridad lo pedía puntualmente (turnos,
+  pedidos, intentos de `migrar-cuenta`).
+
+Detalle completo de qué se corrigió en la auditoría de nov-2026 y qué quedó
+pendiente (y por qué): el bloque final de `SUPABASE_PEGAR_TODO.sql`
+(`070_endurecimiento_seguridad`) y [faltaporhacer.md](../../faltaporhacer.md).

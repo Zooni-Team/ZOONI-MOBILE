@@ -4,8 +4,11 @@
  *
  * Misma técnica que el mapa de Comunidad: Leaflet + OpenStreetMap dentro de
  * un iframe (sólo web). El HTML es constante para que el iframe no se recargue
- * nunca; React le pasa los datos llamando a contentWindow.__zooniPaseo.set().
- * En nativo muestra un placeholder (no hay react-native-maps en el proyecto).
+ * nunca; React le pasa los datos por postMessage (no por contentWindow directo:
+ * el iframe va con sandbox="allow-scripts", sin allow-same-origin, para que un
+ * CDN comprometido no pueda leer el localStorage/sesión de la app — informe
+ * de seguridad #24). En nativo muestra un placeholder (no hay react-native-maps
+ * en el proyecto).
  *
  * Props:
  *   centro    {lat,lng}           — dónde centrar si no hay posición
@@ -28,7 +31,8 @@ const CENTRO_DEFAULT = { lat: -34.6189, lng: -58.4380 }; // Caballito
 const MAPA_HTML = `<!DOCTYPE html><html><head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous"/>
 <style>
 html,body,#map{margin:0;padding:0;width:100%;height:100%;background:#E8F5EC}
 .yo{width:44px;height:44px;display:flex;align-items:center;justify-content:center;position:relative}
@@ -40,7 +44,8 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%;background:#E8F5EC}
 </style>
 </head><body>
 <div id="map"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
 <script>
 (function(){
   var map=L.map('map',{zoomControl:false,attributionControl:true}).setView([${CENTRO_DEFAULT.lat},${CENTRO_DEFAULT.lng}],15);
@@ -72,11 +77,16 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%;background:#E8F5EC}
       primera=false;
     }
   }
-  window.__zooniPaseo={
+  var api={
     set:set,
     centrar:function(lat,lng){map.flyTo([lat,lng],17,{duration:.6})}
   };
-  try{window.parent.__zooniPaseoListo&&window.parent.__zooniPaseoListo()}catch(e){}
+  window.addEventListener('message',function(e){
+    var m=e.data;
+    if(!m||m.tipo!=='zooni-cmd'||typeof api[m.metodo]!=='function')return;
+    api[m.metodo].apply(null,m.args||[]);
+  });
+  try{window.parent.postMessage({tipo:'zooni-paseo-listo'},'*')}catch(e){}
 })();
 </script>
 </body></html>`;
@@ -91,8 +101,9 @@ export default function MapaPaseo({
   datosRef.current = datos;
 
   const enviar = useCallback(() => {
-    const api = iframeRef.current?.contentWindow?.__zooniPaseo;
-    if (api) api.set(datosRef.current);
+    iframeRef.current?.contentWindow?.postMessage(
+      { tipo: 'zooni-cmd', metodo: 'set', args: [datosRef.current] }, '*',
+    );
   }, []);
 
   // Cada vez que cambian los datos, se los pasa al mapa (sin recargarlo)
@@ -103,7 +114,9 @@ export default function MapaPaseo({
   useEffect(() => {
     if (!apiRef) return;
     apiRef.current = {
-      centrar: (lat, lng) => iframeRef.current?.contentWindow?.__zooniPaseo?.centrar(lat, lng),
+      centrar: (lat, lng) => iframeRef.current?.contentWindow?.postMessage(
+        { tipo: 'zooni-cmd', metodo: 'centrar', args: [lat, lng] }, '*',
+      ),
     };
   }, [apiRef]);
 
@@ -122,6 +135,7 @@ export default function MapaPaseo({
         ref={iframeRef}
         srcDoc={MAPA_HTML}
         onLoad={enviar}
+        sandbox="allow-scripts"
         style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
         title="Mapa del paseo"
       />

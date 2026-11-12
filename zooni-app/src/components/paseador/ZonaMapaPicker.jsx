@@ -52,7 +52,8 @@ const formatoKm = (n) => (n == null ? '' : String(n).replace('.', ','));
 const MAPA_HTML = `<!DOCTYPE html><html><head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous"/>
 <style>
 html,body,#map{margin:0;padding:0;width:100%;height:100%;background:#E8F5EC}
 .centro{width:40px;height:40px;border-radius:50%;background:#2DBD72;border:3px solid #fff;
@@ -62,7 +63,8 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%;background:#E8F5EC}
 </style>
 </head><body>
 <div id="map"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
 <script>
 (function(){
   var map=L.map('map',{zoomControl:false}).setView([${BASE_DEFAULT.lat},${BASE_DEFAULT.lng}],14);
@@ -72,7 +74,7 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%;background:#E8F5EC}
 
   function avisar(){
     var p=centro.getLatLng();
-    try{window.parent.__zooniZona&&window.parent.__zooniZona({lat:p.lat,lng:p.lng})}catch(e){}
+    try{window.parent.postMessage({tipo:'zooni-zona-evento',payload:{lat:p.lat,lng:p.lng}},'*')}catch(e){}
   }
   function encuadrar(){
     if(radio>0) map.fitBounds(circulo.getBounds().pad(0.15),{animate:true});
@@ -97,7 +99,7 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%;background:#E8F5EC}
   // Tocar el mapa mueve la zona ahí
   map.on('click',function(e){dibujar(e.latlng.lat,e.latlng.lng);avisar()});
 
-  window.__zooniZonaMapa={
+  var api={
     set:function(d,mover){
       // Sin radio válido: sólo el centro, el círculo queda invisible
       radio=d.radioKm>0?d.radioKm*1000:0;
@@ -107,7 +109,12 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%;background:#E8F5EC}
       if(mover) encuadrar();
     }
   };
-  try{window.parent.__zooniZonaListo&&window.parent.__zooniZonaListo()}catch(e){}
+  window.addEventListener('message',function(e){
+    var m=e.data;
+    if(!m||m.tipo!=='zooni-cmd'||typeof api[m.metodo]!=='function')return;
+    api[m.metodo].apply(null,m.args||[]);
+  });
+  try{window.parent.postMessage({tipo:'zooni-zona-listo'},'*')}catch(e){}
 })();
 </script>
 </body></html>`;
@@ -155,8 +162,10 @@ export default function ZonaMapaPicker({ valor, onCambio, baseTexto, conRadio = 
   const radioFueraDeRango = radioTexto.trim() !== '' && radioValido(radioTexto) == null;
 
   const enviarAlMapa = useCallback((mover, v = valorRef.current) => {
-    const api = iframeRef.current?.contentWindow?.__zooniZonaMapa;
-    if (api && v?.lat != null) api.set(v, mover);
+    if (v?.lat == null) return;
+    iframeRef.current?.contentWindow?.postMessage(
+      { tipo: 'zooni-cmd', metodo: 'set', args: [v, mover] }, '*',
+    );
   }, []);
 
   // Mover el centro → actualizar coordenadas y nombre del barrio
@@ -177,11 +186,16 @@ export default function ZonaMapaPicker({ valor, onCambio, baseTexto, conRadio = 
     }
   }, [enviarAlMapa]);
 
-  // El iframe avisa cuando sueltan el círculo
+  // El iframe avisa cuando sueltan el círculo (postMessage: el iframe va
+  // sandboxed sin allow-same-origin, no se le puede exponer una función directa)
   useEffect(() => {
     if (Platform.OS !== 'web') return undefined;
-    window.__zooniZona = (p) => moverA(p);
-    return () => { delete window.__zooniZona; };
+    const onMessage = (e) => {
+      if (e.source !== iframeRef.current?.contentWindow) return;
+      if (e.data?.tipo === 'zooni-zona-evento') moverA(e.data.payload);
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
   }, [moverA]);
 
   // Ubicación base: la que ya traía el valor → si no, texto base (ciudad) → GPS → Caballito
@@ -251,6 +265,7 @@ export default function ZonaMapaPicker({ valor, onCambio, baseTexto, conRadio = 
             ref={iframeRef}
             srcDoc={MAPA_HTML}
             onLoad={() => enviarAlMapa(true)}
+            sandbox="allow-scripts"
             style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
             title="Zona de atención"
           />

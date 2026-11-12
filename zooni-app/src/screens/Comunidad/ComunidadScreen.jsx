@@ -35,12 +35,15 @@ let ultimoMapa = { servicios: [], carteles: [], amigos: [], paseadores: [] };
 
 // ─── HTML del mapa ──────────────────────────────────────────────────────────
 // Definido fuera del componente → nunca se regenera → iframe nunca se recarga.
-// Comunicación: el iframe llama window.parent.__zooniMapCmd(cmd, payload)
-// que React setea como función en window.
+// Comunicación: postMessage en los dos sentidos (no contentWindow directo: el
+// iframe va con sandbox="allow-scripts", sin allow-same-origin, para que un
+// CDN comprometido (unpkg) no pueda leer el localStorage/sesión de la app —
+// informe de seguridad #24).
 const MAPA_HTML = `<!DOCTYPE html><html><head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous"/>
 <style>
 html,body,#map{margin:0;padding:0;width:100%;height:100%}
 .mk{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;
@@ -64,7 +67,8 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
 </style>
 </head><body>
 <div id="map"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
 <script>
 (function(){
   var map = L.map('map',{zoomControl:false,doubleClickZoom:false}).setView([-34.6089,-58.4340],16);
@@ -91,7 +95,7 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
 
   // Notifica al padre (React)
   function notify(obj){
-    try{ window.parent.__zooniMapEvent && window.parent.__zooniMapEvent(obj); }catch(e){}
+    try{ window.parent.postMessage({tipo:'zooni-evento',payload:obj},'*'); }catch(e){}
   }
 
   var userMarker=null, dynLayers=[], modoCartel=false;
@@ -132,43 +136,29 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
     }
   }
 
-  // Expone la API de control directamente en window del iframe
-  // React la llama via iframeRef.current.contentWindow.__zooniMap.xxx()
-  window.__zooniMap = {
+  // API de control del mapa: React la llama por postMessage (ver abajo),
+  // no la expone directo en window porque el iframe es sandboxed.
+  var zooniMap = {
     flyTo: function(lat,lng){ map.flyTo([lat,lng],16,{duration:0.7}); },
     zoomIn: function(){ map.zoomIn(); },
     zoomOut: function(){ map.zoomOut(); },
     setData: function(d){ renderData(d); },
     setModoCartel: function(v){ modoCartel=v; },
-    goToUserLocation: function(){
-      if(!navigator.geolocation){ return; }
-      navigator.geolocation.getCurrentPosition(
-        function(p){
-          var lat=p.coords.latitude, lng=p.coords.longitude;
-          map.flyTo([lat,lng],16,{duration:0.7});
-          setUserMarker(lat,lng);
-          notify({type:'location',lat:lat,lng:lng});
-        },
-        function(err){ notify({type:'location_error',msg:err.message}); },
-        {enableHighAccuracy:true,timeout:10000,maximumAge:0}
-      );
-    }
+    // La geolocalización la pide React (ver ComunidadScreen.jsx): un iframe
+    // sandboxed sin allow-same-origin es de otro origen para el navegador, y
+    // la Permissions-Policy del sitio (geolocation=(self)) no se la delega.
+    setUserLocation: function(lat,lng,centrar){
+      if(centrar) map.flyTo([lat,lng],16,{duration:0.7});
+      else map.setView([lat,lng],15);
+      setUserMarker(lat,lng);
+    },
+    setUserMarker: function(lat,lng){ setUserMarker(lat,lng); }
   };
-
-  // Geolocation inicial
-  if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(
-      function(p){
-        var lat=p.coords.latitude,lng=p.coords.longitude;
-        map.setView([lat,lng],15);
-        setUserMarker(lat,lng);
-        notify({type:'location',lat:lat,lng:lng});
-      },
-      function(){ setUserMarker(-34.6089,-58.4340); }
-    );
-  } else {
-    setUserMarker(-34.6089,-58.4340);
-  }
+  window.addEventListener('message',function(e){
+    var m=e.data;
+    if(!m||m.tipo!=='zooni-cmd'||typeof zooniMap[m.metodo]!=='function')return;
+    zooniMap[m.metodo].apply(null,m.args||[]);
+  });
 
   map.on('dblclick',function(e){
     if(modoCartel) notify({type:'dblclick',lat:e.latlng.lat,lng:e.latlng.lng});
@@ -225,23 +215,28 @@ export default function ComunidadScreen() {
   // respuesta de una zona anterior, se descarta.
   const pedidoZona = useRef(0);
 
-  // Llama una función en window.__zooniMap del iframe
+  // Llama un método del mapa por postMessage (el iframe es sandboxed, sin
+  // allow-same-origin: no se le puede llamar una función directo)
   const mapCall = useCallback((fn, ...args) => {
     try {
-      const api = iframeRef.current?.contentWindow?.__zooniMap;
-      if (api && typeof api[fn] === 'function') api[fn](...args);
+      iframeRef.current?.contentWindow?.postMessage(
+        { tipo: 'zooni-cmd', metodo: fn, args }, '*',
+      );
     } catch (_) {}
   }, []);
 
-  // ── Registra el callback de eventos del mapa en window ────────────────────
-  // El iframe llama window.parent.__zooniMapEvent(msg)
+  // ── Escucha los eventos del mapa por postMessage ───────────────────────────
   useEffect(() => {
     if (Platform.OS !== 'web') return;
-    window.__zooniMapEvent = (msg) => {
+    const onMessage = (e) => {
+      if (e.source !== iframeRef.current?.contentWindow) return;
+      if (e.data?.tipo !== 'zooni-evento') return;
+      const msg = e.data.payload;
       switch (msg.type) {
         case 'ready':
           mapaReady.current = true;
           mapCall('setData', { ...pintarRef.current.mapaData, markerTemp: pintarRef.current.markerTemp });
+          pedirUbicacionRef.current(false);
           break;
         case 'bounds': {
           const b = { lat_min: msg.lat_min, lat_max: msg.lat_max, lng_min: msg.lng_min, lng_max: msg.lng_max };
@@ -253,15 +248,6 @@ export default function ComunidadScreen() {
           // usuario termine de arrastrar para no pedir cada paso intermedio.
           if (primera) cargarZonaRef.current(b);
           else boundsTimer.current = setTimeout(() => cargarZonaRef.current(b), 300);
-          break;
-        }
-        case 'location': {
-          const antes = userPosRef.current;
-          userPosRef.current = { lat: msg.lat, lng: msg.lng };
-          setUserPos(userPosRef.current);
-          // Primera ubicación (o te moviste bastante): reordenar los paseadores por cercanía
-          const movido = !antes || Math.abs(antes.lat - msg.lat) + Math.abs(antes.lng - msg.lng) > 0.002;
-          if (movido) cargarPaseadoresRef.current();
           break;
         }
         case 'servicio':
@@ -280,7 +266,8 @@ export default function ComunidadScreen() {
         default: break;
       }
     };
-    return () => { window.__zooniMapEvent = null; };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
   }, []); // eslint-disable-line
 
   // ── Carga de datos ─────────────────────────────────────────────────────────
@@ -334,6 +321,43 @@ export default function ComunidadScreen() {
   const cargarPaseadoresRef = useRef(cargarPaseadores);
   useEffect(() => { cargarPaseadoresRef.current = cargarPaseadores; }, [cargarPaseadores]);
 
+  const mostrarToast = useCallback((msg) => {
+    setToast(msg);
+    setToastKey((k) => k + 1);
+    setTimeout(() => setToast(null), 3000);
+  }, []);
+
+  // Ubicación del usuario: se pide desde acá (React), no desde el iframe — un
+  // iframe sandboxed sin allow-same-origin no hereda la Permissions-Policy de
+  // geolocation del sitio (informe de seguridad #24). `centrar` true = lo
+  // pidió el botón "mi ubicación" (flyTo); false = carga inicial (setView).
+  const pedirUbicacion = useCallback((centrar) => {
+    if (Platform.OS !== 'web' || !navigator.geolocation) {
+      if (!centrar) mapCall('setUserMarker', -34.6089, -58.4340);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        const lat = p.coords.latitude;
+        const lng = p.coords.longitude;
+        const antes = userPosRef.current;
+        userPosRef.current = { lat, lng };
+        setUserPos(userPosRef.current);
+        mapCall('setUserLocation', lat, lng, centrar);
+        // Primera ubicación (o te moviste bastante): reordenar los paseadores por cercanía
+        const movido = !antes || Math.abs(antes.lat - lat) + Math.abs(antes.lng - lng) > 0.002;
+        if (movido) cargarPaseadoresRef.current();
+      },
+      () => {
+        if (!centrar) mapCall('setUserMarker', -34.6089, -58.4340);
+        else mostrarToast('No pudimos obtener tu ubicación.');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    );
+  }, [mapCall, mostrarToast]);
+  const pedirUbicacionRef = useRef(pedirUbicacion);
+  useEffect(() => { pedirUbicacionRef.current = pedirUbicacion; }, [pedirUbicacion]);
+
   useEffect(() => {
     cargarPaseadores();
     cargarAmigos();
@@ -374,13 +398,7 @@ export default function ComunidadScreen() {
   const flyTo          = (lat, lng) => mapCall('flyTo', lat, lng);
   const zoomIn         = ()         => mapCall('zoomIn');
   const zoomOut        = ()         => mapCall('zoomOut');
-  const irAMiUbicacion = ()         => mapCall('goToUserLocation');
-
-  const mostrarToast = (msg) => {
-    setToast(msg);
-    setToastKey(k => k + 1);
-    setTimeout(() => setToast(null), 3000);
-  };
+  const irAMiUbicacion = () => pedirUbicacion(true);
 
   const sheetHeights = { collapsed: 64, half: '42%', full: '90%' };
 
@@ -393,6 +411,7 @@ export default function ComunidadScreen() {
           <iframe
             ref={iframeRef}
             srcDoc={MAPA_HTML}
+            sandbox="allow-scripts"
             style={{ width: '100%', height: '100%', border: 'none' }}
             title="Mapa Zooni"
           />

@@ -47,6 +47,8 @@ import Skeleton from '../components/ui/Skeleton';
 import Toast from '../components/ui/Toast';
 import { useToast } from '../hooks/useToast';
 import { diasHasta, formatearFecha, toISODateLocal } from '../utils/fechaLocal';
+import CardAplicado from '../components/fichaMedica/CardAplicado';
+import CardSugerido from '../components/fichaMedica/CardSugerido';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -72,119 +74,15 @@ function SkeletonCard() {
   );
 }
 
-// ─── COMPONENTE: TOAST ────────────────────────────────────────────────────────
-
-// ─── COMPONENTE: CARD TRATAMIENTO APLICADO ────────────────────────────────────
-
-function CardAplicado({ tratamiento, onEditar, onEliminar }) {
-  const translateY = useRef(new Animated.Value(12)).current;
-  const opacity    = useRef(new Animated.Value(0)).current;
-  const scale      = useRef(new Animated.Value(1)).current;
-  const scaleEdit  = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(translateY, { toValue: 0, duration: 280, useNativeDriver: true }),
-      Animated.timing(opacity,    { toValue: 1, duration: 280, useNativeDriver: true }),
-    ]).start();
-  }, [translateY, opacity]);
-
-  const dias   = diasHasta(tratamiento.proximo_control);
-  const cuenta = formatearContadorDias(dias);
-  const colDias = dias !== null && dias <= 0 ? colores.rojo : dias === 0 ? colores.ambar : colores.texto;
-
-  const colorProxControl = () => {
-    if (!tratamiento.proximo_control) return colores.textoSecundario;
-    if (dias !== null && dias < 0) return colores.rojo;
-    if (dias !== null && dias <= 7) return colores.ambar;
-    return colores.textoSecundario;
-  };
-
-  const pressInElim  = () => Animated.timing(scale, { toValue: 0.90, duration: 100, useNativeDriver: true }).start();
-  const pressOutElim = () => Animated.timing(scale, { toValue: 1,    duration: 150, useNativeDriver: true }).start();
-
-  return (
-    <Animated.View style={[s.cardAplicado, { transform: [{ translateY }], opacity }]}>
-      {/* Columna izquierda */}
-      <View style={s.cardLeft}>
-        <Text style={s.cardNombre}>{tratamiento.nombre}</Text>
-        {tratamiento.descripcion ? (
-          <Text style={s.cardDesc}>{tratamiento.descripcion}</Text>
-        ) : null}
-        <Text style={s.cardField}>Inicio: {formatearFecha(tratamiento.fecha_inicio) ?? '—'}</Text>
-        <Text style={[s.cardField, { color: colorProxControl() }]}>
-          Próximo control: {tratamiento.proximo_control ? formatearFecha(tratamiento.proximo_control) : 'Sin fecha'}
-        </Text>
-        <Text style={s.cardField} numberOfLines={1} ellipsizeMode="tail">
-          Veterinaria: {tratamiento.veterinaria ?? 'Sin registro'}
-        </Text>
-        {cuenta !== null && (
-          <Text style={[s.cardContador, { color: colDias }]}>{cuenta}</Text>
-        )}
-      </View>
-      {/* Botones editar / eliminar */}
-      <View style={s.cardRight}>
-        <Animated.View style={{ transform: [{ scale: scaleEdit }] }}>
-          <Pressable
-            style={s.btnEditar}
-            onPressIn={() => Animated.timing(scaleEdit, { toValue: 0.90, duration: 100, useNativeDriver: true }).start()}
-            onPressOut={() => Animated.timing(scaleEdit, { toValue: 1, duration: 150, useNativeDriver: true }).start()}
-            onPress={() => onEditar(tratamiento)}
-            accessibilityLabel="Editar tratamiento"
-          >
-            <Ionicons name="create-outline" size={18} color={colores.blanco} />
-          </Pressable>
-        </Animated.View>
-        <Animated.View style={{ transform: [{ scale }] }}>
-          <Pressable
-            style={s.btnEliminar}
-            onPressIn={pressInElim}
-            onPressOut={pressOutElim}
-            onPress={() => onEliminar(tratamiento.id)}
-            accessibilityLabel="Eliminar tratamiento"
-          >
-            <Ionicons name="trash-outline" size={18} color={colores.blanco} />
-          </Pressable>
-        </Animated.View>
-      </View>
-    </Animated.View>
-  );
-}
-
-// ─── COMPONENTE: CARD SUGERIDO ────────────────────────────────────────────────
-
-function CardSugerido({ sugerido, index, onRegistrar }) {
-  const translateY = useRef(new Animated.Value(12)).current;
-  const opacity    = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(translateY, { toValue: 0, duration: 280, delay: index * 60, useNativeDriver: true }),
-      Animated.timing(opacity,    { toValue: 1, duration: 280, delay: index * 60, useNativeDriver: true }),
-    ]).start();
-  }, [index, translateY, opacity]);
-
-  return (
-    <Animated.View style={[s.cardSugerido, { transform: [{ translateY }], opacity }]}>
-      <View style={s.cardSugeridoInfo}>
-        <Text style={s.sugeridoNombre}>{sugerido.nombre}</Text>
-        <Text style={s.sugeridoFrecInline}>{sugerido.frecuencia_descripcion}</Text>
-      </View>
-      {sugerido.applied ? (
-        <View style={s.badgeAplicada}>
-          <Ionicons name="checkmark" size={12} color={colores.verde} />
-          <Text style={s.badgeAplicadaTxt}>Aplicada</Text>
-        </View>
-      ) : (
-        <TouchableOpacity style={s.btnRegistrar} onPress={onRegistrar} accessibilityLabel={`Registrar ${sugerido.nombre}`}>
-          <Text style={s.btnRegistrarTxt}>Registrar</Text>
-        </TouchableOpacity>
-      )}
-    </Animated.View>
-  );
-}
-
 // ─── SCREEN PRINCIPAL ─────────────────────────────────────────────────────────
+
+function colorProxControl(tratamiento) {
+  if (!tratamiento.proximo_control) return colores.textoSecundario;
+  const dias = diasHasta(tratamiento.proximo_control);
+  if (dias !== null && dias < 0) return colores.rojo;
+  if (dias !== null && dias <= 7) return colores.ambar;
+  return colores.textoSecundario;
+}
 
 export default function TratamientosScreen() {
   const navigation = useNavigation();
@@ -233,6 +131,13 @@ export default function TratamientosScreen() {
   const btnScale     = useRef(new Animated.Value(1)).current;
 
   // ── Carga inicial ──────────────────────────────────────────────────────────
+  const animarHero = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(heroScale,   { toValue: 1, duration: 350, useNativeDriver: true }),
+      Animated.timing(heroOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
+    ]).start();
+  }, [heroScale, heroOpacity]);
+
   const cargar = useCallback(async (silencioso = false) => {
     if (!silencioso) setLoading(true);
     try {
@@ -254,7 +159,7 @@ export default function TratamientosScreen() {
     }
     setLoading(false);
     animarHero();
-  }, [idMascota]);
+  }, [idMascota, animarHero]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -263,13 +168,6 @@ export default function TratamientosScreen() {
     await cargar(true);
     setRefreshing(false);
   }, [cargar]);
-
-  function animarHero() {
-    Animated.parallel([
-      Animated.timing(heroScale,   { toValue: 1, duration: 350, useNativeDriver: true }),
-      Animated.timing(heroOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
-    ]).start();
-  }
 
   // ── Modal ────────────────────────────────────────────────────────────────
   // nombrePrefill: al tocar "Registrar" en un tratamiento sugerido, se abre
@@ -472,9 +370,32 @@ export default function TratamientosScreen() {
             ) : tratamientosAplicados.length === 0 ? (
               <Text style={s.emptyTxt}>No hay tratamientos registrados</Text>
             ) : (
-              tratamientosAplicados.map((t) => (
-                <CardAplicado key={t.id} tratamiento={t} onEditar={abrirModalEditar} onEliminar={pedirConfirmacionEliminar} />
-              ))
+              tratamientosAplicados.map((t) => {
+                const dias = diasHasta(t.proximo_control);
+                const cuenta = formatearContadorDias(dias);
+                const colDias = dias !== null && dias <= 0 ? colores.rojo : dias === 0 ? colores.ambar : colores.texto;
+                return (
+                  <CardAplicado
+                    key={t.id}
+                    styles={s}
+                    nombre={t.nombre}
+                    descripcion={t.descripcion}
+                    lineas={[
+                      { texto: `Inicio: ${formatearFecha(t.fecha_inicio) ?? '—'}` },
+                      {
+                        texto: `Próximo control: ${t.proximo_control ? formatearFecha(t.proximo_control) : 'Sin fecha'}`,
+                        color: colorProxControl(t),
+                      },
+                      { texto: `Veterinaria: ${t.veterinaria ?? 'Sin registro'}`, unaLinea: true },
+                    ]}
+                    contador={cuenta !== null ? { texto: cuenta, color: colDias } : null}
+                    onEditar={() => abrirModalEditar(t)}
+                    onEliminar={() => pedirConfirmacionEliminar(t.id)}
+                    editarLabel="Editar tratamiento"
+                    eliminarLabel="Eliminar tratamiento"
+                  />
+                );
+              })
             )}
 
             {/* ── Sección sugeridos ── */}
@@ -489,7 +410,17 @@ export default function TratamientosScreen() {
               <Text style={s.emptyTxt}>No hay tratamientos sugeridos para esta especie</Text>
             ) : (
               tratamientosSugeridos.map((sug, i) => (
-                <CardSugerido key={sug.id} sugerido={sug} index={i} onRegistrar={() => abrirModal(sug.nombre, sug)} />
+                <CardSugerido
+                  key={sug.id}
+                  styles={s}
+                  index={i}
+                  nombre={sug.nombre}
+                  frecuencia={sug.frecuencia_descripcion}
+                  aplicado={sug.applied}
+                  botonTexto="Registrar"
+                  onPress={() => abrirModal(sug.nombre, sug)}
+                  layout="simple"
+                />
               ))
             )}
 

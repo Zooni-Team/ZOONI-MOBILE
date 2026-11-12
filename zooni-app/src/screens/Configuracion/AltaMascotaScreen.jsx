@@ -28,13 +28,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
+import { elegirImagen } from '../../utils/elegirImagen';
 
 import { ESPECIES } from '../../constants/registroAssets';
 import { resolveCajaImage } from '../../constants/registroImages';
 import OpcionPicker from '../../components/OpcionPicker';
 import FechaPicker from '../../components/FechaPicker';
 import SliderAmarillo from '../../components/SliderAmarillo';
+import EspecieTile from '../../components/ui/EspecieTile';
 import { fetchRazas } from '../../services/authApi';
 import { crearMascota } from '../../services/petsApi';
 import { toISODateLocal } from '../../utils/fechaLocal';
@@ -59,31 +60,6 @@ const IMAGEN_ASSET_POR_ESPECIE = {
   hamster: 'hamster_default',
   raton: 'hamster_default',
 };
-
-/** Tile de especie — igual que en RegisterStep1 */
-function EspecieTile({ especie, seleccionada, onPress }) {
-  const scale = useRef(new Animated.Value(1)).current;
-  const handlePress = () => {
-    Animated.sequence([
-      Animated.timing(scale, { toValue: 0.95, duration: 80, useNativeDriver: true }),
-      Animated.timing(scale, { toValue: 1, duration: 100, useNativeDriver: true }),
-    ]).start();
-    onPress();
-  };
-  return (
-    <Animated.View style={[s.tileWrap, { transform: [{ scale }] }]}>
-      <TouchableOpacity style={[s.tile, seleccionada && s.tileOn]} onPress={handlePress}
-        activeOpacity={0.85} accessibilityLabel={`Tipo de mascota: ${especie.label}`}>
-        {especie.imagen ? (
-          <Image source={especie.imagen} style={s.tileImg} resizeMode="contain" />
-        ) : (
-          <Text style={s.tileEmoji}>{especie.icono}</Text>
-        )}
-        <Text style={[s.tileLabel, seleccionada && s.tileLabelOn]}>{especie.label}</Text>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-}
 
 export default function AltaMascotaScreen() {
   const navigation = useNavigation();
@@ -156,16 +132,8 @@ export default function AltaMascotaScreen() {
 
   const elegirDeGaleria = async () => {
     try {
-      const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permiso.granted) {
-        Alert.alert('Sin permiso', 'Habilitá el acceso a la galería desde la configuración del dispositivo.');
-        return;
-      }
-      const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.7,
-      });
-      if (!res.canceled && res.assets?.[0]?.uri) setFotoUri(res.assets[0].uri);
+      const uri = await elegirImagen();
+      if (uri) setFotoUri(uri);
     } catch {
       Alert.alert('Error', 'No se pudo abrir la galería.');
     }
@@ -173,13 +141,8 @@ export default function AltaMascotaScreen() {
 
   const abrirCamara = async () => {
     try {
-      const permiso = await ImagePicker.requestCameraPermissionsAsync();
-      if (!permiso.granted) {
-        Alert.alert('Sin permiso', 'Habilitá el acceso a la cámara desde la configuración del dispositivo.');
-        return;
-      }
-      const res = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-      if (!res.canceled && res.assets?.[0]?.uri) setFotoUri(res.assets[0].uri);
+      const uri = await elegirImagen({ origen: 'camara' });
+      if (uri) setFotoUri(uri);
     } catch {
       Alert.alert('Error', 'No se pudo abrir la cámara.');
     }
@@ -265,7 +228,7 @@ export default function AltaMascotaScreen() {
 
               <Animated.View style={[s.grid, { transform: [{ translateX: gridShake }] }]}>
                 {ESPECIES.map((e) => (
-                  <EspecieTile key={e.key} especie={e} seleccionada={especie === e.key}
+                  <EspecieTile key={e.key} styles={s} especie={e} seleccionada={especie === e.key}
                     onPress={() => { setEspecie(e.key); setRaza(null); }} />
                 ))}
               </Animated.View>

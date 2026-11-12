@@ -59,6 +59,10 @@ export const DEFAULTS = {
     wifi_only_downloads: false,
     preload_feed: false,
     save_photos: false,
+    // Recordar el mail de la última cuenta para precargarlo en el login.
+    // Opt-out (informe de seguridad #82): en un equipo compartido, alguien
+    // puede no querer que quede ni el mail después de cerrar sesión.
+    recordar_mail: true,
   },
 };
 

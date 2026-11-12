@@ -20,30 +20,18 @@ import {
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 
 import {
   ASPECTOS_RESENA, MEDIA_RESENA_MAX, PREGUNTAS_RESENA, calificarPaseo, opinarPaseador,
 } from '../../services/paseadorApi';
 import { alerta } from '../../utils/dialogo';
+import { elegirMultimedia } from '../../utils/elegirImagen';
 import { MiniaturaMedia, VisorMedia } from './MediaResena';
+import { EstrellasInput } from '../ui/Estrellas';
 import { colores } from '../../theme';
 
 const MAX_MB = 50; // file_size_limit del bucket "resenas" (042)
 const ETIQUETAS = ['', 'Muy malo', 'Malo', 'Regular', 'Bueno', 'Excelente'];
-
-function EstrellasInput({ valor, onCambio, size = 34, borrable = false }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: 6 }}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <TouchableOpacity key={i} onPress={() => onCambio(borrable && valor === i ? 0 : i)} hitSlop={4}
-          accessibilityLabel={`${i} ${i === 1 ? 'estrella' : 'estrellas'}`}>
-          <Ionicons name={valor >= i ? 'star' : 'star-outline'} size={size} color={colores.amarillo} />
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-}
 
 export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviado }) {
   const [rating, setRating] = useState(0);
@@ -61,32 +49,16 @@ export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviad
   }, [visible, paseo?.id]);
 
   const agregarMedia = async (camara) => {
-    const permiso = camara
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permiso.granted) {
-      alerta('Sin permiso', `Habilitá el acceso a la ${camara ? 'cámara' : 'galería'} desde la configuración del dispositivo.`);
-      return;
-    }
     const lugar = MEDIA_RESENA_MAX - media.length;
-    const opciones = {
-      mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.7, videoMaxDuration: 60,
-      allowsMultipleSelection: !camara, selectionLimit: lugar,
-    };
-    const res = camara ? await ImagePicker.launchCameraAsync(opciones) : await ImagePicker.launchImageLibraryAsync(opciones);
-    if (res.canceled) return;
-    const pesados = [];
-    const nuevos = (res.assets ?? []).filter((a) => {
-      if (a.fileSize && a.fileSize > MAX_MB * 1024 * 1024) { pesados.push(a); return false; }
+    const elegidos = await elegirMultimedia({ origen: camara ? 'camara' : 'galeria', limite: lugar });
+    if (!elegidos.length) return;
+    let pesados = 0;
+    const nuevos = elegidos.filter((a) => {
+      if (a.fileSize && a.fileSize > MAX_MB * 1024 * 1024) { pesados += 1; return false; }
       return true;
-    }).map((a) => ({
-      uri: a.uri,
-      mimeType: a.mimeType,
-      tipo: a.type === 'video' || /^data:video|\.(mp4|mov|m4v|webm|3gp)$/i.test(a.uri) || a.mimeType?.startsWith('video/')
-        ? 'video' : 'imagen',
-    }));
+    }).map(({ uri, mimeType, tipo }) => ({ uri, mimeType, tipo }));
     setMedia((m) => [...m, ...nuevos].slice(0, MEDIA_RESENA_MAX));
-    if (pesados.length) alerta('Archivo muy pesado', `Cada foto o video puede pesar hasta ${MAX_MB} MB.`);
+    if (pesados) alerta('Archivo muy pesado', `Cada foto o video puede pesar hasta ${MAX_MB} MB.`);
   };
 
   const enviar = async () => {
@@ -99,7 +71,7 @@ export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviad
       else await calificarPaseo(paseo, datos);
       onEnviado?.();
     } catch (e) {
-      console.error('[Reseña]', e?.message ?? e, e?.detalle ?? '');
+      if (__DEV__) console.error('[Reseña]', e?.message ?? e, e?.detalle ?? '');
       const hayVideo = media.some((m) => m.tipo === 'video');
       setError({
         migracion_pendiente: 'Para opinar sin un paseo es necesario correr la migración 048 en Supabase.',

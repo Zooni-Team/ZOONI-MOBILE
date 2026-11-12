@@ -51,22 +51,25 @@ export const errorBase = (error) =>
 export const resumir = (texto, max = 80) => (texto.length > max ? `${texto.slice(0, max)}…` : texto);
 
 /**
- * Avisa a alguien (tabla Notificacion; la política notif_crear de 061 deja
- * crear avisos para otros). Nunca rompe el flujo que la llama: el cambio
- * principal ya quedó guardado.
+ * Avisa a alguien. Ya no es un INSERT directo en "Notificacion" — esa tabla
+ * no acepta más INSERT del cliente (informe de seguridad #5): las crea un
+ * trigger/RPC interno, o esta RPC `crear_notificacion`, que sólo deja avisar
+ * a alguien con quien hay match, amistad o trato (si no, "sin_relacion").
+ * Nunca rompe el flujo que la llama: el cambio principal ya quedó guardado.
  */
 export async function notificar(idUser, titulo, mensaje, { tipo = 'general', destino = null, extra = null, idMascota = null } = {}) {
   if (!idUser) return;
   try {
-    await supabase.from('Notificacion').insert({
-      Id_User: idUser,
-      Titulo: titulo,
-      Mensaje: mensaje,
-      Tipo: tipo,
-      Leido: false,
-      ...(idMascota ? { Id_Mascota: idMascota } : {}),
-      DataExtra: destino || extra ? { ...(extra ?? {}), ...(destino ? { destino } : {}) } : null,
+    const dataExtra = destino || extra ? { ...(extra ?? {}), ...(destino ? { destino } : {}) } : null;
+    const { error } = await supabase.rpc('crear_notificacion', {
+      p_destino: idUser,
+      p_mascota: idMascota,
+      p_titulo: titulo,
+      p_mensaje: mensaje,
+      p_tipo: tipo,
+      p_data_extra: dataExtra,
     });
+    if (error && __DEV__) console.warn('[notificar]', error.message);
   } catch {
     // La notificación es un extra.
   }

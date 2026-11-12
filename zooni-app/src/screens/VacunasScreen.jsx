@@ -16,7 +16,6 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
-  Pressable,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -48,6 +47,8 @@ import Skeleton from '../components/ui/Skeleton';
 import Toast from '../components/ui/Toast';
 import { useToast } from '../hooks/useToast';
 import { diasHasta, formatearFecha, toISODateLocal } from '../utils/fechaLocal';
+import CardAplicado from '../components/fichaMedica/CardAplicado';
+import CardSugerido from '../components/fichaMedica/CardSugerido';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -83,123 +84,6 @@ function SkeletonCard() {
     </Skeleton>
   );
 }
-
-// ─── COMPONENTE: TOAST ────────────────────────────────────────────────────────
-
-// ─── COMPONENTE: CARD VACUNA APLICADA ─────────────────────────────────────────
-
-function CardAplicado({ vacuna, onEditar, onEliminar }) {
-  const translateY = useRef(new Animated.Value(12)).current;
-  const opacity    = useRef(new Animated.Value(0)).current;
-  const scaleEdit  = useRef(new Animated.Value(1)).current;
-  const scaleDel   = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(translateY, { toValue: 0, duration: 280, useNativeDriver: true }),
-      Animated.timing(opacity,    { toValue: 1, duration: 280, useNativeDriver: true }),
-    ]).start();
-  }, [translateY, opacity]);
-
-  const pressIn  = (scale) => Animated.timing(scale, { toValue: 0.90, duration: 100, useNativeDriver: true }).start();
-  const pressOut = (scale) => Animated.timing(scale, { toValue: 1,    duration: 150, useNativeDriver: true }).start();
-
-  return (
-    <Animated.View style={[s.cardAplicado, { transform: [{ translateY }], opacity }]}>
-      <View style={s.cardLeft}>
-        <Text style={s.cardNombre}>{vacuna.nombre}</Text>
-        {vacuna.descripcion ? (
-          <Text style={s.cardDesc}>{vacuna.descripcion}</Text>
-        ) : null}
-        <Text style={s.cardField}>Aplicada: {formatearFecha(vacuna.fecha_aplicacion) ?? '—'}</Text>
-        <Text style={[s.cardField, { color: colorProximaDosis(vacuna.proximo_refuerzo) }]}>
-          Próxima dosis: {vacuna.proximo_refuerzo ? formatearFecha(vacuna.proximo_refuerzo) : '—'}
-        </Text>
-        <Text style={s.cardField} numberOfLines={1} ellipsizeMode="tail">
-          Veterinaria: {vacuna.veterinaria ?? 'Sin registro'}
-        </Text>
-      </View>
-      <View style={s.cardRight}>
-        <Animated.View style={{ transform: [{ scale: scaleEdit }] }}>
-          <Pressable
-            style={s.btnEditar}
-            onPressIn={() => pressIn(scaleEdit)}
-            onPressOut={() => pressOut(scaleEdit)}
-            onPress={() => onEditar(vacuna)}
-            accessibilityLabel="Editar vacuna"
-          >
-            <Ionicons name="create-outline" size={18} color={colores.blanco} />
-          </Pressable>
-        </Animated.View>
-        <Animated.View style={{ transform: [{ scale: scaleDel }] }}>
-          <Pressable
-            style={s.btnEliminar}
-            onPressIn={() => pressIn(scaleDel)}
-            onPressOut={() => pressOut(scaleDel)}
-            onPress={() => onEliminar(vacuna.id)}
-            accessibilityLabel="Eliminar vacuna"
-          >
-            <Ionicons name="trash-outline" size={18} color={colores.blanco} />
-          </Pressable>
-        </Animated.View>
-      </View>
-    </Animated.View>
-  );
-}
-
-// ─── COMPONENTE: CARD VACUNA SUGERIDA ─────────────────────────────────────────
-
-function CardSugerido({ sugerido, index, onMarcar }) {
-  const translateY = useRef(new Animated.Value(12)).current;
-  const opacity    = useRef(new Animated.Value(0)).current;
-  const scaleBtn   = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(translateY, { toValue: 0, duration: 280, delay: index * 60, useNativeDriver: true }),
-      Animated.timing(opacity,    { toValue: 1, duration: 280, delay: index * 60, useNativeDriver: true }),
-    ]).start();
-  }, [index, translateY, opacity]);
-
-  const estado = estadoSugerida(sugerido);
-
-  const press = () => {
-    Animated.sequence([
-      Animated.timing(scaleBtn, { toValue: 0.95, duration: 100, useNativeDriver: true }),
-      Animated.timing(scaleBtn, { toValue: 1,    duration: 150, useNativeDriver: true }),
-    ]).start();
-    onMarcar(sugerido);
-  };
-
-  return (
-    <Animated.View style={[s.cardSugerido, { transform: [{ translateY }], opacity }]}>
-      <View style={s.cardSugeridoLeft}>
-        <Text style={s.sugeridoNombre}>{sugerido.nombre}</Text>
-        {/* "1 de 3", "Refuerzo": ubica la vacuna dentro del plan. Sin esto,
-            tres dosis de la misma vacuna se leían como tres vacunas sueltas. */}
-        {!!sugerido.dosis && <Text style={s.sugeridoDosis}>{sugerido.dosis}</Text>}
-      </View>
-      <View style={s.cardSugeridoRight}>
-        <Text style={[s.sugeridoEstado, { color: estado.color }]}>{estado.texto}</Text>
-        <Text style={s.sugeridoFrec}>{sugerido.frecuencia_descripcion}</Text>
-        {sugerido.applied ? (
-          <View style={s.badgeAplicada}>
-            <Ionicons name="checkmark" size={12} color={colores.verde} />
-            <Text style={s.badgeAplicadaTxt}>Aplicada</Text>
-          </View>
-        ) : (
-          <Animated.View style={{ transform: [{ scale: scaleBtn }] }}>
-            <Pressable style={s.btnMarcar} onPress={press}>
-              <Text style={s.btnMarcarTxt}>Marcar</Text>
-            </Pressable>
-          </Animated.View>
-        )}
-      </View>
-    </Animated.View>
-  );
-}
-
-// ─── DATOS DEMO (sin backend de vacunas conectado) ───────────────────────────
 
 // ─── SCREEN PRINCIPAL ─────────────────────────────────────────────────────────
 
@@ -496,7 +380,24 @@ export default function VacunasScreen() {
               </View>
             ) : (
               vacunasAplicadas.map((v) => (
-                <CardAplicado key={v.id} vacuna={v} onEditar={abrirModalEditar} onEliminar={eliminarVacuna} />
+                <CardAplicado
+                  key={v.id}
+                  styles={s}
+                  nombre={v.nombre}
+                  descripcion={v.descripcion}
+                  lineas={[
+                    { texto: `Aplicada: ${formatearFecha(v.fecha_aplicacion) ?? '—'}` },
+                    {
+                      texto: `Próxima dosis: ${v.proximo_refuerzo ? formatearFecha(v.proximo_refuerzo) : '—'}`,
+                      color: colorProximaDosis(v.proximo_refuerzo),
+                    },
+                    { texto: `Veterinaria: ${v.veterinaria ?? 'Sin registro'}`, unaLinea: true },
+                  ]}
+                  onEditar={() => abrirModalEditar(v)}
+                  onEliminar={() => eliminarVacuna(v.id)}
+                  editarLabel="Editar vacuna"
+                  eliminarLabel="Eliminar vacuna"
+                />
               ))
             )}
 
@@ -511,9 +412,24 @@ export default function VacunasScreen() {
             ) : vacunasSugeridas.length === 0 ? (
               <Text style={s.emptyTxt}>No hay vacunas sugeridas para esta especie</Text>
             ) : (
-              vacunasSugeridas.map((sug, i) => (
-                <CardSugerido key={sug.id} sugerido={sug} index={i} onMarcar={abrirModalMarcar} />
-              ))
+              vacunasSugeridas.map((sug, i) => {
+                const estado = estadoSugerida(sug);
+                return (
+                  <CardSugerido
+                    key={sug.id}
+                    styles={s}
+                    index={i}
+                    nombre={sug.nombre}
+                    subtitulo={sug.dosis || null}
+                    estado={estado}
+                    frecuencia={sug.frecuencia_descripcion}
+                    aplicado={sug.applied}
+                    botonTexto="Marcar"
+                    onPress={() => abrirModalMarcar(sug)}
+                    layout="detallado"
+                  />
+                );
+              })
             )}
 
           </View>

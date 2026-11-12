@@ -28,14 +28,19 @@ describe('comun', () => {
     assert.equal(errorBase({ code: '23505' }).message, 'error_base');
     assert.ok(esEsquemaFaltante({ message: 'column x does not exist' }));
   });
-  test('notificar inserta en Notificacion y nunca falla', async () => {
+  test('notificar llama a la RPC crear_notificacion y nunca falla', async () => {
+    fake.rpc('crear_notificacion', { data: 1 });
     await notificar(7, 'Hola', 'Mensaje', { tipo: 'pedido', destino: 'pedidos' });
-    const [op] = fake.de('tabla');
-    assert.equal(op.tabla, 'Notificacion');
-    assert.equal(op.accion, 'insert');
-    assert.deepEqual(op.datos.DataExtra, { destino: 'pedidos' });
+    const [op] = fake.de('rpc');
+    assert.equal(op.nombre, 'crear_notificacion');
+    assert.equal(op.params.p_destino, 7);
+    assert.equal(op.params.p_titulo, 'Hola');
+    assert.deepEqual(op.params.p_data_extra, { destino: 'pedidos' });
     await notificar(null, 'x', 'y'); // sin destinatario: no hace nada
-    assert.equal(fake.de('tabla').length, 1);
+    assert.equal(fake.de('rpc').length, 1);
+    // Sin relación (match/amistad/trato) la RPC devuelve error: no debe romper el flujo.
+    fake.rpc('crear_notificacion', { data: null, error: { code: 'P0001', message: 'sin_relacion' } });
+    await notificar(9, 'x', 'y');
     assert.equal(resumir('a'.repeat(100)).length, 81);
   });
 });

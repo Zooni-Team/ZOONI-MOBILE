@@ -39,6 +39,32 @@ prop. Si creás uno que se va a usar en más de una pantalla, va a `components/u
 | Botones de Home y su modal | `NavButton`, `AddButtonModal`, `DraggableList` |
 | Login con Google / Facebook | `BotonesSociales` |
 
+## Formularios
+`ui/Campo.jsx` (label + ayuda/error alrededor de un input) y
+`ui/InputPassword.jsx` (input de contraseña con ojito) — antes duplicados en
+`NegocioRegistroScreen` y `PaseadorRegistroScreen`. Reciben `styles` (el `s`
+de la pantalla) y, `InputPassword`, también `colores` (el `C` de la pantalla).
+
+## Puntajes
+`ui/Estrellas.jsx` — `Estrellas` (sólo lectura, con medias estrellas para
+promedios) y `EstrellasInput` (para elegir tocando, sin medias; prop
+`borrable` para poder volver a 0). Antes cuatro definiciones casi iguales
+repartidas en `resenas/*`, `MisPaseosScreen` y `Paseador/tabs/PerfilTab`.
+
+## Ficha médica
+`fichaMedica/CardAplicado.jsx` y `fichaMedica/CardSugerido.jsx` — tarjeta de un
+ítem aplicado y de uno sugerido del calendario (Vacunas, Tratamientos). Reciben
+el `styles` de la pantalla (cada una sigue dueña de su paleta) y los datos ya
+formateados (`lineas`, `contador`, `estado`…); `CardSugerido` tiene dos
+layouts: `"simple"` (Tratamientos) y `"detallado"` (Vacunas, con estado y dosis).
+
+## Ilustración de mascota
+`ui/PetIllustration.jsx` — imagen de la mascota con la sombra siguiendo su
+silueta (no un cuadrado). Antes duplicado en HomeScreen y FichaMedicaScreen.
+Props: `source`, `label`, `style` + opcionales `esFoto`/`estiloFoto` (foto
+real: recorte/marco) y `sombra`/`estiloSombraWeb`/`estiloSombraIOS` (sólo
+HomeScreen la pide; FichaMedica sigue sin sombra, que es el default).
+
 ## Kits por módulo
 - **Proveedores** (`paseador/PaseadorUI.jsx`): `C`, `sombra`, `PillButton`, `Card`,
   `Chip`, `Stat`, `Avatar`, `Seccion`, `Vacio`, `SwitchGrande`.
@@ -51,6 +77,8 @@ prop. Si creás uno que se va a usar en más de una pantalla, va a `components/u
   componentes propios de cada módulo.
 
 ## Elegir fotos
-Hoy cada pantalla llama a `expo-image-picker` por su cuenta (permiso + galería o
-cámara). Unificarlo en un helper es deuda conocida: ver [faltaporhacer.md](../../faltaporhacer.md).
+`utils/elegirImagen.elegirImagen({ origen, calidad, allowsEditing, aspect, frontal })`
+— pide permiso, abre galería o cámara y devuelve la uri ya recomprimida sin
+EXIF (sin la ubicación GPS de la foto). Para fotos + video con selección
+múltiple (reseñas de paseo): `elegirMultimedia({ origen, limite })`.
 Para **subir** la foto elegida: `utils/imagenStorage.subirImagenPublica(uri, carpeta)`.

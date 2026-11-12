@@ -56,7 +56,11 @@ export default function PaseadorLoginScreen() {
         setActivar(res);
         return;
       }
-      navigation.reset({ index: 0, routes: [{ name: 'PaseadorApp' }] });
+      const rutas = [{ name: 'PaseadorApp' }];
+      // Cuenta recién migrada con una contraseña vieja y débil: de paso por
+      // "Cambiar contraseña" antes de entrar (informe de seguridad #90).
+      if (res.usuario?.debeCambiarContrasena) rutas.push({ name: 'ConfigCambiarContrasena', params: { forzado: true } });
+      navigation.reset({ index: rutas.length - 1, routes: rutas });
     } catch (err) {
       setError(err?.message === 'credenciales'
         ? 'Email o contraseña incorrectos'

@@ -16,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { fetchNotificaciones, marcarNotificacionLeida, marcarTodasLeidas } from '../services/api';
 import { chatDeMatchPorMascota } from '../services/matchApi';
+import { fetchServiciosPorId } from '../api/comunidad';
 import { resolveMascotaVisual } from '../constants/petImages';
 import { colores } from '../theme';
 
@@ -84,29 +85,34 @@ export default function NotificationsPanel({ visible, onClose, onNavigate, onMar
         prev.map((n) => (n.id === item.id ? { ...n, leida: true } : n)),
       );
     }
-    // Con chatId va directo a la conversación (ej: el chat del match)
+    // Con chatId va directo a la conversación (ej: el chat del match). El
+    // nombre y la foto NO vienen de DataExtra (cualquiera con una relación con
+    // este usuario puede haberlos escrito al crear la notificación — informe
+    // de seguridad #40): se resuelven de la base por la mascota del match.
     if (item.dataExtra?.chatId) {
       onClose();
-      onNavigate({
-        screen: 'Chat',
-        params: {
-          chatId: item.dataExtra.chatId,
-          nombre: item.dataExtra.nombre ?? 'Chat',
-          fotoPerfilUrl: item.dataExtra.fotoPerfilUrl ?? null,
-        },
-      });
+      let chat = { chatId: item.dataExtra.chatId, nombre: 'Chat', fotoPerfilUrl: null };
+      if (item.mascota?.id) {
+        try {
+          chat = (await chatDeMatchPorMascota(item.mascota.id)) ?? chat;
+        } catch { /* se navega igual, con el nombre genérico */ }
+      }
+      onNavigate({ screen: 'Chat', params: chat });
       return;
     }
 
-    // Respuesta de una veterinaria / peluquería / pet shop: directo a ese chat
+    // Respuesta de una veterinaria / peluquería / pet shop: directo a ese
+    // chat. Nombre y tipo se resuelven de "servicios" por id, no de
+    // DataExtra (informe de seguridad #40).
     if (item.dataExtra?.servicioId) {
       onClose();
+      const [servicio] = await fetchServiciosPorId([item.dataExtra.servicioId]).catch(() => []);
       onNavigate({
         screen: 'Chat',
         params: {
           servicioId: item.dataExtra.servicioId,
-          nombre: item.dataExtra.nombre ?? 'Chat',
-          tipoServicio: item.dataExtra.tipoServicio ?? null,
+          nombre: servicio?.nombre ?? 'Chat',
+          tipoServicio: servicio?.tipo ?? null,
         },
       });
       return;

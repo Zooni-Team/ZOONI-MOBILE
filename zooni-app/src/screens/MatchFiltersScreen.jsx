@@ -24,7 +24,6 @@ import {
   fetchMatchFiltros,
   putMatchFiltros,
   previewMatchFiltros,
-  resetDemoMatchState,
 } from '../services/matchApi';
 import { markMatchReloadFromFilters } from '../utils/matchNavigation';
 import { colores } from '../theme';
@@ -111,7 +110,6 @@ export default function MatchFiltersScreen() {
   };
 
   const handleReset = () => {
-    resetDemoMatchState();
     setFiltros({ ...DEFAULT_FILTROS });
   };
 
