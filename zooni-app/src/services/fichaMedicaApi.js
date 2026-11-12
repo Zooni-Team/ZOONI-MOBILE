@@ -5,6 +5,7 @@
  */
 
 import { supabase } from '../lib/supabase';
+import { urlsFirmadas } from '../utils/imagenStorage';
 import { calcularEdadMeses } from '../utils/calcularEdad';
 import { aplicaParaMascota } from '../utils/filtrarPorMascota';
 
@@ -286,15 +287,27 @@ export async function eliminarTratamiento(id) {
 // CONSULTAS VETERINARIAS (anotaciones de consultas pasadas)
 // ─────────────────────────────────────────────
 
-function mapConsulta(row) {
+function mapConsulta(row, firmadas = {}) {
   return {
     id: row.id,
     fecha: row.fecha,
     motivo: row.motivo,
     notas: row.notas,
     veterinario: row.veterinario,
-    imagen_url: row.imagen_url ?? null,
+    imagen_path: row.imagen_path ?? null,
+    // Imagen nueva: URL firmada del bucket privado (vence). Consultas viejas,
+    // anteriores a 064: la URL pública que quedó guardada.
+    imagen_url: (row.imagen_path ? firmadas[row.imagen_path] : row.imagen_url) ?? null,
   };
+}
+
+/** Firma las imágenes privadas de un lote de filas. Si falla, sin imágenes (no sin consultas). */
+async function firmarImagenes(rows) {
+  try {
+    return await urlsFirmadas(rows.map((r) => r.imagen_path));
+  } catch {
+    return {};
+  }
 }
 
 /** Trae las consultas registradas de la mascota (más reciente primero). */
@@ -305,7 +318,9 @@ export async function fetchConsultas(petId) {
     .eq('mascota_id', petId)
     .order('fecha', { ascending: false });
   if (error) throw error;
-  return (data ?? []).map(mapConsulta);
+  const rows = data ?? [];
+  const firmadas = await firmarImagenes(rows);
+  return rows.map((r) => mapConsulta(r, firmadas));
 }
 
 /** PGRST204 = PostgREST no encontró una columna del insert en el esquema. */
@@ -315,6 +330,10 @@ function esColumnaInexistente(error, columna) {
     || /could not find the .* column/i.test(error?.message ?? '');
 }
 
+/**
+ * Alta de una consulta. La imagen, si hay, ya está subida al bucket privado:
+ * llega su ruta en `datos.imagen_path` (ver subirImagenPrivada).
+ */
 export async function crearConsulta(petId, datos) {
   const base = {
     mascota_id: petId,
@@ -326,17 +345,17 @@ export async function crearConsulta(petId, datos) {
 
   const { data, error } = await supabase
     .from('consultas_veterinarias')
-    .insert({ ...base, imagen_url: datos.imagen_url ?? null })
+    .insert({ ...base, imagen_path: datos.imagen_path ?? null })
     .select()
     .single();
 
-  if (!error) return mapConsulta(data);
+  if (!error) return mapConsulta(data, await firmarImagenes([data]));
 
-  // La migración 030 (que agrega imagen_url) puede no estar corrida en esta
-  // base: PostgREST devuelve 400 PGRST204 por la columna desconocida y se
-  // perdía la consulta entera. Reintentamos sin la imagen para no bloquear el
-  // alta — correr 030/031 en el SQL Editor habilita el adjunto.
-  if (!esColumnaInexistente(error, 'imagen_url')) throw error;
+  // Si 064 (que agrega imagen_path) no está corrida en esta base, PostgREST
+  // devuelve 400 PGRST204 por la columna desconocida y se perdía la consulta
+  // entera. Reintentamos sin la imagen para no bloquear el alta — correr
+  // SUPABASE_PEGAR_TODO.sql habilita el adjunto.
+  if (!esColumnaInexistente(error, 'imagen_path')) throw error;
 
   const { data: dataSinImagen, error: error2 } = await supabase
     .from('consultas_veterinarias')

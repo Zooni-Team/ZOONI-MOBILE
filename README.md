@@ -165,12 +165,15 @@ no se vende dos veces y que dos turnos no se superponen.
     escritura.
   - `063_storage.sql` — buckets con límite de tamaño y tipos; cada usuario
     escribe sólo en su carpeta.
-- Al borrar una mascota la app hace **borrado lógico** (`Estado`,
-  `EliminadaEn`), así que hoy no se borra ninguna fila hija. Pero si alguien
-  borrara la fila de verdad, las relaciones no son parejas:
-  `eventos_calendario`, `historial_peso` y `consultas_veterinarias` tienen
-  `ON DELETE CASCADE`; `MascotaVacuna`, `Tratamiento`, `HistorialEvento`,
-  `Voto` y `Match` no (el borrado falla). Falta decidir una regla única.
+  - `064` — cascadas parejas al borrar una mascota, purga de eliminadas,
+    bucket privado de consultas, chats por Realtime y cupo de ZooniVet.
+- Al borrar una mascota la app hace **borrado lógico** (`Estado = 'deleted'`,
+  `PurgarDespues` = +30 días). `purgar_mascotas_eliminadas()` (064) la borra de
+  verdad pasado ese plazo; si `pg_cron` está habilitado corre sola cada noche.
+  Regla única de FKs hacia `Mascota`: columna NOT NULL → `CASCADE` (salud,
+  votos, matches, fotos); columna que admite NULL → `SET NULL` (publicaciones,
+  carteles, SOS, turnos). `Paseo` queda con `SET NULL` para no perder lo que
+  cobró el paseador.
 
 ## Pasar a Supabase Auth (cuentas existentes)
 
@@ -200,8 +203,4 @@ de funcionar a propósito.
 
 ## Pendientes conocidos
 
-- Las imágenes de consultas veterinarias están en el bucket público: deberían
-  ir a un bucket privado con URLs firmadas.
-- Los chats se actualizan consultando cada tanto; Supabase Realtime evitaría
-  ese trabajo repetido.
-- `zoonivet-chat` no tiene límite de mensajes por usuario (sólo el de Groq).
+Ver [faltaporhacer.md](faltaporhacer.md).

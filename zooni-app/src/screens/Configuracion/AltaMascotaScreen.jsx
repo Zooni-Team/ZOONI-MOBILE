@@ -28,7 +28,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
+import { elegirImagen } from '../../utils/elegirImagen';
 
 import { ESPECIES } from '../../constants/registroAssets';
 import { resolveCajaImage } from '../../constants/registroImages';
@@ -45,6 +45,7 @@ import AppDialog from '../../components/AppDialog';
 import { colores } from '../../theme';
 import { capitalizar } from '../../utils/texto';
 import { formatearFecha } from '../../utils/fechaLocal';
+import EspecieTile from '../../components/EspecieTile';
 
 const SEXOS = ['Macho', 'Hembra'];
 
@@ -61,29 +62,6 @@ const IMAGEN_ASSET_POR_ESPECIE = {
 };
 
 /** Tile de especie — igual que en RegisterStep1 */
-function EspecieTile({ especie, seleccionada, onPress }) {
-  const scale = useRef(new Animated.Value(1)).current;
-  const handlePress = () => {
-    Animated.sequence([
-      Animated.timing(scale, { toValue: 0.95, duration: 80, useNativeDriver: true }),
-      Animated.timing(scale, { toValue: 1, duration: 100, useNativeDriver: true }),
-    ]).start();
-    onPress();
-  };
-  return (
-    <Animated.View style={[s.tileWrap, { transform: [{ scale }] }]}>
-      <TouchableOpacity style={[s.tile, seleccionada && s.tileOn]} onPress={handlePress}
-        activeOpacity={0.85} accessibilityLabel={`Tipo de mascota: ${especie.label}`}>
-        {especie.imagen ? (
-          <Image source={especie.imagen} style={s.tileImg} resizeMode="contain" />
-        ) : (
-          <Text style={s.tileEmoji}>{especie.icono}</Text>
-        )}
-        <Text style={[s.tileLabel, seleccionada && s.tileLabelOn]}>{especie.label}</Text>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-}
 
 export default function AltaMascotaScreen() {
   const navigation = useNavigation();
@@ -154,36 +132,16 @@ export default function AltaMascotaScreen() {
     setPaso(2);
   };
 
-  const elegirDeGaleria = async () => {
+  const elegirFoto = async (camara) => {
     try {
-      const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permiso.granted) {
-        Alert.alert('Sin permiso', 'Habilitá el acceso a la galería desde la configuración del dispositivo.');
-        return;
-      }
-      const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.7,
-      });
-      if (!res.canceled && res.assets?.[0]?.uri) setFotoUri(res.assets[0].uri);
+      const uri = await elegirImagen({ camara });
+      if (uri) setFotoUri(uri);
     } catch {
-      Alert.alert('Error', 'No se pudo abrir la galería.');
+      Alert.alert('Error', `No se pudo abrir la ${camara ? 'cámara' : 'galería'}.`);
     }
   };
-
-  const abrirCamara = async () => {
-    try {
-      const permiso = await ImagePicker.requestCameraPermissionsAsync();
-      if (!permiso.granted) {
-        Alert.alert('Sin permiso', 'Habilitá el acceso a la cámara desde la configuración del dispositivo.');
-        return;
-      }
-      const res = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-      if (!res.canceled && res.assets?.[0]?.uri) setFotoUri(res.assets[0].uri);
-    } catch {
-      Alert.alert('Error', 'No se pudo abrir la cámara.');
-    }
-  };
+  const elegirDeGaleria = () => elegirFoto(false);
+  const abrirCamara = () => elegirFoto(true);
 
   const guardar = async () => {
     const errs = {};
@@ -458,19 +416,6 @@ const s = StyleSheet.create({
   errorTxt: { fontSize: 11, color: colores.rojo, marginTop: -12, marginBottom: 12, marginLeft: 4 },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  tileWrap: { width: '47%', flexGrow: 1 },
-  tile: {
-    backgroundColor: colores.blanco, borderRadius: 14, padding: 14,
-    borderWidth: 1, borderColor: colores.gris200,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2,
-    minHeight: 92,
-  },
-  tileOn: { backgroundColor: colores.verde, borderColor: colores.verde },
-  tileEmoji: { fontSize: 32, marginBottom: 6 },
-  tileImg: { width: 40, height: 40, marginBottom: 6 },
-  tileLabel: { fontSize: 14, fontWeight: '700', color: colores.texto },
-  tileLabelOn: { color: colores.blanco },
 
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 8,

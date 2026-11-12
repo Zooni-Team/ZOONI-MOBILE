@@ -468,6 +468,9 @@ function mensajeError(e) {
     content = 'ZooniVet no está disponible en este momento. Probá de nuevo más tarde.';
   } else if (e?.code === 'API_KEY_INVALIDA' || e?.code === 'GROQ_ERROR') {
     content = 'El servicio que me hace pensar no respondió. Probá de nuevo en un rato.';
+  } else if (e?.code === 'CUPO_AGOTADO') {
+    // El texto lo arma la Edge Function: dice cuál es el límite configurado
+    content = e.message || 'Llegaste al límite de mensajes de hoy. Mañana podés seguir.';
   } else if (e?.code === 'RATE_LIMIT') {
     content = 'Llegaste al límite de mensajes por ahora. Probá de nuevo en un rato.';
   } else if (e?.name === 'AbortError') {

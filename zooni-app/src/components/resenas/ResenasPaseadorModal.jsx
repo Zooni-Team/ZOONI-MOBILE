@@ -27,19 +27,10 @@ import { tiempoRelativo } from '../../utils/tiempoRelativo';
 import { MiniaturaMedia, VisorMedia } from './MediaResena';
 import CalificarPaseoModal from './CalificarPaseoModal';
 import { colores } from '../../theme';
+import { Estrellas } from '../ui/Estrellas';
 
 const fmt1 = (n) => n.toFixed(1).replace('.', ',');
 
-function Estrellas({ valor, size = 14 }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: 1 }}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Ionicons key={i} size={size} color={colores.amarillo}
-          name={valor >= i ? 'star' : valor >= i - 0.5 ? 'star-half' : 'star-outline'} />
-      ))}
-    </View>
-  );
-}
 
 function Resumen({ datos, onVerMedia }) {
   const max = Math.max(...datos.distribucion.map((d) => d.cantidad), 1);

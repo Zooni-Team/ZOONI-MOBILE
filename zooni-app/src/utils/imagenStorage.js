@@ -1,5 +1,6 @@
 /**
- * imagenStorage.js — Subida de imágenes a Supabase Storage (bucket "public-images")
+ * imagenStorage.js — Subida de imágenes a Supabase Storage (bucket "public-images",
+ * y "consultas-privadas" para lo clínico, que se lee con URLs firmadas)
  *
  * Cada archivo va a <id de Supabase Auth>/<uso>/<nombre>: las políticas de
  * 063_storage.sql sólo dejan subir y borrar dentro de la carpeta propia, y el
@@ -54,6 +55,43 @@ export async function subirImagenPublica(uri, carpeta) {
 
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
   return data.publicUrl;
+}
+
+/** Bucket privado de estudios y recetas de consultas veterinarias (064). */
+export const BUCKET_CONSULTAS = 'consultas-privadas';
+
+/**
+ * Sube una imagen a un bucket PRIVADO y devuelve su RUTA (no una URL): en un
+ * bucket privado no hay URL pública, se pide una firmada cada vez que se
+ * muestra (urlsFirmadas). Misma carpeta propia y mismo control de tipo que
+ * subirImagenPublica.
+ */
+export async function subirImagenPrivada(uri, carpeta, bucket = BUCKET_CONSULTAS) {
+  const { mime, ext } = tipoDeImagen(uri);
+  const path = `${await carpetaPropia(carpeta)}/${nombreArchivo(ext)}`;
+  const arraybuffer = await fetch(uri).then((res) => res.arrayBuffer());
+
+  const { error } = await supabase.storage.from(bucket).upload(path, arraybuffer, { contentType: mime });
+  if (error) throw error;
+  return path;
+}
+
+/** Una hora: alcanza para ver la pantalla; si vence, se pide otra al recargar. */
+const VIGENCIA_URL_FIRMADA_S = 60 * 60;
+
+/**
+ * URLs firmadas para varias rutas de un bucket privado, en un solo pedido.
+ * Devuelve { [ruta]: url }. Storage sólo firma lo que la sesión puede leer
+ * (política zooni_privado_leer): una ruta ajena vuelve sin URL.
+ */
+export async function urlsFirmadas(rutas, bucket = BUCKET_CONSULTAS, segundos = VIGENCIA_URL_FIRMADA_S) {
+  const unicas = [...new Set(rutas.filter(Boolean))];
+  if (!unicas.length) return {};
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrls(unicas, segundos);
+  if (error) throw error;
+  const porRuta = {};
+  for (const f of data ?? []) if (f.signedUrl && !f.error) porRuta[f.path] = f.signedUrl;
+  return porRuta;
 }
 
 const EXT_VIDEO = { mp4: 'video/mp4', mov: 'video/quicktime', m4v: 'video/x-m4v', webm: 'video/webm', '3gp': 'video/3gpp' };

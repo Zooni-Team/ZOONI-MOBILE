@@ -24,14 +24,19 @@ import {
 } from '../../services/paseadorApi';
 import { tiempoRelativoCorto } from '../../utils/tiempoRelativo';
 import { colores } from '../../theme';
+import { INTERVALO_LISTAS_MS } from '../../constants/intervalos';
 
 export default function PaseadorHeader({
   perfil, subtitulo, mostrarEstado = true, titulo, onMenu, onChatsSinLeer, onIrASeccion,
   chip, contarChats,
 }) {
   const navigation = useNavigation();
+  // Las funciones que manda el padre cambian de identidad en cada render: se
+  // leen por ref para no reiniciar el refresco periódico a cada rato.
   const contarRef = useRef(contarChats);
   contarRef.current = contarChats;
+  const onChatsSinLeerRef = useRef(onChatsSinLeer);
+  onChatsSinLeerRef.current = onChatsSinLeer;
   const [notifs, setNotifs] = useState([]);
   const [abierto, setAbierto] = useState(false);
 
@@ -42,7 +47,7 @@ export default function PaseadorHeader({
         contarRef.current ? contarRef.current() : contarNoLeidosPaseo('paseador'),
       ]);
       setNotifs(n);
-      onChatsSinLeer?.(c);
+      onChatsSinLeerRef.current?.(c);
     } catch {
       // sin red: los íconos quedan sin badge
     }
@@ -50,7 +55,7 @@ export default function PaseadorHeader({
 
   useEffect(() => {
     cargar();
-    const t = setInterval(cargar, 30000);
+    const t = setInterval(cargar, INTERVALO_LISTAS_MS);
     return () => clearInterval(t);
   }, [cargar]);
 

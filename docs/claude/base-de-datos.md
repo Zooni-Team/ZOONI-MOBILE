@@ -52,7 +52,15 @@ de fecha, ubicación a ~1 km, teléfono sólo con un paseo/turno/pedido en comú
 | Match: `votar_mascota(origen, destino, le_gusta)` | 062 |
 | ZooniVet: `get_pet_chat_context(pet_id)` (sólo service_role) | 051, 061 |
 | Storage: buckets `public-images` (5 MB) y `resenas` (50 MB), carpeta por usuario | 063 |
+| Storage privado: `consultas-privadas` (10 MB, URLs firmadas); `consultas_veterinarias.imagen_path` | 064 |
+| `purgar_mascotas_eliminadas()` — borra las `deleted` vencidas (sólo service_role / pg_cron) | 064 |
+| ZooniVet: `zoonivet_consumir_cupo(id_user, limite)` + tabla `zoonivet_uso` (sólo service_role) | 064 |
+| Realtime: `Mensaje` y `paseo_mensajes` en la publicación `supabase_realtime` | 064 |
 
-## Relaciones a revisar
-Borrado de mascotas: la app hace borrado lógico. Las FK hijas no son parejas
-(ver [faltaporhacer.md](../../faltaporhacer.md)).
+## Borrado de mascotas
+La app hace borrado lógico (`Estado = 'deleted'`, `PurgarDespues` = +30 días) y
+`purgar_mascotas_eliminadas()` borra la fila después. Regla única para toda FK
+hacia `Mascota` (064): columna NOT NULL → `ON DELETE CASCADE`; columna que
+admite NULL → `ON DELETE SET NULL`. `Paseo.Id_Mascota` admite NULL a propósito
+(el paseo guarda lo que cobró el paseador) y `_paseo_al_actualizar` acepta ese
+NULL sólo si la mascota ya no existe. Los mensajes de un `Match` se van con él.

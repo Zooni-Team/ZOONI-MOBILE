@@ -233,6 +233,13 @@ export default function TratamientosScreen() {
   const btnScale     = useRef(new Animated.Value(1)).current;
 
   // ── Carga inicial ──────────────────────────────────────────────────────────
+  const animarHero = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(heroScale,   { toValue: 1, duration: 350, useNativeDriver: true }),
+      Animated.timing(heroOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
+    ]).start();
+  }, [heroScale, heroOpacity]);
+
   const cargar = useCallback(async (silencioso = false) => {
     if (!silencioso) setLoading(true);
     try {
@@ -254,7 +261,7 @@ export default function TratamientosScreen() {
     }
     setLoading(false);
     animarHero();
-  }, [idMascota]);
+  }, [idMascota, animarHero]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -263,13 +270,6 @@ export default function TratamientosScreen() {
     await cargar(true);
     setRefreshing(false);
   }, [cargar]);
-
-  function animarHero() {
-    Animated.parallel([
-      Animated.timing(heroScale,   { toValue: 1, duration: 350, useNativeDriver: true }),
-      Animated.timing(heroOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
-    ]).start();
-  }
 
   // ── Modal ────────────────────────────────────────────────────────────────
   // nombrePrefill: al tocar "Registrar" en un tratamiento sugerido, se abre

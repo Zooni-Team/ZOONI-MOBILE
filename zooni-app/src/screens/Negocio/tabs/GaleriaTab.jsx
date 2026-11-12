@@ -18,7 +18,7 @@ import {
   StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { elegirImagen } from '../../../utils/elegirImagen';
 
 import { C, Card, PillButton, Vacio } from '../../../components/paseador/PaseadorUI';
 import { agregarFotoGaleria, borrarFotoGaleria, GALERIA_MAX } from '../../../services/negocioApi';
@@ -43,18 +43,10 @@ export default function GaleriaTab({ negocio, setNegocio, avisar }) {
       alerta('Galería llena', `Podés tener hasta ${GALERIA_MAX} fotos. Borrá alguna vieja para sumar una nueva.`);
       return;
     }
-    const permiso = camara
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permiso.granted) {
-      alerta('Sin permiso', `Habilitá el acceso a la ${camara ? 'cámara' : 'galería'} desde la configuración del dispositivo.`);
-      return;
-    }
-    const opciones = { mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, allowsEditing: true, aspect: [1, 1] };
-    const res = camara ? await ImagePicker.launchCameraAsync(opciones) : await ImagePicker.launchImageLibraryAsync(opciones);
-    if (res.canceled || !res.assets?.[0]?.uri) return;
+    const uri = await elegirImagen({ camara, cuadrada: true });
+    if (!uri) return;
     setNota('');
-    setNueva(res.assets[0].uri);
+    setNueva(uri);
   };
 
   const subir = async () => {

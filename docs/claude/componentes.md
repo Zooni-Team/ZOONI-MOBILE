@@ -50,7 +50,19 @@ prop. Si creás uno que se va a usar en más de una pantalla, va a `components/u
 - **Match** (`match/`), **Comunidad** (`Comunidad/`), **Reseñas** (`resenas/`):
   componentes propios de cada módulo.
 
+- **Formularios** (`ui/CampoFormulario.jsx`): `Campo` (rótulo + ayuda + error),
+  `InputPassword`, `estilosCampo`.
+- **Calificaciones** (`ui/Estrellas.jsx`): `Estrellas` (mostrar, admite medias)
+  y `EstrellasInput` (elegir; `borrable`).
+- **Especie** (`EspecieTile.jsx`): tarjeta para elegir perro/gato/… (registro y
+  alta de mascota).
+
 ## Elegir fotos
-Hoy cada pantalla llama a `expo-image-picker` por su cuenta (permiso + galería o
-cámara). Unificarlo en un helper es deuda conocida: ver [faltaporhacer.md](../../faltaporhacer.md).
+Siempre con `utils/elegirImagen`: `await elegirImagen({ camara, cuadrada, frontal, calidad })`
+devuelve la uri o `null` (canceló / sin permiso; el aviso ya lo muestra).
+Para varias fotos y videos (reseñas): `elegirMedios({ camara, limite })`.
+Nunca llamar a `expo-image-picker` directo desde una pantalla.
+
 Para **subir** la foto elegida: `utils/imagenStorage.subirImagenPublica(uri, carpeta)`.
+Si es información clínica (consultas): `subirImagenPrivada(uri, carpeta)` devuelve
+la **ruta** en el bucket privado, y se muestra con `urlsFirmadas([rutas])`.

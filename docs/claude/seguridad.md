@@ -32,6 +32,10 @@ Buckets `public-images` (5 MB, imágenes) y `resenas` (50 MB, imágenes y
 video). Sólo con sesión y dentro de `<auth uid>/…` (`063`). El tipo y tamaño
 los valida el servidor.
 
-## Lo que todavía no está
-Bucket privado para imágenes de consultas, límite de mensajes por usuario en
-ZooniVet: [faltaporhacer.md](../../faltaporhacer.md).
+`consultas-privadas` (064, 10 MB, imágenes) **no es público**: sólo el dueño de
+la carpeta lee, sube y borra. En la tabla se guarda la ruta (`imagen_path`) y
+la app pide una URL firmada de 1 hora para mostrarla.
+
+## ZooniVet
+Cupo diario por usuario contado en la base (`zoonivet_uso`, sólo service_role).
+La Edge Function lo consume antes de llamar a Groq.

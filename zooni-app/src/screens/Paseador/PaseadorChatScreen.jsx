@@ -16,7 +16,7 @@ import {
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { Avatar, C } from '../../components/paseador/PaseadorUI';
 import { getCurrentUserId } from '../../config/session';
@@ -25,7 +25,7 @@ import {
 } from '../../services/paseadorApi';
 import { etiquetaDia, horaCorta, mismoDia } from '../../utils/tiempoRelativo';
 import { colores } from '../../theme';
-import { INTERVALO_CHAT_MS } from '../../constants/intervalos';
+import { useRecargaEnVivo } from '../../hooks/useRecargaEnVivo';
 
 // Respuestas rápidas del paseador según el estado del paseo, en el orden en
 // que conviene mandarlas. Se muestran RAPIDAS_VISIBLES a la vez: la que ya
@@ -127,14 +127,16 @@ export default function PaseadorChatScreen() {
     }
     // Clave por contenido: idsPaseos viene de los params y cambia de identidad
     // en cada render, así que como dependencia directa recrearía el callback
-    // (y reiniciaría el polling) a cada rato.
+    // (y reiniciaría la suscripción de Realtime) a cada rato.
   }, [claveConversacion]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useFocusEffect(useCallback(() => {
-    cargar();
-    const t = setInterval(cargar, INTERVALO_CHAT_MS);
-    return () => clearInterval(t);
-  }, [cargar]));
+  // Mensajes nuevos por Supabase Realtime (respaldo cada 30 s). El filtro usa
+  // la misma clave por contenido que `cargar`, así no se re-suscribe a cada render.
+  useRecargaEnVivo(cargar, {
+    tabla: 'paseo_mensajes',
+    filtro: `id_paseo=in.(${claveConversacion})`,
+    activo: claveConversacion !== '' && claveConversacion !== 'undefined',
+  });
 
   const enviar = async (contenido = texto) => {
     const limpio = contenido.trim();

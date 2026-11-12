@@ -15,7 +15,7 @@ import {
   TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { elegirImagen } from '../../../utils/elegirImagen';
 
 import { Avatar, C, Card, Chip, PillButton, Seccion, Stat } from '../../../components/paseador/PaseadorUI';
 import {
@@ -32,19 +32,10 @@ import { supabase } from '../../../lib/supabase';
 import { alerta, confirmar } from '../../../utils/dialogo';
 import { tiempoRelativo } from '../../../utils/tiempoRelativo';
 import { colores } from '../../../theme';
+import { Estrellas } from '../../../components/ui/Estrellas';
 
 const TAMANO_LABEL = { chico: 'Chicos', mediano: 'Medianos', grande: 'Grandes' };
 
-function Estrellas({ valor, size = 14 }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: 1 }}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Ionicons key={i} size={size} color={C.amarillo}
-          name={valor >= i ? 'star' : valor >= i - 0.5 ? 'star-half' : 'star-outline'} />
-      ))}
-    </View>
-  );
-}
 
 function FilaMenu({ icono, titulo, sub, onPress, color = C.texto }) {
   return (
@@ -103,20 +94,8 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
   };
 
   const elegirFoto = async (desdeCamara) => {
-    const permiso = desdeCamara
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permiso.granted) {
-      alerta('Sin permiso', `Habilitá el acceso a ${desdeCamara ? 'la cámara' : 'la galería'} desde la configuración.`);
-      return;
-    }
-    const opciones = { mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, allowsEditing: true, aspect: [1, 1] };
-    const res = desdeCamara
-      ? await ImagePicker.launchCameraAsync(opciones)
-      : await ImagePicker.launchImageLibraryAsync(opciones);
-    if (!res.canceled && res.assets?.[0]?.uri) {
-      setEditPerfil((f) => ({ ...f, fotoUri: res.assets[0].uri }));
-    }
+    const uri = await elegirImagen({ camara: desdeCamara, cuadrada: true });
+    if (uri) setEditPerfil((f) => ({ ...f, fotoUri: uri }));
   };
 
   const guardarPerfil = async () => {

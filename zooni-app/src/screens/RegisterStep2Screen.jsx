@@ -25,7 +25,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
+import { elegirImagen } from '../utils/elegirImagen';
 
 import { fetchRazas } from '../services/authApi';
 // alerta() y no Alert.alert: en react-native-web Alert.alert es un NO-OP y
@@ -86,36 +86,16 @@ export default function RegisterStep2Screen() {
     return () => { cancelado = true; };
   }, [especie]);
 
-  const elegirDeGaleria = async () => {
+  const elegirFoto = async (camara) => {
     try {
-      const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permiso.granted) {
-        alerta('Sin permiso', 'Habilitá el acceso a la galería desde la configuración del dispositivo.');
-        return;
-      }
-      const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.7,
-      });
-      if (!res.canceled && res.assets?.[0]?.uri) setFotoUri(res.assets[0].uri);
+      const uri = await elegirImagen({ camara });
+      if (uri) setFotoUri(uri);
     } catch {
-      alerta('Error', 'No se pudo abrir la galería.');
+      alerta('Error', `No se pudo abrir la ${camara ? 'cámara' : 'galería'}.`);
     }
   };
-
-  const abrirCamara = async () => {
-    try {
-      const permiso = await ImagePicker.requestCameraPermissionsAsync();
-      if (!permiso.granted) {
-        alerta('Sin permiso', 'Habilitá el acceso a la cámara desde la configuración del dispositivo.');
-        return;
-      }
-      const res = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-      if (!res.canceled && res.assets?.[0]?.uri) setFotoUri(res.assets[0].uri);
-    } catch {
-      alerta('Error', 'No se pudo abrir la cámara.');
-    }
-  };
+  const elegirDeGaleria = () => elegirFoto(false);
+  const abrirCamara = () => elegirFoto(true);
 
   const handleContinuar = () => {
     const errs = {};

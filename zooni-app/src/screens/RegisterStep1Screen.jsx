@@ -10,7 +10,6 @@
 import { useRef, useState } from 'react';
 import {
   Animated,
-  Image,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -29,36 +28,7 @@ import { ESPECIES } from '../constants/registroAssets';
 import { volverOLogin } from '../utils/volverOLogin';
 import BotonesSociales from '../components/BotonesSociales';
 import { colores } from '../theme';
-
-function EspecieTile({ especie, seleccionada, onPress }) {
-  const scale = useRef(new Animated.Value(1)).current;
-
-  const handlePress = () => {
-    Animated.sequence([
-      Animated.timing(scale, { toValue: 0.95, duration: 80, useNativeDriver: true }),
-      Animated.timing(scale, { toValue: 1, duration: 100, useNativeDriver: true }),
-    ]).start();
-    onPress();
-  };
-
-  return (
-    <Animated.View style={[s.tileWrap, { transform: [{ scale }] }]}>
-      <TouchableOpacity
-        style={[s.tile, seleccionada && s.tileOn]}
-        onPress={handlePress}
-        activeOpacity={0.85}
-        accessibilityLabel={`Tipo de mascota: ${especie.label}`}
-      >
-        {especie.imagen ? (
-          <Image source={especie.imagen} style={s.tileImg} resizeMode="contain" />
-        ) : (
-          <Text style={s.tileEmoji}>{especie.icono}</Text>
-        )}
-        <Text style={[s.tileLabel, seleccionada && s.tileLabelOn]}>{especie.label}</Text>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-}
+import EspecieTile from '../components/EspecieTile';
 
 export default function RegisterStep1Screen() {
   const navigation = useNavigation();
@@ -177,19 +147,6 @@ const s = StyleSheet.create({
   errorTxt: { fontSize: 11, color: colores.rojo, marginTop: -12, marginBottom: 12, marginLeft: 4 },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  tileWrap: { width: '47%', flexGrow: 1 },
-  tile: {
-    backgroundColor: colores.blanco, borderRadius: 14, padding: 14,
-    borderWidth: 1, borderColor: colores.gris200,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2,
-    minHeight: 92,
-  },
-  tileOn: { backgroundColor: colores.verde, borderColor: colores.verde },
-  tileEmoji: { fontSize: 32, marginBottom: 6 },
-  tileImg: { width: 40, height: 40, marginBottom: 6 },
-  tileLabel: { fontSize: 14, fontWeight: '700', color: colores.texto },
-  tileLabelOn: { color: colores.blanco },
 
   btnContinuar: {
     backgroundColor: colores.verde, borderRadius: 30, height: 52,

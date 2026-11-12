@@ -17,13 +17,13 @@ import {
   TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { elegirImagen } from '../../utils/elegirImagen';
 
 import { C, PillButton } from '../paseador/PaseadorUI';
 import { TAMANOS, configNegocio } from '../../constants/negocios';
 import { validarItem } from '../../services/negocioApi';
 import { sanitizarDigitos } from '../../utils/sanitizar';
-import { alerta, confirmar } from '../../utils/dialogo';
+import { confirmar } from '../../utils/dialogo';
 import { colores } from '../../theme';
 
 const DURACIONES = [15, 30, 45, 60, 90, 120];
@@ -58,15 +58,8 @@ export default function ItemFormModal({ visible, tipo, item, onGuardar, onBorrar
   const set = (k, v) => { setF((x) => ({ ...x, [k]: v })); setError(null); };
 
   const elegirFoto = async () => {
-    const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permiso.granted) {
-      alerta('Sin permiso', 'Habilitá el acceso a la galería desde la configuración del dispositivo.');
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, allowsEditing: true, aspect: [1, 1],
-    });
-    if (!res.canceled && res.assets?.[0]?.uri) set('foto', res.assets[0].uri);
+    const uri = await elegirImagen({ cuadrada: true });
+    if (uri) set('foto', uri);
   };
 
   const guardar = async () => {

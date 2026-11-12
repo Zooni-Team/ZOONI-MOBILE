@@ -48,8 +48,14 @@ dos, todo en una transacción.
 `VirtualVetScreen` → `zoonivetApi.preguntarZooniVet` → Edge Function
 `zoonivet-chat` (con JWT): verifica que la mascota sea tuya, arma el contexto con
 `get_pet_chat_context`, detecta emergencias, llama a Groq con la clave secreta y
-filtra la salida. Si la función no está: `SERVICIO_NO_DISPONIBLE`.
+filtra la salida. Si la función no está: `SERVICIO_NO_DISPONIBLE`. Antes de
+llamar a Groq descuenta un mensaje del cupo diario del usuario
+(`zoonivet_consumir_cupo`, 064; secret `ZOONIVET_LIMITE_DIARIO`, 40 por
+defecto); sin cupo responde 429 `CUPO_AGOTADO`.
 
 ## Chats
-Se actualizan consultando cada `INTERVALO_CHAT_MS` (4 s) con la pantalla abierta
-(`constants/intervalos.js`). Pasar a Supabase Realtime está en [faltaporhacer](../../faltaporhacer.md).
+Llegan por **Supabase Realtime**: `hooks/useRecargaEnVivo(cargar, { tabla, filtro })`
+se suscribe (vía `services/tiempoReal.escucharCambios`) mientras la pantalla está
+en foco y vuelve a llamar a `cargar` con cada cambio. `Mensaje` y `paseo_mensajes`
+están en la publicación `supabase_realtime` (064) y Realtime respeta RLS. Como red
+de seguridad, también consulta cada `INTERVALO_CHAT_RESPALDO_MS` (30 s).

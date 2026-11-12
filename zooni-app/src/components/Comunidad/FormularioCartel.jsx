@@ -4,7 +4,7 @@ import {
   ScrollView, ActivityIndicator, Alert, Modal, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { elegirImagen } from '../../utils/elegirImagen';
 import { crearCartel } from '../../api/comunidad';
 import { colores } from '../../theme';
 
@@ -29,25 +29,12 @@ export default function FormularioCartel({ coordenadas, onExito, onCancelar }) {
     return ok;
   };
 
-  const elegirDeGaleria = async () => {
-    const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permiso.granted) {
-      Alert.alert('Sin permiso', 'Habilitá el acceso a la galería desde la configuración del dispositivo.');
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
-    if (!res.canceled && res.assets?.[0]?.uri) setFotoUri(res.assets[0].uri);
+  const elegirFoto = async (camara) => {
+    const uri = await elegirImagen({ camara });
+    if (uri) setFotoUri(uri);
   };
-
-  const abrirCamara = async () => {
-    const permiso = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permiso.granted) {
-      Alert.alert('Sin permiso', 'Habilitá el acceso a la cámara desde la configuración del dispositivo.');
-      return;
-    }
-    const res = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-    if (!res.canceled && res.assets?.[0]?.uri) setFotoUri(res.assets[0].uri);
-  };
+  const elegirDeGaleria = () => elegirFoto(false);
+  const abrirCamara = () => elegirFoto(true);
 
   const submit = async () => {
     if (!tel.trim()) { setErrTel('El teléfono de contacto es requerido'); return; }

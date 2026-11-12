@@ -17,14 +17,13 @@ import {
   TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { elegirImagen } from '../../utils/elegirImagen';
 
 import { Avatar, C, PillButton } from '../paseador/PaseadorUI';
 import FechaPicker from '../FechaPicker';
 import { cuandoTexto } from '../../services/negocioApi';
 import { subirImagenPublica } from '../../utils/imagenStorage';
 import { parseDecimal, sanitizarDecimal } from '../../utils/sanitizar';
-import { alerta } from '../../utils/dialogo';
 import { colores } from '../../theme';
 import { formatearFecha } from '../../utils/fechaLocal';
 
@@ -68,19 +67,11 @@ export default function InformeModal({ visible, tipo, turno, editar = false, onG
   const set = (k, v) => { setF((x) => ({ ...x, [k]: v })); setError(null); };
 
   const agregarFoto = async (camara) => {
-    const permiso = camara
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permiso.granted) {
-      alerta('Sin permiso', `Habilitá el acceso a la ${camara ? 'cámara' : 'galería'} desde la configuración.`);
-      return;
-    }
-    const opciones = { quality: 0.7, mediaTypes: ImagePicker.MediaTypeOptions.Images };
-    const res = camara ? await ImagePicker.launchCameraAsync(opciones) : await ImagePicker.launchImageLibraryAsync(opciones);
-    if (res.canceled || !res.assets?.[0]?.uri) return;
+    const uri = await elegirImagen({ camara });
+    if (!uri) return;
     setSubiendo(true);
     try {
-      const url = await subirImagenPublica(res.assets[0].uri, 'negocios');
+      const url = await subirImagenPublica(uri, 'negocios');
       setFotos((x) => [...x, url].slice(0, FOTOS_MAX));
     } catch {
       setError('No se pudo subir la foto. Probá de nuevo.');

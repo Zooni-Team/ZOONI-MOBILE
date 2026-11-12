@@ -125,8 +125,8 @@ function errorZooniVet(code, mensaje) {
 
 /**
  * Pregunta a ZooniVet. Devuelve { texto, emergencia }.
- * Errores (err.code): SIN_API_KEY · RATE_LIMIT · SERVICIO_NO_DISPONIBLE ·
- * RESPUESTA_INVALIDA · GROQ_ERROR.
+ * Errores (err.code): SIN_API_KEY · RATE_LIMIT · CUPO_AGOTADO (límite diario
+ * por usuario, 064) · SERVICIO_NO_DISPONIBLE · RESPUESTA_INVALIDA · GROQ_ERROR.
  */
 export async function preguntarZooniVet({ ctx, usuario, historial = [], mensaje, signal }) {
   const { data, error } = await supabase.functions.invoke('zoonivet-chat', {

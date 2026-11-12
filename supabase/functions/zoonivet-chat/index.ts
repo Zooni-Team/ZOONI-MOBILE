@@ -16,6 +16,7 @@
 //   GROQ_API_KEY           (obligatorio)
 //   GROQ_MODEL             (opcional, default openai/gpt-oss-120b)
 //   GROQ_MODEL_FALLBACK    (opcional, default openai/gpt-oss-20b)
+//   ZOONIVET_LIMITE_DIARIO (opcional, default 40 mensajes por usuario por día)
 // SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY los inyecta la plataforma.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -24,6 +25,7 @@ const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") ?? "";
 const GROQ_MODEL = Deno.env.get("GROQ_MODEL") ?? "openai/gpt-oss-120b";
 const GROQ_MODEL_FALLBACK = Deno.env.get("GROQ_MODEL_FALLBACK") ?? "openai/gpt-oss-20b";
 const GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
+const LIMITE_DIARIO = Number(Deno.env.get("ZOONIVET_LIMITE_DIARIO") ?? "40") || 40;
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -267,6 +269,23 @@ Deno.serve(async (req) => {
   if (!yo || !mascota || mascota.Id_User !== yo.Id_User) {
     // Misma respuesta si no existe o si es ajena: no revelar mascotas de otros.
     return json({ error: "PET_NOT_FOUND", message: "No encontré esa mascota." }, 404);
+  }
+
+  // Cupo diario por usuario (064): se cuenta en la base, antes de gastar una
+  // llamada a Groq. Sin esto, un usuario (o un script con su sesión) podía
+  // mandar mensajes sin límite a costa del proyecto.
+  const { data: hayCupo, error: cupoError } = await admin.rpc("zoonivet_consumir_cupo", {
+    p_id_user: yo.Id_User,
+    p_limite: LIMITE_DIARIO,
+  });
+  if (cupoError) {
+    return json({ error: "CUPO_ERROR", message: cupoError.message }, 500);
+  }
+  if (hayCupo === false) {
+    return json({
+      error: "CUPO_AGOTADO",
+      message: `Llegaste al límite de ${LIMITE_DIARIO} mensajes de ZooniVet por hoy. Mañana podés seguir.`,
+    }, 429);
   }
 
   const { data: ctx, error: ctxError } = await admin.rpc("get_pet_chat_context", {

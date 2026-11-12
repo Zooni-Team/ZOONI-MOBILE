@@ -21,7 +21,7 @@ import {
   TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { elegirImagen } from '../../../utils/elegirImagen';
 
 import { C, Card, PillButton, Seccion, sombra } from '../../../components/paseador/PaseadorUI';
 import ZonaMapaPicker from '../../../components/paseador/ZonaMapaPicker';
@@ -34,7 +34,6 @@ import {
   actualizarNegocio, resumenHorarios, subirLogoNegocio,
 } from '../../../services/negocioApi';
 import { sanitizarDigitos } from '../../../utils/sanitizar';
-import { alerta } from '../../../utils/dialogo';
 import { colores } from '../../../theme';
 
 function localDe(n) {
@@ -77,18 +76,11 @@ export default function MiNegocioTab({ negocio, setNegocio, tipo, cfg, avisar, n
   const total = tipo === 'peluqueria' ? 4 : 3;
 
   const cambiarLogo = async () => {
-    const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permiso.granted) {
-      alerta('Sin permiso', 'Habilitá el acceso a la galería desde la configuración del dispositivo.');
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, allowsEditing: true, aspect: [1, 1],
-    });
-    if (res.canceled || !res.assets?.[0]?.uri) return;
+    const uri = await elegirImagen({ cuadrada: true });
+    if (!uri) return;
     setSubiendoLogo(true);
     try {
-      setNegocio(await subirLogoNegocio(negocio, res.assets[0].uri));
+      setNegocio(await subirLogoNegocio(negocio, uri));
       avisar('Logo actualizado');
     } catch {
       avisar('No se pudo subir el logo. Probá de nuevo.', 'alert-circle');

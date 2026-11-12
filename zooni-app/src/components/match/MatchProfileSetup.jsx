@@ -24,7 +24,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { elegirImagen } from '../../utils/elegirImagen';
 
 import FilterChip from './FilterChip';
 import { INTEREST_OPTIONS, GENDER_OPTIONS } from '../../data/matchDemo';
@@ -70,25 +70,12 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
     });
   };
 
-  const elegirDeGaleria = async () => {
-    const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permiso.granted) {
-      Alert.alert('Sin permiso', 'Habilitá el acceso a la galería desde la configuración del dispositivo.');
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
-    if (!res.canceled && res.assets?.[0]?.uri) { setFotoUri(res.assets[0].uri); setError(null); }
+  const elegirFoto = async (camara) => {
+    const uri = await elegirImagen({ camara });
+    if (uri) { setFotoUri(uri); setError(null); }
   };
-
-  const abrirCamara = async () => {
-    const permiso = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permiso.granted) {
-      Alert.alert('Sin permiso', 'Habilitá el acceso a la cámara desde la configuración del dispositivo.');
-      return;
-    }
-    const res = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-    if (!res.canceled && res.assets?.[0]?.uri) { setFotoUri(res.assets[0].uri); setError(null); }
-  };
+  const elegirDeGaleria = () => elegirFoto(false);
+  const abrirCamara = () => elegirFoto(true);
 
   /** Qué falta en el paso actual (null = se puede avanzar). */
   const validarPaso = () => {

@@ -2,7 +2,7 @@
  * Slider simple con barra táctil (ancho adaptable).
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, PanResponder } from 'react-native';
 import { colores } from '../../theme';
 
@@ -18,13 +18,13 @@ export default function SimpleSlider({
 }) {
   const [trackWidth, setTrackWidth] = useState(1);
 
-  const updateFromX = (x) => {
+  const updateFromX = useCallback((x) => {
     if (trackWidth <= 1) return;
     const ratio = Math.max(0, Math.min(1, x / trackWidth));
     const raw = min + ratio * (max - min);
     const stepped = Math.round(raw / step) * step;
     onChange(Math.max(min, Math.min(max, stepped)));
-  };
+  }, [trackWidth, min, max, step, onChange]);
 
   const panResponder = useMemo(
     () => PanResponder.create({
@@ -33,7 +33,7 @@ export default function SimpleSlider({
       onPanResponderGrant: (evt) => updateFromX(evt.nativeEvent.locationX),
       onPanResponderMove: (evt) => updateFromX(evt.nativeEvent.locationX),
     }),
-    [trackWidth, min, max, step, onChange]
+    [updateFromX]
   );
 
   const ratio = (value - min) / (max - min);

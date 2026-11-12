@@ -20,7 +20,7 @@ import {
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { Avatar, C } from '../../components/paseador/PaseadorUI';
 import { EstadoChip } from '../../components/negocio/NegocioUI';
@@ -31,7 +31,7 @@ import {
 } from '../../services/negocioApi';
 import { etiquetaDia, horaCorta, mismoDia } from '../../utils/tiempoRelativo';
 import { colores } from '../../theme';
-import { INTERVALO_CHAT_MS } from '../../constants/intervalos';
+import { useRecargaEnVivo } from '../../hooks/useRecargaEnVivo';
 
 const RAPIDAS_VISIBLES = 3;
 
@@ -72,11 +72,12 @@ export default function NegocioChatScreen() {
     }
   }, [negocio, idDueno]);
 
-  useFocusEffect(useCallback(() => {
-    cargar();
-    const t = setInterval(cargar, INTERVALO_CHAT_MS);
-    return () => clearInterval(t);
-  }, [cargar]));
+  // Mensajes nuevos del cliente por Supabase Realtime (respaldo cada 30 s)
+  useRecargaEnVivo(cargar, {
+    tabla: 'Mensaje',
+    filtro: `idServicio=eq.${negocio?.idServicio}`,
+    activo: !!negocio?.idServicio,
+  });
 
   const enviar = async (contenido = texto) => {
     const limpio = contenido.trim();

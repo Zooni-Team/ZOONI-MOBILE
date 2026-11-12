@@ -383,8 +383,13 @@ export default function EventosScreen() {
   const [procesandoIds, setProcesandoIds]   = useState(new Map());
 
   // ── Carga inicial ────────────────────────────────────────────
+  // Una sola vez al montar. cargarDatos lee la mascota elegida del render en
+  // curso; por eso se llama a través de un ref (siempre la versión más nueva)
+  // en vez de ponerla como dependencia, que la volvería a disparar cada vez
+  // que cambia la mascota (de eso ya se ocupa el efecto de foco).
+  const cargarDatosRef = useRef(null);
   useEffect(() => {
-    cargarDatos();
+    cargarDatosRef.current?.();
   }, []);
 
   /**
@@ -534,6 +539,7 @@ export default function EventosScreen() {
       setLoading(false);
     }
   }
+  cargarDatosRef.current = cargarDatos;
 
   // ── Toggle descripción expandida ─────────────────────────────
   const toggleDescripcion = useCallback((eventoId) => {

@@ -33,10 +33,11 @@ import {
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { elegirImagen } from '../../utils/elegirImagen';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { C, PillButton, sombra } from '../../components/paseador/PaseadorUI';
+import { Campo, InputPassword } from '../../components/ui/CampoFormulario';
 import {
   HORARIOS_DEFAULT, activarPaseador, activarPaseadorSocial, completarPerfilPaseador, fetchMiFotoPerfil,
   registrarPaseadorSocial,
@@ -47,7 +48,6 @@ import ServiciosEditor, { filasDesdeServicios, serviciosDesdeFilas } from '../..
 import FechaPicker from '../../components/FechaPicker';
 import ZonaMapaPicker, { RADIO_MAX, RADIO_MIN } from '../../components/paseador/ZonaMapaPicker';
 import { actualizarMiFotoPerfil } from '../../services/perfilApi';
-import { alerta } from '../../utils/dialogo';
 import { verificarDisponibilidad } from '../../services/authApi';
 import BotonesSociales from '../../components/BotonesSociales';
 import { volverOLogin } from '../../utils/volverOLogin';
@@ -79,48 +79,12 @@ function edadDe(nacimiento, hoy = new Date()) {
   return edad;
 }
 
-function Campo({ label, error, children }) {
-  return (
-    <View style={{ marginBottom: 14 }}>
-      <Text style={s.label}>{label}</Text>
-      {children}
-      {error ? <Text style={s.errorCampo}>{error}</Text> : null}
-    </View>
-  );
-}
-
-/** Input de contraseña con el ojito para mostrarla u ocultarla. */
-function InputPassword({ value, onChangeText, placeholder, error }) {
-  const [ver, setVer] = useState(false);
-  return (
-    <View style={[s.input, s.inputPassWrap, error && s.inputError]}>
-      <TextInput style={s.inputPass} value={value} onChangeText={onChangeText}
-        placeholder={placeholder} placeholderTextColor={C.gris}
-        secureTextEntry={!ver} autoCapitalize="none" autoCorrect={false}
-        autoComplete="new-password" textContentType="newPassword" />
-      <TouchableOpacity onPress={() => setVer((v) => !v)} hitSlop={8}
-        accessibilityLabel={ver ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
-        <Ionicons name={ver ? 'eye-off-outline' : 'eye-outline'} size={20} color={C.texto2} />
-      </TouchableOpacity>
-    </View>
-  );
-}
-
 /** Campo "Foto de tu cara": círculo con la vista previa + cámara / galería. */
 function CampoFoto({ uri, error, onElegir }) {
   const elegir = async (camara) => {
-    const permiso = camara
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permiso.granted) {
-      alerta('Sin permiso', `Habilitá el acceso a la ${camara ? 'cámara' : 'galería'} desde la configuración del dispositivo.`);
-      return;
-    }
-    const opciones = { quality: 0.7, allowsEditing: true, aspect: [1, 1] };
-    const res = camara
-      ? await ImagePicker.launchCameraAsync({ ...opciones, cameraType: ImagePicker.CameraType.front })
-      : await ImagePicker.launchImageLibraryAsync({ ...opciones, mediaTypes: ImagePicker.MediaTypeOptions.Images });
-    if (!res.canceled && res.assets?.[0]?.uri) onElegir(res.assets[0].uri);
+    // Cámara frontal: es una foto de la cara del paseador
+    const elegida = await elegirImagen({ camara, cuadrada: true, frontal: true });
+    if (elegida) onElegir(elegida);
   };
 
   return (

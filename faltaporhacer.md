@@ -1,8 +1,15 @@
 # Falta por hacer
 
-Estado al cortar la refactorización. Ordenado por prioridad.
+Ordenado por prioridad. Lo hecho en la última pasada está al final.
 
 ## 1. Para que lo hecho funcione (hacerlo YA, en este orden)
+
+**Si la base YA tiene 060–063 aplicadas** (Auth + RLS + Storage): no hace falta
+el archivo entero. Pegar `supabase/MIGRACION_064_SOBRE_063.sql` → Run, y
+DESPUÉS `supabase functions deploy zoonivet-chat` (la versión nueva llama a
+`zoonivet_consumir_cupo`, que crea ese SQL). Luego desplegar la app.
+
+**Base vacía o sin 060–063:** los pasos de abajo.
 1. **Desplegar las Edge Functions** (si no, las cuentas viejas no pueden entrar
    después del paso 2):
    ```bash
@@ -10,57 +17,64 @@ Estado al cortar la refactorización. Ordenado por prioridad.
    supabase link --project-ref <ref-del-proyecto>
    supabase functions deploy migrar-cuenta --no-verify-jwt
    supabase secrets set GROQ_API_KEY=gsk_...
+   supabase secrets set ZOONIVET_LIMITE_DIARIO=40   # opcional, 40 por defecto
    supabase functions deploy zoonivet-chat
    ```
 2. **Pegar `supabase/SUPABASE_PEGAR_TODO.sql` entero** en Supabase → SQL Editor → Run.
 3. Authentication → Providers → Email: habilitado (decidir "Confirm email", ver README).
-4. Cargar en Vercel las variables de `zooni-app/.env.example` y redesplegar.
-5. Probar en la app real: login con cuenta vieja, registro, Match (like
-   recíproco), pedido en pet shop, turno, paseo completo, ZooniVet, subir foto.
-   Nada de esto se probó contra la base real (sólo contra Postgres local y
-   dobles de prueba).
-6. Cuando `select count(*) from user_credentials` dé 0: borrar
+4. (Opcional) Database → Extensions → **pg_cron** y volver a correr el SQL: así
+   la purga de mascotas eliminadas corre sola cada noche.
+5. Cargar en Vercel las variables de `zooni-app/.env.example` y redesplegar.
+6. Probar en la app real: login con cuenta vieja, registro, Match (like
+   recíproco), pedido en pet shop, turno, paseo completo, ZooniVet, subir foto,
+   **chat en vivo** (dos sesiones a la vez), **consulta con imagen** (bucket
+   privado). Nada de esto se probó contra la base real.
+7. Correr lo que no se pudo correr en la última pasada:
+   `cd zooni-app && npm run lint && npm test` y
+   `node supabase/scripts/probar-esquema.mjs` (Postgres local).
+8. Cuando `select count(*) from user_credentials` dé 0: borrar
    `zooni-app/src/services/authLegado.js`, su uso en `authApi.js` y
    `consultaRespaldo` en `services/perfilesPublicos.js`.
 
 ## 2. Refactor pendiente (código)
-- **Elegir fotos repetido en 18 archivos** (permiso + galería/cámara). Crear
-  `utils/elegirImagen.js` y reemplazar en: `Comunidad/FormularioCartel`,
-  `match/MatchProfileSetup`, `match/PetMatchOnboarding`, `negocio/InformeModal`,
-  `negocio/ItemFormModal`, `resenas/CalificarPaseoModal`,
-  `Configuracion/AltaMascotaScreen`, `CuentaSeguridadScreen`,
-  `EditarMascotaScreen`, `ConsultasScreen`, `MatchScreen`,
-  `Negocio/NegocioRegistroScreen`, `Negocio/tabs/GaleriaTab`,
-  `Negocio/tabs/MiNegocioTab`, `Paseador/PaseadorRegistroScreen`,
-  `Paseador/tabs/PerfilTab`, `PerfilScreen`, `RegisterStep2Screen`.
-- **Componentes casi iguales a unificar**: `CardAplicado`/`CardSugerido`
-  (Vacunas y Tratamientos), `EventoCard` (Calendario y Eventos), `Campo` e
-  `InputPassword` (registros de Negocio y Paseador), `Estrellas` (3 lugares),
-  `EspecieTile` (RegisterStep1 y AltaMascota), `PetIllustration` (Home y Ficha).
-- **7 avisos de ESLint** (`react-hooks/exhaustive-deps`): envolver en
-  `useCallback` `cargarDatos` (Closet, Eventos), `animarHero` (Consultas,
-  Tratamientos), `onChatsSinLeer` (PaseadorHeader), `valueFromX`/`updateFromX`
-  (sliders de Match).
-- Smoke test en el navegador: se probó login y registro paso 1–2 (FechaPicker);
-  falta recorrer el resto de pantallas con una base real.
+- **Componentes casi iguales** (no idénticos: hay que decidir el diseño único
+  mirando la app): `CardAplicado`/`CardSugerido` (Vacunas y Tratamientos),
+  `EventoCard` (Calendario y Eventos), `PetIllustration` (Home y Ficha).
 - Pantallas gigantes (SRP): `EventosScreen`, `CalendarioScreen`, `HomeScreen`,
   `TratamientosScreen`, `VacunasScreen` (800–1000 líneas): separar
   subcomponentes en archivos y la carga de datos en hooks.
 - `services/paseadorApi.js` (~1.500 líneas) y `negocioApi.js` (~1.200): partir
   por tema (perfil, solicitudes, pagos, reseñas, chat / catálogo, turnos, pedidos).
+- `edadDe` en `PaseadorRegistroScreen` repite lógica de `utils/calcularEdad`.
+- Smoke test en el navegador del resto de las pantallas con una base real.
 
 ## 3. Diseño
-- Grises `gris50`–`gris600` en `src/theme/colores.js`: definir una escala corta.
+- Grises `gris50`–`gris600` en `src/theme/colores.js`: definir una escala corta
+  (requiere revisar visualmente cada pantalla que los usa).
 - Modo oscuro: no existe.
 
 ## 4. Base y seguridad
-- Imágenes de consultas veterinarias en bucket público → bucket privado con URLs firmadas.
-- Cascadas al borrar mascota no son parejas (`eventos_calendario`,
-  `historial_peso`, `consultas_veterinarias` con CASCADE; `MascotaVacuna`,
-  `Tratamiento`, `HistorialEvento`, `Voto`, `Match` sin).
-- Chats por consulta periódica → Supabase Realtime.
-- Límite de mensajes por usuario en `zoonivet-chat`.
+- Las imágenes de consultas **anteriores a 064** siguen en el bucket público
+  (`imagen_url`). Para moverlas: copiarlas a `consultas-privadas/<auth uid>/consultas/`,
+  completar `imagen_path` y borrar el archivo público.
+- Las fotos en Storage de una mascota purgada no se borran (sólo las filas).
 
 ## 5. Defensa oral
-Repasar `docs/claude/flujos.md` (responde las preguntas del PDF) y la sección
-060–062 de `SUPABASE_PEGAR_TODO.sql`.
+Repasar `docs/claude/flujos.md` (responde las preguntas del PDF) y las secciones
+060–064 de `SUPABASE_PEGAR_TODO.sql`.
+
+---
+
+## Hecho en la última pasada
+- **064 en el SQL**: cascadas parejas al borrar mascota (NOT NULL → CASCADE,
+  admite NULL → SET NULL, `Paseo` conserva el cobro), FKs que faltaban en
+  `mascota_fotos` / `mascota_estado_historial`, `purgar_mascotas_eliminadas()`
+  (+ pg_cron si está), bucket privado `consultas-privadas` con URLs firmadas,
+  `Mensaje` y `paseo_mensajes` en Realtime, cupo diario de ZooniVet.
+- `zoonivet-chat` consume el cupo antes de llamar a Groq (`CUPO_AGOTADO`, 429).
+- Chats (Match/servicio, negocio, paseo) por Realtime con `useRecargaEnVivo`
+  (respaldo cada 30 s en vez de consultar cada 4 s).
+- `utils/elegirImagen` reemplaza el código de fotos repetido en 18 archivos.
+- `ui/Estrellas`, `ui/CampoFormulario` (`Campo`, `InputPassword`) y
+  `EspecieTile` unificados.
+- Los 7 avisos de `react-hooks/exhaustive-deps` corregidos.

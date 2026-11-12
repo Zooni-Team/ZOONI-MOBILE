@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useCallback, useRef, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, PanResponder } from 'react-native';
 import { colores } from '../../theme';
 
@@ -16,13 +16,11 @@ export default function SimpleRangeSlider({
   const [trackWidth, setTrackWidth] = useState(1);
   const activeThumb = useRef(null);
 
-  const clamp = (v) => Math.max(min, Math.min(max, v));
-
-  const valueFromX = (x) => {
+  const valueFromX = useCallback((x) => {
     if (trackWidth <= 1) return min;
     const ratio = Math.max(0, Math.min(1, x / trackWidth));
-    return clamp(Math.round(min + ratio * (max - min)));
-  };
+    return Math.max(min, Math.min(max, Math.round(min + ratio * (max - min))));
+  }, [trackWidth, min, max]);
 
   const panResponder = useMemo(
     () => PanResponder.create({
@@ -55,7 +53,7 @@ export default function SimpleRangeSlider({
         activeThumb.current = null;
       },
     }),
-    [trackWidth, low, high, min, max, onChangeLow, onChangeHigh]
+    [trackWidth, low, high, min, max, onChangeLow, onChangeHigh, valueFromX]
   );
 
   const lowRatio = (low - min) / (max - min);

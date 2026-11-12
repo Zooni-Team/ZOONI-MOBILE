@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
+import { elegirImagen } from '../../utils/elegirImagen';
 
 import {
   SettingsAction, SettingsGroup, SettingsRow, SettingsScreen, T,
@@ -129,11 +129,9 @@ export default function CuentaSeguridadScreen() {
   // ── Foto de perfil: sube la imagen elegida (cámara o galería) ──
   const tomarFoto = async (desdeGaleria) => {
     try {
-      const res = desdeGaleria
-        ? await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 })
-        : await ImagePicker.launchCameraAsync({ quality: 0.7 });
-      if (res.canceled || !res.assets?.[0]?.uri) return;
-      await actualizarMiFotoPerfil(res.assets[0].uri);
+      const uri = await elegirImagen({ camara: !desdeGaleria });
+      if (!uri) return;
+      await actualizarMiFotoPerfil(uri);
       refrescar();
     } catch {
       alerta('No pudimos actualizar la foto', 'Revisá los permisos y tu conexión.');

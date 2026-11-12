@@ -146,6 +146,20 @@ export default function ClosetScreen() {
 
   // ── Carga inicial ──────────────────────────────────────────────────────────
 
+  const cargarDatos = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await fetchAvatares(petId);
+      setMascota(data.mascota);
+      setAvatares(data.avatares);
+      setAvatarSeleccionado(data.mascota.imagen_asset);
+    } catch {
+      Alert.alert('Error', 'No se pudieron cargar los avatares. Intentá de nuevo.');
+    } finally {
+      setLoading(false);
+    }
+  }, [petId]);
+
   useEffect(() => {
     if (!petId) {
       Alert.alert('Error', 'No se recibió el ID de la mascota.');
@@ -153,21 +167,7 @@ export default function ClosetScreen() {
       return;
     }
     cargarDatos();
-  }, [petId]);
-
-  async function cargarDatos() {
-    try {
-      setLoading(true);
-      const data = await fetchAvatares(petId);
-      setMascota(data.mascota);
-      setAvatares(data.avatares);
-      setAvatarSeleccionado(data.mascota.imagen_asset);
-    } catch (err) {
-      Alert.alert('Error', 'No se pudieron cargar los avatares. Intentá de nuevo.');
-    } finally {
-      setLoading(false);
-    }
-  }
+  }, [petId, cargarDatos, navigation]);
 
   // ── Animar preview al seleccionar ─────────────────────────────────────────
 

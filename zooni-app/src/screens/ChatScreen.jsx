@@ -35,7 +35,8 @@ import {
 import MatchInfoModal from '../components/chat/MatchInfoModal';
 import { etiquetaDia, horaCorta, mismoDia } from '../utils/tiempoRelativo';
 import { colores } from '../theme';
-import { INTERVALO_CHAT_MS } from '../constants/intervalos';
+import { INTERVALO_RELOJ_CHAT_MS } from '../constants/intervalos';
+import { useRecargaEnVivo } from '../hooks/useRecargaEnVivo';
 
 /**
  * Tildes de estado, solo en MIS mensajes (como WhatsApp):
@@ -77,22 +78,24 @@ export default function ChatScreen() {
     if (servicioId) marcarLeidosServicio(servicioId).catch(() => {});
   }, [chatId, servicioId]);
 
-  useEffect(() => { cargar(); }, [cargar]);
-
   useEffect(() => {
     if (servicioId) negocioDeServicio(servicioId).then(setIdNegocio).catch(() => setIdNegocio(null));
   }, [servicioId]);
 
-  // Mientras la pantalla está en foco, refresca sola para traer lo que
-  // escribió el otro lado (no hay suscripción en tiempo real todavía).
+  // Lo que escribe el otro lado llega por Supabase Realtime mientras la
+  // pantalla está en foco (con una consulta de respaldo cada 30 s).
+  useRecargaEnVivo(cargar, {
+    tabla: 'Mensaje',
+    filtro: chatId ? `idMatch=eq.${chatId}` : `idServicio=eq.${servicioId}`,
+    activo: !!(chatId || servicioId),
+  });
+
+  // El reloj de los separadores (Hoy / Ayer) avanza aunque no lleguen mensajes
   useFocusEffect(
     useCallback(() => {
-      const interval = setInterval(() => {
-        cargar();
-        setAhora(new Date());
-      }, INTERVALO_CHAT_MS);
-      return () => clearInterval(interval);
-    }, [cargar])
+      const reloj = setInterval(() => setAhora(new Date()), INTERVALO_RELOJ_CHAT_MS);
+      return () => clearInterval(reloj);
+    }, [])
   );
 
   useEffect(() => {

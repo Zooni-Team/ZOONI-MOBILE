@@ -29,10 +29,11 @@ import {
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { elegirImagen } from '../../utils/elegirImagen';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { C, PillButton, sombra } from '../../components/paseador/PaseadorUI';
+import { Campo, InputPassword } from '../../components/ui/CampoFormulario';
 import ZonaMapaPicker from '../../components/paseador/ZonaMapaPicker';
 import HorariosEditor, { validarHorarios } from '../../components/negocio/HorariosEditor';
 import {
@@ -45,37 +46,9 @@ import {
 import { verificarDisponibilidad } from '../../services/authApi';
 import { volverOLogin } from '../../utils/volverOLogin';
 import { sanitizarDigitos } from '../../utils/sanitizar';
-import { alerta } from '../../utils/dialogo';
 import { colores } from '../../theme';
 import { EMAIL_REGEX } from '../../utils/validacion';
 import { PASSWORD_MIN } from '../../utils/validacion';
-
-function Campo({ label, error, ayuda, children }) {
-  return (
-    <View style={{ marginBottom: 14 }}>
-      <Text style={s.label}>{label}</Text>
-      {children}
-      {ayuda && !error ? <Text style={s.ayuda}>{ayuda}</Text> : null}
-      {error ? <Text style={s.errorCampo}>{error}</Text> : null}
-    </View>
-  );
-}
-
-function InputPassword({ value, onChangeText, placeholder, error }) {
-  const [ver, setVer] = useState(false);
-  return (
-    <View style={[s.input, s.inputPassWrap, error && s.inputError]}>
-      <TextInput style={s.inputPass} value={value} onChangeText={onChangeText}
-        placeholder={placeholder} placeholderTextColor={C.gris}
-        secureTextEntry={!ver} autoCapitalize="none" autoCorrect={false}
-        autoComplete="new-password" textContentType="newPassword" />
-      <TouchableOpacity onPress={() => setVer((v) => !v)} hitSlop={8}
-        accessibilityLabel={ver ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
-        <Ionicons name={ver ? 'eye-off-outline' : 'eye-outline'} size={20} color={C.texto2} />
-      </TouchableOpacity>
-    </View>
-  );
-}
 
 export default function NegocioRegistroScreen() {
   const navigation = useNavigation();
@@ -106,15 +79,8 @@ export default function NegocioRegistroScreen() {
   const setN = (k, v) => { setNegocio((p) => ({ ...p, [k]: v })); limpiar(k); };
 
   const elegirLogo = async () => {
-    const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permiso.granted) {
-      alerta('Sin permiso', 'Habilitá el acceso a la galería desde la configuración del dispositivo.');
-      return;
-    }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, allowsEditing: true, aspect: [1, 1],
-    });
-    if (!res.canceled && res.assets?.[0]?.uri) setLogo(res.assets[0].uri);
+    const uri = await elegirImagen({ cuadrada: true });
+    if (uri) setLogo(uri);
   };
 
   const validarPaso1 = async () => {

@@ -26,7 +26,7 @@ import {
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { elegirImagen } from '../../utils/elegirImagen';
 
 import { resolveMascotaVisual } from '../../constants/petImages';
 import { crearPerfilMatchMascota } from '../../services/matchApi';
@@ -52,17 +52,8 @@ export default function PetMatchOnboarding({ mascota, onListo, onCancelar }) {
   const fotoMostrada = fotoUri ?? fotoExistente;
 
   const elegirFoto = async (desdeCamara) => {
-    const permiso = desdeCamara
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permiso.granted) {
-      alerta('Sin permiso', `Habilitá el acceso a ${desdeCamara ? 'la cámara' : 'la galería'} desde la configuración.`);
-      return;
-    }
-    const res = desdeCamara
-      ? await ImagePicker.launchCameraAsync({ quality: 0.7 })
-      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
-    if (!res.canceled && res.assets?.[0]?.uri) { setFotoUri(res.assets[0].uri); setError(null); }
+    const uri = await elegirImagen({ camara: desdeCamara });
+    if (uri) { setFotoUri(uri); setError(null); }
   };
 
   const validarPaso = () => {

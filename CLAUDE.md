@@ -29,11 +29,13 @@ los que dependen de él.
 1. **Una sola fuente por cosa.** Colores → `src/theme`. Fechas → `utils/fechaLocal`.
    Edades → `utils/calcularEdad`. Distancias → `utils/geo`. Texto → `utils/texto`.
    Avisos → `ui/Toast` + `useToast`. Loading → `ui/Skeleton`. Fechas a elegir →
-   `FechaPicker`. Si escribís una función que ya existe, borrala y usá la central.
+   `FechaPicker`. Fotos a elegir → `utils/elegirImagen`. Estrellas → `ui/Estrellas`.
+   Campos de formulario → `ui/CampoFormulario`. Chats en vivo → `useRecargaEnVivo`.
+   Si escribís una función que ya existe, borrala y usá la central.
 2. **Sólo `src/services/*` habla con Supabase.** Las pantallas llaman servicios.
 3. **La base decide lo que importa.** Identidad (JWT), permisos (RLS), precios,
    totales, stock y transiciones de estado se validan en Postgres
-   (`supabase/SUPABASE_PEGAR_TODO.sql`, secciones 060–063). La app valida para avisar rápido, nunca
+   (`supabase/SUPABASE_PEGAR_TODO.sql`, secciones 060–064). La app valida para avisar rápido, nunca
    como garantía.
 4. **Nada de colores hex sueltos** si el color está en la paleta: `colores.verde`.
 5. **Nada de `new Date('YYYY-MM-DD')`**: corre el día en Argentina. Usá
