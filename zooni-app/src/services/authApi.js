@@ -52,18 +52,30 @@ function ordenarRazas(razas) {
 // SESIÓN (compartido por dueños, paseadores y negocios)
 // ─────────────────────────────────────────────
 
+/** PostgREST no encontró la función: la base no tiene la 065 todavía. */
+function esFuncionInexistente(error) {
+  return error?.code === 'PGRST202' || /could not find the function/i.test(error?.message ?? '');
+}
+
 /**
  * Cuenta vieja → Supabase Auth. Devuelve:
  *   true   la cuenta se migró (ya se puede hacer signInWithPassword)
  *   false  no había cuenta vieja con ese mail y contraseña
- *   null   la Edge Function no está desplegada (o no hay red)
+ *   null   no se pudo intentar (base sin 065 y sin la Edge Function, o sin red)
+ *
+ * Primero la función de la base (065, migrar_cuenta_legada): no depende de
+ * desplegar nada. Si la base todavía no la tiene, la Edge Function de antes.
  */
 async function migrarCuentaVieja(mail, password) {
-  const { data, error } = await supabase.functions.invoke('migrar-cuenta', {
+  const { data, error } = await supabase.rpc('migrar_cuenta_legada', { p_mail: mail, p_password: password });
+  if (!error) return data === true;
+  if (!esFuncionInexistente(error)) return null;
+
+  const { data: dataFn, error: errorFn } = await supabase.functions.invoke('migrar-cuenta', {
     body: { email: mail, password },
   });
-  if (error) return null;
-  return !!data?.migrada;
+  if (errorFn) return null;
+  return !!dataFn?.migrada;
 }
 
 /** Traduce la sesión de Auth a la cuenta de Zooni. */
@@ -92,9 +104,9 @@ export async function iniciarSesionConPassword(email, password) {
     if (migrada) {
       ({ error } = await supabase.auth.signInWithPassword({ email: mail, password }));
     } else if (migrada === null) {
-      // TRANSICIÓN: la Edge Function migrar-cuenta todavía no está desplegada.
-      // Mientras tanto se entra como antes, sin JWT. Borrar authLegado.js y
-      // este bloque cuando la función esté desplegada (ver README → Supabase).
+      // TRANSICIÓN: no se pudo intentar la migración (base sin 065 y sin la
+      // Edge Function). Se entra como antes, sin JWT. Borrar authLegado.js y
+      // este bloque cuando user_credentials quede vacía (ver faltaporhacer.md).
       return loginLegado(mail, password);
     }
   }

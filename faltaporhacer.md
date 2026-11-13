@@ -5,9 +5,12 @@ Ordenado por prioridad. Lo hecho en la última pasada está al final.
 ## 1. Para que lo hecho funcione (hacerlo YA, en este orden)
 
 **Si la base YA tiene 060–063 aplicadas** (Auth + RLS + Storage): no hace falta
-el archivo entero. Pegar `supabase/MIGRACION_064_SOBRE_063.sql` → Run, y
-DESPUÉS `supabase functions deploy zoonivet-chat` (la versión nueva llama a
-`zoonivet_consumir_cupo`, que crea ese SQL). Luego desplegar la app.
+el archivo entero. Pegar, en orden, `supabase/MIGRACION_064_SOBRE_063.sql` y
+`supabase/MIGRACION_065_LOGIN_CUENTAS_VIEJAS.sql` → Run. DESPUÉS
+`supabase functions deploy zoonivet-chat` (sólo para ZooniVet). Luego desplegar
+la app. `migrar-cuenta` ya NO hace falta: 065 migra las cuentas viejas desde la base.
+
+Los `supabase/tests/*.sql` NO se pegan en Supabase: son para Postgres local.
 
 **Base vacía o sin 060–063:** los pasos de abajo.
 1. **Desplegar las Edge Functions** (si no, las cuentas viejas no pueden entrar

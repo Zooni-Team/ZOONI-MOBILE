@@ -76,7 +76,28 @@ describe('authApi (Supabase Auth)', () => {
     assert.equal(fake.de('auth')[0].args[0].email, 'ana@x.com');
   });
 
-  test('cuenta vieja: migra con la Edge Function y reintenta', async () => {
+  test('cuenta vieja: migra con la función de la base (065) sin tocar la Edge Function', async () => {
+    let intentos = 0;
+    fake.auth('signInWithPassword', () => (intentos++ === 0
+      ? { error: { code: 'invalid_credentials', message: 'Invalid login credentials' } }
+      : { data: {}, error: null }));
+    fake.rpc('migrar_cuenta_legada', { data: true });
+    fake.rpc('login_social', { data: cuenta });
+    const u = await iniciarSesionConPassword('ana@x.com', 'secreta1');
+    assert.equal(u.id, 9);
+    assert.equal(intentos, 2);
+    assert.deepEqual(fake.de('rpc')[0].params, { p_mail: 'ana@x.com', p_password: 'secreta1' });
+    assert.equal(fake.de('funcion').length, 0);
+  });
+
+  test('contraseña mala con 065: credenciales, sin login viejo', async () => {
+    fake.auth('signInWithPassword', { error: { message: 'Invalid login credentials' } });
+    fake.rpc('migrar_cuenta_legada', { data: false });
+    await assert.rejects(iniciarSesionConPassword('ana@x.com', 'mala'), /credenciales/);
+    assert.equal(fake.de('rpc').some((r) => r.nombre === 'login_user'), false);
+  });
+
+  test('base sin 065: migra con la Edge Function y reintenta', async () => {
     let intentos = 0;
     fake.auth('signInWithPassword', () => (intentos++ === 0
       ? { error: { code: 'invalid_credentials', message: 'Invalid login credentials' } }

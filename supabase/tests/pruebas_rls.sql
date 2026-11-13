@@ -1,3 +1,5 @@
+-- ⚠ NO PEGAR EN SUPABASE. Archivo de pruebas para un Postgres LOCAL (lo corre
+--   supabase/scripts/probar-esquema.mjs). Crea usuarios de prueba.
 -- pruebas_rls.sql — Pruebas de seguridad y reglas de negocio del esquema.
 --
 -- Las corre `node supabase/scripts/probar-esquema.mjs` contra un Postgres

@@ -36,6 +36,13 @@ los valida el servidor.
 la carpeta lee, sube y borra. En la tabla se guarda la ruta (`imagen_path`) y
 la app pide una URL firmada de 1 hora para mostrarla.
 
+## Cuentas viejas
+La primera vez que entra una cuenta de antes de 060, `authApi` llama a
+`migrar_cuenta_legada` (065): compara el sha256 viejo, crea el usuario de Auth
+con esa contraseña (bcrypt), vincula `"User".auth_id` y borra el hash. Responde
+lo mismo si el mail no existe o la contraseña es mala. La Edge Function
+`migrar-cuenta` queda sólo como respaldo para bases sin 065.
+
 ## ZooniVet
 Cupo diario por usuario contado en la base (`zoonivet_uso`, sólo service_role).
 La Edge Function lo consume antes de llamar a Groq.

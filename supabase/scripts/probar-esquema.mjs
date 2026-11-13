@@ -50,6 +50,12 @@ for (const pasada of [1, 2]) {
   console.log(`✓ pasada ${pasada}: SUPABASE_PEGAR_TODO.sql sin errores`);
 }
 
-const pruebas = path.join(DIR_SUPABASE, 'tests', 'pruebas_rls.sql');
-correrArchivo(pruebas);
-console.log('✓ pruebas de RLS y reglas de negocio');
+// pruebas_rls crea los helpers pg_temp.como / salir que usa pruebas_064: van
+// juntas en la misma sesión de psql.
+const pruebas = ['pruebas_rls.sql', 'pruebas_064.sql', 'pruebas_065.sql'].map((f) => path.join(DIR_SUPABASE, 'tests', f));
+const r = psql(['-1', ...pruebas.flatMap((f) => ['-f', f])], { base: BASE });
+if (!r.ok) {
+  console.error(`\n✗ pruebas\n${r.salida}`);
+  process.exit(1);
+}
+console.log('✓ pruebas de RLS, reglas de negocio, 064 (purga, cupo, bucket privado) y 065 (login de cuentas viejas)');

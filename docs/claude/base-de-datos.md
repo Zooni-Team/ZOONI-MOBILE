@@ -56,6 +56,7 @@ de fecha, ubicación a ~1 km, teléfono sólo con un paseo/turno/pedido en comú
 | `purgar_mascotas_eliminadas()` — borra las `deleted` vencidas (sólo service_role / pg_cron) | 064 |
 | ZooniVet: `zoonivet_consumir_cupo(id_user, limite)` + tabla `zoonivet_uso` (sólo service_role) | 064 |
 | Realtime: `Mensaje` y `paseo_mensajes` en la publicación `supabase_realtime` | 064 |
+| `migrar_cuenta_legada(mail, contraseña)` — cuenta vieja (sha256) → Supabase Auth, la llama el login sin sesión (anon) | 065 |
 
 ## Borrado de mascotas
 La app hace borrado lógico (`Estado = 'deleted'`, `PurgarDespues` = +30 días) y
