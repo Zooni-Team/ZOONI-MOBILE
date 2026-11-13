@@ -22,7 +22,11 @@ export default function BuscadorUsuarios({ onSolicitudEnviada }) {
       try {
         const d = await buscarUsuarios(text);
         setResults(d.resultados || []);
-      } catch {}
+      } catch {
+        // Sin red, o un texto que el firewall de Supabase frena (ej. "' or 1=1"):
+        // sin resultados, en vez de dejar los de la búsqueda anterior.
+        setResults([]);
+      }
       setLoading(false);
     }, 400);
   };

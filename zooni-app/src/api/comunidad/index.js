@@ -13,6 +13,7 @@ import { buscarLugares, combinarServicios } from '../../services/lugaresApi';
 import { consultarPerfiles, perfilesPorId } from '../../services/perfilesPublicos';
 import { distanciaKm } from '../../utils/geo';
 import { notificar } from '../../services/comun';
+import { escaparLike } from '../../utils/texto';
 
 function aplicarBbox(query, bbox, latCol = 'lat', lngCol = 'lng') {
   if (!bbox) return query;
@@ -181,7 +182,8 @@ export async function responderSolicitud(id, accion) {
 export async function buscarUsuarios(q) {
   const usuarios = await consultarPerfiles('Id_User, Nombre, Apellido, Ubicacion', (query) => {
     let x = query.neq('Id_User', getCurrentUserId()).limit(20);
-    if (q) x = x.ilike('Nombre', `%${q}%`);
+    const texto = escaparLike(q);
+    if (texto) x = x.ilike('Nombre', `%${texto}%`);
     return x;
   });
   if (!usuarios.length) return { resultados: [] };

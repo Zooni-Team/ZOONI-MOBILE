@@ -284,6 +284,10 @@ async function consultarOverpass(consulta) {
       res = await fetch(endpoint, {
         method: 'POST',
         signal: abortador.signal,
+        // Sin Referer: overpass-api.de responde 406 (y sin CORS, así que el
+        // navegador lo ve como "Failed to fetch") a los pedidos que llegan con
+        // el Referer de zooni-mobile.vercel.app. Sin él contesta normal.
+        referrerPolicy: 'no-referrer',
         // En web, User-Agent no se puede fijar y sólo agregaría un preflight
         // CORS: se manda únicamente el Content-Type de un formulario común.
         headers: Platform.OS === 'web'

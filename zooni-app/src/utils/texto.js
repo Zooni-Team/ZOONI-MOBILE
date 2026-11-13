@@ -8,6 +8,7 @@
  *   normalizarBusqueda('Veterinaría')  → 'veterinaria'   (buscar / filtrar)
  *   claveComparable('Pet-Shop Ñandú')  → 'petshopnandu'  (detectar duplicados)
  *   capitalizar('perro')               → 'Perro'
+ *   escaparLike('50%_off')             → '50\\%\\_off'  (texto literal en un ilike)
  *
  * Guía: docs/claude/utilidades.md
  */
@@ -29,6 +30,19 @@ export function incluyeTexto(texto, busqueda) {
 /** Sólo letras y números, sin tildes: para comparar nombres de lugares. */
 export function claveComparable(texto) {
   return normalizarBusqueda(texto).replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * Texto del usuario para un `ilike`: % y _ dejan de ser comodines (y \ deja de
+ * escapar), así "a_b" busca "a_b" y no "axb". El * se saca porque PostgREST
+ * lo toma como sinónimo de %. Largo máximo: una búsqueda no necesita más.
+ */
+export function escaparLike(texto, max = 50) {
+  return String(texto ?? '')
+    .trim()
+    .slice(0, max)
+    .replace(/\*/g, '')
+    .replace(/[\\%_]/g, (c) => `\\${c}`);
 }
 
 /** Primera letra en mayúscula. */

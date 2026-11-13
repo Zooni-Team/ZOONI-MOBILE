@@ -231,16 +231,21 @@ export async function actualizarNombreUsuario(nombreUsuario) {
     e.fecha = bloqueado; throw e;
   }
 
-  // Unicidad case-insensitive
-  const { data: existente } = await supabase
-    .from('User').select('Id_User').ilike('NombreUsuario', limpio).neq('Id_User', userId).maybeSingle();
-  if (existente) {
-    const e = new Error('username_tomado'); e.code = 'USERNAME_TAKEN'; throw e;
-  }
+  // Unicidad (sin importar mayúsculas). Desde 061 cada uno ve sólo su fila de
+  // "User": consultar la tabla no encontraba a nadie. disponibilidad_registro
+  // mira toda la base y compara exacto (sin comodines).
+  const tomado = () => { const e = new Error('username_tomado'); e.code = 'USERNAME_TAKEN'; return e; };
+  const { data: disp, error: errDisp } = await supabase.rpc('disponibilidad_registro', {
+    p_mail: null, p_usuario: limpio,
+  });
+  if (errDisp) throw errDisp;
+  if (disp?.usuarioTomado) throw tomado();
 
   const { error } = await supabase.from('User')
     .update({ NombreUsuario: limpio, NombreUsuarioCambiadoEn: new Date().toISOString() })
     .eq('Id_User', userId);
+  // 23505 = el índice único idx_user_nombreusuario: alguien lo tomó recién
+  if (error?.code === '23505') throw tomado();
   if (error) throw error;
   return limpio;
 }

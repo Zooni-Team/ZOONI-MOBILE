@@ -1,10 +1,10 @@
 // Utilidades puras: fechas, edades, texto, validación, distancias, paleta.
-import { test } from 'node:test';
+import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { diasEntre, diasHasta, formatearFecha, parseFechaLocal, toISODateLocal } from '../src/utils/fechaLocal.js';
 import { calcularEdad, calcularEdadAnios, calcularEdadMeses, calcularEdadPartes, edadResumida } from '../src/utils/calcularEdad.js';
-import { capitalizar, claveComparable, incluyeTexto, normalizarBusqueda } from '../src/utils/texto.js';
+import { capitalizar, claveComparable, escaparLike, incluyeTexto, normalizarBusqueda } from '../src/utils/texto.js';
 import { EMAIL_REGEX, PASSWORD_MIN, esEmailValido, esPasswordValida } from '../src/utils/validacion.js';
 import { distanciaKm, distanciaMetros } from '../src/utils/geo.js';
 import { sanitizarDecimal, sanitizarDigitos, sanitizarTexto } from '../src/utils/sanitizar.js';
@@ -109,4 +109,17 @@ test('paleta: sin valores repetidos y con el color de marca', () => {
   assert.equal(colores.verde, '#2DBD72');
   assert.equal(COLOR_POR_HEX['#2DBD72'], 'verde');
   assert.ok(Object.isFrozen(colores));
+});
+
+describe('escaparLike', () => {
+  test('% y _ quedan literales, * se saca', () => {
+    assert.equal(escaparLike(' 50%_off* '), '50\\%\\_off');
+    assert.equal(escaparLike('a\\b'), 'a\\\\b');
+  });
+  test('texto de inyección: queda como texto común', () => {
+    assert.equal(escaparLike("' or 1=1 --"), "' or 1=1 --");
+  });
+  test('largo máximo', () => {
+    assert.equal(escaparLike('x'.repeat(80)).length, 50);
+  });
 });
