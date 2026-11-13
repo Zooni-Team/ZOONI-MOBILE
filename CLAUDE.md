@@ -35,7 +35,7 @@ los que dependen de él.
 2. **Sólo `src/services/*` habla con Supabase.** Las pantallas llaman servicios.
 3. **La base decide lo que importa.** Identidad (JWT), permisos (RLS), precios,
    totales, stock y transiciones de estado se validan en Postgres
-   (`supabase/SUPABASE_PEGAR_TODO.sql`, secciones 060–066). La app valida para avisar rápido, nunca
+   (`supabase/SUPABASE_PEGAR_TODO.sql`, secciones 060–067). La app valida para avisar rápido, nunca
    como garantía.
 4. **Nada de colores hex sueltos** si el color está en la paleta: `colores.verde`.
 5. **Nada de `new Date('YYYY-MM-DD')`**: corre el día en Argentina. Usá

@@ -10,8 +10,11 @@ cualquier usuario logueado leía mails, teléfonos, notificaciones, mensajes y
 paseos de todos (una política abierta sobrevivía). La 066 lo cierra y se
 verifica sola (si algo no queda bien, hace ROLLBACK y no cambia nada).
 
+**Después de la 066:** pegar `supabase/MIGRACION_067_CERRAR_FUNCIONES.sql` → Run
+(cierra funciones internas que cualquier usuario logueado podía llamar).
+
 **Si la base tiene 060–063:** pegar, en orden, `supabase/MIGRACION_064_SOBRE_063.sql`,
-`supabase/MIGRACION_065_LOGIN_CUENTAS_VIEJAS.sql` y `MIGRACION_066_RLS_REAPLICAR.sql` → Run. DESPUÉS
+`supabase/MIGRACION_065_LOGIN_CUENTAS_VIEJAS.sql`, `MIGRACION_066_RLS_REAPLICAR.sql` y `MIGRACION_067_CERRAR_FUNCIONES.sql` → Run. DESPUÉS
 `supabase functions deploy zoonivet-chat` (sólo para ZooniVet). Luego desplegar
 la app. `migrar-cuenta` ya NO hace falta: 065 migra las cuentas viejas desde la base.
 

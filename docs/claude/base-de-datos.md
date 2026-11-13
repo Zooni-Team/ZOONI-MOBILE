@@ -61,6 +61,7 @@ de fecha, ubicación a ~1 km, teléfono sólo con un paseo/turno/pedido en comú
 | `_mascota_registrar_peso`: todo cambio de `Mascota.Peso` deja su punto en `historial_peso` | 066 |
 | `paseador_opiniones`: nadie opina de sí mismo (política) | 066 |
 | Sin veterinarias de ejemplo en `veterinary_clinics` (desactivadas) | 066 |
+| Funciones SECURITY DEFINER cerradas por lista blanca; `migracion_intentos` (5 fallos / 15 min); `_sin_autoverificarse` | 067 |
 
 **Si una base muestra datos ajenos** (pasó en producción: una política
 `USING (true)` creada a mano sobrevivía, y como las políticas se suman con OR,

@@ -46,3 +46,28 @@ lo mismo si el mail no existe o la contraseña es mala. La Edge Function
 ## ZooniVet
 Cupo diario por usuario contado en la base (`zoonivet_uso`, sólo service_role).
 La Edge Function lo consume antes de llamar a Groq.
+
+## Funciones (067)
+Supabase le da EXECUTE a `anon` y `authenticated` en toda función nueva de
+`public`. Por eso un `REVOKE … FROM anon, public` NO alcanza: el usuario
+logueado la sigue pudiendo llamar (pasó con `_upsert_paseador_perfil` y
+`_upsert_negocio`, que dejaban reescribir perfiles ajenos).
+
+Regla: las funciones `SECURITY DEFINER` están cerradas por **lista blanca**
+(sección 067). Si agregás una RPC que la app tiene que llamar, sumala a
+`para_usuarios` (o `para_anon` si se usa sin sesión) y volvé a correr la 067.
+Las funciones nuevas arrancan cerradas para `anon`.
+
+`migrar_cuenta_legada` (sin sesión) frena después de 5 fallos por mail en 15
+minutos (`migracion_intentos`). `verificado` (paseadores) y `verified`
+(servicios) sólo cambian desde el SQL Editor / service_role.
+
+## Riesgos conocidos que quedan
+- Cualquiera con sesión puede crear una notificación para otro usuario
+  (`notif_crear`): sirve para avisos legítimos, pero también para spam.
+- `paseador_perfil.lat/lng` se ven exactos (el mapa los usa): conviene
+  redondearlos o que el paseador marque un punto de zona, no su casa.
+- `disponibilidad_registro` dice si un mail ya está registrado (lo necesita
+  el registro).
+- `Mascota` se lee completa entre usuarios (fecha de nacimiento, microchip si
+  está cargado).
