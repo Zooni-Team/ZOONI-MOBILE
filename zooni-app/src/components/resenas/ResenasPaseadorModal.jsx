@@ -7,9 +7,10 @@
  * y todas las fotos/videos. Abajo, cada reseña con su texto, respuestas y
  * adjuntos. Filtro rápido: todas / con fotos o videos / por estrellas.
  *
- * "Escribir una opinión" está siempre, para cualquiera (también el propio
- * paseador) y las veces que quiera: si tengo un paseo con él sin calificar,
- * la opinión va a ese paseo; si no, es una opinión general (048).
+ * "Escribir una opinión" está para cualquiera MENOS el propio paseador (nadie
+ * opina de sí mismo; la base también lo rechaza, 066), las veces que quiera:
+ * si tengo un paseo con él sin calificar, la opinión va a ese paseo; si no,
+ * es una opinión general (048).
  *
  * Props: visible · idPaseador · nombre · onCerrar
  */
@@ -207,7 +208,7 @@ export default function ResenasPaseadorModal({ visible, idPaseador, nombre, onCe
   const pendiente = paraOpinar?.sinCalificar?.[0] ?? null;
   // Sin paseo para calificar: opinión general sobre el paseador
   const opinionLibre = { libre: true, idWalker: idPaseador, paseador: { nombre: esElMismo ? 'Vos como paseador' : nombre } };
-  const escribir = !paraOpinar ? null : (
+  const escribir = !paraOpinar || esElMismo ? null : (
     <View style={s.escribir}>
       {gracias ? (
         <View style={s.gracias}>

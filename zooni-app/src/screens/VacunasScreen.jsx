@@ -64,7 +64,10 @@ function colorProximaDosis(fechaISO) {
 
 /** Estado + color de una vacuna sugerida (calendario). */
 function estadoSugerida(sugerida) {
-  if (!sugerida.applied) return { texto: 'Aún no corresponde', color: colores.textoSecundario };
+  // La lista ya viene filtrada por edad, peso y raza (fetchVacunas): si
+  // aparece y no está aplicada, le corresponde y falta. Antes decía "Aún no
+  // corresponde" a un perro de 1 año y 7 meses sin la Séxtuple.
+  if (!sugerida.applied) return { texto: 'Pendiente', color: colores.ambar };
   const dias = diasHasta(sugerida.proximo_refuerzo);
   if (dias === null) return { texto: 'Al día', color: colores.verde };
   if (dias < 0) return { texto: 'Vencida', color: colores.rojo };

@@ -167,6 +167,12 @@ no se vende dos veces y que dos turnos no se superponen.
     escribe sólo en su carpeta.
   - `064` — cascadas parejas al borrar una mascota, purga de eliminadas,
     bucket privado de consultas, chats por Realtime y cupo de ZooniVet.
+  - `066` — paseos vencidos / superpuestos / en el pasado, historial de peso
+    por trigger, nadie opina de sí mismo, sin veterinarias inventadas.
+    `MIGRACION_066_RLS_REAPLICAR.sql` además rehace todas las políticas RLS.
+- **Mapa de Servicios**: los locales de OpenStreetMap pasan por la función de
+  Vercel `api/lugares.js` (Overpass con User-Agent propio; si está saturado,
+  Nominatim), cacheada un día en el CDN.
 - Al borrar una mascota la app hace **borrado lógico** (`Estado = 'deleted'`,
   `PurgarDespues` = +30 días). `purgar_mascotas_eliminadas()` (064) la borra de
   verdad pasado ese plazo; si `pg_cron` está habilitado corre sola cada noche.

@@ -123,3 +123,65 @@ describe('escaparLike', () => {
     assert.equal(escaparLike('x'.repeat(80)).length, 50);
   });
 });
+
+describe('filtrosBusquedaPersonas', () => {
+  test('una condición por palabra; espacios de más no cambian nada', async () => {
+    const { filtrosBusquedaPersonas } = await import('../src/utils/texto.js');
+    assert.deepEqual(filtrosBusquedaPersonas('adrian '), filtrosBusquedaPersonas('adrian'));
+    const f = filtrosBusquedaPersonas('Adrian Turek');
+    assert.equal(f.length, 2);
+    assert.equal(f[0], 'Nombre.ilike."%Adrian%",Apellido.ilike."%Adrian%",NombreUsuario.ilike."%Adrian%"');
+  });
+  test('@usuario, comillas y paréntesis no rompen la condición', async () => {
+    const { filtrosBusquedaPersonas } = await import('../src/utils/texto.js');
+    assert.ok(filtrosBusquedaPersonas('@adrian')[0].includes('"%adrian%"'));
+    assert.deepEqual(filtrosBusquedaPersonas('"()"'), []);
+  });
+  test('% queda literal (con la barra duplicada que se come PostgREST)', async () => {
+    const { filtrosBusquedaPersonas } = await import('../src/utils/texto.js');
+    assert.ok(filtrosBusquedaPersonas('100%')[0].includes('"%100\\\\%%"'));
+  });
+});
+
+test('fechaHoraFija: sin "Hoy"/"Mañana" (queda guardada en notificaciones)', async () => {
+  const { fechaHoraFija } = await import('../src/utils/fechaLocal.js');
+  assert.equal(fechaHoraFija(new Date(2026, 10, 2, 12, 0)), 'Lun 2/11 12:00');
+  assert.equal(fechaHoraFija('no es fecha'), '');
+});
+
+describe('eventoAplicaAMascota', () => {
+  test('evento de una raza: sólo para esa raza', async () => {
+    const { eventoAplicaAMascota } = await import('../src/utils/filtrarPorMascota.js');
+    const golden = { categoria_tag: 'GOLDEN RETRIEVER' };
+    assert.equal(eventoAplicaAMascota(golden, { especie: 'perro', raza: 'Mestizo' }), false);
+    assert.equal(eventoAplicaAMascota(golden, { especie: 'perro', raza: 'Golden Retriever' }), true);
+  });
+  test('etiquetas generales y de especie', async () => {
+    const { eventoAplicaAMascota } = await import('../src/utils/filtrarPorMascota.js');
+    assert.equal(eventoAplicaAMascota({ categoria_tag: 'TODAS LAS MASCOTAS' }, { especie: 'gato' }), true);
+    assert.equal(eventoAplicaAMascota({ categoria_tag: 'PERROS Y GATOS' }, { especie: 'gato' }), true);
+    assert.equal(eventoAplicaAMascota({ categoria_tag: 'PERROS' }, { especie: 'gato' }), false);
+    assert.equal(eventoAplicaAMascota({ categoria_tag: null }, { especie: 'gato' }), true);
+    assert.equal(eventoAplicaAMascota({ categoria_tag: 'GOLDEN RETRIEVER' }, null), true);
+  });
+});
+
+describe('estadoVigente (paseos vencidos)', () => {
+  const HORA = 3600 * 1000;
+  const ahora = Date.UTC(2026, 10, 12, 15);
+  test('pendiente de hace 10 días → vencido; de dentro de 1 hora → pendiente', async () => {
+    const { estadoVigente } = await import('../src/domain/paseos.js');
+    assert.equal(estadoVigente({ estado: 'pendiente', fecha: new Date(ahora - 240 * HORA).toISOString() }, ahora), 'vencido');
+    assert.equal(estadoVigente({ estado: 'pendiente', fecha: new Date(ahora + HORA).toISOString() }, ahora), 'pendiente');
+  });
+  test('aceptado: tolera la duración + 2 horas', async () => {
+    const { estadoVigente } = await import('../src/domain/paseos.js');
+    const fecha = new Date(ahora - 3 * HORA).toISOString();
+    assert.equal(estadoVigente({ estado: 'aceptado', fecha, duracionMin: 120 }, ahora), 'aceptado');
+    assert.equal(estadoVigente({ estado: 'aceptado', fecha, duracionMin: 30 }, ahora), 'vencido');
+  });
+  test('finalizado o cancelado no cambian', async () => {
+    const { estadoVigente } = await import('../src/domain/paseos.js');
+    assert.equal(estadoVigente({ estado: 'finalizado', fecha: '2020-01-01T00:00:00Z' }, ahora), 'finalizado');
+  });
+});

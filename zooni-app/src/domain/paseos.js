@@ -287,3 +287,25 @@ export const PREGUNTAS_RESENA = [
 ];
 
 export const MEDIA_RESENA_MAX = 6;
+
+// ─────────────────────────────────────────────
+// PASEOS VENCIDOS
+// ─────────────────────────────────────────────
+// Un paseo que nadie hizo a tiempo no puede quedar "Esperando respuesta" ni
+// ofrecer "Iniciar paseo" diez días después. Misma regla que vencer_paseos()
+// en la base (066), que además lo deja guardado; acá se aplica al mostrar
+// para que se vea bien aunque la base todavía no haya pasado.
+//   · pendiente: vence 1 hora después de la hora pedida (nadie lo tomó)
+//   · aceptado:  vence 2 horas después de la hora en que debía terminar
+export const GRACIA_PENDIENTE_MS = 60 * 60 * 1000;
+export const GRACIA_ACEPTADO_MS = 2 * 60 * 60 * 1000;
+
+/** El estado a mostrar: el guardado, o 'vencido' si ya no se puede cumplir. */
+export function estadoVigente({ estado, fecha, duracionMin = 30 }, ahora = Date.now()) {
+  if (!fecha || !['pendiente', 'aceptado'].includes(estado)) return estado;
+  const inicio = new Date(fecha).getTime();
+  if (Number.isNaN(inicio)) return estado;
+  if (estado === 'pendiente' && inicio + GRACIA_PENDIENTE_MS < ahora) return 'vencido';
+  if (estado === 'aceptado' && inicio + duracionMin * 60000 + GRACIA_ACEPTADO_MS < ahora) return 'vencido';
+  return estado;
+}

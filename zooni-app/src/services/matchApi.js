@@ -77,8 +77,10 @@ function mapPerfil(mascota, miUsuario, fotosPorMascota) {
     genero: user.Genero ?? null,
     edad: user.Edad ?? null,
     foto_perfil_url: user.FotoPerfil ?? null,
+    // "Ubicacion" ya es el texto completo ("Almagro, CABA"): antes iba en
+    // barrio Y en ciudad y la tarjeta mostraba "Almagro, CABA, Almagro, CABA".
     barrio: user.Ubicacion ?? null,
-    ciudad: user.Ubicacion ?? null,
+    ciudad: null,
     distancia_km: distanciaKm(puntoDe(miUsuario), puntoDe(user)),
     mascota: {
       id: mascota.Id_Mascota,

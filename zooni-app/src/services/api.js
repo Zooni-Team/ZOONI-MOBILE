@@ -25,6 +25,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
+import { esNotificacionDePaseador } from './comun';
 import { calcularEdadMeses } from '../utils/calcularEdad';
 import { aplicaParaMascota } from '../utils/filtrarPorMascota';
 import { calcularEdadPartes } from '../utils/calcularEdad';
@@ -100,11 +101,14 @@ function mapUsuario(u) {
  * Trae en una sola llamada: usuario, mascota activa y badge de notificaciones.
  */
 export async function fetchHome() {
-  const [{ data: usuario, error: errUsuario }, { data: mascotas, error: errMascotas }, { count: notificacionesNoLeidas }] = await Promise.all([
+  const [{ data: usuario, error: errUsuario }, { data: mascotas, error: errMascotas }, { data: noLeidas }] = await Promise.all([
     supabase.from('User').select('*').eq('Id_User', getCurrentUserId()).single(),
     supabase.from('Mascota').select('*').eq('Id_User', getCurrentUserId()).order('EsActiva', { ascending: false }),
-    supabase.from('Notificacion').select('*', { count: 'exact', head: true }).eq('Id_User', getCurrentUserId()).eq('Leido', false),
+    // Sin leer del modo dueño: las del modo paseador no suman al badge
+    supabase.from('Notificacion').select('Tipo, Titulo, DataExtra')
+      .eq('Id_User', getCurrentUserId()).eq('Leido', false).limit(200),
   ]);
+  const notificacionesNoLeidas = (noLeidas ?? []).filter((n) => !esNotificacionDePaseador(n)).length;
 
   if (errUsuario) throw errUsuario;
   if (errMascotas) throw errMascotas;
@@ -268,7 +272,11 @@ export async function fetchNotificaciones(page = 1, limit = 20, soloNoLeidas = f
   if (error) throw error;
 
   const mascotasPorId = new Map((mascotas ?? []).map((m) => [m.Id_Mascota, m]));
-  return { notificaciones: (data ?? []).map((n) => mapNotificacion(n, mascotasPorId)) };
+  // Las del modo paseador ("Tenés una solicitud nueva") no van en el modo dueño
+  return {
+    notificaciones: (data ?? []).filter((n) => !esNotificacionDePaseador(n))
+      .map((n) => mapNotificacion(n, mascotasPorId)),
+  };
 }
 
 /** Marca una notificación individual como leída. */
@@ -321,6 +329,9 @@ export async function fetchEventos(ciudad = null, page = 1, limit = 10) {
     .from('eventos')
     .select('*')
     .eq('activo', true)
+    // Sólo los que todavía no pasaron (se mostraba una jornada de vacunación
+    // de julio en noviembre)
+    .gte('fecha_hora', new Date().toISOString())
     .order('fecha_hora', { ascending: true })
     .range((page - 1) * limit, page * limit - 1);
 

@@ -30,6 +30,7 @@ import {
 } from '../constants/negocios';
 import { aCentavos, formatoPlata } from '../domain/paseos';
 import { distanciaMetros } from '../utils/geo';
+import { fechaHoraFija } from '../utils/fechaLocal';
 import { errorApp, errorBase, esFuncionInexistente, notificar } from './comun';
 
 /** Aviso de un negocio (tipo 'negocio' salvo que se diga otro). */
@@ -613,7 +614,7 @@ export async function cambiarEstadoTurno(negocio, turno, estado, { informe, moti
   if (!data?.length) throw new Error('turno_cambiado'); // lo canceló el dueño mientras tanto
 
   const quien = turno.mascota?.nombre ?? 'tu mascota';
-  const cuando = cuandoTexto(turno.fecha);
+  const cuando = fechaHoraFija(turno.fecha); // queda guardado: sin "Hoy"
   const avisos = {
     confirmado: [`Turno confirmado ✅`, `${negocio.nombre} confirmó el turno de ${quien}: ${turno.servicio}, ${cuando}.`],
     rechazado: ['Turno no disponible', `${negocio.nombre} no puede atender a ${quien} ${cuando}.${motivo ? ` "${motivo}"` : ''} Probá con otro horario.`],
@@ -709,7 +710,7 @@ export async function crearTurno({
 
   notificarNegocio(negocio.idUser,
     urgencia ? '🚨 Pedido de turno URGENTE' : 'Nuevo pedido de turno',
-    `${mascota?.nombre ?? 'Una mascota'} · ${item.nombre} · ${cuandoTexto(fecha)}${aDomicilio ? ' · a domicilio' : ''}`,
+    `${mascota?.nombre ?? 'Una mascota'} · ${item.nombre} · ${fechaHoraFija(fecha)}${aDomicilio ? ' · a domicilio' : ''}`,
     { destino: 'turnos' });
   return data.id;
 }
@@ -747,7 +748,7 @@ export async function cancelarTurnoDueno(turno) {
     .eq('id', turno.id).eq('id_dueno', getCurrentUserId()).in('estado', ['pendiente', 'confirmado']);
   if (error) throw errorBase(error);
   notificarNegocio(turno.negocio?.idUser, 'Turno cancelado por el cliente',
-    `${turno.mascota?.nombre ?? 'Mascota'} · ${turno.servicio} · ${cuandoTexto(turno.fecha)}`, { destino: 'turnos' });
+    `${turno.mascota?.nombre ?? 'Mascota'} · ${turno.servicio} · ${fechaHoraFija(turno.fecha)}`, { destino: 'turnos' });
 }
 
 // ─────────────────────────────────────────────

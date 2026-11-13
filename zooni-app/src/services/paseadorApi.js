@@ -25,12 +25,16 @@ import { subirArchivoPublico } from '../utils/imagenStorage';
 import { rpcSocial } from './socialAuthApi';
 import { perfilesPorId } from './perfilesPublicos';
 import { distanciaMetros } from '../utils/geo';
-import { HORARIOS_DEFAULT, formatoPlata, aCentavos, serviciosDe, precioPara, formatoDistancia, cuandoDe, segundosDePaseo, formatoTiempoPaseado, comisionDe, inicioDePeriodo, MEDIOS_PAGO, medioDePago, ultimoCierre, proximoCierre, ASPECTOS_RESENA, PREGUNTAS_RESENA, MEDIA_RESENA_MAX } from '../domain/paseos';
-import { errorApp, esEsquemaFaltante, esSinPermiso, notificar } from './comun';
+import { fechaHoraFija } from '../utils/fechaLocal';
+import { estadoVigente, HORARIOS_DEFAULT, formatoPlata, aCentavos, serviciosDe, precioPara, formatoDistancia, segundosDePaseo, formatoTiempoPaseado, comisionDe, inicioDePeriodo, MEDIOS_PAGO, medioDePago, ultimoCierre, proximoCierre, ASPECTOS_RESENA, PREGUNTAS_RESENA, MEDIA_RESENA_MAX } from '../domain/paseos';
+import { errorApp, esEsquemaFaltante, esNotificacionDePaseador, esSinPermiso, notificar } from './comun';
 
-/** Aviso de paseos: `destino` es la pestaña de la app del paseador que abre. */
-const notificarPaseo = (idUser, titulo, mensaje, destino = null) =>
-  notificar(idUser, titulo, mensaje, { tipo: 'paseo', destino });
+/**
+ * Aviso de paseos. `modo` dice en qué modo de la app se muestra (una cuenta
+ * puede ser dueña y paseadora); `destino` es la pestaña del paseador que abre.
+ */
+const notificarPaseo = (idUser, titulo, mensaje, destino = null, modo = 'paseador') =>
+  notificar(idUser, titulo, mensaje, { tipo: 'paseo', destino, extra: { modo } });
 
 // Reglas y formatos puros de paseos (re-exportados para no romper a quien ya
 // los importaba desde acá). La distancia vive en utils/geo.
@@ -316,6 +320,32 @@ export async function buscarLugares(texto, { cerca } = {}) {
   }
 }
 
+/**
+ * ¿Existe esta dirección? Para no aceptar "gttt7tt" como lugar de encuentro.
+ * Devuelve { lat, lng } si la encuentra, null si no existe, y tira
+ * 'sin_geocodificador' si el servicio no responde (ahí decide quien llama).
+ */
+export async function ubicarDireccion(texto, { cerca } = {}) {
+  const q = (texto ?? '').trim();
+  if (q.length < 5 || !/[a-záéíóúñ]{3}/i.test(q)) return null;
+  const params = new URLSearchParams({
+    format: 'json', limit: '1', 'accept-language': 'es', countrycodes: 'ar', q,
+  });
+  if (cerca?.lat != null) {
+    const d = 0.6;
+    params.set('viewbox', `${cerca.lng - d},${cerca.lat + d},${cerca.lng + d},${cerca.lat - d}`);
+  }
+  let res;
+  try {
+    res = await fetch(`${NOMINATIM}/search?${params}`, { headers: CABECERAS_NOMINATIM });
+  } catch {
+    throw new Error('sin_geocodificador');
+  }
+  if (!res.ok) throw new Error('sin_geocodificador');
+  const [l] = await res.json();
+  return l ? { lat: Number(l.lat), lng: Number(l.lon) } : null;
+}
+
 /** Compatibilidad: el primer resultado de buscarLugares (solo coordenadas). */
 export async function buscarLugar(texto, opciones) {
   const [primero] = await buscarLugares(texto, opciones);
@@ -422,7 +452,8 @@ async function enriquecer(rows) {
     const u = porDueno[idDueno] ?? {};
     return {
       id: r.Id_Paseo,
-      estado: r.Estado,
+      // 'vencido' si ya pasó la hora y nadie lo hizo (domain/paseos)
+      estado: estadoVigente({ estado: r.Estado, fecha: r.FechaProgramada, duracionMin: r.DuracionMin ?? 30 }),
       abierta: r.Id_Walker == null,
       idWalker: r.Id_Walker,
       idDueno,
@@ -497,7 +528,8 @@ export async function fetchMisPaseos(estados, { desde } = {}) {
   if (desde) q = q.gte('FechaProgramada', desde.toISOString());
   const { data, error } = await q;
   if (error) throw errorApp('error_base', error);
-  return enriquecer(data ?? []);
+  // Un 'aceptado' de hace días vuelve como 'vencido': no va a la agenda.
+  return (await enriquecer(data ?? [])).filter((p) => estados.includes(p.estado));
 }
 
 /**
@@ -528,7 +560,7 @@ export async function fetchRecorrido(idPaseo) {
 // ─────────────────────────────────────────────
 
 function notificarDueno(paseo, titulo, mensaje) {
-  return notificarPaseo(paseo?.idDueno, titulo, mensaje);
+  return notificarPaseo(paseo?.idDueno, titulo, mensaje, null, 'dueno');
 }
 
 async function updatePaseo(id, fila) {
@@ -544,7 +576,7 @@ export async function aceptarSolicitud(paseo) {
   if (error) throw error;
   if (data) {
     notificarDueno(paseo, '¡Tu paseo fue aceptado! 🐾',
-      `Un paseador va a pasear a ${paseo.mascota.nombre} (${cuandoDe(paseo.fecha)}).`);
+      `Un paseador va a pasear a ${paseo.mascota.nombre} (${fechaHoraFija(paseo.fecha)}).`);
   }
   return !!data;
 }
@@ -565,7 +597,7 @@ export async function rechazarSolicitud(paseo) {
 export async function cancelarPaseo(paseo) {
   await updatePaseo(paseo.id, { Estado: 'cancelado' });
   notificarDueno(paseo, 'Paseo cancelado',
-    `El paseador canceló el paseo de ${paseo.mascota.nombre} (${cuandoDe(paseo.fecha)}).`);
+    `El paseador canceló el paseo de ${paseo.mascota.nombre} (${fechaHoraFija(paseo.fecha)}).`);
 }
 
 export async function iniciarPaseo(paseo) {
@@ -853,7 +885,7 @@ export async function registrarPago(pago) {
   if (error) throw errorDePagos(error);
   const medio = medioDePago(fila.medio);
   notificarPaseo(fila.id_dueno, 'Tu paseador registró un pago',
-    `${formatoPlata(fila.monto)}${medio ? ` · ${medio.label}` : ''}. ¡Gracias!`);
+    `${formatoPlata(fila.monto)}${medio ? ` · ${medio.label}` : ''}. ¡Gracias!`, null, 'dueno');
 }
 
 /** Corrige un pago ya anotado (monto, medio, fecha o nota). */
@@ -969,8 +1001,9 @@ export async function fetchNotificacionesPaseador() {
     .select('Id, Titulo, Mensaje, Fecha, Leido, Tipo, DataExtra')
     .eq('Id_User', getCurrentUserId())
     .order('Fecha', { ascending: false })
-    .limit(20);
-  return (data ?? []).map((n) => ({
+    .limit(40);
+  // Sólo las del modo paseador (las de dueño van al Home de dueños)
+  return (data ?? []).filter(esNotificacionDePaseador).slice(0, 20).map((n) => ({
     id: n.Id, titulo: n.Titulo, mensaje: n.Mensaje, fecha: n.Fecha, leido: n.Leido,
     tipo: n.Tipo ?? null, dataExtra: n.DataExtra ?? null,
   }));
@@ -1122,17 +1155,26 @@ export async function crearSolicitudPaseo({
     MedioPago: medioPago ?? null,
   };
   const { data, error } = await supabase.from('Paseo').insert(fila).select('Id_Paseo').single();
-  if (error) throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
+  if (error) {
+    // Reglas de la base (066): no en el pasado, ni dos a la vez para la misma mascota
+    const regla = ['fecha_pasada', 'paseo_superpuesto', 'direccion_invalida']
+      .find((r) => String(error.message ?? '').includes(r));
+    if (regla) throw errorApp(regla, error);
+    throw errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
+  }
 
   const medio = MEDIOS_PAGO.find((m) => m.key === medioPago);
   notificarPaseo(paseador.id, 'Tenés una solicitud nueva',
-    `${mascota.nombre} · ${cuandoDe(fecha.toISOString())} · ${duracionMin} minutos · ${formatoPlata(precio)}${medio ? ` · paga con ${medio.label}` : ''}`,
+    `${mascota.nombre} · ${fechaHoraFija(fecha)} · ${duracionMin} minutos · ${formatoPlata(precio)}${medio ? ` · paga con ${medio.label}` : ''}`,
     'solicitudes');
   return data.Id_Paseo;
 }
 
 /** Paseos que pedí como dueño (todos los estados), del más nuevo al más viejo. */
 export async function fetchMisPaseosDueno() {
+  // Deja guardados como 'vencido' los que ya no se pueden hacer (066). No se
+  // espera: la lista ya los muestra vencidos con estadoVigente.
+  supabase.rpc('vencer_paseos').then(() => {}, () => {});
   const { data, error } = await supabase.from('Paseo').select(COLUMNAS_PASEO)
     .eq('Id_Dueno', getCurrentUserId())
     .order('CreadoEn', { ascending: false })
@@ -1147,7 +1189,7 @@ export async function cancelarPaseoDueno(paseo) {
     .eq('Id_Paseo', paseo.id).in('Estado', ['pendiente', 'aceptado']);
   if (error) throw error;
   notificarPaseo(paseo.idWalker, 'Paseo cancelado por el dueño',
-    `${paseo.mascota.nombre} · ${cuandoDe(paseo.fecha)}`);
+    `${paseo.mascota.nombre} · ${fechaHoraFija(paseo.fecha)}`, 'inicio');
 }
 
 // ─────────────────────────────────────────────

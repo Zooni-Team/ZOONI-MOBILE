@@ -9,8 +9,9 @@
  * Los datos salen de Supabase (veterinary_clinics / emergency_lines, migración
  * 018) vía services/sosApi.js. Antes la pantalla tenía cuatro veterinarias
  * escritas a mano que ignoraban por completo lo que había en la base.
- * Si la base no responde se cae a DEMO_VETS: en una emergencia la pantalla
- * NUNCA puede quedar vacía.
+ * Si la base no responde o no tiene veterinarias cargadas, la pantalla lo dice
+ * y ofrece Google Maps. Nunca muestra datos de ejemplo: alguien con una
+ * urgencia real podría llamar a un número inventado.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -31,7 +32,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import {
-  DEMO_VETS,
   LINEAS_FALLBACK,
   distanciaM,
   fetchLineasEmergencia,
@@ -145,7 +145,8 @@ function VetCard({ vet }) {
             <Text style={st.badge24Txt}>24 hs</Text>
           </View>
         )}
-        {vet.urgencias && (
+        {/* "Urgencias" sólo si atiende ahora: una cerrada con ese cartel confunde */}
+        {vet.urgencias && horario.abierta !== false && (
           <View style={st.badgeUrgencias}>
             <Ionicons name="pulse" size={13} color={colores.rojo} />
             <Text style={st.badgeUrgenciasTxt}>Urgencias</Text>
@@ -257,7 +258,7 @@ export default function SosScreen() {
   const [coords, setCoords]   = useState(null);
   const [cargando, setCargando]     = useState(true);
   const [refrescando, setRefrescando] = useState(false);
-  const [usandoDemo, setUsandoDemo] = useState(false);
+  const [errorCarga, setErrorCarga] = useState(false);
   const [orden, setOrden]           = useState('recomendado');
   const [invertido, setInvertido]   = useState(false);
   const [filtros, setFiltros]       = useState([]); // keys de FILTROS_FIJOS y 'srv:<servicio>'
@@ -274,8 +275,8 @@ export default function SosScreen() {
       fetchLineasEmergencia().catch(() => LINEAS_FALLBACK),
     ]);
     setLineas(lineasEmergencia);
-    setUsandoDemo(!clinicas?.length);
-    setVets(clinicas?.length ? clinicas : DEMO_VETS);
+    setErrorCarga(clinicas === null);
+    setVets(clinicas ?? []);
     setCargando(false);
   }, []);
 
@@ -479,11 +480,11 @@ export default function SosScreen() {
         </View>
         <Text style={st.seccionSentido}>{textoSentido}</Text>
 
-        {usandoDemo && !cargando && (
+        {errorCarga && !cargando && (
           <View style={st.avisoDemo}>
             <Ionicons name="alert-circle-outline" size={14} color="#A05F00" />
             <Text style={st.avisoDemoTxt}>
-              Sin conexión con la base: mostrando la lista de ejemplo. Los teléfonos funcionan igual.
+              No pudimos cargar las veterinarias. Las líneas de emergencia de arriba funcionan igual.
             </Text>
           </View>
         )}
@@ -498,9 +499,11 @@ export default function SosScreen() {
           <View style={st.emptyBox}>
             <Ionicons name="search-outline" size={32} color={colores.textoDeshabilitado} />
             <Text style={st.emptyTxt}>
-              {busqueda.trim()
-                ? `No encontramos veterinarias para "${busqueda.trim()}"`
-                : 'Ninguna veterinaria cumple todos los filtros'}
+              {vets.length === 0
+                ? 'Todavía no hay veterinarias verificadas en Zooni para tu zona. Buscá las de urgencia más cercanas en Google Maps.'
+                : busqueda.trim()
+                  ? `No encontramos veterinarias para "${busqueda.trim()}"`
+                  : 'Ninguna veterinaria cumple todos los filtros'}
             </Text>
             {hayFiltros && (
               <TouchableOpacity onPress={limpiar} style={st.emptyBtn} accessibilityRole="button">

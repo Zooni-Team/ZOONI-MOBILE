@@ -97,6 +97,7 @@ const ESTADO_TXT = {
   finalizado: 'Paseo finalizado',
   rechazado: 'Solicitud rechazada',
   cancelado: 'Paseo cancelado',
+  vencido: 'Paseo vencido',
 };
 
 export default function PaseadorChatScreen() {
@@ -172,7 +173,7 @@ export default function PaseadorChatScreen() {
   const rapidas = paseo && !soyDueno
     ? (RAPIDAS[paseo.estado] ?? []).filter((r) => !yaMandadas.has(r)).slice(0, RAPIDAS_VISIBLES)
     : [];
-  const cerrado = paseo && ['rechazado', 'cancelado'].includes(paseo.estado);
+  const cerrado = paseo && ['rechazado', 'cancelado', 'vencido'].includes(paseo.estado);
 
   return (
     <SafeAreaView style={s.safe}>

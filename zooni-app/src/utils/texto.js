@@ -9,6 +9,7 @@
  *   claveComparable('Pet-Shop Ñandú')  → 'petshopnandu'  (detectar duplicados)
  *   capitalizar('perro')               → 'Perro'
  *   escaparLike('50%_off')             → '50\\%\\_off'  (texto literal en un ilike)
+ *   filtrosBusquedaPersonas('Adrian T') → condiciones .or() por palabra
  *
  * Guía: docs/claude/utilidades.md
  */
@@ -43,6 +44,28 @@ export function escaparLike(texto, max = 50) {
     .slice(0, max)
     .replace(/\*/g, '')
     .replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
+/**
+ * Buscar personas por "nombre apellido" o @usuario. Devuelve una condición
+ * de PostgREST por palabra (para pasarle a `.or()`, que se encadenan con Y):
+ * cada palabra tiene que aparecer en el nombre, el apellido o el @usuario.
+ * Así "Adrian Turek" encuentra a Adrian Turek, y "adrian " (con espacio) es
+ * lo mismo que "adrian".
+ *
+ * Los valores van entre comillas dobles (una coma o un paréntesis no rompen
+ * la condición) y dentro de comillas PostgREST le saca una barra a cada \:
+ * por eso se duplican, así el \% de escaparLike llega entero al ilike.
+ */
+export function filtrosBusquedaPersonas(texto, columnas = ['Nombre', 'Apellido', 'NombreUsuario']) {
+  return String(texto ?? '')
+    .replace(/["()]/g, ' ')
+    .split(/[\s,]+/)
+    .map((p) => p.replace(/^@/, ''))
+    .map((p) => escaparLike(p, 30).replace(/\\/g, '\\\\'))
+    .filter(Boolean)
+    .slice(0, 4)
+    .map((p) => columnas.map((c) => `${c}.ilike."%${p}%"`).join(','));
 }
 
 /** Primera letra en mayúscula. */

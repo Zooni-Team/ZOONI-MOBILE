@@ -52,10 +52,10 @@ for (const pasada of [1, 2]) {
 
 // pruebas_rls crea los helpers pg_temp.como / salir que usa pruebas_064: van
 // juntas en la misma sesión de psql.
-const pruebas = ['pruebas_rls.sql', 'pruebas_064.sql', 'pruebas_065.sql'].map((f) => path.join(DIR_SUPABASE, 'tests', f));
+const pruebas = ['pruebas_rls.sql', 'pruebas_064.sql', 'pruebas_065.sql', 'pruebas_066.sql'].map((f) => path.join(DIR_SUPABASE, 'tests', f));
 const r = psql(['-1', ...pruebas.flatMap((f) => ['-f', f])], { base: BASE });
 if (!r.ok) {
   console.error(`\n✗ pruebas\n${r.salida}`);
   process.exit(1);
 }
-console.log('✓ pruebas de RLS, reglas de negocio, 064 (purga, cupo, bucket privado) y 065 (login de cuentas viejas)');
+console.log('✓ pruebas de RLS, reglas de negocio, 064 (purga, cupo, bucket privado) 065 (login de cuentas viejas) y 066 (paseos vencidos, peso, opiniones)');

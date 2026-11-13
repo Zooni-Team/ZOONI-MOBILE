@@ -9,6 +9,8 @@ export default function BuscadorUsuarios({ onSolicitudEnviada }) {
   const [query,    setQuery]    = useState('');
   const [results,  setResults]  = useState([]);
   const [loading,  setLoading]  = useState(false);
+  // null = todavía no se buscó; 'ok' | 'error' = resultado de la última búsqueda
+  const [estado,   setEstado]   = useState(null);
   const [enviados, setEnviados] = useState(new Set());
   const [perfilId, setPerfilId] = useState(null);
   const timer = useRef(null);
@@ -16,16 +18,18 @@ export default function BuscadorUsuarios({ onSolicitudEnviada }) {
   const handleChange = (text) => {
     setQuery(text);
     clearTimeout(timer.current);
-    if (text.trim().length < 2) { setResults([]); return; }
+    if (text.trim().length < 2) { setResults([]); setEstado(null); setLoading(false); return; }
     setLoading(true);
     timer.current = setTimeout(async () => {
       try {
         const d = await buscarUsuarios(text);
         setResults(d.resultados || []);
+        setEstado('ok');
       } catch {
         // Sin red, o un texto que el firewall de Supabase frena (ej. "' or 1=1"):
-        // sin resultados, en vez de dejar los de la búsqueda anterior.
+        // sin resultados (no los de la búsqueda anterior) y un aviso.
         setResults([]);
+        setEstado('error');
       }
       setLoading(false);
     }, 400);
@@ -56,8 +60,14 @@ export default function BuscadorUsuarios({ onSolicitudEnviada }) {
         {loading && <ActivityIndicator size="small" color={colores.verde} />}
       </View>
 
-      {query.length < 2 && (
-        <Text style={styles.hint}>Buscá por nombre o mascota</Text>
+      {query.trim().length < 2 && (
+        <Text style={styles.hint}>Buscá por nombre, apellido o @usuario</Text>
+      )}
+      {query.trim().length >= 2 && !loading && estado === 'ok' && results.length === 0 && (
+        <Text style={styles.hint}>No encontramos a nadie con "{query.trim()}"</Text>
+      )}
+      {query.trim().length >= 2 && !loading && estado === 'error' && (
+        <Text style={styles.hint}>No pudimos buscar ahora. Revisá la conexión y probá de nuevo.</Text>
       )}
 
       <FlatList

@@ -26,7 +26,7 @@ import { resolveMascotaVisual } from '../constants/petImages';
 import { DIAS_SEMANA, DIA_DE_JS } from '../constants/negocios';
 import { horarioDelDia, minutosDe } from '../services/negocioApi';
 import {
-  MEDIOS_PAGO, crearSolicitudPaseo, direccionDe, fetchPaseadorPublico, formatoDuracion, formatoPlata, precioPara,
+  MEDIOS_PAGO, crearSolicitudPaseo, direccionDe, ubicarDireccion, fetchPaseadorPublico, formatoDuracion, formatoPlata, precioPara,
   serviciosDe,
 } from '../services/paseadorApi';
 import { colores, sombras } from '../theme';
@@ -122,13 +122,33 @@ export default function SolicitarPaseoScreen() {
     enviandoRef.current = true;
     setEnviando(true);
     try {
+      // Dirección escrita a mano: tiene que existir (antes se aceptaba
+      // "gttt7tt"). Con "Usar mi ubicación" ya vienen las coordenadas.
+      let punto = coords;
+      if (!punto) {
+        try {
+          punto = await ubicarDireccion(direccion, { cerca: paseador });
+        } catch {
+          punto = undefined; // el buscador no responde: no se frena el pedido por eso
+        }
+        if (punto === null) {
+          setErrores(['No encontramos esa dirección. Escribí calle y altura (ej. "Av. Cabildo 2250, Belgrano") o usá tu ubicación.']);
+          return;
+        }
+      }
       await crearSolicitudPaseo({
         paseador, mascota, fecha, duracionMin: duracion, direccion, medioPago,
-        lat: coords?.lat ?? paseador.lat, lng: coords?.lng ?? paseador.lng, notas,
+        lat: punto?.lat ?? paseador.lat, lng: punto?.lng ?? paseador.lng, notas,
       });
       navigation.replace('MisPaseos', { enviada: paseador.nombreCompleto });
     } catch (err) {
       console.error('[Solicitar paseo]', err?.message, err?.detalle ?? err);
+      const porRegla = {
+        fecha_pasada: 'Ese horario ya pasó. Elegí uno de al menos 15 minutos desde ahora.',
+        paseo_superpuesto: `${mascota?.nombre ?? 'Tu mascota'} ya tiene un paseo pedido en ese horario. Revisalo en Mis paseos.`,
+        direccion_invalida: 'Revisá la dirección: escribí calle y altura.',
+      }[err?.message];
+      if (porRegla) { setErrorGeneral(porRegla); return; }
       setErrorGeneral(err?.message === 'migracion_pendiente'
         ? `A la base de datos le falta Zooni Paseadores: es necesario correr las migraciones 035 y 038.${err?.detalle ? `\n\nDetalle: ${err.detalle}` : ''}`
         : `No se pudo enviar la solicitud.${err?.detalle ? `\n\nDetalle: ${err.detalle}` : ''}`);

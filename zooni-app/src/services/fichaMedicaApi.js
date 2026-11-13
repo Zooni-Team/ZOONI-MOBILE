@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import { urlsFirmadas } from '../utils/imagenStorage';
 import { calcularEdadMeses } from '../utils/calcularEdad';
 import { aplicaParaMascota } from '../utils/filtrarPorMascota';
+import { normalizarBusqueda } from '../utils/texto';
 
 function mapMascota(m) {
   if (!m) return null;
@@ -33,9 +34,8 @@ export async function fetchMascota(petId) {
 export async function actualizarPeso(petId, peso) {
   const { data, error } = await supabase.from('Mascota').update({ Peso: peso }).eq('Id_Mascota', petId).select().single();
   if (error) throw error;
-  // Registro histórico best-effort: si la migración 016 no está corrida,
-  // el peso igual queda actualizado (solo se pierde el punto del historial).
-  try { await supabase.from('historial_peso').insert({ mascota_id: petId, peso_kg: peso }); } catch { /* sin tabla */ }
+  // El punto del historial lo agrega la base (trigger de 066), sea cual sea
+  // la pantalla que cambió el peso.
   return mapMascota(data);
 }
 
@@ -110,7 +110,13 @@ export async function fetchVacunas(petId) {
       pesoMinKg: v.PesoMinKg, pesoMaxKg: v.PesoMaxKg, razas: v.Razas,
     }, perfil))
     .map((v) => {
-      const aplicacion = (aplicadas ?? []).find((a) => a.Id_Vacuna === v.Id_Vacuna);
+      // Por id del catálogo, o por nombre si se cargó a mano ("Añadir" guarda
+      // NombreLibre sin Id_Vacuna): si no, una Séxtuple cargada a mano
+      // seguía figurando como pendiente.
+      const nombre = normalizarBusqueda(v.Nombre).trim();
+      const aplicacion = (aplicadas ?? []).find((a) => a.Id_Vacuna === v.Id_Vacuna)
+        ?? (aplicadas ?? []).find((a) => a.Id_Vacuna == null
+          && normalizarBusqueda(a.NombreLibre).trim() === nombre);
       return {
         id: v.Id_Vacuna,
         nombre: v.Nombre,

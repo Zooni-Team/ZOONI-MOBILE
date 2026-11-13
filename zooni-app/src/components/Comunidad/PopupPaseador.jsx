@@ -71,6 +71,14 @@ export default function PopupPaseador({ paseador, onClose }) {
         </TouchableOpacity>
       </View>
 
+      {/* No se bloquea la reserva (todavía no hay quién verifique), pero el
+          dueño tiene que saberlo antes de contratar. */}
+      {!paseador.verificado && (
+        <View style={st.infoRow}>
+          <Ionicons name="alert-circle-outline" size={14} color={colores.ambar} />
+          <Text style={[st.info, { color: colores.ambar }]}>Identidad sin verificar todavía</Text>
+        </View>
+      )}
       <View style={st.infoRow}>
         <Ionicons name="location-outline" size={14} color={colores.textoSecundario} />
         <Text style={st.info}>{paseador.zona} · atiende a {paseador.radioKm} km a la redonda</Text>

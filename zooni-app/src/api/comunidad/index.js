@@ -13,7 +13,7 @@ import { buscarLugares, combinarServicios } from '../../services/lugaresApi';
 import { consultarPerfiles, perfilesPorId } from '../../services/perfilesPublicos';
 import { distanciaKm } from '../../utils/geo';
 import { notificar } from '../../services/comun';
-import { escaparLike } from '../../utils/texto';
+import { filtrosBusquedaPersonas } from '../../utils/texto';
 
 function aplicarBbox(query, bbox, latCol = 'lat', lngCol = 'lng') {
   if (!bbox) return query;
@@ -180,10 +180,12 @@ export async function responderSolicitud(id, accion) {
  * entera de "User" (mail, teléfono, coordenadas…) de 20 desconocidos.
  */
 export async function buscarUsuarios(q) {
+  const filtros = filtrosBusquedaPersonas(q);
+  if (!filtros.length) return { resultados: [] };
   const usuarios = await consultarPerfiles('Id_User, Nombre, Apellido, Ubicacion', (query) => {
     let x = query.neq('Id_User', getCurrentUserId()).limit(20);
-    const texto = escaparLike(q);
-    if (texto) x = x.ilike('Nombre', `%${texto}%`);
+    // Cada palabra en el nombre, el apellido o el @usuario ("Adrian Turek")
+    filtros.forEach((f) => { x = x.or(f); });
     return x;
   });
   if (!usuarios.length) return { resultados: [] };

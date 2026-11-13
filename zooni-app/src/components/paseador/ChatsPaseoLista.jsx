@@ -24,6 +24,7 @@ const ESTADO = {
   aceptado: { txt: 'Agendado', color: C.teal },
   en_curso: { txt: 'En curso', color: C.rojo },
   finalizado: { txt: 'Finalizado', color: C.texto2 },
+  vencido: { txt: 'Vencido', color: C.texto2 },
 };
 
 export default function ChatsPaseoLista({ rol = 'paseador', vacioTexto }) {

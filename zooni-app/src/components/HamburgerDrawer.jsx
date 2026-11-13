@@ -53,7 +53,6 @@ const MENU_ITEMS = [
   { key: 'mensajes',      label: 'Mensajes',                  icono: 'chatbubbles-outline',         ruta: 'Mensajes' },
   { key: 'mis_paseos',    label: 'Mis paseos',                icono: 'walk-outline',                ruta: 'MisPaseos' },
   { key: 'mis_turnos',    label: 'Turnos y pedidos',          icono: 'receipt-outline',             ruta: 'MisTurnos' },
-  { key: 'planificador',  label: 'Planificador de Servicios', icono: 'calendar-outline',            ruta: 'Planificador' },
   { key: 'ficha_medica',  label: 'Ficha Médica',              icono: 'medkit-outline',              ruta: 'FichaMedica' },
   { key: 'calendario',    label: 'Calendario',                icono: 'today-outline',               ruta: 'Calendario' },
   { key: 'eventos',       label: 'Eventos',                   icono: 'sparkles-outline',            ruta: 'Eventos' },

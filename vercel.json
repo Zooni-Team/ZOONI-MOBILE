@@ -5,6 +5,14 @@
   "buildCommand": "cd zooni-app && npm run build:web",
   "outputDirectory": "zooni-app/dist",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "functions": {
+    "api/lugares.js": {
+      "maxDuration": 30
+    }
+  }
 }

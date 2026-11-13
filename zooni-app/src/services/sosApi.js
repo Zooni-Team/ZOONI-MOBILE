@@ -2,8 +2,9 @@
  * sosApi.js — Datos de la pantalla S.O.S Veterinario (Instruction-SOS)
  *
  * Usado por SosScreen. Sigue el patrón del resto de la app: los servicios
- * tiran (throw) ante errores de red y la pantalla decide el fallback
- * (datos demo / caché en memoria).
+ * tiran (throw) ante errores de red y la pantalla decide qué mostrar.
+ * Nunca hay veterinarias de ejemplo: en una emergencia, un teléfono inventado
+ * es peor que una lista vacía con la salida a Google Maps.
  *
  * Regla central del SOS: nada de acá puede bloquear un llamado. Los números
  * de las líneas de emergencia tienen fallback local (LINEAS_FALLBACK) y el
@@ -69,65 +70,6 @@ export async function fetchVeterinarias() {
   if (error) throw error;
   return (data ?? []).map(mapClinica);
 }
-
-// Datos de demo (mismo shape que mapClinica) para cuando no hay backend,
-// igual que hace HomeScreen con DEMO_DATA.
-export const DEMO_VETS = [
-  {
-    id: 1, nombre: 'Clínica Veterinaria del Centro', telefono: '011-4901-2233',
-    direccion: 'Av. Rivadavia 4980', barrio: 'Caballito', logoUrl: null,
-    especialidades: ['Medicina General', 'Emergencias'], servicios: ['internacion', 'cirugia'],
-    is24h: false, urgencias: true, ratingAvg: 4.8, ratingCount: 87,
-    lat: -34.6187, lng: -58.4370,
-    horarios: { mon: [['08:00', '20:00']], tue: [['08:00', '20:00']], wed: [['08:00', '20:00']], thu: [['08:00', '20:00']], fri: [['08:00', '20:00']], sat: [['09:00', '13:00']], sun: [] },
-  },
-  {
-    id: 2, nombre: 'Veterinaria San Roque 24 hs', telefono: '011-4902-8800',
-    direccion: 'Av. La Plata 355', barrio: 'Caballito', logoUrl: null,
-    especialidades: ['Emergencias', 'Internación'], servicios: ['internacion', 'radiologia'],
-    is24h: true, urgencias: true, ratingAvg: 4.6, ratingCount: 54,
-    lat: -34.6152, lng: -58.4258, horarios: null,
-  },
-  {
-    id: 3, nombre: 'Hospital Veterinario Belgrano', telefono: '011-4788-1144',
-    direccion: 'Av. Cabildo 2250', barrio: 'Belgrano', logoUrl: null,
-    especialidades: ['Medicina General', 'Cirugía', 'Emergencias'], servicios: ['internacion', 'cirugia', 'radiologia'],
-    is24h: false, urgencias: true, ratingAvg: 4.9, ratingCount: 203,
-    lat: -34.5601, lng: -58.4590,
-    horarios: { mon: [['08:00', '21:00']], tue: [['08:00', '21:00']], wed: [['08:00', '21:00']], thu: [['08:00', '21:00']], fri: [['08:00', '21:00']], sat: [['08:00', '21:00']], sun: [['09:00', '18:00']] },
-  },
-  {
-    id: 4, nombre: 'Veterinaria Patitas', telefono: '011-4632-5511',
-    direccion: 'Bogotá 2140', barrio: 'Flores', logoUrl: null,
-    especialidades: ['Medicina General', 'Vacunación'], servicios: [],
-    is24h: false, urgencias: false, ratingAvg: 4.3, ratingCount: 31,
-    lat: -34.6289, lng: -58.4622,
-    horarios: { mon: [['09:00', '19:00']], tue: [['09:00', '19:00']], wed: [['09:00', '19:00']], thu: [['09:00', '19:00']], fri: [['09:00', '19:00']], sat: [['09:00', '13:00']], sun: [] },
-  },
-  {
-    id: 5, nombre: 'Centro Veterinario Flores', telefono: '011-4611-7788',
-    direccion: 'Av. Avellaneda 3652', barrio: 'Flores', logoUrl: null,
-    especialidades: ['Medicina General', 'Dermatología'], servicios: ['domicilio'],
-    is24h: false, urgencias: false, ratingAvg: 4.5, ratingCount: 42,
-    lat: -34.6334, lng: -58.4761,
-    horarios: { mon: [['08:00', '13:00'], ['16:00', '20:00']], tue: [['08:00', '13:00'], ['16:00', '20:00']], wed: [['08:00', '13:00'], ['16:00', '20:00']], thu: [['08:00', '13:00'], ['16:00', '20:00']], fri: [['08:00', '13:00'], ['16:00', '20:00']], sat: [], sun: [] },
-  },
-  {
-    id: 6, nombre: 'Clínica Felina Miau', telefono: '011-4855-9090',
-    direccion: 'Aráoz 1128', barrio: 'Palermo', logoUrl: null,
-    especialidades: ['Felinos', 'Medicina General'], servicios: [],
-    is24h: false, urgencias: false, ratingAvg: 4.7, ratingCount: 66,
-    lat: -34.5936, lng: -58.4211,
-    horarios: { mon: [['10:00', '19:00']], tue: [['10:00', '19:00']], wed: [['10:00', '19:00']], thu: [['10:00', '19:00']], fri: [['10:00', '19:00']], sat: [['10:00', '14:00']], sun: [] },
-  },
-  {
-    id: 7, nombre: 'Veterinaria Zooni a Domicilio', telefono: '011-15-6044-2211',
-    direccion: 'Atiende en tu casa', barrio: 'CABA', logoUrl: null,
-    especialidades: ['Atención a domicilio', 'Urgencias'], servicios: ['domicilio'],
-    is24h: true, urgencias: true, ratingAvg: null, ratingCount: 0,
-    lat: null, lng: null, horarios: null,
-  },
-];
 
 // ─── HORARIOS Y DISTANCIA ─────────────────────────────────────────────────────
 

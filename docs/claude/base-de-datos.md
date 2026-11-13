@@ -57,6 +57,17 @@ de fecha, ubicación a ~1 km, teléfono sólo con un paseo/turno/pedido en comú
 | ZooniVet: `zoonivet_consumir_cupo(id_user, limite)` + tabla `zoonivet_uso` (sólo service_role) | 064 |
 | Realtime: `Mensaje` y `paseo_mensajes` en la publicación `supabase_realtime` | 064 |
 | `migrar_cuenta_legada(mail, contraseña)` — cuenta vieja (sha256) → Supabase Auth, la llama el login sin sesión (anon) | 065 |
+| Paseos: estado `vencido`, `vencer_paseos()` (app + pg_cron cada 15 min), `_paseo_validar_alta` (no en el pasado, con dirección, sin superponer la misma mascota), `_paseo_validar_cambio` (un vencido no se acepta ni inicia) | 066 |
+| `_mascota_registrar_peso`: todo cambio de `Mascota.Peso` deja su punto en `historial_peso` | 066 |
+| `paseador_opiniones`: nadie opina de sí mismo (política) | 066 |
+| Sin veterinarias de ejemplo en `veterinary_clinics` (desactivadas) | 066 |
+
+**Si una base muestra datos ajenos** (pasó en producción: una política
+`USING (true)` creada a mano sobrevivía, y como las políticas se suman con OR,
+anulaba las de 061): pegar `supabase/MIGRACION_066_RLS_REAPLICAR.sql`. Borra
+TODAS las políticas de `public`, las vuelve a crear y verifica con la sesión
+de un usuario real que `User` devuelve 1 fila. Nunca crear políticas desde el
+dashboard: sólo en el SQL del repo.
 
 ## Borrado de mascotas
 La app hace borrado lógico (`Estado = 'deleted'`, `PurgarDespues` = +30 días) y

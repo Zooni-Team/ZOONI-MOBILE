@@ -90,7 +90,7 @@ export default function MatchProfileCard({ perfil, cardHeight, cardWidth, onPres
           )}
 
           <Text style={styles.locationText} numberOfLines={1}>
-            📍 {barrio}, {ciudad}
+            📍 {[barrio, ciudad].filter(Boolean).join(', ')}
           </Text>
 
           {visibleTags.length > 0 && (

@@ -4,6 +4,7 @@ import {
   Animated, Platform, ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useIsFocused } from '@react-navigation/native';
 
 import TabAmigos        from '../../components/Comunidad/TabAmigos';
 import TabServicios     from '../../components/Comunidad/TabServicios';
@@ -170,7 +171,9 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
     setUserMarker(-34.6089,-58.4340);
   }
 
-  map.on('dblclick',function(e){
+  // En modo cartel alcanza con tocar una vez (en el celular no hay "doble
+  // click"); el doble toque se sigue aceptando.
+  map.on('click dblclick',function(e){
     if(modoCartel) notify({type:'dblclick',lat:e.latlng.lat,lng:e.latlng.lng});
   });
   function notifyBounds(){
@@ -339,8 +342,12 @@ export default function ComunidadScreen() {
     cargarAmigos();
   }, [cargarPaseadores, cargarAmigos]);
 
-  // ── Polling 30s ────────────────────────────────────────────────────────────
+  // ── Polling 30s, sólo con la pantalla a la vista ──────────────────────────
+  // El stack deja montada Comunidad al ir a otra pantalla: sin este corte el
+  // mapa seguía consultando (y reintentando OpenStreetMap) de fondo.
+  const enFoco = useIsFocused();
   useEffect(() => {
+    if (!enFoco) return undefined;
     const iv = setInterval(() => {
       if (bbox)    cargarZona(bbox);
       cargarPaseadores();
@@ -348,7 +355,7 @@ export default function ComunidadScreen() {
       if (userPos) actualizarUbicacion(userPos.lat, userPos.lng).catch(() => {});
     }, 30000);
     return () => clearInterval(iv);
-  }, [bbox, userPos, cargarZona, cargarPaseadores, cargarAmigos]);
+  }, [enFoco, bbox, userPos, cargarZona, cargarPaseadores, cargarAmigos]);
 
   // ── Sincroniza markers cuando cambian ─────────────────────────────────────
   useEffect(() => {
@@ -413,12 +420,12 @@ export default function ComunidadScreen() {
         </TouchableOpacity>
 
         {/* Banner modo cartel */}
-        <Animated.View style={[
+        <Animated.View pointerEvents="none" style={[
           styles.bannerCartel,
           { opacity: bannerAnim, transform: [{ translateY: bannerAnim.interpolate({ inputRange:[0,1], outputRange:[-16,0] }) }] }
         ]}>
-          <Text style={styles.bannerText}>
-            Hacé doble click en el mapa donde querés crear el cartel
+          <Text style={styles.bannerText} numberOfLines={2}>
+            Tocá el mapa donde va el cartel
           </Text>
         </Animated.View>
 
@@ -440,7 +447,7 @@ export default function ComunidadScreen() {
           <TouchableOpacity
             style={[styles.pill, modoCartel ? styles.pillVerde : styles.pillRojo]}
             onPress={() => { setModoCartel(v => !v); setMarkerTemp(null); }}>
-            <Text style={styles.pillTextBlanco}>🚨 {modoCartel ? 'Cancelar' : 'Crear Cartel'}</Text>
+            <Text style={styles.pillTextBlanco}>{modoCartel ? '✕ Cancelar' : '🚨 Crear Cartel'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -558,9 +565,12 @@ const styles = StyleSheet.create({
     backgroundColor: colores.blanco, alignItems: 'center', justifyContent: 'center',
     shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 6,
   },
+  // Al lado del botón de menú y por encima de los botones flotantes (top 60):
+  // antes iba en top 68 y tapaba "Mi Ubicación".
   bannerCartel: {
-    position: 'absolute', top: 68, left: 14, right: 14, zIndex: 100,
-    backgroundColor: colores.verde, borderRadius: 12, padding: 12,
+    position: 'absolute', top: 14, left: 66, right: 14, zIndex: 100, minHeight: 42,
+    justifyContent: 'center',
+    backgroundColor: colores.verde, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6,
     shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 6,
   },
   bannerText: { color: colores.blanco, textAlign: 'center', fontWeight: '600', fontSize: 13 },

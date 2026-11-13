@@ -159,11 +159,19 @@ export async function fetchMisConversacionesMatch() {
   );
   const otroIds = [...new Set(otroIdPorMatch.values())];
 
-  const [usuarios, { data: mensajes }] = await Promise.all([
+  const idsMascotas = [...new Set(matches.flatMap((m) => [m.idMascotaUno, m.idMascotaDos]))];
+  const [usuarios, { data: mensajes }, { data: mascotas }] = await Promise.all([
     perfilesPorId(otroIds),
     supabase.from('Mensaje').select('*').in('idMatch', matches.map((m) => m.id)).order('fecha', { ascending: false }),
+    supabase.from('Mascota').select('Id_Mascota, Nombre').in('Id_Mascota', idsMascotas),
   ]);
   const usuarioPorId = new Map((usuarios ?? []).map((u) => [u.Id_User, u]));
+  const nombreMascota = new Map((mascotas ?? []).map((x) => [x.Id_Mascota, x.Nombre]));
+  // Con la misma persona puede haber dos Match (uno por cada par de mascotas):
+  // son chats distintos, así que a esos se les agregan las mascotas al nombre
+  // ("uri grin · Luna y Toby") para que no parezca la misma fila repetida.
+  const matchesPorPersona = new Map();
+  otroIdPorMatch.forEach((otro) => matchesPorPersona.set(otro, (matchesPorPersona.get(otro) ?? 0) + 1));
 
   return matches
     .map((m) => {
@@ -171,9 +179,12 @@ export async function fetchMisConversacionesMatch() {
       const mensajesDelMatch = (mensajes ?? []).filter((msg) => msg.idMatch === m.id);
       const ultimo = mensajesDelMatch[0]; // ya viene ordenado desc
       const noLeidos = mensajesDelMatch.filter((msg) => !msg.leido && msg.idUsuario !== miId).length;
+      const nombre = `${otro?.Nombre ?? ''} ${otro?.Apellido ?? ''}`.trim() || 'Usuario';
+      const repetido = matchesPorPersona.get(otroIdPorMatch.get(m.id)) > 1;
+      const parMascotas = [m.idMascotaUno, m.idMascotaDos].map((id) => nombreMascota.get(id)).filter(Boolean).join(' y ');
       return {
         chatId: m.id,
-        nombre: `${otro?.Nombre ?? ''} ${otro?.Apellido ?? ''}`.trim() || 'Usuario',
+        nombre: repetido && parMascotas ? `${nombre} · ${parMascotas}` : nombre,
         fotoPerfilUrl: otro?.FotoPerfil ?? null,
         ultimoMensaje: ultimo?.texto ?? null,
         fecha: ultimo?.fecha ?? m.fecha,

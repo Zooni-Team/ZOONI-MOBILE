@@ -90,3 +90,17 @@ export function diasEntre(a, b) {
   const da = parseFechaLocal(a);
   return da ? diasHasta(b, da) : null;
 }
+
+/**
+ * "Mié 12/11 12:00" — fecha y hora SIN "Hoy"/"Mañana". Para textos que se
+ * guardan (notificaciones): un "Hoy 12:00" guardado sigue diciendo "Hoy" diez
+ * días después. Para mostrar en vivo están cuandoDe / cuandoTexto.
+ */
+export function fechaHoraFija(valor) {
+  const d = valor instanceof Date ? valor : new Date(valor);
+  if (Number.isNaN(d.getTime())) return '';
+  const dia = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d.getDay()];
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${dia} ${d.getDate()}/${d.getMonth() + 1} ${hh}:${mm}`;
+}

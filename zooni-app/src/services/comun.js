@@ -55,6 +55,23 @@ export const resumir = (texto, max = 80) => (texto.length > max ? `${texto.slice
  * crear avisos para otros). Nunca rompe el flujo que la llama: el cambio
  * principal ya quedó guardado.
  */
+/**
+ * ¿Esta notificación es para el modo paseador? Una misma cuenta puede ser
+ * dueña y paseadora: "Tenés una solicitud nueva" no tiene que aparecer en el
+ * modo dueño (ni al revés). Las nuevas lo dicen en DataExtra.modo; para las
+ * viejas se mira el destino y el título.
+ */
+const DESTINOS_PASEADOR = ['solicitudes', 'chats', 'pagos', 'perfil'];
+const TITULOS_PASEADOR = /^(tenés una solicitud|paseo cancelado por el dueño|mensaje del dueño|nueva reseña|recordatorio de cobro)/i;
+export function esNotificacionDePaseador(n) {
+  const extra = n?.DataExtra ?? n?.dataExtra ?? null;
+  if (extra?.modo) return extra.modo === 'paseador';
+  const tipo = n?.Tipo ?? n?.tipo;
+  if (tipo !== 'paseo' && tipo !== 'mensaje') return false;
+  return DESTINOS_PASEADOR.includes(extra?.destino)
+    || TITULOS_PASEADOR.test(String(n?.Titulo ?? n?.titulo ?? ''));
+}
+
 export async function notificar(idUser, titulo, mensaje, { tipo = 'general', destino = null, extra = null, idMascota = null } = {}) {
   if (!idUser) return;
   try {

@@ -4,9 +4,14 @@ Ordenado por prioridad. Lo hecho en la última pasada está al final.
 
 ## 1. Para que lo hecho funcione (hacerlo YA, en este orden)
 
-**Si la base YA tiene 060–063 aplicadas** (Auth + RLS + Storage): no hace falta
-el archivo entero. Pegar, en orden, `supabase/MIGRACION_064_SOBRE_063.sql` y
-`supabase/MIGRACION_065_LOGIN_CUENTAS_VIEJAS.sql` → Run. DESPUÉS
+**Si la base YA tiene 060–065 aplicadas** (la de producción): pegar
+`supabase/MIGRACION_066_RLS_REAPLICAR.sql` → Run. **Urgente**: en producción
+cualquier usuario logueado leía mails, teléfonos, notificaciones, mensajes y
+paseos de todos (una política abierta sobrevivía). La 066 lo cierra y se
+verifica sola (si algo no queda bien, hace ROLLBACK y no cambia nada).
+
+**Si la base tiene 060–063:** pegar, en orden, `supabase/MIGRACION_064_SOBRE_063.sql`,
+`supabase/MIGRACION_065_LOGIN_CUENTAS_VIEJAS.sql` y `MIGRACION_066_RLS_REAPLICAR.sql` → Run. DESPUÉS
 `supabase functions deploy zoonivet-chat` (sólo para ZooniVet). Luego desplegar
 la app. `migrar-cuenta` ya NO hace falta: 065 migra las cuentas viejas desde la base.
 
@@ -38,6 +43,14 @@ Los `supabase/tests/*.sql` NO se pegan en Supabase: son para Postgres local.
 8. Cuando `select count(*) from user_credentials` dé 0: borrar
    `zooni-app/src/services/authLegado.js`, su uso en `authApi.js` y
    `consultaRespaldo` en `services/perfilesPublicos.js`.
+
+**Pendientes de la revisión del 12/11/2026** (lo demás quedó arreglado):
+- Cargar veterinarias REALES (verificadas) en `veterinary_clinics`: hoy el SOS
+  muestra las líneas de emergencia y la salida a Google Maps, sin lista propia.
+- Verificación de paseadores: no hay quién verifique. Por ahora el dueño ve
+  "Identidad sin verificar todavía" y puede contratar igual.
+- Mismo dueño con dos Match con la misma persona (uno por mascota): son dos
+  chats; se distinguen por las mascotas en el nombre. ¿Unificarlos?
 
 ## 2. Refactor pendiente (código)
 - **Componentes casi iguales** (no idénticos: hay que decidir el diseño único

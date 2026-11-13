@@ -37,6 +37,7 @@ import SelectorMascota from '../components/SelectorMascota';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
 import { fetchMisMascotas } from '../services/petsApi';
 import { haySesion } from '../config/session';
+import { eventoAplicaAMascota } from '../utils/filtrarPorMascota';
 import {
   agregarEventoCalendario,
   getEventosCalendario,
@@ -183,9 +184,11 @@ function EventoCard({
   })();
 
   const horaFormateada =
+    // 24 hs y sin "a. m.": "09:00 a. m. hs" decía la hora dos veces
     fechaEvento.toLocaleTimeString('es-AR', {
       hour: '2-digit',
       minute: '2-digit',
+      hour12: false,
     }) + ' hs';
 
   // ── Handler de ubicación → abre Google Maps ────────────────
@@ -616,6 +619,10 @@ export default function EventosScreen() {
 
   // Nombre de la mascota elegida, para dejar claro a dónde va lo que se agrega.
   const nombreMascotaSel = mascotas.find((m) => m.id === mascotaSel)?.nombre ?? null;
+  // Sólo los eventos que le sirven a la mascota elegida (ej. un encuentro de
+  // Golden Retrievers no se le ofrece a un mestizo).
+  const mascotaElegida = mascotas.find((m) => m.id === mascotaSel) ?? null;
+  const eventosParaMascota = eventos.filter((e) => eventoAplicaAMascota(e, mascotaElegida));
 
   // ── Render ────────────────────────────────────────────────────
   return (
@@ -673,7 +680,7 @@ export default function EventosScreen() {
             <SkeletonCard />
             <SkeletonCard />
           </ScrollView>
-        ) : eventos.length === 0 ? (
+        ) : eventosParaMascota.length === 0 ? (
           /* Estado vacío */
           <View style={styles.emptyContainer}>
             <Ionicons name="storefront-outline" size={60} color={colores.textoTenue} />
@@ -699,7 +706,7 @@ export default function EventosScreen() {
               />
             }
           >
-            {eventos.map((evento) => (
+            {eventosParaMascota.map((evento) => (
               <EventoCard
                 key={evento.id}
                 evento={evento}

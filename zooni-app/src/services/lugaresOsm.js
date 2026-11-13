@@ -26,10 +26,13 @@
  *
  * A cambio: sin clave, sin costo y sin límite de cuota por proyecto.
  *
- * ─── BUEN USO DE LA API PÚBLICA ──────────────────────────────────────────────
- * Overpass es un servicio comunitario y gratuito; abusarlo hace que corte por
- * IP. Por eso acá hay: caché por área, un tope de superficie consultable, un
- * timeout corto y varios servidores espejo. Nunca lanza error hacia arriba.
+ * ─── POR DÓNDE PASA ──────────────────────────────────────────────────────────
+ * La app NO le pega a Overpass directo: pasa por /api/lugares (función de
+ * Vercel, api/lugares.js en la raíz del repo). Desde el navegador Overpass
+ * respondía 406 o se colgaba casi siempre; la función manda el User-Agent que
+ * exige, cae a Nominatim si Overpass está saturado y deja cada zona en el CDN
+ * un día para todos los usuarios. Acá queda: caché local por área, un tope de
+ * superficie consultable y una pausa tras un fallo. Nunca lanza error.
  *
  * ─── VELOCIDAD ───────────────────────────────────────────────────────────────
  * Overpass tarda segundos, y Comunidad tiene que sentirse instantáneo:
@@ -43,22 +46,16 @@
 import { Platform } from 'react-native';
 import { claveComparable } from '../utils/texto';
 
-/*
-  Espejos públicos: instancias distintas de la misma base de datos. Se les
-  pregunta a todos a la vez y gana el primero que contesta bien (ver
-  consultarOverpass): suelen estar saturados, y uno colgado ya no hace esperar
-  a los demás.
-*/
-const ENDPOINTS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-  'https://overpass.private.coffee/api/interpreter',
-];
+// La función de Vercel (api/lugares.js). En la app nativa no hay "mismo
+// origen", así que va la URL completa del sitio publicado.
+const URL_LUGARES = Platform.OS === 'web'
+  ? '/api/lugares'
+  : 'https://zooni-mobile.vercel.app/api/lugares';
 
-// Servidores que fallaron por algo que no se arregla reintentando (CORS, 403,
-// 406): se saltean el resto de la sesión en vez de volver a pegarles en cada
-// movimiento del mapa. Si fallan todos, se vuelve a probar con la lista entera.
-const endpointsDescartados = new Set();
+// Tras un fallo, esa zona no se vuelve a pedir por un rato: antes el mapa
+// reintentaba cada 30 s aunque OpenStreetMap estuviera caído.
+const PAUSA_TRAS_FALLO_MS = 2 * 60 * 1000;
+const fallosRecientes = new Map(); // clave de área → timestamp del fallo
 
 // Etiqueta de OSM por cada filtro de la pestaña Servicios. Las claves coinciden
 // con `tipo` en la tabla `servicios` para que todo hable el mismo idioma (los
@@ -82,13 +79,9 @@ const TIPOS_OSM = Object.keys(TAGS);
 */
 const AREA_MAX_GRADOS2 = 0.25;
 
-// Tope de resultados de la consulta (las tres categorías juntas, en el área
-// agrandada por la grilla).
-const MAX_RESULTADOS = 200;
-
-// Espera máxima de la consulta (a todos los espejos juntos). Una consulta chica
-// responde en 1-3 s; más que esto es que están todos saturados.
-const TIMEOUT_MS = 10000;
+// Espera máxima: la primera vez que alguien pide una zona, la función puede
+// tardar (Overpass saturado → Nominatim). Después sale del CDN al instante.
+const TIMEOUT_MS = 25000;
 
 /*
   Grilla (en grados, ~2,2 km) a la que se agranda el área consultada. Así el
@@ -96,17 +89,6 @@ const TIMEOUT_MS = 10000;
   dentro, sale del caché sin consultar nada.
 */
 const GRILLA = 0.02;
-
-/*
-  Overpass EXIGE un User-Agent que identifique a la aplicación: sin él los
-  espejos responden 429 ("Please include a meaningful User-Agent string...") y
-  overpass-api.de directamente 406. Verificado contra los tres servidores.
-
-  En el navegador este header no se puede fijar —User-Agent es un "forbidden
-  header name" y fetch lo descarta— pero ahí no hace falta: el navegador manda
-  su propio User-Agent real, que Overpass acepta. En nativo sí se aplica.
-*/
-const USER_AGENT = 'ZooniApp/1.0 (app de mascotas; contacto en la app)';
 
 /** El proveedor gratuito está siempre disponible: no hay clave que configurar. */
 export function hayProveedorGratuito() {
@@ -135,7 +117,7 @@ export function areaConsultable(bbox) {
 */
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const CACHE_MAX = 30;
-const CACHE_STORAGE_KEY = 'zooni:lugaresOsm:v2';
+const CACHE_STORAGE_KEY = 'zooni:lugaresOsm:v3'; // v3: viene de /api/lugares
 let cache = leerCacheGuardado(); // [{ area, ts, datos }]
 
 function storage() {
@@ -251,73 +233,17 @@ function mapLugar(el) {
 
 // ─── BÚSQUEDA ─────────────────────────────────────────────────────────────────
 
-/** Consulta Overpass QL con las tres categorías dentro del área. */
-function armarConsulta(area) {
-  // Overpass usa el orden (sur, oeste, norte, este).
-  const caja = `${area.lat_min},${area.lng_min},${area.lat_max},${area.lng_max}`;
-  // `nwr` = nodes + ways + relations: una veterinaria puede estar mapeada como
-  // punto o como el polígono del edificio, y las dos formas son igual de comunes.
-  const partes = TIPOS_OSM.map((t) => `nwr${TAGS[t]}(${caja});`).join('');
-  return `[out:json][timeout:10];(${partes});out center ${MAX_RESULTADOS};`;
-}
-
-/*
-  Les pregunta a todos los espejos a la vez y se queda con la primera respuesta
-  válida; a las demás las corta.
-
-  Antes se probaban de a uno, con 12 s de espera cada uno: con los espejos
-  saturados (pasa seguido: colgados o devolviendo 502) eran más de 30 s hasta
-  ver una veterinaria. En paralelo, lo que tarde el más rápido. No carga de más
-  a los servidores: cada zona se consulta una vez y después sale del caché.
-*/
-async function consultarOverpass(consulta) {
-  const candidatos = ENDPOINTS.filter((e) => !endpointsDescartados.has(e));
-  const lista = candidatos.length ? candidatos : ENDPOINTS;
-  const abortadores = lista.map(() => new AbortController());
-  // Timeout propio: sin esto, si todos están colgados la pestaña queda
-  // esperando para siempre.
-  const temporizador = setTimeout(() => abortadores.forEach((a) => a.abort()), TIMEOUT_MS);
-
-  const pedir = async (endpoint, abortador) => {
-    let res;
-    try {
-      res = await fetch(endpoint, {
-        method: 'POST',
-        signal: abortador.signal,
-        // Sin Referer: overpass-api.de responde 406 (y sin CORS, así que el
-        // navegador lo ve como "Failed to fetch") a los pedidos que llegan con
-        // el Referer de zooni-mobile.vercel.app. Sin él contesta normal.
-        referrerPolicy: 'no-referrer',
-        // En web, User-Agent no se puede fijar y sólo agregaría un preflight
-        // CORS: se manda únicamente el Content-Type de un formulario común.
-        headers: Platform.OS === 'web'
-          ? { 'Content-Type': 'application/x-www-form-urlencoded' }
-          : { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT },
-        body: `data=${encodeURIComponent(consulta)}`,
-      });
-    } catch (e) {
-      // TypeError = error de red/CORS: ese servidor no le responde a la app
-      if (e instanceof TypeError) endpointsDescartados.add(endpoint);
-      throw e;
-    }
-    if (!res.ok) {
-      // 429 = demasiadas consultas, 502/504 = espejo saturado: puede andar en
-      // la próxima. 403/405/406 no se arreglan reintentando.
-      if ([403, 405, 406].includes(res.status)) endpointsDescartados.add(endpoint);
-      throw new Error(`Overpass ${res.status}`);
-    }
-    // Overpass a veces contesta 200 con un cuerpo XML de error ("runtime
-    // error: ... too busy"): json() tira y ese espejo cuenta como fallido.
-    return res.json();
-  };
-
+/** Pide la zona a /api/lugares. Devuelve { elements } con la forma de Overpass. */
+async function consultarZona(area) {
+  const abortador = new AbortController();
+  const temporizador = setTimeout(() => abortador.abort(), TIMEOUT_MS);
   try {
-    return await Promise.any(lista.map((e, i) => pedir(e, abortadores[i])));
-  } catch (e) {
-    throw e?.errors?.[0] ?? new Error('Overpass no respondió');
+    const q = new URLSearchParams({ s: area.lat_min, w: area.lng_min, n: area.lat_max, e: area.lng_max });
+    const res = await fetch(`${URL_LUGARES}?${q}`, { signal: abortador.signal });
+    if (!res.ok) throw new Error(`lugares ${res.status}`);
+    return await res.json();
   } finally {
     clearTimeout(temporizador);
-    abortadores.forEach((a) => a.abort());
   }
 }
 
@@ -343,8 +269,9 @@ async function buscarTodos(bbox) {
 
   const area = areaAConsultar(bbox);
   const clave = JSON.stringify(area);
+  if (Date.now() - (fallosRecientes.get(clave) ?? 0) < PAUSA_TRAS_FALLO_MS) return [];
   if (!enVuelo.has(clave)) {
-    const pedido = consultarOverpass(armarConsulta(area))
+    const pedido = consultarZona(area)
       .then((json) => {
         const lugares = quitarRepetidos(
           (json.elements ?? [])
@@ -354,8 +281,10 @@ async function buscarTodos(bbox) {
             .filter((l) => l.nombre !== 'Sin nombre'),
         );
         alCache(area, lugares);
+        fallosRecientes.delete(clave);
         return lugares;
       })
+      .catch((e) => { fallosRecientes.set(clave, Date.now()); throw e; })
       .finally(() => enVuelo.delete(clave));
     enVuelo.set(clave, pedido);
   }
@@ -369,7 +298,7 @@ async function buscarTodos(bbox) {
  * @param {string} tipo  'todos' | 'veterinaria' | 'petshop' | 'peluqueria'
  * @returns {Promise<Array>} lista con la forma de `servicios` ([] si no aplica)
  *
- * Nunca tira error: si Overpass falla, Comunidad tiene que seguir mostrando lo
+ * Nunca tira error: si OpenStreetMap falla, Comunidad tiene que seguir mostrando lo
  * que haya en Supabase igual.
  */
 export async function buscarLugaresOsm(bbox, tipo = 'todos') {
