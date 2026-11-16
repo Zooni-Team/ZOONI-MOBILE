@@ -30,9 +30,8 @@ import {
   Campo, DatosTipoNegocio, InputTexto, datosInicialesNegocio, datosNegocioParaGuardar, useDatosNegocio,
   validarDatosNegocio,
 } from '../../../components/negocio/CamposNegocio';
-import {
-  actualizarNegocio, resumenHorarios, subirLogoNegocio,
-} from '../../../services/negocioApi';
+import { actualizarNegocio, subirLogoNegocio } from '../../../services/negocioApi';
+import { resumenHorarios } from '../../../domain/negocios';
 import { sanitizarDigitos } from '../../../utils/sanitizar';
 import { colores } from '../../../theme';
 

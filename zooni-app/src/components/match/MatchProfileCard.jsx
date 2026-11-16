@@ -7,7 +7,7 @@ import {
   View, Text, StyleSheet, Image, Pressable, TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { especieIcono } from '../../data/matchDemo';
+import { especieIcono } from '../../constants/match';
 import { resolveMascotaVisual } from '../../constants/petImages';
 import { colores } from '../../theme';
 

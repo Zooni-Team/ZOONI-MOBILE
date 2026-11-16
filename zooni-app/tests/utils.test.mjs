@@ -2,7 +2,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { diasEntre, diasHasta, formatearFecha, parseFechaLocal, toISODateLocal } from '../src/utils/fechaLocal.js';
+import { cuentaRegresiva, diasEntre, diasHasta, formatearFecha, parseFechaLocal, toISODateLocal } from '../src/utils/fechaLocal.js';
 import { calcularEdad, calcularEdadAnios, calcularEdadMeses, calcularEdadPartes, edadResumida } from '../src/utils/calcularEdad.js';
 import { capitalizar, claveComparable, escaparLike, incluyeTexto, normalizarBusqueda } from '../src/utils/texto.js';
 import { EMAIL_REGEX, PASSWORD_MIN, esEmailValido, esPasswordValida } from '../src/utils/validacion.js';
@@ -34,6 +34,17 @@ test('formatearFecha: estilos con nombre', () => {
   assert.equal(formatearFecha(null), null);
   assert.equal(formatearFecha(null, 'numerica', { vacio: '—' }), '—');
   assert.throws(() => formatearFecha('2026-08-04', 'inventado'), /estilo desconocido/);
+});
+
+test('cuentaRegresiva: vencido, hoy, pronto y lejos', () => {
+  const de = (f) => cuentaRegresiva(f, { hoy: HOY });
+  assert.equal(de(null), null);
+  assert.deepEqual(de('2026-11-01'), { texto: 'Venció hace 5 días', tono: 'vencido' });
+  assert.deepEqual(de('2026-11-05'), { texto: 'Venció hace 1 día', tono: 'vencido' });
+  // "Vence hoy" es un aviso, no un vencido (antes salía en rojo como si ya hubiera pasado)
+  assert.deepEqual(de('2026-11-06'), { texto: 'Vence hoy', tono: 'pronto' });
+  assert.deepEqual(de('2026-11-07'), { texto: 'Falta 1 día', tono: 'pronto' });
+  assert.deepEqual(de('2026-11-16'), { texto: 'Faltan 10 días', tono: 'lejos' });
 });
 
 test('diasHasta / diasEntre en días calendario', () => {

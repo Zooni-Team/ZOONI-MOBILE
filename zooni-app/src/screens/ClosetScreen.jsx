@@ -623,7 +623,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: colores.gris300,
+    borderColor: colores.gris200,
     shadowColor: colores.negro,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,

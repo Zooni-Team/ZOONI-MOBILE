@@ -22,18 +22,26 @@ codemod sobre el AST: ~2.500 literales en 125 archivos, sin cambiar ningún valo
 | Acentos | `amarillo` (CTA), `ambar`, `ambarFondo`, `ambarOscuro`, `marron`, `violeta`, `azul`, `azulFondo` |
 | Error | `rojo`, `rojoOscuro`, `rojoFondo`, `rojoBorde` |
 | Texto | `texto`, `textoSecundario`, `textoTenue`, `textoDeshabilitado`, `textoGris` |
-| Neutros | `blanco`, `negro`, `gris50` … `gris600` |
+| Neutros | `blanco`, `negro`, `gris50` · `gris100` · `gris200` · `gris300` (bordes de inputs) · `gris400` |
 
 - **Cambiar el color de marca = una línea** (`verde`).
 - Un color nuevo que se use en más de un lugar → se agrega acá con nombre.
   Un color usado una sola vez puede quedar local.
-- Los grises `gris50`–`gris600` son los valores exactos que había; unificarlos
-  en una escala más corta es una decisión de diseño pendiente
-  ([faltaporhacer.md](../../faltaporhacer.md)).
+- **Grises: cinco.** Eran once (`#F2F2F2`, `#F1F1F1`, `#EFEFEF`…) que se
+  diferenciaban en 1 a 3 niveles de 255, imposibles de distinguir. Se
+  unificaron al más cercano.
+- `npm test` corre `scripts/verificar-colores.mjs`: falla si un hex de la
+  paleta (o uno de los grises viejos) aparece escrito a mano fuera de
+  `colores.js`. En HTML armado como texto (mapas de Leaflet, PDF) se interpola:
+  `` `background:${colores.verde}` ``. Los comentarios pueden nombrar hex.
 
 ## Sombras (`theme/sombras.js`)
-`sombras.tarjeta`: la de las tarjetas de listas. `PaseadorUI` re-exporta la misma
-como `sombra` para el kit de proveedores.
+| Sombra | Para |
+|---|---|
+| `sombras.tarjeta` | tarjetas de listas (`PaseadorUI` la re-exporta como `sombra`) |
+| `sombras.suave` | botones chicos y chips |
+| `sombras.sutil` | tarjetas con borde dentro de una hoja blanca |
+| `sombras.modal` | ventanas modales centradas |
 
 ## Tamaño de texto y accesibilidad (`theme/ThemeProvider.js`)
 `ThemeProvider` (en `App.jsx`) escala toda la tipografía según Configuración ›

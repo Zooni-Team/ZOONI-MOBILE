@@ -46,7 +46,7 @@ const s = StyleSheet.create({
   tileWrap: { width: '47%', flexGrow: 1 },
   tile: {
     backgroundColor: colores.blanco, borderRadius: 14, padding: 14,
-    borderWidth: 1, borderColor: colores.gris200,
+    borderWidth: 1, borderColor: colores.gris100,
     alignItems: 'center', justifyContent: 'center',
     shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2,
     minHeight: 92,

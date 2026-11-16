@@ -19,8 +19,11 @@ import { useNavigation } from '@react-navigation/native';
 
 import { Avatar, C, Chip, sombra } from './PaseadorUI';
 import {
-  contarNoLeidosPaseo, destinoNotificacionPaseador, fetchNotificacionesPaseador,
-  marcarNotificacionesLeidas, marcarNotificacionPaseadorLeida,
+  contarNoLeidosPaseo,
+  destinoNotificacionPaseador,
+  fetchNotificacionesPaseador,
+  marcarNotificacionesLeidas,
+  marcarNotificacionPaseadorLeida,
 } from '../../services/paseadorApi';
 import { tiempoRelativoCorto } from '../../utils/tiempoRelativo';
 import { colores } from '../../theme';
@@ -110,7 +113,7 @@ export default function PaseadorHeader({
             texto={chip.texto}
             icono={chip.on ? 'radio-button-on' : 'radio-button-off'}
             color={chip.on ? C.teal : C.texto2}
-            fondo={chip.on ? C.menta : colores.gris200}
+            fondo={chip.on ? C.menta : colores.gris100}
             style={{ marginTop: 3 }}
           />
         ) : mostrarEstado && perfil ? (
@@ -118,7 +121,7 @@ export default function PaseadorHeader({
             texto={perfil.disponible ? 'Disponible' : 'No disponible'}
             icono={perfil.disponible ? 'radio-button-on' : 'radio-button-off'}
             color={perfil.disponible ? C.teal : C.texto2}
-            fondo={perfil.disponible ? C.menta : colores.gris200}
+            fondo={perfil.disponible ? C.menta : colores.gris100}
             style={{ marginTop: 3 }}
           />
         ) : subtitulo ? (

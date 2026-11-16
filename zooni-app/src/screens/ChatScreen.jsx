@@ -258,7 +258,7 @@ const s = StyleSheet.create({
     height: 60, flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16, gap: 12, backgroundColor: colores.blanco,
   },
-  headerDivider: { height: 1, backgroundColor: colores.gris200 },
+  headerDivider: { height: 1, backgroundColor: colores.gris100 },
   backBtn: { width: 28, alignItems: 'center', justifyContent: 'center' },
   headerPerfil: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: { width: 38, height: 38, borderRadius: 19 },
@@ -309,11 +309,11 @@ const s = StyleSheet.create({
   inputRow: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 10,
     paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colores.blanco,
-    borderTopWidth: 1, borderTopColor: colores.gris200,
+    borderTopWidth: 1, borderTopColor: colores.gris100,
   },
   input: {
     flex: 1, maxHeight: 100, borderRadius: 22,
-    borderWidth: 1.5, borderColor: colores.gris500, backgroundColor: '#FAFAFA',
+    borderWidth: 1.5, borderColor: colores.gris300, backgroundColor: '#FAFAFA',
     paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, color: colores.texto,
   },
   btnEnviar: {

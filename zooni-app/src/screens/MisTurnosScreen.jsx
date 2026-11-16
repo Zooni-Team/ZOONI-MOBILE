@@ -31,8 +31,13 @@ import HamburgerDrawer from '../components/HamburgerDrawer';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { MEDIOS_PAGO_NEGOCIO, configNegocio } from '../constants/negocios';
 import {
-  cancelarPedidoDueno, cancelarTurnoDueno, cuandoTexto, fetchMisPedidos, fetchMisTurnos, formatoPlata,
+  cancelarPedidoDueno,
+  cancelarTurnoDueno,
+  fetchMisPedidos,
+  fetchMisTurnos,
 } from '../services/negocioApi';
+import { cuandoTexto } from '../domain/negocios';
+import { formatoPlata } from '../domain/paseos';
 import { confirmar } from '../utils/dialogo';
 import { colores } from '../theme';
 import { INTERVALO_LISTAS_MS } from '../constants/intervalos';
@@ -527,16 +532,16 @@ const s = StyleSheet.create({
   nota: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 10 },
   notaTxt: { flex: 1, fontSize: 13, color: colores.texto },
 
-  lineas: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colores.gris75, gap: 3 },
+  lineas: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colores.gris100, gap: 3 },
   linea: { fontSize: 13, color: colores.texto },
 
   seguimiento: { flexDirection: 'row', marginTop: 14 },
   paso: { flex: 1, alignItems: 'center' },
   pasoFila: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch' },
-  pasoLinea: { flex: 1, height: 3, backgroundColor: colores.gris350 },
+  pasoLinea: { flex: 1, height: 3, backgroundColor: colores.gris200 },
   pasoLineaVacia: { flex: 1 },
   pasoPunto: {
-    width: 20, height: 20, borderRadius: 10, backgroundColor: colores.gris350, alignItems: 'center', justifyContent: 'center',
+    width: 20, height: 20, borderRadius: 10, backgroundColor: colores.gris200, alignItems: 'center', justifyContent: 'center',
   },
   pasoPuntoOn: { backgroundColor: colores.verde },
   pasoPuntoActual: { borderWidth: 3, borderColor: colores.menta, width: 24, height: 24, borderRadius: 12 },

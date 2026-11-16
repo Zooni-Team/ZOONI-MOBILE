@@ -1,8 +1,10 @@
 /**
  * VirtualVetScreen.jsx — ZooniVet, el asistente veterinario con IA (Instruction-ChatBot)
  *
- * Chat sobre una mascota concreta del usuario: trae sus datos reales (edad,
- * peso, vacunas, consultas) y se los inyecta al modelo de Groq como contexto.
+ * Chat sobre una mascota concreta del usuario. La pantalla manda sólo el id de
+ * la mascota, el mensaje y lo último de la conversación; los datos reales
+ * (edad, peso, vacunas, consultas) los lee la Edge Function de la base,
+ * después de comprobar que la mascota es de quien pregunta.
  * El modelo orienta pero nunca diagnostica ni receta, y ante lo concreto de
  * salud siempre deriva al veterinario. Ante una emergencia, corta y manda a SOS.
  *
@@ -43,6 +45,7 @@ import {
   sugerenciasIniciales,
 } from '../services/zoonivetApi';
 import { colores } from '../theme';
+import { horaCorta } from '../utils/tiempoRelativo';
 
 // ─── Tokens de estilo (sección 3.1) ─────────────────────────────────────────
 const C = {
@@ -69,10 +72,6 @@ const C = {
 let idSeq = 0;
 const nuevoId = () => `m${Date.now()}_${idSeq++}`;
 
-function horaDe(ts) {
-  const d = new Date(ts);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
 
 // ─── Indicador de "escribiendo" (tres puntos) ───────────────────────────────
 function TypingDots() {
@@ -152,7 +151,7 @@ function Burbuja({ msg, onVerVets }) {
         </View>
       </View>
       {msg.emergencia && <SosCard onVerVets={onVerVets} />}
-      <Text style={[styles.timestamp, esUser ? styles.tsRight : styles.tsLeft]}>{horaDe(msg.ts)}</Text>
+      <Text style={[styles.timestamp, esUser ? styles.tsRight : styles.tsLeft]}>{horaCorta(msg.ts)}</Text>
     </View>
   );
 }
@@ -249,7 +248,6 @@ export default function VirtualVetScreen() {
     try {
       const { texto: respuesta, emergencia } = await preguntarZooniVet({
         ctx,
-        usuario: { nombre: usuario?.nombre },
         historial,
         mensaje: limpio,
         signal: abortRef.current.signal,
@@ -265,7 +263,7 @@ export default function VirtualVetScreen() {
       abortRef.current = null;
       scrollAlFondo();
     }
-  }, [enviando, ctx, mensajes, usuario, scrollAlFondo]);
+  }, [enviando, ctx, mensajes, scrollAlFondo]);
 
   const detener = useCallback(() => {
     abortRef.current?.abort();
@@ -512,7 +510,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
-  ctxAvatar: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: C.brand, backgroundColor: colores.gris250 },
+  ctxAvatar: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: C.brand, backgroundColor: colores.gris100 },
   ctxAvatarPh: { backgroundColor: C.divider },
   ctxName: { fontSize: 16, fontWeight: '700', color: C.brandText },
   ctxBreed: { fontSize: 13, color: C.textSoft, marginTop: 2 },
@@ -591,7 +589,7 @@ const styles = StyleSheet.create({
   sheet: { backgroundColor: colores.blanco, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, paddingBottom: 32 },
   sheetTitle: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 12 },
   sheetItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
-  sheetAvatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: C.brand, backgroundColor: colores.gris250 },
+  sheetAvatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, borderColor: C.brand, backgroundColor: colores.gris100 },
   sheetName: { fontSize: 15, fontWeight: '700', color: C.text },
   sheetBreed: { fontSize: 13, color: C.textSoft, marginTop: 2 },
 });

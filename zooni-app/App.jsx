@@ -12,6 +12,7 @@ import { restaurarSesion, loadStoredModo, esperarSesion, haySesion, setModo, MOD
 import { ThemeProvider, useTheme } from './src/theme';
 import { crearLinking, tituloDePestana } from './src/constants/rutas';
 import { iniciarLatidoPresencia, marcarPresencia } from './src/services/presenciaApi';
+import { avisarResumenSemanal, empezarUso, pausarUso } from './src/services/usoApp';
 import HomeScreen        from './src/screens/HomeScreen';
 import LoginScreen       from './src/screens/LoginScreen';
 import RegisterStep1Screen from './src/screens/RegisterStep1Screen';
@@ -146,7 +147,8 @@ export default function App() {
 
   // Latido de presencia: mantiene actualizado "última vez en línea" mientras la
   // app está abierta y lo refresca al volver del segundo plano (si se quedó
-  // dormida, el último latido puede ser de hace rato).
+  // dormida, el último latido puede ser de hace rato). Al lado se mide el
+  // tiempo de uso (services/usoApp), que sólo cuenta con sesión iniciada.
   //
   // Espera a que la sesión esté restaurada ANTES de latir: este efecto corría en
   // paralelo con restaurarSesion(), así que el primer latido salía con el id
@@ -159,12 +161,19 @@ export default function App() {
     esperarSesion().then(() => {
       if (cancelado || !haySesion()) return;
       frenar = iniciarLatidoPresencia();
+      avisarResumenSemanal();
     });
+    empezarUso();
 
     const sub = AppState.addEventListener('change', (estado) => {
-      if (estado === 'active' && haySesion()) marcarPresencia(true);
+      if (estado === 'active') {
+        if (haySesion()) marcarPresencia(true);
+        empezarUso();
+      } else {
+        pausarUso();
+      }
     });
-    return () => { cancelado = true; frenar?.(); sub.remove(); };
+    return () => { cancelado = true; frenar?.(); pausarUso(); sub.remove(); };
   }, []);
 
   if (!initialRoute) {

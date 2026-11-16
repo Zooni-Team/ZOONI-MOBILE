@@ -342,7 +342,7 @@ const f = StyleSheet.create({
   ayuda: { fontSize: 12, color: C.texto2, marginTop: 4 },
   error: { fontSize: 12, color: C.rojo, marginTop: 4 },
   input: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: C.texto, backgroundColor: colores.blanco,
   },
   inputError: { borderColor: C.rojo },
@@ -363,7 +363,7 @@ const f = StyleSheet.create({
 
   toggle: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderRadius: 14, borderWidth: 1.5,
-    borderColor: colores.gris250, padding: 12, marginBottom: 10,
+    borderColor: colores.gris100, padding: 12, marginBottom: 10,
   },
   toggleOn: { borderColor: C.menta, backgroundColor: '#F6FFF9' },
   toggleTitulo: { fontSize: 14, fontWeight: '800', color: C.texto },

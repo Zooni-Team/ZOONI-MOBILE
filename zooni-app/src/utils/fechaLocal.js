@@ -85,6 +85,24 @@ export function diasHasta(valor, hoy = new Date()) {
   return Math.round((b - a) / MS_DIA);
 }
 
+/**
+ * Cuenta regresiva hasta una fecha, en palabras: { texto, tono } o null si no
+ * hay fecha. `tono` es 'vencido' (ya pasó), 'pronto' (hoy o dentro de
+ * `diasAviso`) o 'lejos'; el color lo elige quien lo muestra.
+ *
+ *   cuentaRegresiva('2026-11-20')  → { texto: 'Faltan 4 días', tono: 'pronto' }
+ */
+export function cuentaRegresiva(valor, { hoy = new Date(), diasAviso = 7 } = {}) {
+  const dias = diasHasta(valor, hoy);
+  if (dias == null) return null;
+  if (dias < 0) {
+    const pasaron = Math.abs(dias);
+    return { texto: `Venció hace ${pasaron} ${pasaron === 1 ? 'día' : 'días'}`, tono: 'vencido' };
+  }
+  if (dias === 0) return { texto: 'Vence hoy', tono: 'pronto' };
+  return { texto: dias === 1 ? 'Falta 1 día' : `Faltan ${dias} días`, tono: dias <= diasAviso ? 'pronto' : 'lejos' };
+}
+
 /** Días calendario entre dos fechas (b - a). null si falta alguna. */
 export function diasEntre(a, b) {
   const da = parseFechaLocal(a);

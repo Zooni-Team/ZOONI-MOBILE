@@ -5,9 +5,9 @@
  *   import { colores } from '../theme';
  *   backgroundColor: colores.verde
  *
- * Los valores son EXACTAMENTE los que ya usaba la app (se migró con un codemod
- * sin cambiar ni un pixel). Por eso hay grises muy parecidos entre sí: unificarlos
- * es una decisión de diseño pendiente, ver docs/claude/estilos.md.
+ * Grises: cinco, de más claro a más oscuro. Antes eran once (#F2F2F2, #F1F1F1,
+ * #EFEFEF…) que se diferenciaban en 1 a 3 niveles de 255: imposibles de
+ * distinguir a simple vista. Se unificaron al más cercano.
  *
  * Cambiar el color de marca = cambiar UNA línea (`verde`).
  */
@@ -54,22 +54,16 @@ export const colores = Object.freeze({
   // ── Neutros (de más claro a más oscuro) ───────────────────────────────────
   blanco: '#FFFFFF',
   negro: '#000000',
-  gris50: '#F5F5F5',
-  gris75: '#F2F2F2',
-  gris100: '#F1F1F1',
-  gris150: '#F0F0F0',
-  gris200: '#EFEFEF',
-  gris250: '#EEEEEE',
-  gris300: '#E8E8E8',
-  gris350: '#E6E6E6',
-  gris400: '#E0E0E0',
-  gris500: '#DDDDDD',        // bordes de inputs
-  gris600: '#D8D8D8',
+  gris50: '#F5F5F5',         // fondos de campos deshabilitados, chips apagados
+  gris100: '#F0F0F0',        // separadores, fondos de filas, bordes de tarjetas
+  gris200: '#E8E8E8',        // botones secundarios (Cancelar), placeholders de carga
+  gris300: '#DDDDDD',        // bordes de inputs
+  gris400: '#D8D8D8',        // líneas dentro de los placeholders de carga
 });
 
 /**
- * Valores literales → nombre. Lo usa scripts/verificar-colores.mjs para
- * avisar si alguien vuelve a escribir un hex de la paleta a mano.
+ * Valores literales → nombre. Lo usa scripts/verificar-colores.mjs (npm test)
+ * para frenar un hex de la paleta escrito a mano.
  */
 export const COLOR_POR_HEX = Object.freeze(
   Object.fromEntries(Object.entries(colores).map(([nombre, hex]) => [hex, nombre])),

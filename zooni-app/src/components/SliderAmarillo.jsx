@@ -102,7 +102,7 @@ const sl = StyleSheet.create({
     shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 2, elevation: 2,
   },
   hit: { flex: 1, height: 40, justifyContent: 'center' },
-  track: { height: 6, backgroundColor: colores.gris500, borderRadius: 3, width: '100%' },
+  track: { height: 6, backgroundColor: colores.gris300, borderRadius: 3, width: '100%' },
   fill: { position: 'absolute', left: 0, height: 6, backgroundColor: colores.amarillo, borderRadius: 3 },
   thumb: {
     position: 'absolute', width: 22, height: 22, borderRadius: 11,

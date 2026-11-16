@@ -3,7 +3,7 @@
  * y "consultas-privadas" para lo clínico, que se lee con URLs firmadas)
  *
  * Cada archivo va a <id de Supabase Auth>/<uso>/<nombre>: las políticas de
- * 063_storage.sql sólo dejan subir y borrar dentro de la carpeta propia, y el
+ * sección 063 de SUPABASE_PEGAR_TODO.sql sólo dejan subir y borrar dentro de la carpeta propia, y el
  * bucket limita tamaño y tipo del lado del servidor. Lo que el cliente declara
  * como contentType NO es la validación: es sólo una pista para Storage.
  *

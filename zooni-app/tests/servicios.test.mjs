@@ -9,10 +9,10 @@ import { consultarPerfiles, perfilesPorId } from '../src/services/perfilesPublic
 import { crearCuentaConPassword, iniciarSesionConPassword, login, verificarDisponibilidad } from '../src/services/authApi.js';
 import { postMatchLike, postMatchSkip } from '../src/services/matchApi.js';
 import { preguntarZooniVet } from '../src/services/zoonivetApi.js';
+import { cambiarEstadoPedido, crearPedido, crearTurno } from '../src/services/negocioApi.js';
 import {
-  ACCIONES_TURNO, cambiarEstadoPedido, costoEnvio, crearPedido, crearTurno, precioItem, precioTurno,
-  recargoDomicilio, siguienteEstadoPedido,
-} from '../src/services/negocioApi.js';
+  ACCIONES_TURNO, costoEnvio, precioItem, precioTurno, recargoDomicilio, siguienteEstadoPedido,
+} from '../src/domain/negocios.js';
 import { getCurrentUserId, restaurarSesion, setCurrentUserId } from '../src/config/session.js';
 
 beforeEach(() => fake.reiniciar());
@@ -49,15 +49,6 @@ describe('perfilesPublicos (mínimo dato)', () => {
     assert.equal(op.tabla, 'perfil_publico');
     assert.equal(op.columnas, 'Id_User, Nombre');
     assert.deepEqual(op.filtros[0], ['in', 'Id_User', [2]]);
-  });
-  test('sin la vista (061 sin correr) usa "User" y calcula la edad', async () => {
-    fake.responder((op) => (op.tabla === 'perfil_publico'
-      ? { error: { code: 'PGRST205' } }
-      : { data: [{ Id_User: 3, FechaNacimiento: '2000-01-01' }] }));
-    const [u] = await consultarPerfiles('Id_User, Edad', (q) => q.eq('Id_User', 3));
-    assert.equal(fake.de('tabla')[1].columnas, 'Id_User, FechaNacimiento');
-    assert.equal(typeof u.Edad, 'number');
-    assert.equal('FechaNacimiento' in u, false);
   });
   test('sin ids no consulta', async () => {
     assert.deepEqual(await perfilesPorId([]), []);
@@ -97,32 +88,13 @@ describe('authApi (Supabase Auth)', () => {
     assert.equal(fake.de('rpc').some((r) => r.nombre === 'login_user'), false);
   });
 
-  test('base sin 065: migra con la Edge Function y reintenta', async () => {
-    let intentos = 0;
-    fake.auth('signInWithPassword', () => (intentos++ === 0
-      ? { error: { code: 'invalid_credentials', message: 'Invalid login credentials' } }
-      : { data: {}, error: null }));
-    fake.funcion('migrar-cuenta', { data: { migrada: true } });
-    fake.rpc('login_social', { data: cuenta });
-    const u = await iniciarSesionConPassword('ana@x.com', 'secreta1');
-    assert.equal(u.id, 9);
-    assert.equal(intentos, 2);
-    assert.deepEqual(fake.de('funcion')[0].body, { email: 'ana@x.com', password: 'secreta1' });
-  });
-
-  test('contraseña mala: Error("credenciales") sin decir si el mail existe', async () => {
+  test('si la base no responde, el error NO es "credenciales"', async () => {
+    // Antes caía al login viejo (SHA-256 sin JWT), que con la 061 aplicada
+    // contestaba "contraseña incorrecta" a alguien que sólo estaba sin red.
     fake.auth('signInWithPassword', { error: { message: 'Invalid login credentials' } });
-    fake.funcion('migrar-cuenta', { data: { migrada: false } });
-    await assert.rejects(iniciarSesionConPassword('ana@x.com', 'mala'), /credenciales/);
-  });
-
-  test('sin la Edge Function desplegada: cae al login viejo (transición)', async () => {
-    fake.auth('signInWithPassword', { error: { message: 'Invalid login credentials' } });
-    fake.rpc('login_user', { data: cuenta });
-    const u = await iniciarSesionConPassword('ana@x.com', 'secreta1');
-    assert.equal(u.legado, true);
-    const hash = fake.de('rpc').find((r) => r.nombre === 'login_user').params.p_hash;
-    assert.match(hash, /^[0-9a-f]{64}$/);
+    fake.rpc('migrar_cuenta_legada', { error: { message: 'Failed to fetch' } });
+    await assert.rejects(iniciarSesionConPassword('ana@x.com', 'secreta1'), (e) => e.message !== 'credenciales');
+    assert.equal(fake.de('rpc').some((r) => r.nombre === 'login_user'), false);
   });
 
   test('registro con "Confirm email" activo: avisa confirmar_mail', async () => {
@@ -190,6 +162,7 @@ describe('zoonivetApi', () => {
     const { body } = fake.de('funcion')[0];
     assert.equal(body.petId, 4);
     assert.deepEqual(body.historial, [{ role: 'user', content: 'a' }]);
+    assert.equal('usuario' in body, false, 'el nombre lo lee la función, no lo manda la app');
   });
   test('función sin desplegar → SERVICIO_NO_DISPONIBLE; error con código → ese código', async () => {
     await assert.rejects(preguntarZooniVet({ ctx, mensaje: 'x' }), (e) => e.code === 'SERVICIO_NO_DISPONIBLE');

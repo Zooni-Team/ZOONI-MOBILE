@@ -22,7 +22,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { fetchPaseosParaOpinar, fetchResenasPaseador, PREGUNTAS_RESENA } from '../../services/paseadorApi';
+import { fetchPaseosParaOpinar, fetchResenasPaseador } from '../../services/paseadorApi';
+import { PREGUNTAS_RESENA } from '../../domain/paseos';
 import { getCurrentUserId } from '../../config/session';
 import { tiempoRelativo } from '../../utils/tiempoRelativo';
 import { MiniaturaMedia, VisorMedia } from './MediaResena';
@@ -301,7 +302,7 @@ const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colores.blanco },
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: colores.gris250,
+    borderBottomWidth: 1, borderBottomColor: colores.gris100,
   },
   volver: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
   titulo: { fontSize: 19, fontWeight: '800', color: colores.texto },
@@ -315,7 +316,7 @@ const s = StyleSheet.create({
   cantidad: { fontSize: 12, color: colores.textoSecundario, marginTop: 4 },
   barraFila: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   barraNum: { width: 10, fontSize: 12, color: colores.textoSecundario, fontWeight: '700' },
-  barraFondo: { flex: 1, height: 8, borderRadius: 4, backgroundColor: colores.gris250, overflow: 'hidden' },
+  barraFondo: { flex: 1, height: 8, borderRadius: 4, backgroundColor: colores.gris100, overflow: 'hidden' },
   barra: { height: 8, borderRadius: 4, backgroundColor: colores.amarillo },
 
   bloque: { marginTop: 16, backgroundColor: '#F9F9F9', borderRadius: 14, padding: 12, gap: 6 },
@@ -346,13 +347,13 @@ const s = StyleSheet.create({
   graciasTxt: { flex: 1, fontSize: 13, fontWeight: '700', color: colores.texto },
 
   filtro: {
-    flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: colores.gris500,
+    flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: colores.gris300,
     borderRadius: 18, paddingHorizontal: 12, paddingVertical: 7,
   },
   filtroOn: { backgroundColor: colores.verde, borderColor: colores.verde },
   filtroTxt: { fontSize: 13, fontWeight: '700', color: colores.texto },
 
-  card: { paddingVertical: 14, borderTopWidth: 1, borderTopColor: colores.gris150 },
+  card: { paddingVertical: 14, borderTopWidth: 1, borderTopColor: colores.gris100 },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   avatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: colores.mentaSuave },
   avatarIni: { alignItems: 'center', justifyContent: 'center' },

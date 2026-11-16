@@ -9,7 +9,7 @@
 
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
-import { subirImagenPublica } from '../utils/imagenStorage';
+import { subirImagenPublica } from './imagenStorage';
 import { sanitizarEmail, sanitizarDigitos, sanitizarTexto } from '../utils/sanitizar';
 import { perfilPorId } from './perfilesPublicos';
 import { distanciaKm } from '../utils/geo';

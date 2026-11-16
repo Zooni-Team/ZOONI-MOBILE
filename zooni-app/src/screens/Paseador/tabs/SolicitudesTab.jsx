@@ -15,7 +15,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { C, PillButton, Vacio } from '../../../components/paseador/PaseadorUI';
 import PaseoCard from '../../../components/paseador/PaseoCard';
 import {
-  aceptarSolicitud, cancelarPaseo, fetchMisPaseos, rechazarSolicitud, setDisponible,
+  aceptarSolicitud,
+  cancelarPaseo,
+  fetchMisPaseos,
+  rechazarSolicitud,
+  setDisponible,
 } from '../../../services/paseadorApi';
 import { confirmar } from '../../../utils/dialogo';
 import { colores } from '../../../theme';

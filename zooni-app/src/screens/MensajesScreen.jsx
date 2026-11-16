@@ -31,7 +31,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
-import { fetchServiciosPorId } from '../api/comunidad';
+import { fetchServiciosPorId } from '../services/comunidadApi';
 import { fetchMisConversacionesMatch, fetchMisUltimosMensajesServicios } from '../services/chatStore';
 import { fetchServiciosContratados } from '../services/negocioApi';
 import { fetchConversacionesPaseo } from '../services/paseadorApi';
@@ -290,7 +290,7 @@ const st = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colores.blanco },
   header: {
     height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: colores.gris200,
+    paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: colores.gris100,
   },
   titulo: { fontSize: 18, fontWeight: '800', color: colores.texto },
 
@@ -303,7 +303,7 @@ const st = StyleSheet.create({
   lista: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24 },
   item: {
     flexDirection: 'row', alignItems: 'center', paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: colores.gris150, gap: 12,
+    borderBottomWidth: 1, borderBottomColor: colores.gris100, gap: 12,
   },
   avatar: { width: 46, height: 46, borderRadius: 23 },
   avatarFallback: {

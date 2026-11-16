@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { fetchSolicitudes, responderSolicitud } from '../../api/comunidad';
+import { fetchSolicitudes, responderSolicitud } from '../../services/comunidadApi';
 import PersonaProfileModal from '../PersonaProfileModal';
 import { colores } from '../../theme';
 
@@ -62,9 +62,9 @@ export default function TabSolicitudes({ onRespuesta }) {
 const styles = StyleSheet.create({
   vacio:     { alignItems: 'center', paddingTop: 32 },
   vacioText: { color: colores.textoSecundario, fontSize: 14 },
-  item:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colores.gris150 },
+  item:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colores.gris100 },
   persona:   { flex: 1, flexDirection: 'row', alignItems: 'center' },
-  avatar:    { width: 40, height: 40, borderRadius: 20, backgroundColor: colores.gris150, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  avatar:    { width: 40, height: 40, borderRadius: 20, backgroundColor: colores.gris100, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
   nombre:    { flex: 1, fontWeight: '700', fontSize: 14, color: colores.texto },
   btns:      { flexDirection: 'row', gap: 8 },
   btnAc:     { width: 34, height: 34, borderRadius: 17, backgroundColor: colores.verde, alignItems: 'center', justifyContent: 'center' },

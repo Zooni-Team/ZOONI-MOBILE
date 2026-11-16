@@ -26,18 +26,26 @@ los que dependen de él.
 
 ## Las 10 reglas
 
-1. **Una sola fuente por cosa.** Colores → `src/theme`. Fechas → `utils/fechaLocal`.
-   Edades → `utils/calcularEdad`. Distancias → `utils/geo`. Texto → `utils/texto`.
-   Avisos → `ui/Toast` + `useToast`. Loading → `ui/Skeleton`. Fechas a elegir →
-   `FechaPicker`. Fotos a elegir → `utils/elegirImagen`. Estrellas → `ui/Estrellas`.
-   Campos de formulario → `ui/CampoFormulario`. Chats en vivo → `useRecargaEnVivo`.
+1. **Una sola fuente por cosa.** Colores y sombras → `src/theme`. Fechas →
+   `utils/fechaLocal`. Horas "09:05" → `utils/tiempoRelativo.horaCorta`. Edades →
+   `utils/calcularEdad`. Distancias → `utils/geo`. Texto → `utils/texto`.
+   Avisos → `ui/Toast` + `useToast`. Loading → `ui/Skeleton`. Error con
+   reintento → `salud/AvisoError`. Diálogos → `utils/dialogo`. Fechas a elegir →
+   `FechaPicker`. Fotos a elegir → `utils/elegirImagen`; a subir →
+   `services/imagenStorage`. Estrellas → `ui/Estrellas`. Campos de formulario →
+   `ui/CampoFormulario` o `salud/ModalFormulario`. Chats en vivo →
+   `useRecargaEnVivo`. Geocodificar → `services/geocodificacion`.
    Si escribís una función que ya existe, borrala y usá la central.
-2. **Sólo `src/services/*` habla con Supabase.** Las pantallas llaman servicios.
+2. **Sólo `src/services/*` habla con Supabase.** Las pantallas llaman servicios
+   (lo verifica `tests/imports.test.mjs`). Una pantalla dibuja: la carga de
+   datos va a un hook y cada pieza con nombre, a `components/<tema>/`.
 3. **La base decide lo que importa.** Identidad (JWT), permisos (RLS), precios,
    totales, stock y transiciones de estado se validan en Postgres
-   (`supabase/SUPABASE_PEGAR_TODO.sql`, secciones 060–067). La app valida para avisar rápido, nunca
-   como garantía.
-4. **Nada de colores hex sueltos** si el color está en la paleta: `colores.verde`.
+   (`supabase/SUPABASE_PEGAR_TODO.sql` + `MIGRACION_064…068`). La app valida
+   para avisar rápido, nunca como garantía. Las reglas puras que la app
+   necesita para mostrar viven en `src/domain/` (paseos, negocios).
+4. **Nada de colores hex sueltos** si el color está en la paleta: `colores.verde`
+   (`npm test` falla si aparece uno).
 5. **Nada de `new Date('YYYY-MM-DD')`**: corre el día en Argentina. Usá
    `parseFechaLocal` / `formatearFecha`.
 6. **De otras personas, sólo `perfil_publico`** (vía `services/perfilesPublicos`),
@@ -48,7 +56,8 @@ los que dependen de él.
 9. **Comentarios que explican el porqué**, y que sigan siendo verdad. Si cambiás
    el comportamiento, actualizá el comentario y el doc.
 10. **Antes de commitear:** `cd zooni-app && npm run lint && npm test`. Si tocaste
-    la base: `node supabase/scripts/probar-esquema.mjs`.
+    la base: una `MIGRACION_0NN_*.sql` nueva + sus pruebas, y
+    `node supabase/scripts/probar-esquema.mjs`.
 
 ## Comandos
 
@@ -56,9 +65,10 @@ los que dependen de él.
 cd zooni-app
 npm start                 # Expo
 npm run lint              # ESLint (0 errores)
-npm test                  # tests + verify:pdf + verify:paseos
+npm test                  # tests + verify:pdf + verify:paseos + verify:colores
 ```
 
 ```bash
-node supabase/scripts/probar-esquema.mjs          # esquema desde cero + RLS (Postgres local)
+node supabase/scripts/probar-esquema.mjs          # base + migraciones desde cero, dos veces, + pruebas (Postgres local)
+node supabase/scripts/limpiar-storage.mjs         # archivos huérfanos de Storage (necesita la service_role; --aplicar)
 ```

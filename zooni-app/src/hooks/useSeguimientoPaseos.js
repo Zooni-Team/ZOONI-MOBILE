@@ -15,7 +15,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { distanciaMetros, fetchRecorrido, registrarPunto } from '../services/paseadorApi';
+import { distanciaMetros } from '../utils/geo';
+import { fetchRecorrido, registrarPunto } from '../services/paseadorApi';
 
 const PRECISION_MAX_M = 60;    // lecturas peores que esto se descartan
 const SALTO_MIN_M = 5;         // menos que esto es temblor del GPS

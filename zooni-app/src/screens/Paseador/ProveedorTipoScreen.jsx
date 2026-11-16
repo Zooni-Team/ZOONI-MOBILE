@@ -67,7 +67,7 @@ export default function ProveedorTipoScreen() {
             accessibilityState={{ disabled: !t.activo }}
             accessibilityLabel={t.activo ? t.titulo : `${t.titulo}, próximamente`}
           >
-            <View style={[s.icono, { backgroundColor: t.activo ? t.fondo : colores.gris150 }]}>
+            <View style={[s.icono, { backgroundColor: t.activo ? t.fondo : colores.gris100 }]}>
               <Ionicons name={t.icono} size={26} color={t.activo ? t.color : C.gris} />
             </View>
             <View style={{ flex: 1 }}>
@@ -104,10 +104,10 @@ const s = StyleSheet.create({
     backgroundColor: C.card, borderRadius: 18, padding: 16, marginBottom: 12,
     borderWidth: 1.5, borderColor: C.menta, ...sombra,
   },
-  opcionOff: { borderColor: colores.gris150, shadowOpacity: 0, elevation: 0 },
+  opcionOff: { borderColor: colores.gris100, shadowOpacity: 0, elevation: 0 },
   icono: { width: 52, height: 52, borderRadius: 16, backgroundColor: C.menta, alignItems: 'center', justifyContent: 'center' },
   opcionTitulo: { fontSize: 17, fontWeight: '800', color: C.texto },
   opcionTexto: { fontSize: 13, color: C.texto2, marginTop: 2 },
-  pronto: { backgroundColor: colores.gris75, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 },
+  pronto: { backgroundColor: colores.gris100, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 },
   prontoTxt: { fontSize: 11, fontWeight: '700', color: C.texto2 },
 });

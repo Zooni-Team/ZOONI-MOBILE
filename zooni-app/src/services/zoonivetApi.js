@@ -128,13 +128,13 @@ function errorZooniVet(code, mensaje) {
  * Errores (err.code): SIN_API_KEY · RATE_LIMIT · CUPO_AGOTADO (límite diario
  * por usuario, 064) · SERVICIO_NO_DISPONIBLE · RESPUESTA_INVALIDA · GROQ_ERROR.
  */
-export async function preguntarZooniVet({ ctx, usuario, historial = [], mensaje, signal }) {
+export async function preguntarZooniVet({ ctx, historial = [], mensaje, signal }) {
   const { data, error } = await supabase.functions.invoke('zoonivet-chat', {
     body: {
       petId: ctx.id,
       mensaje: String(mensaje ?? '').slice(0, 1000),
       historial: historial.slice(-12).map((m) => ({ role: m.role, content: m.content })),
-      usuario: usuario?.nombre ? { nombre: usuario.nombre } : null,
+      // El nombre de la persona lo lee la función de la base: no se manda.
     },
     signal,
   });

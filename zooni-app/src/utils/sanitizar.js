@@ -2,7 +2,7 @@
  * sanitizar.js — Sanitización de inputs antes de mandarlos a la base
  *
  * Primera línea de defensa del cliente. La segunda (la que vale) son los
- * CHECK constraints y RPCs del lado de Supabase (021_seguridad.sql):
+ * CHECK constraints y RPCs del lado de Supabase (sección 021 de SUPABASE_PEGAR_TODO.sql):
  * supabase-js parametriza las queries así que no hay SQL injection posible,
  * pero igual no dejamos pasar basura, control chars ni longitudes absurdas.
  */

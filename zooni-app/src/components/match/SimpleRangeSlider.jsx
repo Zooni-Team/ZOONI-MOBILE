@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   trackHit: { height: 40, justifyContent: 'center', width: '100%' },
   track: {
     height: 6,
-    backgroundColor: colores.gris400,
+    backgroundColor: colores.gris300,
     borderRadius: 3,
     width: '100%',
   },

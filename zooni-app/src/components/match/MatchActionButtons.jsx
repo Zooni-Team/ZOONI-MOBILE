@@ -31,7 +31,7 @@ export default function MatchActionButtons({
         disabled={!canUndo}
         accessibilityLabel="Volver al anterior"
       >
-        <Ionicons name="arrow-undo" size={22} color={canUndo ? colores.textoTenue : colores.gris500} />
+        <Ionicons name="arrow-undo" size={22} color={canUndo ? colores.textoTenue : colores.gris300} />
       </TouchableOpacity>
 
       <TouchableOpacity

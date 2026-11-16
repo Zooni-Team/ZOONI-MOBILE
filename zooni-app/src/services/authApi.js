@@ -18,9 +18,8 @@
 import { supabase } from '../lib/supabase';
 import { setCurrentUserId, setModo, MODO_DUENO } from '../config/session';
 import { toISODateLocal } from '../utils/fechaLocal';
-import { subirImagenPublica } from '../utils/imagenStorage';
+import { subirImagenPublica } from './imagenStorage';
 import { marcarPresencia } from './presenciaApi';
-import { loginLegado } from './authLegado';
 import { esPasswordValida } from '../utils/validacion';
 
 // ─────────────────────────────────────────────
@@ -52,30 +51,28 @@ function ordenarRazas(razas) {
 // SESIÓN (compartido por dueños, paseadores y negocios)
 // ─────────────────────────────────────────────
 
-/** PostgREST no encontró la función: la base no tiene la 065 todavía. */
-function esFuncionInexistente(error) {
-  return error?.code === 'PGRST202' || /could not find the function/i.test(error?.message ?? '');
-}
-
 /**
- * Cuenta vieja → Supabase Auth. Devuelve:
- *   true   la cuenta se migró (ya se puede hacer signInWithPassword)
- *   false  no había cuenta vieja con ese mail y contraseña
- *   null   no se pudo intentar (base sin 065 y sin la Edge Function, o sin red)
- *
- * Primero la función de la base (065, migrar_cuenta_legada): no depende de
- * desplegar nada. Si la base todavía no la tiene, la Edge Function de antes.
+ * Cuenta vieja (contraseña SHA-256 de antes de Supabase Auth) → Auth.
+ * La migración la hace la base (065, migrar_cuenta_legada: compara el hash, crea
+ * el usuario de Auth con bcrypt y borra el hash viejo; 067 le pone límite de
+ * intentos). Devuelve true si migró, false si no había cuenta vieja que
+ * coincida. Si la base no responde, tira el error tal cual: no es lo mismo
+ * "no hay red" que "contraseña incorrecta".
  */
 async function migrarCuentaVieja(mail, password) {
   const { data, error } = await supabase.rpc('migrar_cuenta_legada', { p_mail: mail, p_password: password });
-  if (!error) return data === true;
-  if (!esFuncionInexistente(error)) return null;
+  if (error) throw error;
+  return data === true;
+}
 
-  const { data: dataFn, error: errorFn } = await supabase.functions.invoke('migrar-cuenta', {
-    body: { email: mail, password },
-  });
-  if (errorFn) return null;
-  return !!dataFn?.migrada;
+/** Mail de la sesión de Supabase Auth (o null si no hay sesión o no se pudo leer). */
+export async function mailDeLaSesion() {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data?.session?.user?.email ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** Traduce la sesión de Auth a la cuenta de Zooni. */
@@ -92,7 +89,7 @@ async function cuentaDeLaSesion() {
 /**
  * Inicia sesión con mail y contraseña. NO elige el modo de la app: eso lo
  * hace quien llama (login de dueño, de paseador o de negocio).
- * @returns {{ id, nombre, apellido, email, fotoPerfil, legado?: boolean }}
+ * @returns {{ id, nombre, apellido, email, fotoPerfil }}
  * Lanza Error('credenciales') si mail o contraseña no coinciden (sin decir cuál).
  */
 export async function iniciarSesionConPassword(email, password) {
@@ -100,14 +97,8 @@ export async function iniciarSesionConPassword(email, password) {
 
   let { error } = await supabase.auth.signInWithPassword({ email: mail, password });
   if (error && /invalid login credentials|invalid_credentials/i.test(`${error.code} ${error.message}`)) {
-    const migrada = await migrarCuentaVieja(mail, password);
-    if (migrada) {
+    if (await migrarCuentaVieja(mail, password)) {
       ({ error } = await supabase.auth.signInWithPassword({ email: mail, password }));
-    } else if (migrada === null) {
-      // TRANSICIÓN: no se pudo intentar la migración (base sin 065 y sin la
-      // Edge Function). Se entra como antes, sin JWT. Borrar authLegado.js y
-      // este bloque cuando user_credentials quede vacía (ver faltaporhacer.md).
-      return loginLegado(mail, password);
     }
   }
   if (error) {
@@ -208,7 +199,7 @@ export async function login(email, password) {
  *
  * Avisa temprano, en la misma pantalla donde se escribe. No es la garantía:
  * entre el paso 3 y el 4 alguien más puede quedarse con ese mail. La garantía
- * es el índice único del servidor (053_mail_unico.sql).
+ * es el índice único del servidor (sección 053 de SUPABASE_PEGAR_TODO.sql).
  *
  * Se pregunta con la RPC disponibilidad_registro (060): con RLS un anónimo ya
  * no puede leer la tabla "User", y esta función sólo responde sí/no.

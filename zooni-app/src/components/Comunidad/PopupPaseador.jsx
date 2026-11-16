@@ -14,8 +14,8 @@ import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-import { formatoDuracion, formatoPlata, serviciosDe } from '../../services/paseadorApi';
-import { resumenHorarios } from '../../services/negocioApi';
+import { formatoDuracion, formatoPlata, serviciosDe } from '../../domain/paseos';
+import { resumenHorarios } from '../../domain/negocios';
 import ResenasPaseadorModal from '../resenas/ResenasPaseadorModal';
 import { colores } from '../../theme';
 

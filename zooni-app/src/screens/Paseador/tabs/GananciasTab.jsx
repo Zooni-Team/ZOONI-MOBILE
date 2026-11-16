@@ -20,9 +20,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Avatar, C, Card, Seccion, Stat, Vacio } from '../../../components/paseador/PaseadorUI';
 import HistorialPerroModal from '../../../components/paseador/HistorialPerroModal';
-import {
-  fetchGanancias, formatoDistancia, formatoPlata, inicioDePeriodo,
-} from '../../../services/paseadorApi';
+import { fetchGanancias } from '../../../services/paseadorApi';
+import { formatoDistancia, formatoPlata, inicioDePeriodo } from '../../../domain/paseos';
 import { colores } from '../../../theme';
 
 const PERIODOS = [
@@ -272,8 +271,8 @@ const g = StyleSheet.create({
   barra: { width: '58%', maxWidth: 28, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
   barraOn: { backgroundColor: C.teal },
   barraOff: { backgroundColor: C.teal, opacity: 0.45 },
-  barraVacia: { backgroundColor: colores.gris300 },
-  base: { height: 1, backgroundColor: colores.gris350 },
+  barraVacia: { backgroundColor: colores.gris200 },
+  base: { height: 1, backgroundColor: colores.gris200 },
   labels: { flexDirection: 'row', marginTop: 6 },
   label: { flex: 1, textAlign: 'center', fontSize: 12, color: C.texto2, fontWeight: '600' },
   labelOn: { color: C.texto, fontWeight: '800' },
@@ -303,7 +302,7 @@ const s = StyleSheet.create({
   fila: {
     flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.card,
     borderRadius: 16, padding: 12, marginBottom: 8,
-    borderWidth: 1, borderColor: colores.gris150,
+    borderWidth: 1, borderColor: colores.gris100,
   },
   filaNombre: { fontSize: 15, fontWeight: '800', color: C.texto },
   filaSub: { fontSize: 12, color: C.texto2, marginTop: 2 },

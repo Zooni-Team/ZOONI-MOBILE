@@ -634,7 +634,7 @@ const st = StyleSheet.create({
   vetFooter: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
   vetMapsBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: colores.gris150, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
+    backgroundColor: colores.gris100, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
   },
   vetMapsTxt: { fontSize: 13, fontWeight: '700', color: colores.texto },
   vetLlamarBtn: {

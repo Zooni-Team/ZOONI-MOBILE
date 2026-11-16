@@ -21,9 +21,8 @@ import MapaPaseo from '../../../components/paseador/MapaPaseo';
 import MapaPaseoModal from '../../../components/paseador/MapaPaseoModal';
 import PaseoCard from '../../../components/paseador/PaseoCard';
 import { FilaPaseo } from './PaseoTab';
-import {
-  cuandoDe, fetchMisPaseos, formatoDistancia, formatoPlata, setDisponible,
-} from '../../../services/paseadorApi';
+import { cuandoDe, formatoDistancia, formatoPlata } from '../../../domain/paseos';
+import { fetchMisPaseos, setDisponible } from '../../../services/paseadorApi';
 import { colores } from '../../../theme';
 
 function inicioDeHoy() {
@@ -265,8 +264,8 @@ const s = StyleSheet.create({
 
   cobradoLabel: { fontSize: 13, fontWeight: '700', color: C.texto2 },
   cobrado: { fontSize: 40, fontWeight: '900', color: C.texto, marginTop: 2 },
-  stats: { flexDirection: 'row', alignItems: 'center', marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: colores.gris150 },
-  divisor: { width: 1, alignSelf: 'stretch', backgroundColor: colores.gris150, marginHorizontal: 12 },
+  stats: { flexDirection: 'row', alignItems: 'center', marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: colores.gris100 },
+  divisor: { width: 1, alignSelf: 'stretch', backgroundColor: colores.gris100, marginHorizontal: 12 },
 
   nuevas: {
     flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14,

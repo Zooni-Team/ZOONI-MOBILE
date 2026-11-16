@@ -70,11 +70,11 @@ export default function BotonesSociales({ intencion = 'dueno', titulo }) {
 const s = StyleSheet.create({
   wrap: { marginTop: 16, alignItems: 'center' },
   tituloFila: { flexDirection: 'row', alignItems: 'center', gap: 10, alignSelf: 'stretch', marginBottom: 12 },
-  linea: { flex: 1, height: 1, backgroundColor: colores.gris350 },
+  linea: { flex: 1, height: 1, backgroundColor: colores.gris200 },
   titulo: { fontSize: 13, color: colores.textoSecundario, fontWeight: '600' },
   fila: { flexDirection: 'row', justifyContent: 'center', gap: 22 },
   btn: {
-    width: 58, height: 58, borderRadius: 29, borderWidth: 1, borderColor: colores.gris350, backgroundColor: colores.blanco,
+    width: 58, height: 58, borderRadius: 29, borderWidth: 1, borderColor: colores.gris200, backgroundColor: colores.blanco,
     alignItems: 'center', justifyContent: 'center',
   },
   icono: { width: 30, height: 30 },

@@ -16,8 +16,8 @@ import * as SecureStore from 'expo-secure-store';
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
 import { fetchIdsBloqueados } from './moderacionApi';
-import { DEFAULT_FILTROS } from '../data/matchDemo';
-import { subirImagenPublica } from '../utils/imagenStorage';
+import { DEFAULT_FILTROS } from '../constants/match';
+import { subirImagenPublica } from './imagenStorage';
 import { distanciaKm } from '../utils/geo';
 import { calcularEdadAnios } from '../utils/calcularEdad';
 import { mapaPerfilesPorId, perfilPorId } from './perfilesPublicos';
@@ -477,15 +477,4 @@ export async function putMatchFiltros(filtros) {
 export async function previewMatchFiltros(filtros) {
   const candidatos = await obtenerCandidatos();
   return { cantidad: aplicarFiltros(candidatos, filtros).length };
-}
-
-/**
- * Reinicia el historial de likes/skips de mi mascota activa (útil tras
- * cambiar filtros, para que reaparezcan perfiles ya descartados). Esto borra
- * decisiones reales en Voto — solo tiene sentido mientras se prueba la app.
- */
-export async function resetDemoMatchState() {
-  const miMascota = await miMascotaActiva();
-  if (!miMascota) return;
-  await supabase.from('Voto').delete().eq('idMascotaOrigen', miMascota.Id_Mascota);
 }

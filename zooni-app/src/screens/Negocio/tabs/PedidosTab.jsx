@@ -19,9 +19,9 @@ import {
 
 import { C, PillButton, Vacio } from '../../../components/paseador/PaseadorUI';
 import { MotivoModal, PedidoCard, Segmento } from '../../../components/negocio/NegocioUI';
-import {
-  cambiarEstadoPedido, fetchPedidosNegocio, formatoPlata, siguienteEstadoPedido,
-} from '../../../services/negocioApi';
+import { cambiarEstadoPedido, fetchPedidosNegocio } from '../../../services/negocioApi';
+import { formatoPlata } from '../../../domain/paseos';
+import { siguienteEstadoPedido } from '../../../domain/negocios';
 
 const TEXTO_SIGUIENTE = {
   preparando: { titulo: 'Aceptar', icono: 'checkmark', aviso: 'Pedido aceptado: descontamos el stock' },

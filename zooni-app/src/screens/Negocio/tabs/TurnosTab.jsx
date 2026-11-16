@@ -21,8 +21,13 @@ import { C, PillButton, Vacio } from '../../../components/paseador/PaseadorUI';
 import { MotivoModal, Segmento, TurnoCard } from '../../../components/negocio/NegocioUI';
 import InformeModal from '../../../components/negocio/InformeModal';
 import {
-  actualizarDatos, cambiarEstadoTurno, fetchTurnosNegocio, formatoPlata, guardarInforme, GALERIA_MAX,
+  actualizarDatos,
+  cambiarEstadoTurno,
+  fetchTurnosNegocio,
+  guardarInforme,
+  GALERIA_MAX,
 } from '../../../services/negocioApi';
+import { formatoPlata } from '../../../domain/paseos';
 import { confirmar } from '../../../utils/dialogo';
 import { colores } from '../../../theme';
 

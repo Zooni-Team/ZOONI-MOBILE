@@ -27,7 +27,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { elegirImagen } from '../../utils/elegirImagen';
 
 import FilterChip from './FilterChip';
-import { INTEREST_OPTIONS, GENDER_OPTIONS } from '../../data/matchDemo';
+import { INTEREST_OPTIONS, GENDER_OPTIONS } from '../../constants/match';
 import { guardarPerfilMatch } from '../../services/matchApi';
 import { colores } from '../../theme';
 import FechaPicker from '../FechaPicker';
@@ -287,7 +287,7 @@ const s = StyleSheet.create({
     width: 150, height: 150, borderRadius: 75, alignSelf: 'center',
     backgroundColor: colores.blanco, borderWidth: 3, borderColor: colores.blanco,
   },
-  previewVacio: { alignItems: 'center', justifyContent: 'center', backgroundColor: colores.gris200 },
+  previewVacio: { alignItems: 'center', justifyContent: 'center', backgroundColor: colores.gris100 },
   fotoBtnsRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
   btnFoto: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,

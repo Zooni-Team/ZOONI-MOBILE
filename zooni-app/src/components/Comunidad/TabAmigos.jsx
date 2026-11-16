@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { fetchAmigos } from '../../api/comunidad';
+import { fetchAmigos } from '../../services/comunidadApi';
 import PersonaProfileModal from '../PersonaProfileModal';
 import { estadoPresencia } from '../../utils/tiempoRelativo';
 import { colores } from '../../theme';
@@ -65,10 +65,10 @@ export default function TabAmigos({ onVerEnMapa }) {
 const styles = StyleSheet.create({
   vacio:      { alignItems: 'center', paddingTop: 32 },
   vacioText:  { color: colores.textoSecundario, fontSize: 14 },
-  item:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colores.gris150 },
+  item:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colores.gris100 },
   persona:    { flex: 1, flexDirection: 'row', alignItems: 'center' },
   avatarWrap: { marginRight: 10 },
-  avatar:     { width: 40, height: 40, borderRadius: 20, borderWidth: 2, backgroundColor: colores.gris150, alignItems: 'center', justifyContent: 'center' },
+  avatar:     { width: 40, height: 40, borderRadius: 20, borderWidth: 2, backgroundColor: colores.gris100, alignItems: 'center', justifyContent: 'center' },
   puntoOnline: {
     position: 'absolute', right: 0, bottom: 0,
     width: 12, height: 12, borderRadius: 6,

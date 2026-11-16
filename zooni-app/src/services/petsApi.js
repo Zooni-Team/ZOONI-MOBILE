@@ -3,7 +3,7 @@
  *
  * Todas las funciones operan SOLO sobre las mascotas del usuario logueado
  * (getCurrentUserId()), nunca datos al azar. Requiere la migración
- * 020_mis_mascotas.sql (columnas Estado / ArchivadaEn / etc.).
+ * sección 020 de SUPABASE_PEGAR_TODO.sql (columnas Estado / ArchivadaEn / etc.).
  *
  * Estados: active → archived → active · → memorial (falleció) · → deleted
  * (borrado lógico con 30 días de gracia; el cliente nunca ve las deleted).
@@ -14,7 +14,7 @@
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
 import { enRango, sanitizarDigitos, sanitizarTexto } from '../utils/sanitizar';
-import { subirImagenPublica } from '../utils/imagenStorage';
+import { subirImagenPublica } from './imagenStorage';
 import { edadResumida } from '../utils/calcularEdad';
 
 export const LIMITE_ACTIVAS = 10;

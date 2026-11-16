@@ -6,11 +6,12 @@
 //   - La detección de emergencias (capa 1, determinística).
 //   - El filtro de salida (dosis, fuga de prompt, largo).
 //
-// El cliente (src/services/zoonivetApi.js) manda { petId, mensaje, historial,
-// usuario } con el JWT de su sesión y recibe { texto, emergencia }. Primero se
-// verifica que la mascota sea de quien pregunta; después el contexto se arma en
-// el servidor con la RPC get_pet_chat_context (051_contexto_zoonivet.sql), que
-// sólo puede ejecutar service_role.
+// El cliente (src/services/zoonivetApi.js) manda { petId, mensaje, historial }
+// con el JWT de su sesión y recibe { texto, emergencia }. Primero se verifica
+// que la mascota sea de quien pregunta; después el contexto (datos de la
+// mascota y el nombre de la persona) se arma ACÁ, con la RPC
+// get_pet_chat_context (sección 051 del SQL base), que sólo puede ejecutar
+// service_role. Nada de lo que entra al bloque de datos viene del cliente.
 //
 // Secrets a configurar (supabase secrets set ...):
 //   GROQ_API_KEY           (obligatorio)
@@ -19,13 +20,20 @@
 //   ZOONIVET_LIMITE_DIARIO (opcional, default 40 mensajes por usuario por día)
 // SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY los inyecta la plataforma.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Versión exacta (la misma que usa la app) y del registro de npm: antes era
+// "esm.sh/…@2", la última que hubiera y desde un CDN de terceros, en el mismo
+// proceso que tiene la service_role.
+import { createClient } from "npm:@supabase/supabase-js@2.110.0";
 
 const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") ?? "";
 const GROQ_MODEL = Deno.env.get("GROQ_MODEL") ?? "openai/gpt-oss-120b";
 const GROQ_MODEL_FALLBACK = Deno.env.get("GROQ_MODEL_FALLBACK") ?? "openai/gpt-oss-20b";
 const GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
 const LIMITE_DIARIO = Number(Deno.env.get("ZOONIVET_LIMITE_DIARIO") ?? "40") || 40;
+// Pedido más grande que esto no es una conversación: se rechaza antes de leerlo.
+const MAX_CUERPO_BYTES = 40_000;
+// Groq a veces se cuelga; pasado este tiempo se corta y se avisa.
+const ESPERA_GROQ_MS = 25_000;
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -208,6 +216,7 @@ function filtrarSalida(textoCrudo: string) {
 async function llamarGroq(model: string, messages: unknown[]) {
   return await fetch(GROQ_CHAT_URL, {
     method: "POST",
+    signal: AbortSignal.timeout(ESPERA_GROQ_MS),
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${GROQ_API_KEY}`,
@@ -232,21 +241,27 @@ Deno.serve(async (req) => {
     return json({ error: "SIN_API_KEY", message: "Falta el secret GROQ_API_KEY en la Edge Function." }, 500);
   }
 
+  if (Number(req.headers.get("content-length") ?? 0) > MAX_CUERPO_BYTES) {
+    return json({ error: "BAD_REQUEST", message: "El mensaje es demasiado largo." }, 413);
+  }
   let payload: {
-    petId?: number;
+    petId?: unknown;
     mensaje?: string;
     historial?: { role: string; content: string }[];
-    usuario?: { nombre?: string };
   };
   try {
-    payload = await req.json();
+    const crudo = await req.text();
+    if (crudo.length > MAX_CUERPO_BYTES) {
+      return json({ error: "BAD_REQUEST", message: "El mensaje es demasiado largo." }, 413);
+    }
+    payload = JSON.parse(crudo);
   } catch {
     return json({ error: "BAD_REQUEST", message: "Body inválido." }, 400);
   }
 
-  const petId = payload.petId;
+  const petId = Number(payload.petId);
   const mensaje = String(payload.mensaje ?? "").trim();
-  if (petId == null || !mensaje) {
+  if (!Number.isSafeInteger(petId) || petId <= 0 || !mensaje) {
     return json({ error: "BAD_REQUEST", message: "Faltan petId o mensaje." }, 400);
   }
 
@@ -263,7 +278,7 @@ Deno.serve(async (req) => {
     return json({ error: "SIN_SESION", message: "Iniciá sesión para usar ZooniVet." }, 401);
   }
   const [{ data: yo }, { data: mascota }] = await Promise.all([
-    admin.from("User").select("Id_User").eq("auth_id", sesion.user.id).maybeSingle(),
+    admin.from("User").select("Id_User, Nombre").eq("auth_id", sesion.user.id).maybeSingle(),
     admin.from("Mascota").select("Id_User").eq("Id_Mascota", petId).maybeSingle(),
   ]);
   if (!yo || !mascota || mascota.Id_User !== yo.Id_User) {
@@ -279,7 +294,9 @@ Deno.serve(async (req) => {
     p_limite: LIMITE_DIARIO,
   });
   if (cupoError) {
-    return json({ error: "CUPO_ERROR", message: cupoError.message }, 500);
+    // El detalle de Postgres queda en los logs de la función, no en el cliente.
+    console.error("zoonivet_consumir_cupo", cupoError);
+    return json({ error: "CUPO_ERROR", message: "No se pudo verificar tu cupo. Probá en un rato." }, 500);
   }
   if (hayCupo === false) {
     return json({
@@ -292,14 +309,15 @@ Deno.serve(async (req) => {
     p_pet_id: petId,
   });
   if (ctxError) {
-    return json({ error: "CONTEXT_ERROR", message: ctxError.message }, 500);
+    console.error("get_pet_chat_context", ctxError);
+    return json({ error: "CONTEXT_ERROR", message: "No se pudieron leer los datos de tu mascota." }, 500);
   }
   if (!ctx) {
     return json({ error: "PET_NOT_FOUND", message: "No encontré esa mascota." }, 404);
   }
 
   const emergenciaCapa1 = detectarEmergencia(mensaje);
-  let system = `${REGLAS}\n\n${bloqueDatos(ctx as Ctx, payload.usuario ?? null)}`;
+  let system = `${REGLAS}\n\n${bloqueDatos(ctx as Ctx, { nombre: yo.Nombre ?? undefined })}`;
   if (emergenciaCapa1) {
     system +=
       "\n\n## ATENCIÓN: el mensaje del usuario contiene señales de una posible emergencia. " +
@@ -316,12 +334,19 @@ Deno.serve(async (req) => {
     { role: "user", content: mensaje.slice(0, 1000) },
   ];
 
-  let res = await llamarGroq(GROQ_MODEL, messages);
-  if (res.status === 400) {
-    const txt = await res.clone().text().catch(() => "");
-    if (/model_not_found|does not exist|decommissioned|deprecated/i.test(txt)) {
-      res = await llamarGroq(GROQ_MODEL_FALLBACK, messages);
+  let res: Response;
+  try {
+    res = await llamarGroq(GROQ_MODEL, messages);
+    if (res.status === 400) {
+      const txt = await res.clone().text().catch(() => "");
+      if (/model_not_found|does not exist|decommissioned|deprecated/i.test(txt)) {
+        res = await llamarGroq(GROQ_MODEL_FALLBACK, messages);
+      }
     }
+  } catch (e) {
+    // Timeout o red: el mensaje ya consumió cupo, pero no se deja al usuario esperando.
+    console.error("groq", e);
+    return json({ error: "GROQ_ERROR", message: "ZooniVet tardó demasiado en responder." }, 504);
   }
 
   if (!res.ok) {

@@ -21,8 +21,8 @@ import { elegirImagen } from '../../utils/elegirImagen';
 
 import { Avatar, C, PillButton } from '../paseador/PaseadorUI';
 import FechaPicker from '../FechaPicker';
-import { cuandoTexto } from '../../services/negocioApi';
-import { subirImagenPublica } from '../../utils/imagenStorage';
+import { cuandoTexto } from '../../domain/negocios';
+import { subirImagenPublica } from '../../services/imagenStorage';
 import { parseDecimal, sanitizarDecimal } from '../../utils/sanitizar';
 import { colores } from '../../theme';
 import { formatearFecha } from '../../utils/fechaLocal';
@@ -261,7 +261,7 @@ const s = StyleSheet.create({
   sub: { fontSize: 13, color: C.texto2, marginTop: 1 },
   label: { fontSize: 13, fontWeight: '700', color: C.texto, marginBottom: 6 },
   input: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
     fontSize: 15, color: C.texto, backgroundColor: colores.blanco,
   },
   textarea: { minHeight: 80, textAlignVertical: 'top' },

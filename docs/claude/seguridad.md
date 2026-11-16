@@ -9,8 +9,9 @@
 - Cada consulta viaja con el JWT; la base lo traduce con `usuario_actual()`.
   `config/session.getCurrentUserId()` es sólo una comodidad para armar
   filtros: **no** es prueba de nada.
-- Cuentas viejas (SHA-256 en `user_credentials`): la Edge Function
-  `migrar-cuenta` las pasa a Auth en el primer login y borra el hash viejo.
+- Cuentas viejas (SHA-256 en `user_credentials`): la función de la base
+  `migrar_cuenta_legada` (065) las pasa a Auth en el primer login y borra el
+  hash viejo (ver "Cuentas viejas" abajo).
   Un `signUp` con el mail de una cuenta vieja **no** se vincula a ella
   (`login_social` lanza `cuenta_sin_migrar`).
 
@@ -40,8 +41,24 @@ la app pide una URL firmada de 1 hora para mostrarla.
 La primera vez que entra una cuenta de antes de 060, `authApi` llama a
 `migrar_cuenta_legada` (065): compara el sha256 viejo, crea el usuario de Auth
 con esa contraseña (bcrypt), vincula `"User".auth_id` y borra el hash. Responde
-lo mismo si el mail no existe o la contraseña es mala. La Edge Function
-`migrar-cuenta` queda sólo como respaldo para bases sin 065.
+lo mismo si el mail no existe o la contraseña es mala, y frena después de 5
+fallos en 15 minutos por mail (067).
+
+Ya no hay otro camino: la Edge Function `migrar-cuenta` (sin verificar JWT y
+sin límite de intentos: un oráculo de contraseñas) y el login viejo de la app
+(`authLegado.js`, que mandaba el SHA-256 y entraba sin JWT) se eliminaron, y la
+068 borra las RPC del login con hash (`login_user`, `registrar_*`/`activar_*`
+con `p_hash`, `cambiar_contrasena`). Si la base no responde durante el login,
+la app dice "no se pudo conectar", no "contraseña incorrecta".
+
+## Archivos que quedan sin uso (068)
+Al borrar una mascota, una foto suya o una consulta (o reemplazar una foto),
+un trigger anota el archivo en `archivos_por_borrar` (sólo service_role). La
+base no puede borrar archivos de Storage (Supabase no lo permite con SQL), así
+que lo hace `supabase/scripts/limpiar-storage.mjs` con la clave service_role
+desde una máquina del equipo; antes de borrar, `archivos_para_borrar()`
+descarta lo que todavía use alguna fila. El mismo script muda las imágenes de
+consultas cargadas antes de la 064 del bucket público al privado.
 
 ## ZooniVet
 Cupo diario por usuario contado en la base (`zoonivet_uso`, sólo service_role).

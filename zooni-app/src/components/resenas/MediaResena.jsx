@@ -94,7 +94,7 @@ export function VisorMedia({ items, indice, onCerrar }) {
 }
 
 const s = StyleSheet.create({
-  mini: { borderRadius: 12, overflow: 'hidden', backgroundColor: colores.gris250 },
+  mini: { borderRadius: 12, overflow: 'hidden', backgroundColor: colores.gris100 },
   play: {
     position: 'absolute', top: '50%', left: '50%', width: 34, height: 34, marginLeft: -17, marginTop: -17,
     borderRadius: 17, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center',

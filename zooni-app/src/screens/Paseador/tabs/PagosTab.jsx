@@ -21,9 +21,13 @@ import { Avatar, C, Vacio } from '../../../components/paseador/PaseadorUI';
 import CuentaCorrienteModal, { EtiquetaSaldo } from '../../../components/paseador/CuentaCorrienteModal';
 import PagoFormModal from '../../../components/paseador/PagoFormModal';
 import {
-  borrarPago, editarPago, fetchCuentasCorrientes, formatoPlata, guardarModalidadCobro, medioDePago,
-  modalidadDeCobro, registrarPago,
+  borrarPago,
+  editarPago,
+  fetchCuentasCorrientes,
+  guardarModalidadCobro,
+  registrarPago,
 } from '../../../services/paseadorApi';
+import { formatoPlata, medioDePago, modalidadDeCobro } from '../../../domain/paseos';
 import { colores } from '../../../theme';
 
 const FILTROS = [
@@ -257,7 +261,7 @@ const s = StyleSheet.create({
 
   fila: {
     flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.card,
-    borderRadius: 16, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: colores.gris150,
+    borderRadius: 16, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: colores.gris100,
   },
   filaNombre: { fontSize: 15, fontWeight: '800', color: C.texto },
   filaSub: { fontSize: 12, color: C.texto2, marginTop: 1 },

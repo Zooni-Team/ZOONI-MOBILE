@@ -20,10 +20,15 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import CalificarPaseoModal from '../components/resenas/CalificarPaseoModal';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
+import { cancelarPaseoDueno, fetchMisPaseosDueno } from '../services/paseadorApi';
 import {
-  cancelarPaseoDueno, cuandoDe, fetchMisPaseosDueno, formatoDistancia, formatoTiempoPaseado,
-  formatoPlata, formatoTimer, segundosDePaseo,
-} from '../services/paseadorApi';
+  cuandoDe,
+  formatoDistancia,
+  formatoTiempoPaseado,
+  formatoPlata,
+  formatoTimer,
+  segundosDePaseo,
+} from '../domain/paseos';
 import { confirmar } from '../utils/dialogo';
 import { colores } from '../theme';
 import { Estrellas } from '../components/ui/Estrellas';

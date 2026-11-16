@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
   headerInfo: { flex: 1 },
   headerNombre: { fontSize: 16, fontWeight: '700', color: colores.texto },
   headerMascota: { fontSize: 13, color: colores.textoSecundario, marginTop: 2 },
-  dividerLine: { height: 1, backgroundColor: colores.gris400, marginVertical: 4 },
+  dividerLine: { height: 1, backgroundColor: colores.gris300, marginVertical: 4 },
   menuItem: { flexDirection: 'row', alignItems: 'center', height: 52, paddingHorizontal: 20 },
   menuItemActive: { backgroundColor: 'rgba(45, 189, 114, 0.12)' }, // Verde suave para ítem activo
   menuIcon: { marginRight: 14 },

@@ -317,7 +317,7 @@ const s = StyleSheet.create({
   subtitulo: { fontSize: 16, fontWeight: '700', color: colores.texto, textAlign: 'center', marginBottom: 20 },
 
   input: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 13,
     fontSize: 15, color: colores.texto, marginBottom: 10, textAlign: 'center',
   },
@@ -330,14 +330,14 @@ const s = StyleSheet.create({
   // Código + número en una sola caja: se ve como un campo de teléfono entero
   telefonoRow: {
     flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 10,
     marginBottom: 10, overflow: 'hidden',
   },
   telefonoCodigo: {
     width: 68, paddingVertical: 13, paddingHorizontal: 10,
     fontSize: 15, color: colores.texto, textAlign: 'center',
   },
-  telefonoSep:    { width: 1, alignSelf: 'stretch', marginVertical: 8, backgroundColor: colores.gris500 },
+  telefonoSep:    { width: 1, alignSelf: 'stretch', marginVertical: 8, backgroundColor: colores.gris300 },
   telefonoNumero: { flex: 1, paddingVertical: 13, paddingHorizontal: 12, fontSize: 15, color: colores.texto, textAlign: 'center' },
 
   inputFocus: { borderColor: colores.verde },

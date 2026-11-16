@@ -41,7 +41,10 @@ import {
 } from '../../components/negocio/CamposNegocio';
 import { HORARIOS_NEGOCIO_DEFAULT, configNegocio } from '../../constants/negocios';
 import {
-  activarNegocio, fetchMiNegocio, registrarNegocio, subirLogoNegocio,
+  activarNegocio,
+  fetchMiNegocio,
+  registrarNegocio,
+  subirLogoNegocio,
 } from '../../services/negocioApi';
 import { verificarDisponibilidad } from '../../services/authApi';
 import { volverOLogin } from '../../utils/volverOLogin';
@@ -377,7 +380,7 @@ const s = StyleSheet.create({
 
   label: { fontSize: 13, fontWeight: '700', color: C.texto, marginBottom: 6 },
   input: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: C.texto, backgroundColor: colores.blanco,
   },
   inputError: { borderColor: C.rojo },

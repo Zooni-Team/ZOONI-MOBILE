@@ -33,15 +33,20 @@ import {
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { calcularEdadAnios } from '../../utils/calcularEdad';
 import { elegirImagen } from '../../utils/elegirImagen';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { C, PillButton, sombra } from '../../components/paseador/PaseadorUI';
 import { Campo, InputPassword } from '../../components/ui/CampoFormulario';
+import { HORARIOS_DEFAULT, validarServicios } from '../../domain/paseos';
 import {
-  HORARIOS_DEFAULT, activarPaseador, activarPaseadorSocial, completarPerfilPaseador, fetchMiFotoPerfil,
+  activarPaseador,
+  activarPaseadorSocial,
+  completarPerfilPaseador,
+  fetchMiFotoPerfil,
   registrarPaseadorSocial,
-  registrarPaseador, validarServicios,
+  registrarPaseador,
 } from '../../services/paseadorApi';
 import CantidadPerros from '../../components/paseador/CantidadPerros';
 import ServiciosEditor, { filasDesdeServicios, serviciosDesdeFilas } from '../../components/paseador/ServiciosEditor';
@@ -71,13 +76,6 @@ const TAMANOS = [
   { key: 'grande', label: 'Grande', detalle: '+25 kg' },
 ];
 
-function edadDe(nacimiento, hoy = new Date()) {
-  let edad = hoy.getFullYear() - nacimiento.getFullYear();
-  const cumplioEsteAnio = hoy.getMonth() > nacimiento.getMonth()
-    || (hoy.getMonth() === nacimiento.getMonth() && hoy.getDate() >= nacimiento.getDate());
-  if (!cumplioEsteAnio) edad -= 1;
-  return edad;
-}
 
 /** Campo "Foto de tu cara": círculo con la vista previa + cámara / galería. */
 function CampoFoto({ uri, error, onElegir }) {
@@ -143,7 +141,7 @@ export default function PaseadorRegistroScreen() {
     email: social?.email ?? '', telefono: '', password: '', password2: '',
   });
   const [verFecha, setVerFecha] = useState(false);
-  const edad = usuario.fechaNacimiento ? edadDe(usuario.fechaNacimiento) : null;
+  const edad = calcularEdadAnios(usuario.fechaNacimiento);
   const [perfil, setPerfil] = useState({
     zona: '', lat: null, lng: null, radioKm: null, maxPerros: 3,
     tamanos: ['chico', 'mediano', 'grande'], bio: '',
@@ -546,7 +544,7 @@ const s = StyleSheet.create({
 
   label: { fontSize: 13, fontWeight: '700', color: C.texto, marginBottom: 6 },
   input: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: C.texto, backgroundColor: colores.blanco,
   },
   inputError: { borderColor: C.rojo },

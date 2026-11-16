@@ -19,7 +19,7 @@ import { useUsuarioActivo } from '../../hooks/useUsuarioActivo';
 
 import {
   fetchCarteles, fetchServiciosPropios, fetchAmigos, actualizarUbicacion,
-} from '../../api/comunidad';
+} from '../../services/comunidadApi';
 import { getCurrentUserId } from '../../config/session';
 import { fetchPaseadoresParaMi } from '../../services/paseadorApi';
 import { buscarLugares, combinarServicios } from '../../services/lugaresApi';
@@ -47,7 +47,7 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
 .mk{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;
     justify-content:center;border:2px solid #fff;font-size:16px;
     box-shadow:0 1px 4px rgba(0,0,0,.3);line-height:34px;text-align:center}
-.pz{width:46px;height:46px;border-radius:50%;border:3px solid #2DBD72;background:#2DBD72;
+.pz{width:46px;height:46px;border-radius:50%;border:3px solid ${colores.verde};background:${colores.verde};
     position:relative;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.35);
     display:flex;align-items:center;justify-content:center}
 /* !important: leaflet.css pone width:auto a las img de los marcadores y la foto
@@ -84,10 +84,10 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
   function mk(e,bg){return L.divIcon({className:'',html:'<div class="mk" style="background:'+bg+'">'+e+'</div>',iconSize:[34,34],iconAnchor:[17,34]})}
   var iconUser=L.divIcon({className:'',html:'<div class="uw"><div class="up"></div><div class="ud"></div></div>',iconSize:[44,44],iconAnchor:[22,22]});
   var ICONS={
-    veterinaria:mk('🏥','#E63946'),paseador:mk('🦮','#F5A623'),
-    petshop:mk('🛍️','#F5C842'),peluqueria:mk('✂️','#9B59B6'),
-    perdida:mk('🔴','#E63946'),aviso:mk('📌','#6B6B6B'),
-    amigo:mk('👤','#2DBD72'),temporal:mk('📍','#2DBD72')
+    veterinaria:mk('🏥','${colores.rojo}'),paseador:mk('🦮','${colores.ambar}'),
+    petshop:mk('🛍️','${colores.amarillo}'),peluqueria:mk('✂️','${colores.violeta}'),
+    perdida:mk('🔴','${colores.rojo}'),aviso:mk('📌','${colores.textoSecundario}'),
+    amigo:mk('👤','${colores.verde}'),temporal:mk('📍','${colores.verde}')
   };
 
   // Notifica al padre (React)
@@ -117,8 +117,8 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
     // Paseadores de Zooni: su círculo de atención + su foto
     (d.paseadores||[]).forEach(function(x){
       var abrir=function(){notify({type:'paseador',data:x})};
-      var c=L.circle([x.lat,x.lng],{radius:x.radioKm*1000,color:'#2DBD72',weight:2,
-        fillColor:'#2DBD72',fillOpacity:x.disponible?.12:.05,dashArray:x.disponible?null:'6 6'})
+      var c=L.circle([x.lat,x.lng],{radius:x.radioKm*1000,color:'${colores.verde}',weight:2,
+        fillColor:'${colores.verde}',fillOpacity:x.disponible?.12:.05,dashArray:x.disponible?null:'6 6'})
         .addTo(map).on('click',abrir);
       var m=L.marker([x.lat,x.lng],{icon:iconPaseador(x),zIndexOffset:500}).addTo(map).on('click',abrir);
       dynLayers.push(c);dynLayers.push(m);
@@ -612,7 +612,7 @@ const styles = StyleSheet.create({
   tabBtnOn:  { backgroundColor: colores.verde },
   tabText:   { fontSize: 13, color: colores.textoSecundario },
   tabTextOn: { color: colores.blanco, fontWeight: '700' },
-  tabSep:    { height: 1, backgroundColor: colores.gris250, marginHorizontal: 16, marginBottom: 4 },
+  tabSep:    { height: 1, backgroundColor: colores.gris100, marginHorizontal: 16, marginBottom: 4 },
   tabBody:   { flex: 1, paddingHorizontal: 16, overflow: 'hidden' },
 
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },

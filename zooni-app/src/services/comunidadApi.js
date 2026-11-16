@@ -1,19 +1,20 @@
 /**
- * api/comunidad/index.js — Módulo Comunidad sobre Supabase
+ * comunidadApi.js — Datos del mapa de Comunidad: servicios (pines), carteles
+ * de mascotas perdidas y avisos, amigos y solicitudes, y la ubicación que
+ * cada uno decide compartir.
  *
- * Tablas: carteles, servicios, amistades, ubicaciones_usuarios (creadas en
- * database/migrations/010_supabase_live_setup.sql — no existían en ningún
- * schema anterior). Reemplaza los mocks in-memory que usaba esta capa.
+ * Tablas: servicios, carteles, amistades, ubicaciones_usuarios
+ * (supabase/SUPABASE_PEGAR_TODO.sql; permisos en la sección 061).
  */
 
-import { supabase } from '../../lib/supabase';
-import { getCurrentUserId } from '../../config/session';
-import { subirImagenPublica } from '../../utils/imagenStorage';
-import { buscarLugares, combinarServicios } from '../../services/lugaresApi';
-import { consultarPerfiles, perfilesPorId } from '../../services/perfilesPublicos';
-import { distanciaKm } from '../../utils/geo';
-import { notificar } from '../../services/comun';
-import { filtrosBusquedaPersonas } from '../../utils/texto';
+import { supabase } from '../lib/supabase';
+import { getCurrentUserId } from '../config/session';
+import { subirImagenPublica } from './imagenStorage';
+import { buscarLugares, combinarServicios } from './lugaresApi';
+import { consultarPerfiles, perfilesPorId } from './perfilesPublicos';
+import { distanciaKm } from '../utils/geo';
+import { notificar } from './comun';
+import { filtrosBusquedaPersonas } from '../utils/texto';
 
 function aplicarBbox(query, bbox, latCol = 'lat', lngCol = 'lng') {
   if (!bbox) return query;

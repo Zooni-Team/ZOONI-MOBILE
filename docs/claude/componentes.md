@@ -13,7 +13,8 @@ prop. Si creás uno que se va a usar en más de una pantalla, va a `components/u
 | Un aviso breve flotante ("Guardado ✓") | `ui/Toast` + `hooks/useToast` | `const { toast, mostrarToast } = useToast(); mostrarToast('Listo'); <Toast {...toast} />` · color: `mostrarToast('Error', colores.rojo)` |
 | Un aviso que ocupa lugar en el layout | patrón `AvisoInline` de `PerfilScreen` con el mismo `useToast` | |
 | Placeholder mientras carga | `ui/Skeleton` (`<Skeleton style={s.card}>…</Skeleton>`) o `SkeletonBloque` (`width`, `height`) | la animación ya está; vos das la forma |
-| Alerta / confirmación que funcione en web | `utils/dialogo` → `alerta(titulo, texto)`, `confirmar(...)` | `Alert.alert` no anda en web |
+| Alerta / confirmación que funcione en web | `utils/dialogo` → `alerta(titulo, texto)`, `await confirmar(titulo, texto, { textoOk, destructivo })` | `Alert.alert` con botones no anda en web |
+| "No se pudo cargar" con Reintentar | `salud/AvisoError` (`mensaje`, `onReintentar`) | nunca mostrar "no hay nada" cuando lo que pasó es un error |
 | Cartel modal con estilo Zooni | `AppDialog` | |
 
 ## Elegir valores
@@ -34,6 +35,14 @@ prop. Si creás uno que se va a usar en más de una pantalla, va a `components/u
 |---|---|
 | Menú lateral del dueño | `HamburgerDrawer` (proveedores: `paseador/PaseadorDrawer`) |
 | Encabezado de la Ficha Médica y sus secciones | `PetHero` |
+| Pantalla de registros de salud (Vacunas, Tratamientos, Consultas) | `salud/PantallaSalud` (volver, selector de mascota, hero, hoja blanca, recargar, Toast) + `hooks/useRegistrosSalud(traer)` |
+| Sección con título, "Añadir" y lista que resuelve cargando / vacía / con datos | `salud/SeccionSalud` |
+| Un registro cargado (con editar / eliminar opcionales y espacio para una imagen) | `salud/TarjetaRegistro` |
+| Algo sugerido por el calendario ("Registrar" / "Aplicada") | `salud/TarjetaSugerido` |
+| Formulario corto en una ventana (título, campos, Cancelar / Guardar fijos, error adentro) | `salud/ModalFormulario` + `CampoTexto`, `CampoFecha` |
+| Inicio: mascota animada con flechas y foto/avatar | `home/HeroMascota` · botones: `home/BotonesHome` · datos: `hooks/useHome` |
+| Calendario de Cuidados | `calendario/RecordatorioCard`, `RecordatorioDetalleModal`, `FormularioRecordatorio` · datos: `hooks/useCalendario` |
+| Evento público (agenda) | `eventos/EventoPublicoCard` · datos: `hooks/useEventosPublicos` |
 | Panel de notificaciones de Home | `NotificationsPanel` |
 | Perfil de otra persona | `PersonaProfileModal` |
 | Botones de Home y su modal | `NavButton`, `AddButtonModal`, `DraggableList` |
@@ -63,6 +72,14 @@ devuelve la uri o `null` (canceló / sin permiso; el aviso ya lo muestra).
 Para varias fotos y videos (reseñas): `elegirMedios({ camara, limite })`.
 Nunca llamar a `expo-image-picker` directo desde una pantalla.
 
-Para **subir** la foto elegida: `utils/imagenStorage.subirImagenPublica(uri, carpeta)`.
+Para **subir** la foto elegida: `services/imagenStorage.subirImagenPublica(uri, carpeta)`.
 Si es información clínica (consultas): `subirImagenPrivada(uri, carpeta)` devuelve
 la **ruta** en el bucket privado, y se muestra con `urlsFirmadas([rutas])`.
+
+## Pantallas grandes: cómo se parten
+
+Una pantalla dibuja; la carga de datos va a un hook (`hooks/useXxx`) y cada
+pieza que se puede nombrar va a su archivo en `components/<tema>/`. Ejemplos:
+`HomeScreen` (165 líneas) = `useHome` + `HeroMascota` + `BotonesHome`;
+`CalendarioScreen` = `useCalendario` + `components/calendario/*`. Las
+animaciones que sólo le importan a una pieza viven en esa pieza.

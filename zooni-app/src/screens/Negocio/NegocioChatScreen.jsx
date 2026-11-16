@@ -25,10 +25,15 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Avatar, C } from '../../components/paseador/PaseadorUI';
 import { EstadoChip } from '../../components/negocio/NegocioUI';
 import { configNegocio } from '../../constants/negocios';
+import { cuandoTexto } from '../../domain/negocios';
 import {
-  cuandoTexto, enviarMensajeNegocio, fetchContextoCliente, fetchMiNegocio, formatoPlata, getMensajesNegocio,
+  enviarMensajeNegocio,
+  fetchContextoCliente,
+  fetchMiNegocio,
+  getMensajesNegocio,
   marcarLeidosNegocio,
 } from '../../services/negocioApi';
+import { formatoPlata } from '../../domain/paseos';
 import { etiquetaDia, horaCorta, mismoDia } from '../../utils/tiempoRelativo';
 import { colores } from '../../theme';
 import { useRecargaEnVivo } from '../../hooks/useRecargaEnVivo';

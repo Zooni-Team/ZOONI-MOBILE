@@ -30,10 +30,18 @@ import PaseadorHeader from '../../components/paseador/PaseadorHeader';
 import PaseadorDrawer, { SECCIONES_PASEADOR } from '../../components/paseador/PaseadorDrawer';
 import { C, PillButton, Vacio } from '../../components/paseador/PaseadorUI';
 import {
-  fetchPaseosEnCurso, fetchPerfilPaseador, fetchRolesCuenta, fetchSolicitudes, finalizarPaseo, formatoPlata,
-  formatoTiempoPaseado, iniciarPaseo, pausarPaseo, reanudarPaseo, revisarRecordatoriosCobro, segundosDePaseo,
+  fetchPaseosEnCurso,
+  fetchPerfilPaseador,
+  fetchRolesCuenta,
+  fetchSolicitudes,
+  finalizarPaseo,
+  iniciarPaseo,
+  pausarPaseo,
+  reanudarPaseo,
+  revisarRecordatoriosCobro,
   setDisponible,
 } from '../../services/paseadorApi';
+import { formatoPlata, formatoTiempoPaseado, segundosDePaseo } from '../../domain/paseos';
 import useSeguimientoPaseos from '../../hooks/useSeguimientoPaseos';
 import { confirmar } from '../../utils/dialogo';
 import {

@@ -30,11 +30,11 @@ const MAPA_HTML = `<!DOCTYPE html><html><head>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-html,body,#map{margin:0;padding:0;width:100%;height:100%;background:#E8F5EC}
+html,body,#map{margin:0;padding:0;width:100%;height:100%;background:${colores.mentaSuave}}
 .yo{width:44px;height:44px;display:flex;align-items:center;justify-content:center;position:relative}
 .yo .pulso{position:absolute;width:36px;height:36px;border-radius:50%;background:rgba(45,189,114,.25);animation:pu 1.8s ease-in-out infinite}
-.yo .punto{width:18px;height:18px;border-radius:50%;background:#2DBD72;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);position:relative}
-.casa{width:36px;height:36px;border-radius:50%;background:#F5A623;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.yo .punto{width:18px;height:18px;border-radius:50%;background:${colores.verde};border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);position:relative}
+.casa{width:36px;height:36px;border-radius:50%;background:${colores.ambar};border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 1px 4px rgba(0,0,0,.3)}
 @keyframes pu{0%,100%{transform:scale(1)}50%{transform:scale(1.6)}}
 .leaflet-control-attribution{font-size:9px}
 </style>
@@ -61,7 +61,7 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%;background:#E8F5EC}
     if(d.posicion){yo=L.marker([d.posicion.lat,d.posicion.lng],{icon:iconYo,zIndexOffset:1000}).addTo(map)}
     if(linea){map.removeLayer(linea);linea=null}
     if(d.ruta&&d.ruta.length>1){
-      linea=L.polyline(d.ruta.map(function(p){return[p.lat,p.lng]}),{color:'#2DBD72',weight:6,opacity:.85,lineCap:'round'}).addTo(map);
+      linea=L.polyline(d.ruta.map(function(p){return[p.lat,p.lng]}),{color:'${colores.verde}',weight:6,opacity:.85,lineCap:'round'}).addTo(map);
     }
     var foco=d.posicion||d.destino||d.centro;
     if(primera&&d.posicion&&d.destino){

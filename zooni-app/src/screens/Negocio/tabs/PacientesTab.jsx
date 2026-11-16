@@ -18,7 +18,8 @@ import { Avatar, C, Vacio, sombra } from '../../../components/paseador/PaseadorU
 import { Etiqueta, Segmento } from '../../../components/negocio/NegocioUI';
 import FichaPacienteModal from '../../../components/negocio/FichaPacienteModal';
 import InformeModal from '../../../components/negocio/InformeModal';
-import { cuandoTexto, diaTexto, fetchPacientes, guardarInforme } from '../../../services/negocioApi';
+import { cuandoTexto, diaTexto } from '../../../domain/negocios';
+import { fetchPacientes, guardarInforme } from '../../../services/negocioApi';
 import { colores } from '../../../theme';
 import { normalizarBusqueda } from '../../../utils/texto';
 

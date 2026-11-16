@@ -1,22 +1,14 @@
 import { colores } from '../theme/colores';
+import { diasHasta } from './fechaLocal';
 /**
  * colorProximidad.js — Sistema de color por proximidad de fecha
  * Usado por la pantalla Calendario de Cuidados para colorear cards
  * de eventos según cuán cerca está su fecha_hora de hoy.
  */
 
-/**
- * Diferencia en días de calendario entre hoy y el evento (ignora la hora).
- * Antes se dividía el diff exacto en ms: un evento de hoy a la noche daba
- * "Mañana" y uno de ayer a la noche daba "¡Hoy!".
- */
-function diasHastaEvento(fechaHora) {
-  const ahora = new Date();
-  const evento = new Date(fechaHora);
-  const hoy0 = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
-  const evento0 = new Date(evento.getFullYear(), evento.getMonth(), evento.getDate());
-  return Math.round((evento0 - hoy0) / (1000 * 60 * 60 * 24));
-}
+// Días de CALENDARIO hasta el evento (ignora la hora): con la diferencia exacta
+// en ms, un evento de hoy a la noche daba "Mañana".
+const diasHastaEvento = (fechaHora) => diasHasta(fechaHora);
 
 export function getColorByProximidad(fechaHora) {
   const dias = diasHastaEvento(fechaHora);

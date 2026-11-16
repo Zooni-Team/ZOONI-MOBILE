@@ -5,7 +5,7 @@
  */
 
 import { supabase } from '../lib/supabase';
-import { urlsFirmadas } from '../utils/imagenStorage';
+import { urlsFirmadas } from './imagenStorage';
 import { calcularEdadMeses } from '../utils/calcularEdad';
 import { aplicaParaMascota } from '../utils/filtrarPorMascota';
 import { normalizarBusqueda } from '../utils/texto';

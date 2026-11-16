@@ -17,7 +17,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 import { Avatar, C, Stat } from '../paseador/PaseadorUI';
-import { cuandoTexto, formatoPlata } from '../../services/negocioApi';
+import { cuandoTexto } from '../../domain/negocios';
+import { formatoPlata } from '../../domain/paseos';
 import { calcularEdad } from '../../utils/calcularEdad';
 import { colores } from '../../theme';
 import { formatearFecha } from '../../utils/fechaLocal';

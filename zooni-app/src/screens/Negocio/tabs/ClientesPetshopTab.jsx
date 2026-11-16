@@ -19,9 +19,9 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Avatar, C, Card, Stat, Vacio, sombra } from '../../../components/paseador/PaseadorUI';
 import { EstadoChip, Etiqueta, Segmento } from '../../../components/negocio/NegocioUI';
-import {
-  cuandoTexto, diaTexto, fetchClientesPetshop, formatoPlata, unidadesDe,
-} from '../../../services/negocioApi';
+import { cuandoTexto, diaTexto, unidadesDe } from '../../../domain/negocios';
+import { fetchClientesPetshop } from '../../../services/negocioApi';
+import { formatoPlata } from '../../../domain/paseos';
 import { colores } from '../../../theme';
 import { normalizarBusqueda } from '../../../utils/texto';
 
@@ -189,7 +189,7 @@ const s = StyleSheet.create({
   chat: { width: 40, height: 40, borderRadius: 20, backgroundColor: C.menta, alignItems: 'center', justifyContent: 'center' },
   etiquetas: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
 
-  pedidos: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: colores.gris75, gap: 10 },
+  pedidos: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: colores.gris100, gap: 10 },
   pedido: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   pedidoTitulo: { fontSize: 14, fontWeight: '800', color: C.texto },
 });

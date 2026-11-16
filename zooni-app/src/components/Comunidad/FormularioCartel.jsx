@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { elegirImagen } from '../../utils/elegirImagen';
-import { crearCartel } from '../../api/comunidad';
+import { crearCartel } from '../../services/comunidadApi';
 import { colores } from '../../theme';
 
 const TIPOS = [
@@ -135,12 +135,12 @@ const styles = StyleSheet.create({
   tituloRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
   titulo:  { fontSize: 18, fontWeight: '700', color: colores.texto },
   lbl:     { fontSize: 14, fontWeight: '600', color: colores.texto, marginTop: 12, marginBottom: 6 },
-  input:   { borderWidth: 1.5, borderColor: colores.gris500, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colores.texto },
+  input:   { borderWidth: 1.5, borderColor: colores.gris300, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colores.texto },
   inputErr:{ borderColor: colores.rojo },
   textarea:{ height: 90, textAlignVertical: 'top' },
   errText: { color: colores.rojo, fontSize: 12, marginTop: 4 },
   tiposRow:{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-  tipoBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5, borderColor: colores.gris500 },
+  tipoBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5, borderColor: colores.gris300 },
   tipoBtnOn:    { borderColor: colores.verde, backgroundColor: '#E8FFF2' },
   tipoBtnText:  { fontSize: 12, color: colores.textoSecundario },
   tipoBtnTextOn:{ color: colores.verde, fontWeight: '600' },

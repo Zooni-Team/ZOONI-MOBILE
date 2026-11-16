@@ -17,7 +17,9 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Avatar, C, PillButton, sombra } from '../paseador/PaseadorUI';
 import { ESTADOS_PEDIDO, ESTADOS_TURNO, MEDIOS_PAGO_NEGOCIO } from '../../constants/negocios';
-import { cuandoTexto, formatoPlata, horaTexto, unidadesDe } from '../../services/negocioApi';
+import { cuandoTexto, unidadesDe } from '../../domain/negocios';
+import { horaCorta } from '../../utils/tiempoRelativo';
+import { formatoPlata } from '../../domain/paseos';
 import { colores } from '../../theme';
 
 export function EstadoChip({ estado, tipo = 'turno', style }) {
@@ -69,7 +71,7 @@ export function TurnoCard({ turno, mostrarFecha = false, onPress, onChat, childr
       onPress={onPress} disabled={!onPress} activeOpacity={0.9}>
       <View style={ui.fila}>
         <View style={ui.horaCol}>
-          <Text style={[ui.hora, pasado && turno.estado === 'confirmado' && { color: C.ambar }]}>{horaTexto(turno.fecha)}</Text>
+          <Text style={[ui.hora, pasado && turno.estado === 'confirmado' && { color: C.ambar }]}>{horaCorta(turno.fecha)}</Text>
           <Text style={ui.duracion}>{turno.duracionMin} min</Text>
         </View>
         <Avatar fuente={turno.mascota.visual} nombre={turno.mascota.nombre} size={46} borde />
@@ -251,7 +253,7 @@ const ui = StyleSheet.create({
   acciones: { flexDirection: 'row', gap: 8, marginTop: 12 },
 
   iconoPedido: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.menta, alignItems: 'center', justifyContent: 'center' },
-  lineas: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colores.gris75, gap: 4 },
+  lineas: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colores.gris100, gap: 4 },
   linea: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   lineaCant: { width: 28, fontSize: 13, fontWeight: '800', color: C.teal },
   lineaNombre: { flex: 1, fontSize: 14, color: C.texto },
@@ -262,7 +264,7 @@ const ui = StyleSheet.create({
   dialogoTitulo: { fontSize: 18, fontWeight: '900', color: C.texto },
   dialogoTexto: { fontSize: 14, color: C.texto2, marginTop: 6, lineHeight: 20 },
   input: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12, padding: 12, marginTop: 14,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 12, padding: 12, marginTop: 14,
     fontSize: 15, color: C.texto, minHeight: 70, textAlignVertical: 'top',
   },
 });

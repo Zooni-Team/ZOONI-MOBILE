@@ -26,6 +26,7 @@
 import { calcularEdad } from './calcularEdad.js';
 import { diasHasta, formatearFecha } from './fechaLocal.js';
 import { capitalizar } from './texto.js';
+import { colores } from '../theme/colores.js';
 
 // ─── FORMATO ──────────────────────────────────────────────────────────────────
 
@@ -541,7 +542,7 @@ const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => (
 /** Misma huella que el PDF, en SVG (el emoji 🐾 no siempre está en el dispositivo). */
 const HUELLA_SVG = `
 <svg viewBox="0 0 24 24" width="11" height="11" style="vertical-align:-1px">
-  <g fill="#2DBD72">
+  <g fill="${colores.verde}">
     <ellipse cx="12" cy="16" rx="5" ry="4.2"/>
     <ellipse cx="5.4" cy="8.6" rx="2.1" ry="2.7"/>
     <ellipse cx="9.6" cy="5.6" rx="2.1" ry="2.9"/>
@@ -587,40 +588,40 @@ export function construirHtmlFicha(datos, fotoDataUri = null) {
 <style>
   * { box-sizing: border-box; }
   @page { margin: 0 0 58px; }
-  body { font-family: Helvetica, Arial, sans-serif; margin: 0; color: #2C2C2C; font-size: 11px; }
+  body { font-family: Helvetica, Arial, sans-serif; margin: 0; color: ${colores.texto}; font-size: 11px; }
 
-  .header { background-color: #2DBD72; padding: 24px 34px 16px; color: #FFF; }
+  .header { background-color: ${colores.verde}; padding: 24px 34px 16px; color: #FFF; }
   .header-row { display: flex; align-items: center; }
   .foto { width: 84px; height: 84px; border-radius: 42px; object-fit: cover;
-          border: 3px solid rgba(255,255,255,.9); background: #C8F0D8; margin-right: 20px; flex-shrink: 0; }
+          border: 3px solid rgba(255,255,255,.9); background: ${colores.menta}; margin-right: 20px; flex-shrink: 0; }
   .nombre { margin: 0; font-size: 26px; font-weight: bold; }
   .sub { margin: 5px 0 0; font-size: 12px; opacity: .95; }
   .doc { margin: 8px 0 0; font-size: 9px; letter-spacing: 1.3px; text-transform: uppercase; opacity: .85; }
-  .meta { background: #177046; color: #FFF; padding: 5px 34px; font-size: 8.5px;
+  .meta { background: ${colores.verdeOscuro}; color: #FFF; padding: 5px 34px; font-size: 8.5px;
           display: flex; justify-content: space-between; }
 
   .container { padding: 22px 34px 24px; }
 
   .seccion { margin-top: 18px; }
   .seccion-titulo { font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase;
-                    color: #2DBD72; border-bottom: 2px solid #E4F5EB; padding-bottom: 5px; margin-bottom: 9px; }
-  .contador { display: inline-block; margin-left: 8px; background: #E4F5EB; color: #177046;
+                    color: ${colores.verde}; border-bottom: 2px solid #E4F5EB; padding-bottom: 5px; margin-bottom: 9px; }
+  .contador { display: inline-block; margin-left: 8px; background: #E4F5EB; color: ${colores.verdeOscuro};
               border-radius: 8px; padding: 1px 7px; font-size: 9px; letter-spacing: 0; }
-  .nota { font-size: 8.5px; color: #9A9A9A; font-style: italic; margin: -3px 0 8px; }
+  .nota { font-size: 8.5px; color: ${colores.textoGris}; font-style: italic; margin: -3px 0 8px; }
 
   .datos { display: flex; flex-wrap: wrap; margin: 0 -7px; }
   .dato { width: 50%; padding: 0 7px 11px; }
-  .dato-label { font-size: 8px; letter-spacing: .7px; text-transform: uppercase; color: #9A9A9A; margin-bottom: 2px; }
+  .dato-label { font-size: 8px; letter-spacing: .7px; text-transform: uppercase; color: ${colores.textoGris}; margin-bottom: 2px; }
   .dato-valor { font-size: 12px; font-weight: bold; }
 
   .item { border-left: 3px solid #E4F5EB; padding: 6px 0 6px 11px; margin-bottom: 9px; page-break-inside: avoid; }
   .item-top { margin-bottom: 4px; overflow: hidden; }
   .item-titulo { font-size: 12px; font-weight: bold; }
-  .chip { float: right; font-size: 9px; color: #6B6B6B; background: #F4F4F4; border-radius: 8px; padding: 2px 8px; }
+  .chip { float: right; font-size: 9px; color: ${colores.textoSecundario}; background: #F4F4F4; border-radius: 8px; padding: 2px 8px; }
   .campos { width: 100%; border-collapse: collapse; }
   .campos td { vertical-align: top; padding: 1px 0; }
-  .et { width: 108px; font-size: 8.5px; color: #9A9A9A; text-transform: uppercase; letter-spacing: .3px; }
-  .val { font-size: 10px; color: #6B6B6B; line-height: 1.5; }
+  .et { width: 108px; font-size: 8.5px; color: ${colores.textoGris}; text-transform: uppercase; letter-spacing: .3px; }
+  .val { font-size: 10px; color: ${colores.textoSecundario}; line-height: 1.5; }
 
   .vacio { font-size: 10.5px; color: #AAA; font-style: italic; background: #FAFAFA; border-radius: 8px; padding: 9px 11px; }
   .alerta { margin-top: 8px; font-size: 10px; color: #D64545; }
@@ -628,13 +629,13 @@ export function construirHtmlFicha(datos, fotoDataUri = null) {
 
   .aviso { margin-top: 22px; border: 1px solid #E4F5EB; background: #F7FCF9;
            border-radius: 8px; padding: 12px 14px; page-break-inside: avoid; }
-  .aviso h4 { margin: 0 0 6px; font-size: 10px; color: #177046; letter-spacing: .6px; }
-  .aviso p { margin: 0 0 6px; font-size: 8.8px; color: #6B6B6B; line-height: 1.55; }
+  .aviso h4 { margin: 0 0 6px; font-size: 10px; color: ${colores.verdeOscuro}; letter-spacing: .6px; }
+  .aviso p { margin: 0 0 6px; font-size: 8.8px; color: ${colores.textoSecundario}; line-height: 1.55; }
 
   .pie { position: fixed; bottom: 0; left: 0; right: 0; padding: 8px 34px;
-         border-top: 1px solid #E4F5EB; font-size: 8px; color: #9A9A9A;
+         border-top: 1px solid #E4F5EB; font-size: 8px; color: ${colores.textoGris};
          display: flex; justify-content: space-between; align-items: center; background: #FFF; }
-  .pie b { color: #2DBD72; }
+  .pie b { color: ${colores.verde}; }
 </style></head>
 <body>
   <div class="header">

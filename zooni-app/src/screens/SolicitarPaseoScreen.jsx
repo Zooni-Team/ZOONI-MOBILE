@@ -24,12 +24,13 @@ import HoraPicker from '../components/HoraPicker';
 import { useMisMascotas } from '../hooks/useMisMascotas';
 import { resolveMascotaVisual } from '../constants/petImages';
 import { DIAS_SEMANA, DIA_DE_JS } from '../constants/negocios';
-import { horarioDelDia, minutosDe } from '../services/negocioApi';
-import {
-  MEDIOS_PAGO, crearSolicitudPaseo, direccionDe, ubicarDireccion, fetchPaseadorPublico, formatoDuracion, formatoPlata, precioPara,
-  serviciosDe,
-} from '../services/paseadorApi';
+import { horarioDelDia, minutosDe } from '../domain/negocios';
+import { MEDIOS_PAGO, formatoDuracion, formatoPlata, precioPara, serviciosDe } from '../domain/paseos';
+import { crearSolicitudPaseo, fetchPaseadorPublico } from '../services/paseadorApi';
+import { direccionDe, ubicarDireccion } from '../services/geocodificacion';
 import { colores, sombras } from '../theme';
+import { formatearFecha } from '../utils/fechaLocal';
+import { horaCorta } from '../utils/tiempoRelativo';
 
 function proximaHoraRedonda() {
   const d = new Date(Date.now() + 2 * 3600 * 1000);
@@ -37,8 +38,6 @@ function proximaHoraRedonda() {
   return d;
 }
 
-const fechaTexto = (d) => d.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
-const horaTexto = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
 /** ¿El paseo (desde `fecha`, `duracion` minutos) cae fuera de los horarios del paseador? */
 function fueraDeHorario(horarios, fecha, duracion) {
@@ -242,11 +241,11 @@ export default function SolicitarPaseoScreen() {
           <View style={s.fila}>
             <TouchableOpacity style={[s.campo, { flex: 1.6 }]} onPress={() => setPicker('fecha')}>
               <Ionicons name="calendar-outline" size={18} color={colores.verde} />
-              <Text style={s.campoTxt} numberOfLines={1}>{fechaTexto(fecha)}</Text>
+              <Text style={s.campoTxt} numberOfLines={1}>{formatearFecha(fecha, 'diaSemana')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[s.campo, { flex: 1 }]} onPress={() => setPicker('hora')}>
               <Ionicons name="time-outline" size={18} color={colores.verde} />
-              <Text style={s.campoTxt}>{horaTexto(fecha)}</Text>
+              <Text style={s.campoTxt}>{horaCorta(fecha)}</Text>
             </TouchableOpacity>
           </View>
 

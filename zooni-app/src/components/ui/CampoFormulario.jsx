@@ -51,7 +51,7 @@ export const estilosCampo = StyleSheet.create({
   campo: { marginBottom: 14 },
   label: { fontSize: 13, fontWeight: '700', color: C.texto, marginBottom: 6 },
   input: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: C.texto, backgroundColor: colores.blanco,
   },
   inputError: { borderColor: C.rojo },

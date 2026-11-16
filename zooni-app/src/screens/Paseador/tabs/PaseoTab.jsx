@@ -38,9 +38,21 @@ import PaseoCard from '../../../components/paseador/PaseoCard';
 import PagoFormModal from '../../../components/paseador/PagoFormModal';
 import ModalidadCobro from '../../../components/paseador/ModalidadCobro';
 import {
-  COMISION_ZOONI, fetchCuentaCorriente, fetchMisPaseos,
-  formatoDistancia, formatoPlata, formatoTimer, guardarModalidadCobro, formatoTiempoPaseado,
-  registrarPago, RETOMAR_MINUTOS, retomarPaseo, segundosDePaseo, sePuedeRetomar,
+  COMISION_ZOONI,
+  formatoDistancia,
+  formatoPlata,
+  formatoTimer,
+  formatoTiempoPaseado,
+  RETOMAR_MINUTOS,
+  segundosDePaseo,
+  sePuedeRetomar,
+} from '../../../domain/paseos';
+import {
+  fetchCuentaCorriente,
+  fetchMisPaseos,
+  guardarModalidadCobro,
+  registrarPago,
+  retomarPaseo,
 } from '../../../services/paseadorApi';
 import { confirmar } from '../../../utils/dialogo';
 import { colores } from '../../../theme';
@@ -556,7 +568,7 @@ const s = StyleSheet.create({
   timer: { fontSize: 44, fontWeight: '900', color: C.texto, fontVariant: ['tabular-nums'] },
   distancia: { fontSize: 30, fontWeight: '900', color: C.texto, fontVariant: ['tabular-nums'] },
   numEtiqueta: { fontSize: 12, fontWeight: '700', color: C.texto2, textTransform: 'uppercase', letterSpacing: 0.5 },
-  numDivisor: { width: 1, alignSelf: 'stretch', backgroundColor: colores.gris200, marginHorizontal: 14 },
+  numDivisor: { width: 1, alignSelf: 'stretch', backgroundColor: colores.gris100, marginHorizontal: 14 },
 
   barra: { height: 8, borderRadius: 4, backgroundColor: C.menta, marginTop: 14, overflow: 'hidden' },
   barraFill: { height: 8, borderRadius: 4, backgroundColor: C.teal },
@@ -569,7 +581,7 @@ const s = StyleSheet.create({
   grupoLista: { maxHeight: 290 },
   fila: {
     flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 8,
-    borderRadius: 14, borderBottomWidth: 1, borderBottomColor: colores.gris75,
+    borderRadius: 14, borderBottomWidth: 1, borderBottomColor: colores.gris100,
   },
   filaElegida: { backgroundColor: '#F2FBF5' },
   filaTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -617,5 +629,5 @@ const s = StyleSheet.create({
   cobroBotones: { flexDirection: 'row', gap: 10, marginTop: 12 },
   cobroOk: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cobroOkTxt: { flex: 1, fontSize: 14, fontWeight: '700', color: C.texto },
-  stats: { flexDirection: 'row', marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: colores.gris150 },
+  stats: { flexDirection: 'row', marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: colores.gris100 },
 });

@@ -39,21 +39,7 @@ import { colores } from '../theme';
 import { formatearFecha } from '../utils/fechaLocal';
 import { capitalizar } from '../utils/texto';
 
-// ─── DATOS DEMO (sin backend conectado — mismos datos que Vacunas/Tratamientos) ──
-
 // ─── COMPONENTES ─────────────────────────────────────────────────────────────
-
-/** PetIllustration — Imagen de la mascota, sin sombra (evita el artefacto rectangular). */
-function PetIllustration({ source, label }) {
-  return (
-    <Image
-      source={source}
-      style={s.heroImg}
-      resizeMode="contain"
-      accessibilityLabel={label}
-    />
-  );
-}
 
 function FilaDato({ icono, label, valor, onEditar, editando, children }) {
   return (
@@ -362,7 +348,8 @@ export default function FichaMedicaScreen() {
             {loading ? (
               <SkeletonBloque width={110} height={110} borderRadius={20} />
             ) : (
-              <PetIllustration source={petImg} label={`Ilustración de ${m.nombre}`} />
+              // Sin sombra: sobre un PNG transparente dibuja un rectángulo.
+              <Image source={petImg} style={s.heroImg} resizeMode="contain" accessibilityLabel={`Ilustración de ${m.nombre}`} />
             )}
 
             {/* Flechas para alternar entre mascotas, igual que en el Home.

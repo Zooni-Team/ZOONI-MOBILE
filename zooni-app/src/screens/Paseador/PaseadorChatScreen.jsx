@@ -20,8 +20,12 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { Avatar, C } from '../../components/paseador/PaseadorUI';
 import { getCurrentUserId } from '../../config/session';
+import { cuandoDe } from '../../domain/paseos';
 import {
-  cuandoDe, enviarMensajePaseo, fetchPaseo, getMensajesPaseo, marcarLeidosPaseo,
+  enviarMensajePaseo,
+  fetchPaseo,
+  getMensajesPaseo,
+  marcarLeidosPaseo,
 } from '../../services/paseadorApi';
 import { etiquetaDia, horaCorta, mismoDia } from '../../utils/tiempoRelativo';
 import { colores } from '../../theme';

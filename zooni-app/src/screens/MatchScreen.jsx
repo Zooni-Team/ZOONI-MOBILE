@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.75)',
   },
   miPerfilFoto: {
-    width: 28, height: 28, borderRadius: 14, backgroundColor: colores.gris200,
+    width: 28, height: 28, borderRadius: 14, backgroundColor: colores.gris100,
     borderWidth: 1.5, borderColor: colores.verde,
   },
   miPerfilFotoVacia: { alignItems: 'center', justifyContent: 'center' },

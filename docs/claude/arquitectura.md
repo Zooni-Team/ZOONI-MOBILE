@@ -24,16 +24,19 @@ utils/  ·  domain/  ·  constants/                    lógica pura → utilidad
 - **services/**: única capa que habla con Supabase. Un archivo por dominio.
   Comparten `comun.js` (errores, notificaciones) y `perfilesPublicos.js`
   (datos de otras personas). Ver [servicios.md](servicios.md).
-- **domain/**: reglas de negocio puras (sin base ni UI), probables sin conexión.
-  Hoy: `paseos.js`.
+- **domain/**: reglas de negocio puras (sin base ni UI), probables sin conexión:
+  `paseos.js` y `negocios.js`.
+- **hooks/**: la carga de datos de una pantalla (`useHome`, `useCalendario`,
+  `useEventosPublicos`, `useRegistrosSalud`) y estado reutilizable. Así la
+  pantalla sólo dibuja.
 - **utils/**: helpers puros compartidos. **constants/**: catálogos fijos.
-  **hooks/**: estado reutilizable entre pantallas.
 - **theme/**: sistema de diseño ([estilos.md](estilos.md)).
 - **config/session.js**: el `Id_User` de la sesión de Supabase Auth.
 
 ## De la pantalla a la base (ejemplo: pedir un turno)
 
-1. `ReservarTurnoScreen` arma los datos y llama `negocioApi.crearTurno(...)`.
+1. `ReservarTurnoScreen` arma los datos y llama `crearTurno(...)`
+   (`services/negocioApi` → `services/negocio/turnos.js`).
 2. `crearTurno` revisa disponibilidad (para avisar rápido) e inserta en
    `negocio_turnos` con el cliente de `lib/supabase.js`, que agrega el **JWT**.
 3. Postgres aplica **RLS** (`turnos_pedir`: sólo podés pedir turnos a tu nombre
@@ -47,8 +50,9 @@ utils/  ·  domain/  ·  constants/                    lógica pura → utilidad
 | Carpeta | Qué es |
 |---|---|
 | `zooni-app/` | La app. `src/` (código), `tests/`, `scripts/` (verificaciones), `wwwroot/img` (ilustraciones) |
-| `supabase/SUPABASE_PEGAR_TODO.sql` | Esquema completo, en orden. Única fuente de verdad de la base |
-| `supabase/functions/` | Edge Functions: `zoonivet-chat`, `migrar-cuenta` |
-| `supabase/scripts/` · `tests/` | Probar el SQL completo en Postgres local (`probar-esquema.mjs`, `pruebas_rls.sql`) |
+| `supabase/SUPABASE_PEGAR_TODO.sql` + `MIGRACION_064…068_*.sql` | La base completa: el primero y después las migraciones por número ([base-de-datos](base-de-datos.md)) |
+| `supabase/functions/` | Edge Function `zoonivet-chat` |
+| `supabase/scripts/` · `tests/` | `probar-esquema.mjs` (la secuencia en Postgres local + pruebas) y `limpiar-storage.mjs` (archivos huérfanos) |
+| `api/` | Función de Vercel `lugares.js` (mapa de Servicios) |
 | `docs/claude/` | Esta documentación |
 | `prompts/` · `Imagenes-Figma/` | Especificaciones y diseños originales de cada pantalla |

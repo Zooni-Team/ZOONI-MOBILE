@@ -402,12 +402,12 @@ const s = StyleSheet.create({
   },
   cardHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colores.gris150, marginBottom: 14,
+    paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colores.gris100, marginBottom: 14,
   },
   cardHeaderTxt: { flex: 1, fontSize: 15, fontWeight: '700', color: colores.verde },
 
   input: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
     fontSize: 15, color: colores.texto, marginBottom: 18,
   },
@@ -433,7 +433,7 @@ const s = StyleSheet.create({
   },
 
   dropdown: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     marginBottom: 12,

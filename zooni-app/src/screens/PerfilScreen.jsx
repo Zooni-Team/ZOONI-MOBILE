@@ -49,7 +49,7 @@ import { formatearFecha } from '../utils/fechaLocal';
 // ─── SKELETON ─────────────────────────────────────────────────────────────────
 
 function Skel({ w, h, r = 8, style }) {
-  return <Skeleton min={0.4} style={[{ width: w, height: h, borderRadius: r, backgroundColor: colores.gris400 }, style]} />;
+  return <Skeleton min={0.4} style={[{ width: w, height: h, borderRadius: r, backgroundColor: colores.gris300 }, style]} />;
 }
 
 // ─── AVISO INLINE (banner verde dentro del perfil, justo antes de los tabs) ───
@@ -358,7 +358,7 @@ export default function PerfilScreen() {
           {/* ── Contenido ── */}
           {loading ? (
             <View style={s.grid}>
-              {[0,1,2,3,4,5].map(i=><View key={i} style={[s.gridCell, {backgroundColor:colores.gris400}]}/>)}
+              {[0,1,2,3,4,5].map(i=><View key={i} style={[s.gridCell, {backgroundColor:colores.gris300}]}/>)}
             </View>
           ) : pubs.length === 0 ? (
             <View style={s.empty}>
@@ -534,7 +534,7 @@ const s = StyleSheet.create({
   avatarWrap:  { alignItems:'center', marginTop:8 },
   avatarImg:   { width:84, height:84, borderRadius:42, resizeMode:'cover',
                  shadowColor:colores.negro, shadowOffset:{width:0,height:2}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
-  avatarFallback:{ width:84, height:84, borderRadius:42, backgroundColor:colores.gris500,
+  avatarFallback:{ width:84, height:84, borderRadius:42, backgroundColor:colores.gris300,
                    alignItems:'center', justifyContent:'center',
                    shadowColor:colores.negro, shadowOffset:{width:0,height:2}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
   nombreBlock:  { alignItems:'center', marginTop:12, marginBottom:20, paddingHorizontal:20 },
@@ -552,7 +552,7 @@ const s = StyleSheet.create({
   btnEditarTxt:{ fontSize:15, fontWeight:'700', color:colores.blanco },
   btnConfig:   { backgroundColor:colores.blanco, borderRadius:30, height:48,
                  alignItems:'center', justifyContent:'center',
-                 borderWidth:1.5, borderColor:colores.gris500, marginBottom:10 },
+                 borderWidth:1.5, borderColor:colores.gris300, marginBottom:10 },
   btnConfigTxt:{ fontSize:15, fontWeight:'700', color:colores.texto },
   btnPublicar: { backgroundColor:colores.amarillo, borderRadius:30, height:48,
                  alignItems:'center', justifyContent:'center',
@@ -562,7 +562,7 @@ const s = StyleSheet.create({
   // Stats
   statsRow:    { flexDirection:'row', marginTop:24, marginBottom:16, alignItems:'center' },
   statCol:     { flex:1, alignItems:'center' },
-  statSep:     { width:1, height:30, backgroundColor:colores.gris200 },
+  statSep:     { width:1, height:30, backgroundColor:colores.gris100 },
   statNum:     { fontSize:18, fontWeight:'700', color:colores.texto },
   statLbl:     { fontSize:12, color:colores.textoSecundario, marginTop:2, textAlign:'center' },
 
@@ -578,7 +578,7 @@ const s = StyleSheet.create({
   toastTxt:    { fontSize:14, fontWeight:'700', color:colores.blanco, flex:1 },
 
   // Separador tabs
-  tabSep:      { height:1, backgroundColor:colores.gris200 },
+  tabSep:      { height:1, backgroundColor:colores.gris100 },
 
   // Tabs
   tabsRow:     { flexDirection:'row', marginBottom:12 },
@@ -591,14 +591,14 @@ const s = StyleSheet.create({
   grid:        { flexDirection:'row', flexWrap:'wrap', gap:2, backgroundColor:'transparent' },
   gridCell:    { width:'33%', aspectRatio:1, overflow:'hidden' },
   gridImg:     { width:'100%', height:'100%', resizeMode:'cover' },
-  gridPH:      { backgroundColor:colores.gris150, alignItems:'center', justifyContent:'center' },
+  gridPH:      { backgroundColor:colores.gris100, alignItems:'center', justifyContent:'center' },
 
   // Lista
   lista:       { gap:12 },
   listaCard:   { backgroundColor:colores.blanco, borderRadius:12, overflow:'hidden',
                  shadowColor:colores.negro, shadowOffset:{width:0,height:2}, shadowOpacity:0.07, shadowRadius:6, elevation:3 },
   listaImg:    { width:'100%', height:200, resizeMode:'cover' },
-  listaImgPH:  { backgroundColor:colores.gris150, alignItems:'center', justifyContent:'center' },
+  listaImgPH:  { backgroundColor:colores.gris100, alignItems:'center', justifyContent:'center' },
   listaDesc:   { fontSize:14, color:colores.texto, padding:12, paddingBottom:4 },
   listaFecha:  { fontSize:12, color:colores.textoTenue, paddingHorizontal:12, paddingBottom:12 },
 
@@ -612,7 +612,7 @@ const s = StyleSheet.create({
 
   // Selector imagen publicación
   imgSel:      { width:'100%', height:130, borderRadius:12,
-                 backgroundColor:colores.gris50, borderWidth:1.5, borderColor:colores.gris500,
+                 backgroundColor:colores.gris50, borderWidth:1.5, borderColor:colores.gris300,
                  borderStyle:'dashed', overflow:'hidden', marginBottom:14 },
   imgSelErr:   { borderColor:colores.rojo },
   imgPreview:  { width:'100%', height:'100%', resizeMode:'cover' },
@@ -630,14 +630,14 @@ const s = StyleSheet.create({
                      alignItems:'center', justifyContent:'center',
                      shadowColor:colores.negro, shadowOffset:{width:0,height:3}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
   btnPublicarModalTxt:{ fontSize:15, fontWeight:'700', color:colores.texto },
-  btnCancelar:     { width:'100%', height:44, borderRadius:30, backgroundColor:colores.gris300,
+  btnCancelar:     { width:'100%', height:44, borderRadius:30, backgroundColor:colores.gris200,
                      alignItems:'center', justifyContent:'center', marginTop:10 },
   btnCancelarTxt:  { fontSize:15, fontWeight:'700', color:colores.texto },
 
   // Visor de publicación
   pvRoot:    { flex:1, backgroundColor:colores.blanco },
   pvHeader:  { height:56, flexDirection:'row', alignItems:'center', justifyContent:'space-between',
-               paddingHorizontal:12, borderBottomWidth:1, borderBottomColor:colores.gris200,
+               paddingHorizontal:12, borderBottomWidth:1, borderBottomColor:colores.gris100,
                marginTop: Platform.OS === 'android' ? 24 : 0 },
   pvAutor:   { flexDirection:'row', alignItems:'center', gap:10, flex:1 },
   pvAvatar:  { width:36, height:36, borderRadius:18, borderWidth:1.5, borderColor:colores.verde },
@@ -647,7 +647,7 @@ const s = StyleSheet.create({
   pvClose:   { width:40, height:40, alignItems:'center', justifyContent:'center' },
   pvScroll:  { paddingBottom:40 },
   pvImg:     { width:'100%', height:380, backgroundColor:colores.negro },
-  pvImgPH:   { backgroundColor:colores.gris150, alignItems:'center', justifyContent:'center' },
+  pvImgPH:   { backgroundColor:colores.gris100, alignItems:'center', justifyContent:'center' },
   pvDesc:    { fontSize:14, color:colores.texto, lineHeight:20, paddingHorizontal:16, paddingTop:14 },
   pvDescUser:{ fontWeight:'700' },
   pvFecha:   { fontSize:12, color:colores.textoTenue, paddingHorizontal:16, paddingTop:8 },

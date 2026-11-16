@@ -24,7 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Avatar, C, PillButton } from './PaseadorUI';
 import ModalidadCobro from './ModalidadCobro';
-import { formatoTiempoPaseado, formatoPlata, medioDePago } from '../../services/paseadorApi';
+import { formatoTiempoPaseado, formatoPlata, medioDePago } from '../../domain/paseos';
 import { colores } from '../../theme';
 import { formatearFecha } from '../../utils/fechaLocal';
 
@@ -218,7 +218,7 @@ const s = StyleSheet.create({
   seccion: { fontSize: 16, fontWeight: '900', color: C.texto, marginTop: 22, marginBottom: 10 },
   mov: {
     flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.card, borderRadius: 16,
-    padding: 12, marginBottom: 8, borderWidth: 1, borderColor: colores.gris150,
+    padding: 12, marginBottom: 8, borderWidth: 1, borderColor: colores.gris100,
   },
   movIcono: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   movTitulo: { fontSize: 14, fontWeight: '800', color: C.texto },

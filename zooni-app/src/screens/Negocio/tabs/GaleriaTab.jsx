@@ -172,7 +172,7 @@ const s = StyleSheet.create({
   dialogoTitulo: { fontSize: 18, fontWeight: '900', color: C.texto, marginBottom: 12 },
   previa: { width: '100%', aspectRatio: 1, borderRadius: 16, backgroundColor: C.menta },
   input: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
     marginTop: 12, fontSize: 15, color: C.texto,
   },
 

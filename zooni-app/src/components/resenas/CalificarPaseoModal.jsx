@@ -22,9 +22,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { elegirMedios } from '../../utils/elegirImagen';
 
-import {
-  ASPECTOS_RESENA, MEDIA_RESENA_MAX, PREGUNTAS_RESENA, calificarPaseo, opinarPaseador,
-} from '../../services/paseadorApi';
+import { ASPECTOS_RESENA, MEDIA_RESENA_MAX, PREGUNTAS_RESENA } from '../../domain/paseos';
+import { calificarPaseo, opinarPaseador } from '../../services/paseadorApi';
 import { alerta } from '../../utils/dialogo';
 import { MiniaturaMedia, VisorMedia } from './MediaResena';
 import { colores } from '../../theme';
@@ -207,7 +206,7 @@ const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colores.blanco },
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: colores.gris250,
+    borderBottomWidth: 1, borderBottomColor: colores.gris100,
   },
   volver: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
   titulo: { fontSize: 18, fontWeight: '800', color: colores.texto },
@@ -225,14 +224,14 @@ const s = StyleSheet.create({
   preguntaTxt: { fontSize: 14, color: colores.texto, fontWeight: '600' },
   siNo: { flexDirection: 'row', gap: 8, marginTop: 8 },
   siNoBtn: {
-    flex: 1, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: colores.gris500,
+    flex: 1, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: colores.gris300,
     alignItems: 'center', justifyContent: 'center',
   },
   siNoOn: { backgroundColor: colores.verde, borderColor: colores.verde },
   siNoTxt: { fontSize: 14, fontWeight: '800', color: colores.texto },
 
   input: {
-    minHeight: 110, borderWidth: 1, borderColor: colores.gris500, borderRadius: 14, padding: 12,
+    minHeight: 110, borderWidth: 1, borderColor: colores.gris300, borderRadius: 14, padding: 12,
     fontSize: 15, color: colores.texto, textAlignVertical: 'top',
   },
   contador: { fontSize: 11, color: colores.textoSecundario, textAlign: 'right', marginTop: 4 },
