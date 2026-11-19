@@ -4,13 +4,16 @@ Ordenado por prioridad. Lo hecho en la última pasada está al final.
 
 ## 1. Para que lo hecho funcione (en este orden)
 
-1. **Base de datos** — Supabase → SQL Editor, pegar cada archivo entero → Run,
-   en orden: `supabase/MIGRACION_064_SOBRE_063.sql`, `…065…`, `…066…`,
-   `…067…`, `…068_ARCHIVOS_HUERFANOS.sql` y por último
+1. ~~**Base de datos**~~ — **hecho el 19/11/2026**: la base de producción tiene
+   la secuencia completa, `064` → `068` + `070`. Verificado con
+   `SELECT to_regclass('public.mascota_publica')`.
+
+   Para una base nueva (o si hay que rehacerla), el orden es:
+   `supabase/SUPABASE_PEGAR_TODO.sql` y después, cada uno entero,
+   `MIGRACION_064_SOBRE_063.sql`, `…065…`, `…066…`, `…067…`,
+   `…068_ARCHIVOS_HUERFANOS.sql` y por último
    `…070_ENDURECIMIENTO_SEGURIDAD.sql`. Cada uno se fija que esté el anterior,
-   verifica lo que hizo y es idempotente: volver a pegar uno que ya estaba no
-   rompe nada. Si la base ya tiene hasta la 068, alcanza con la 070.
-   (Base vacía: primero `supabase/SUPABASE_PEGAR_TODO.sql` y después esos seis.)
+   verifica lo que hizo y es idempotente.
 
    ⚠ **La 070 va última a propósito.** Endurece políticas que la 066 restituye
    permisivas (la que corre al final es la que queda) y la app ya depende de
@@ -18,6 +21,12 @@ Ordenado por prioridad. Lo hecho en la última pasada está al final.
    lee por la vista `mascota_publica`. Correr la app nueva contra una base sin
    la 070 funciona; la 070 sin la app nueva, no (las pantallas de Match y
    Comunidad dejarían de traer mascotas).
+
+   Lección de esta vez: al sacar el bloque 070 de adentro del archivo base
+   perdió el `DROP` masivo de políticas que corría más arriba, y chocó contra
+   las que reaplica la 066 (`42710: policy already exists`). Si en el futuro se
+   mueve SQL de un archivo a otro, correr `probar-esquema.mjs` **antes** de
+   pegarlo: eso lo agarra en segundos.
 2. **ZooniVet** — la función cambió (nombre leído de la base, cupo diario,
    tiempo máximo, CORS por lista de orígenes, errores sin detalles internos):
    ```bash
