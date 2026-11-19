@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
+import { elegirImagen } from '../utils/elegirImagen';
 
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import SelectorMascota from '../components/SelectorMascota';
@@ -32,7 +33,6 @@ import { setFotoPrincipalMascota } from '../services/petsApi';
 import { activarMascota } from '../services/api';
 import { resolveMascotaVisual } from '../constants/petImages';
 import { alerta } from '../utils/dialogo';
-import { elegirImagen } from '../utils/elegirImagen';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
 import { getMatchCardLayout } from '../utils/matchLayout';
@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.75)',
   },
   miPerfilFoto: {
-    width: 28, height: 28, borderRadius: 14, backgroundColor: colores.gris200,
+    width: 28, height: 28, borderRadius: 14, backgroundColor: colores.gris100,
     borderWidth: 1.5, borderColor: colores.verde,
   },
   miPerfilFotoVacia: { alignItems: 'center', justifyContent: 'center' },

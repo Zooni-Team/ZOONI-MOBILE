@@ -26,12 +26,12 @@ import {
   ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { elegirImagen } from '../../utils/elegirImagen';
 
 import { resolveMascotaVisual } from '../../constants/petImages';
 import { crearPerfilMatchMascota } from '../../services/matchApi';
 import { setFotoPrincipalMascota } from '../../services/petsApi';
 import { alerta } from '../../utils/dialogo';
-import { elegirImagen } from '../../utils/elegirImagen';
 import { colores } from '../../theme';
 
 const PASOS = ['foto', 'descripcion', 'visibilidad'];
@@ -52,7 +52,7 @@ export default function PetMatchOnboarding({ mascota, onListo, onCancelar }) {
   const fotoMostrada = fotoUri ?? fotoExistente;
 
   const elegirFoto = async (desdeCamara) => {
-    const uri = await elegirImagen({ origen: desdeCamara ? 'camara' : 'galeria' });
+    const uri = await elegirImagen({ camara: desdeCamara });
     if (uri) { setFotoUri(uri); setError(null); }
   };
 

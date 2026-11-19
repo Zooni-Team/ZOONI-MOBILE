@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { areaBuscable } from '../../services/lugaresApi';
-import { formatoPlata, serviciosDe } from '../../services/paseadorApi';
+import { formatoPlata, serviciosDe } from '../../domain/paseos';
 import { colores } from '../../theme';
 
 const FILTROS = [
@@ -145,9 +145,9 @@ const styles = StyleSheet.create({
   chipOn:      { backgroundColor: colores.verde },
   chipText:    { fontSize: 13, color: colores.textoSecundario },
   chipTextOn:  { color: colores.blanco, fontWeight: '700' },
-  item:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colores.gris150 },
+  item:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colores.gris100 },
   iconCircle:  { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  avatar:      { borderWidth: 2, borderColor: colores.verde, backgroundColor: colores.gris250 },
+  avatar:      { borderWidth: 2, borderColor: colores.verde, backgroundColor: colores.gris100 },
   info:        { flex: 1 },
   nombre:      { fontWeight: '700', fontSize: 14, color: colores.texto },
   dir:         { fontSize: 12, color: colores.textoSecundario, marginTop: 2 },

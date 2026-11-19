@@ -3,7 +3,7 @@
  *
  * La IDENTIDAD es la sesión de Supabase Auth (src/lib/supabase.js): un JWT
  * firmado por Supabase que viaja en cada consulta y que la base traduce a un
- * "Id_User" con usuario_actual() (060_auth_supabase.sql). Las políticas de RLS
+ * "Id_User" con usuario_actual() (sección 060 de SUPABASE_PEGAR_TODO.sql). Las políticas de RLS
  * deciden con eso, no con nada que diga la app.
  *
  * Este módulo sólo guarda en memoria el Id_User de esa sesión, para que los

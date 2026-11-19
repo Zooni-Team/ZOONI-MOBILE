@@ -21,8 +21,14 @@ import { C, Card, PillButton, Vacio, sombra } from '../../../components/paseador
 import { Etiqueta } from '../../../components/negocio/NegocioUI';
 import ItemFormModal from '../../../components/negocio/ItemFormModal';
 import {
-  agregarSugeridos, ajustarStock, borrarItem, fetchItems, formatoPlata, guardarItem, textoPrecioItem,
+  agregarSugeridos,
+  ajustarStock,
+  borrarItem,
+  fetchItems,
+  guardarItem,
 } from '../../../services/negocioApi';
+import { formatoPlata } from '../../../domain/paseos';
+import { textoPrecioItem } from '../../../domain/negocios';
 import { colores } from '../../../theme';
 import { normalizarBusqueda } from '../../../utils/texto';
 
@@ -276,7 +282,7 @@ const s = StyleSheet.create({
   sugeridos: { marginBottom: 8 },
   sugTitulo: { fontSize: 17, fontWeight: '900', color: C.texto },
   sugTxt: { fontSize: 13, color: C.texto2, marginTop: 4, marginBottom: 8, lineHeight: 18 },
-  sugFila: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: colores.gris75 },
+  sugFila: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: colores.gris100 },
   sugNombre: { fontSize: 14, fontWeight: '800', color: C.texto },
   sugDet: { fontSize: 12, color: C.texto2 },
   sugPrecio: { fontSize: 13, fontWeight: '800', color: C.texto },

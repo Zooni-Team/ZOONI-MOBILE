@@ -19,8 +19,7 @@ export default function SimpleRangeSlider({
   const valueFromX = useCallback((x) => {
     if (trackWidth <= 1) return min;
     const ratio = Math.max(0, Math.min(1, x / trackWidth));
-    const valor = Math.round(min + ratio * (max - min));
-    return Math.max(min, Math.min(max, valor));
+    return Math.max(min, Math.min(max, Math.round(min + ratio * (max - min))));
   }, [trackWidth, min, max]);
 
   const panResponder = useMemo(
@@ -99,7 +98,7 @@ const styles = StyleSheet.create({
   trackHit: { height: 40, justifyContent: 'center', width: '100%' },
   track: {
     height: 6,
-    backgroundColor: colores.gris400,
+    backgroundColor: colores.gris300,
     borderRadius: 3,
     width: '100%',
   },

@@ -19,7 +19,7 @@ import {
   PET_TYPE_OPTIONS,
   INTEREST_OPTIONS,
   GENDER_OPTIONS,
-} from '../data/matchDemo';
+} from '../constants/match';
 import {
   fetchMatchFiltros,
   putMatchFiltros,
@@ -109,15 +109,15 @@ export default function MatchFiltersScreen() {
     });
   };
 
-  const handleReset = () => {
-    setFiltros({ ...DEFAULT_FILTROS });
-  };
+  // Sólo los filtros. Antes además borraba TODOS los votos de la mascota
+  // (un atajo de cuando se probaba la app) y se perdían los "me gusta" reales.
+  const handleReset = () => setFiltros({ ...DEFAULT_FILTROS });
 
   const handleApply = async () => {
     try {
       await putMatchFiltros(filtros);
     } catch {
-      /* demo/local igual aplica en catch de matchApi */
+      // Se guardan en el dispositivo; si eso falla, valen igual para esta sesión.
     }
     markMatchReloadFromFilters();
     if (navigation.canGoBack()) {
@@ -171,7 +171,7 @@ export default function MatchFiltersScreen() {
             <Switch
               value={filtros.solo_cercanos}
               onValueChange={(solo_cercanos) => update({ solo_cercanos })}
-              trackColor={{ false: colores.gris500, true: colores.verdeBurbuja }}
+              trackColor={{ false: colores.gris300, true: colores.verdeBurbuja }}
               thumbColor={filtros.solo_cercanos ? colores.verde : colores.blanco}
             />
           </View>

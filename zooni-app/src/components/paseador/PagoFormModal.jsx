@@ -18,7 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { C, PillButton } from './PaseadorUI';
 import FechaPicker from '../FechaPicker';
-import { MEDIOS_PAGO, aCentavos, formatoPlata } from '../../services/paseadorApi';
+import { MEDIOS_PAGO, aCentavos, formatoPlata } from '../../domain/paseos';
 import { parseDecimal, sanitizarDecimal } from '../../utils/sanitizar';
 import { confirmar } from '../../utils/dialogo';
 import { colores } from '../../theme';
@@ -159,13 +159,13 @@ const s = StyleSheet.create({
   sheet: {
     backgroundColor: colores.blanco, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 30,
   },
-  handle: { width: 44, height: 5, borderRadius: 3, backgroundColor: colores.gris400, alignSelf: 'center', marginBottom: 14 },
+  handle: { width: 44, height: 5, borderRadius: 3, backgroundColor: colores.gris300, alignSelf: 'center', marginBottom: 14 },
   titulo: { fontSize: 20, fontWeight: '900', color: C.texto },
   sub: { fontSize: 13, color: C.texto2, marginTop: 2 },
   label: { fontSize: 13, fontWeight: '700', color: C.texto, marginTop: 16, marginBottom: 8 },
 
   montoBox: {
-    flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colores.gris500, borderRadius: 14,
+    flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colores.gris300, borderRadius: 14,
     paddingHorizontal: 14, backgroundColor: C.fondo,
   },
   signo: { fontSize: 26, fontWeight: '900', color: C.texto, marginRight: 4 },
@@ -184,12 +184,12 @@ const s = StyleSheet.create({
   medioTxt: { fontSize: 13, fontWeight: '700', color: C.texto },
 
   fecha: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: colores.gris500,
+    flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: colores.gris300,
     borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
   },
   fechaTxt: { fontSize: 15, color: C.texto, fontWeight: '600' },
   nota: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
     fontSize: 15, color: C.texto,
   },
   error: { fontSize: 13, color: C.rojo, marginTop: 12, textAlign: 'center' },

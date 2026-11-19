@@ -24,7 +24,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 import { C } from './PaseadorUI';
-import { barrioDe, buscarLugar } from '../../services/paseadorApi';
+import { barrioDe, buscarLugar } from '../../services/geocodificacion';
 import { colores } from '../../theme';
 
 const BASE_DEFAULT = { lat: -34.6189, lng: -58.4380 }; // Caballito
@@ -55,8 +55,8 @@ const MAPA_HTML = `<!DOCTYPE html><html><head>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
   integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous"/>
 <style>
-html,body,#map{margin:0;padding:0;width:100%;height:100%;background:#E8F5EC}
-.centro{width:40px;height:40px;border-radius:50%;background:#2DBD72;border:3px solid #fff;
+html,body,#map{margin:0;padding:0;width:100%;height:100%;background:${colores.mentaSuave}}
+.centro{width:40px;height:40px;border-radius:50%;background:${colores.verde};border:3px solid #fff;
   display:flex;align-items:center;justify-content:center;font-size:18px;
   box-shadow:0 2px 8px rgba(0,0,0,.3);cursor:grab}
 .leaflet-control-attribution{font-size:9px}
@@ -82,7 +82,7 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%;background:#E8F5EC}
   }
   function dibujar(lat,lng){
     if(!circulo){
-      circulo=L.circle([lat,lng],{radius:radio,color:'#2DBD72',weight:3,fillColor:'#2DBD72',fillOpacity:.18}).addTo(map);
+      circulo=L.circle([lat,lng],{radius:radio,color:'${colores.verde}',weight:3,fillColor:'${colores.verde}',fillOpacity:.18}).addTo(map);
       centro=L.marker([lat,lng],{icon:icon,draggable:true,zIndexOffset:1000}).addTo(map);
       // Mientras se arrastra, el círculo sigue al centro
       centro.on('drag',function(e){circulo.setLatLng(e.target.getLatLng())});
@@ -325,7 +325,7 @@ export default function ZonaMapaPicker({ valor, onCambio, baseTexto, conRadio = 
 
 const s = StyleSheet.create({
   buscador: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: colores.gris500,
+    flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: colores.gris300,
     borderRadius: 12, paddingHorizontal: 12, backgroundColor: colores.blanco, marginBottom: 10,
   },
   buscadorInput: { flex: 1, paddingVertical: 11, fontSize: 15, color: C.texto },
@@ -347,7 +347,7 @@ const s = StyleSheet.create({
   },
   radioInputWrap: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, height: 46,
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12, backgroundColor: colores.blanco, paddingHorizontal: 12,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 12, backgroundColor: colores.blanco, paddingHorizontal: 12,
   },
   radioInput: { flex: 1, fontSize: 20, fontWeight: '900', color: C.texto, textAlign: 'center', minWidth: 0 },
   radioUnidad: { fontSize: 15, fontWeight: '700', color: C.texto2 },

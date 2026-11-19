@@ -20,18 +20,18 @@ import {
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { elegirMedios } from '../../utils/elegirImagen';
 
-import {
-  ASPECTOS_RESENA, MEDIA_RESENA_MAX, PREGUNTAS_RESENA, calificarPaseo, opinarPaseador,
-} from '../../services/paseadorApi';
+import { ASPECTOS_RESENA, MEDIA_RESENA_MAX, PREGUNTAS_RESENA } from '../../domain/paseos';
+import { calificarPaseo, opinarPaseador } from '../../services/paseadorApi';
 import { alerta } from '../../utils/dialogo';
-import { elegirMultimedia } from '../../utils/elegirImagen';
 import { MiniaturaMedia, VisorMedia } from './MediaResena';
-import { EstrellasInput } from '../ui/Estrellas';
 import { colores } from '../../theme';
+import { EstrellasInput } from '../ui/Estrellas';
 
 const MAX_MB = 50; // file_size_limit del bucket "resenas" (042)
 const ETIQUETAS = ['', 'Muy malo', 'Malo', 'Regular', 'Bueno', 'Excelente'];
+
 
 export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviado }) {
   const [rating, setRating] = useState(0);
@@ -49,16 +49,20 @@ export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviad
   }, [visible, paseo?.id]);
 
   const agregarMedia = async (camara) => {
-    const lugar = MEDIA_RESENA_MAX - media.length;
-    const elegidos = await elegirMultimedia({ origen: camara ? 'camara' : 'galeria', limite: lugar });
-    if (!elegidos.length) return;
-    let pesados = 0;
-    const nuevos = elegidos.filter((a) => {
-      if (a.fileSize && a.fileSize > MAX_MB * 1024 * 1024) { pesados += 1; return false; }
+    const assets = await elegirMedios({ camara, limite: MEDIA_RESENA_MAX - media.length });
+    if (!assets.length) return;
+    const pesados = [];
+    const nuevos = assets.filter((a) => {
+      if (a.fileSize && a.fileSize > MAX_MB * 1024 * 1024) { pesados.push(a); return false; }
       return true;
-    }).map(({ uri, mimeType, tipo }) => ({ uri, mimeType, tipo }));
+    }).map((a) => ({
+      uri: a.uri,
+      mimeType: a.mimeType,
+      tipo: a.type === 'video' || /^data:video|\.(mp4|mov|m4v|webm|3gp)$/i.test(a.uri) || a.mimeType?.startsWith('video/')
+        ? 'video' : 'imagen',
+    }));
     setMedia((m) => [...m, ...nuevos].slice(0, MEDIA_RESENA_MAX));
-    if (pesados) alerta('Archivo muy pesado', `Cada foto o video puede pesar hasta ${MAX_MB} MB.`);
+    if (pesados.length) alerta('Archivo muy pesado', `Cada foto o video puede pesar hasta ${MAX_MB} MB.`);
   };
 
   const enviar = async () => {
@@ -71,7 +75,7 @@ export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviad
       else await calificarPaseo(paseo, datos);
       onEnviado?.();
     } catch (e) {
-      if (__DEV__) console.error('[Reseña]', e?.message ?? e, e?.detalle ?? '');
+      console.error('[Reseña]', e?.message ?? e, e?.detalle ?? '');
       const hayVideo = media.some((m) => m.tipo === 'video');
       setError({
         migracion_pendiente: 'Para opinar sin un paseo es necesario correr la migración 048 en Supabase.',
@@ -202,7 +206,7 @@ const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colores.blanco },
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: colores.gris250,
+    borderBottomWidth: 1, borderBottomColor: colores.gris100,
   },
   volver: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
   titulo: { fontSize: 18, fontWeight: '800', color: colores.texto },
@@ -220,14 +224,14 @@ const s = StyleSheet.create({
   preguntaTxt: { fontSize: 14, color: colores.texto, fontWeight: '600' },
   siNo: { flexDirection: 'row', gap: 8, marginTop: 8 },
   siNoBtn: {
-    flex: 1, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: colores.gris500,
+    flex: 1, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: colores.gris300,
     alignItems: 'center', justifyContent: 'center',
   },
   siNoOn: { backgroundColor: colores.verde, borderColor: colores.verde },
   siNoTxt: { fontSize: 14, fontWeight: '800', color: colores.texto },
 
   input: {
-    minHeight: 110, borderWidth: 1, borderColor: colores.gris500, borderRadius: 14, padding: 12,
+    minHeight: 110, borderWidth: 1, borderColor: colores.gris300, borderRadius: 14, padding: 12,
     fontSize: 15, color: colores.texto, textAlignVertical: 'top',
   },
   contador: { fontSize: 11, color: colores.textoSecundario, textAlign: 'right', marginTop: 4 },

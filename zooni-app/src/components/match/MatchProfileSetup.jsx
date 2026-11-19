@@ -24,15 +24,15 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { elegirImagen } from '../../utils/elegirImagen';
 
 import FilterChip from './FilterChip';
-import { INTEREST_OPTIONS, GENDER_OPTIONS } from '../../data/matchDemo';
+import { INTEREST_OPTIONS, GENDER_OPTIONS } from '../../constants/match';
 import { guardarPerfilMatch } from '../../services/matchApi';
 import { colores } from '../../theme';
 import FechaPicker from '../FechaPicker';
 import { calcularEdadAnios } from '../../utils/calcularEdad';
 import { formatearFecha, parseFechaLocal, toISODateLocal } from '../../utils/fechaLocal';
-import { elegirImagen } from '../../utils/elegirImagen';
 
 const GENEROS = GENDER_OPTIONS.filter((g) => g.key !== 'todos');
 const EDAD_MINIMA = 18;
@@ -70,15 +70,12 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
     });
   };
 
-  const elegirDeGaleria = async () => {
-    const uri = await elegirImagen();
+  const elegirFoto = async (camara) => {
+    const uri = await elegirImagen({ camara });
     if (uri) { setFotoUri(uri); setError(null); }
   };
-
-  const abrirCamara = async () => {
-    const uri = await elegirImagen({ origen: 'camara' });
-    if (uri) { setFotoUri(uri); setError(null); }
-  };
+  const elegirDeGaleria = () => elegirFoto(false);
+  const abrirCamara = () => elegirFoto(true);
 
   /** Qué falta en el paso actual (null = se puede avanzar). */
   const validarPaso = () => {
@@ -290,7 +287,7 @@ const s = StyleSheet.create({
     width: 150, height: 150, borderRadius: 75, alignSelf: 'center',
     backgroundColor: colores.blanco, borderWidth: 3, borderColor: colores.blanco,
   },
-  previewVacio: { alignItems: 'center', justifyContent: 'center', backgroundColor: colores.gris200 },
+  previewVacio: { alignItems: 'center', justifyContent: 'center', backgroundColor: colores.gris100 },
   fotoBtnsRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
   btnFoto: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,

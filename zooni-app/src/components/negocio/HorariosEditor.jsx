@@ -17,8 +17,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { C } from '../paseador/PaseadorUI';
 import HoraPicker from '../HoraPicker';
 import { DIAS_SEMANA, HORARIOS_NEGOCIO_DEFAULT } from '../../constants/negocios';
-import { minutosDe } from '../../services/negocioApi';
+import { minutosDe } from '../../domain/negocios';
 import { colores } from '../../theme';
+import { horaCorta } from '../../utils/tiempoRelativo';
 
 const aFecha = (hhmm) => {
   const d = new Date();
@@ -26,7 +27,6 @@ const aFecha = (hhmm) => {
   d.setHours(h || 0, m || 0, 0, 0);
   return d;
 };
-const aTexto = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
 /** Devuelve el primer problema de los horarios o null. */
 export function validarHorarios(horarios) {
@@ -90,7 +90,7 @@ export default function HorariosEditor({
         visible={!!picker}
         titulo={picker ? `${DIAS_SEMANA.find((x) => x.key === picker.dia)?.label} · ${etiquetas[picker.campo]}` : ''}
         valor={picker ? aFecha(horarios[picker.dia][picker.campo]) : new Date()}
-        onConfirmar={(f) => { cambiar(picker.dia, { [picker.campo]: aTexto(f) }); setPicker(null); }}
+        onConfirmar={(f) => { cambiar(picker.dia, { [picker.campo]: horaCorta(f) }); setPicker(null); }}
         onCancelar={() => setPicker(null)}
       />
     </View>
@@ -100,7 +100,7 @@ export default function HorariosEditor({
 const s = StyleSheet.create({
   fila: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colores.gris75,
+    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colores.gris100,
   },
   dia: { flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 80, minHeight: 40 },
   diaTxt: { fontSize: 15, fontWeight: '800', color: C.texto },

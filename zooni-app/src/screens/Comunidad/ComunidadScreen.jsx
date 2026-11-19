@@ -4,6 +4,7 @@ import {
   Animated, Platform, ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useIsFocused } from '@react-navigation/native';
 
 import TabAmigos        from '../../components/Comunidad/TabAmigos';
 import TabServicios     from '../../components/Comunidad/TabServicios';
@@ -18,7 +19,7 @@ import { useUsuarioActivo } from '../../hooks/useUsuarioActivo';
 
 import {
   fetchCarteles, fetchServiciosPropios, fetchAmigos, actualizarUbicacion,
-} from '../../api/comunidad';
+} from '../../services/comunidadApi';
 import { getCurrentUserId } from '../../config/session';
 import { fetchPaseadoresParaMi } from '../../services/paseadorApi';
 import { buscarLugares, combinarServicios } from '../../services/lugaresApi';
@@ -49,7 +50,7 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
 .mk{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;
     justify-content:center;border:2px solid #fff;font-size:16px;
     box-shadow:0 1px 4px rgba(0,0,0,.3);line-height:34px;text-align:center}
-.pz{width:46px;height:46px;border-radius:50%;border:3px solid #2DBD72;background:#2DBD72;
+.pz{width:46px;height:46px;border-radius:50%;border:3px solid ${colores.verde};background:${colores.verde};
     position:relative;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.35);
     display:flex;align-items:center;justify-content:center}
 /* !important: leaflet.css pone width:auto a las img de los marcadores y la foto
@@ -87,10 +88,10 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
   function mk(e,bg){return L.divIcon({className:'',html:'<div class="mk" style="background:'+bg+'">'+e+'</div>',iconSize:[34,34],iconAnchor:[17,34]})}
   var iconUser=L.divIcon({className:'',html:'<div class="uw"><div class="up"></div><div class="ud"></div></div>',iconSize:[44,44],iconAnchor:[22,22]});
   var ICONS={
-    veterinaria:mk('🏥','#E63946'),paseador:mk('🦮','#F5A623'),
-    petshop:mk('🛍️','#F5C842'),peluqueria:mk('✂️','#9B59B6'),
-    perdida:mk('🔴','#E63946'),aviso:mk('📌','#6B6B6B'),
-    amigo:mk('👤','#2DBD72'),temporal:mk('📍','#2DBD72')
+    veterinaria:mk('🏥','${colores.rojo}'),paseador:mk('🦮','${colores.ambar}'),
+    petshop:mk('🛍️','${colores.amarillo}'),peluqueria:mk('✂️','${colores.violeta}'),
+    perdida:mk('🔴','${colores.rojo}'),aviso:mk('📌','${colores.textoSecundario}'),
+    amigo:mk('👤','${colores.verde}'),temporal:mk('📍','${colores.verde}')
   };
 
   // Notifica al padre (React)
@@ -120,8 +121,8 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
     // Paseadores de Zooni: su círculo de atención + su foto
     (d.paseadores||[]).forEach(function(x){
       var abrir=function(){notify({type:'paseador',data:x})};
-      var c=L.circle([x.lat,x.lng],{radius:x.radioKm*1000,color:'#2DBD72',weight:2,
-        fillColor:'#2DBD72',fillOpacity:x.disponible?.12:.05,dashArray:x.disponible?null:'6 6'})
+      var c=L.circle([x.lat,x.lng],{radius:x.radioKm*1000,color:'${colores.verde}',weight:2,
+        fillColor:'${colores.verde}',fillOpacity:x.disponible?.12:.05,dashArray:x.disponible?null:'6 6'})
         .addTo(map).on('click',abrir);
       var m=L.marker([x.lat,x.lng],{icon:iconPaseador(x),zIndexOffset:500}).addTo(map).on('click',abrir);
       dynLayers.push(c);dynLayers.push(m);
@@ -160,7 +161,9 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
     zooniMap[m.metodo].apply(null,m.args||[]);
   });
 
-  map.on('dblclick',function(e){
+  // En modo cartel alcanza con tocar una vez (en el celular no hay "doble
+  // click"); el doble toque se sigue aceptando.
+  map.on('click dblclick',function(e){
     if(modoCartel) notify({type:'dblclick',lat:e.latlng.lat,lng:e.latlng.lng});
   });
   function notifyBounds(){
@@ -363,8 +366,12 @@ export default function ComunidadScreen() {
     cargarAmigos();
   }, [cargarPaseadores, cargarAmigos]);
 
-  // ── Polling 30s ────────────────────────────────────────────────────────────
+  // ── Polling 30s, sólo con la pantalla a la vista ──────────────────────────
+  // El stack deja montada Comunidad al ir a otra pantalla: sin este corte el
+  // mapa seguía consultando (y reintentando OpenStreetMap) de fondo.
+  const enFoco = useIsFocused();
   useEffect(() => {
+    if (!enFoco) return undefined;
     const iv = setInterval(() => {
       if (bbox)    cargarZona(bbox);
       cargarPaseadores();
@@ -372,7 +379,7 @@ export default function ComunidadScreen() {
       if (userPos) actualizarUbicacion(userPos.lat, userPos.lng).catch(() => {});
     }, 30000);
     return () => clearInterval(iv);
-  }, [bbox, userPos, cargarZona, cargarPaseadores, cargarAmigos]);
+  }, [enFoco, bbox, userPos, cargarZona, cargarPaseadores, cargarAmigos]);
 
   // ── Sincroniza markers cuando cambian ─────────────────────────────────────
   useEffect(() => {
@@ -432,12 +439,12 @@ export default function ComunidadScreen() {
         </TouchableOpacity>
 
         {/* Banner modo cartel */}
-        <Animated.View style={[
+        <Animated.View pointerEvents="none" style={[
           styles.bannerCartel,
           { opacity: bannerAnim, transform: [{ translateY: bannerAnim.interpolate({ inputRange:[0,1], outputRange:[-16,0] }) }] }
         ]}>
-          <Text style={styles.bannerText}>
-            Hacé doble click en el mapa donde querés crear el cartel
+          <Text style={styles.bannerText} numberOfLines={2}>
+            Tocá el mapa donde va el cartel
           </Text>
         </Animated.View>
 
@@ -459,7 +466,7 @@ export default function ComunidadScreen() {
           <TouchableOpacity
             style={[styles.pill, modoCartel ? styles.pillVerde : styles.pillRojo]}
             onPress={() => { setModoCartel(v => !v); setMarkerTemp(null); }}>
-            <Text style={styles.pillTextBlanco}>🚨 {modoCartel ? 'Cancelar' : 'Crear Cartel'}</Text>
+            <Text style={styles.pillTextBlanco}>{modoCartel ? '✕ Cancelar' : '🚨 Crear Cartel'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -577,9 +584,12 @@ const styles = StyleSheet.create({
     backgroundColor: colores.blanco, alignItems: 'center', justifyContent: 'center',
     shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 6,
   },
+  // Al lado del botón de menú y por encima de los botones flotantes (top 60):
+  // antes iba en top 68 y tapaba "Mi Ubicación".
   bannerCartel: {
-    position: 'absolute', top: 68, left: 14, right: 14, zIndex: 100,
-    backgroundColor: colores.verde, borderRadius: 12, padding: 12,
+    position: 'absolute', top: 14, left: 66, right: 14, zIndex: 100, minHeight: 42,
+    justifyContent: 'center',
+    backgroundColor: colores.verde, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6,
     shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 6,
   },
   bannerText: { color: colores.blanco, textAlign: 'center', fontWeight: '600', fontSize: 13 },
@@ -621,7 +631,7 @@ const styles = StyleSheet.create({
   tabBtnOn:  { backgroundColor: colores.verde },
   tabText:   { fontSize: 13, color: colores.textoSecundario },
   tabTextOn: { color: colores.blanco, fontWeight: '700' },
-  tabSep:    { height: 1, backgroundColor: colores.gris250, marginHorizontal: 16, marginBottom: 4 },
+  tabSep:    { height: 1, backgroundColor: colores.gris100, marginHorizontal: 16, marginBottom: 4 },
   tabBody:   { flex: 1, paddingHorizontal: 16, overflow: 'hidden' },
 
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },

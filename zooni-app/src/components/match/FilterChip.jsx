@@ -20,7 +20,7 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-    backgroundColor: colores.blanco, borderWidth: 1.5, borderColor: colores.gris500,
+    backgroundColor: colores.blanco, borderWidth: 1.5, borderColor: colores.gris300,
     marginRight: 8, marginBottom: 8,
   },
   chipSelected: { backgroundColor: colores.verde, borderColor: colores.verde },

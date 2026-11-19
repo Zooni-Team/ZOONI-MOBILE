@@ -283,13 +283,13 @@ const s = StyleSheet.create({
   subtitulo: { fontSize: 16, fontWeight: '700', color: colores.texto, textAlign: 'center', marginBottom: 20 },
 
   input: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 13,
     fontSize: 15, color: colores.texto, marginBottom: 10, textAlign: 'center',
   },
   inputRow: {
     flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 10,
     paddingHorizontal: 14, marginBottom: 10,
   },
   inputPass: { flex: 1, paddingVertical: 13, fontSize: 15, color: colores.texto, textAlign: 'center' },

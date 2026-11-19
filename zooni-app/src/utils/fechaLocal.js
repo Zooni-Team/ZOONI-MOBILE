@@ -85,8 +85,40 @@ export function diasHasta(valor, hoy = new Date()) {
   return Math.round((b - a) / MS_DIA);
 }
 
+/**
+ * Cuenta regresiva hasta una fecha, en palabras: { texto, tono } o null si no
+ * hay fecha. `tono` es 'vencido' (ya pasó), 'pronto' (hoy o dentro de
+ * `diasAviso`) o 'lejos'; el color lo elige quien lo muestra.
+ *
+ *   cuentaRegresiva('2026-11-20')  → { texto: 'Faltan 4 días', tono: 'pronto' }
+ */
+export function cuentaRegresiva(valor, { hoy = new Date(), diasAviso = 7 } = {}) {
+  const dias = diasHasta(valor, hoy);
+  if (dias == null) return null;
+  if (dias < 0) {
+    const pasaron = Math.abs(dias);
+    return { texto: `Venció hace ${pasaron} ${pasaron === 1 ? 'día' : 'días'}`, tono: 'vencido' };
+  }
+  if (dias === 0) return { texto: 'Vence hoy', tono: 'pronto' };
+  return { texto: dias === 1 ? 'Falta 1 día' : `Faltan ${dias} días`, tono: dias <= diasAviso ? 'pronto' : 'lejos' };
+}
+
 /** Días calendario entre dos fechas (b - a). null si falta alguna. */
 export function diasEntre(a, b) {
   const da = parseFechaLocal(a);
   return da ? diasHasta(b, da) : null;
+}
+
+/**
+ * "Mié 12/11 12:00" — fecha y hora SIN "Hoy"/"Mañana". Para textos que se
+ * guardan (notificaciones): un "Hoy 12:00" guardado sigue diciendo "Hoy" diez
+ * días después. Para mostrar en vivo están cuandoDe / cuandoTexto.
+ */
+export function fechaHoraFija(valor) {
+  const d = valor instanceof Date ? valor : new Date(valor);
+  if (Number.isNaN(d.getTime())) return '';
+  const dia = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d.getDay()];
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${dia} ${d.getDate()}/${d.getMonth() + 1} ${hh}:${mm}`;
 }

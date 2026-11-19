@@ -102,7 +102,7 @@ function Chip({ label, activo, onPress, acento, fondo, isAll }) {
     onPress();
   };
 
-  const bg  = isAll ? (activo ? colores.verde : colores.gris150) : (activo ? acento  : fondo);
+  const bg  = isAll ? (activo ? colores.verde : colores.gris100) : (activo ? acento  : fondo);
   const clr = isAll ? (activo ? colores.blanco    : colores.textoSecundario) : (activo ? colores.blanco  : acento);
 
   return (
@@ -268,12 +268,12 @@ const st = StyleSheet.create({
   cardHead:    { flexDirection: 'row', alignItems: 'center', paddingLeft: 20, paddingRight: 16, paddingVertical: 12, gap: 10 },
   iconoCircle: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   cardCateg:   { fontSize: 14, fontWeight: '700', letterSpacing: 0.3 },
-  cardSep:     { height: 1, backgroundColor: colores.gris150 },
+  cardSep:     { height: 1, backgroundColor: colores.gris100 },
   cardBody:    { paddingLeft: 24, paddingRight: 20, paddingTop: 14, paddingBottom: 16 },
   cardTxt:     { fontSize: 14, color: colores.texto, lineHeight: 22 },
 
-  skeletonCard:   { backgroundColor: colores.gris150, borderRadius: 18, marginHorizontal: 4, marginBottom: 14, overflow: 'hidden' },
-  skeletonHeader: { height: 56, backgroundColor: colores.gris300 },
+  skeletonCard:   { backgroundColor: colores.gris100, borderRadius: 18, marginHorizontal: 4, marginBottom: 14, overflow: 'hidden' },
+  skeletonHeader: { height: 56, backgroundColor: colores.gris200 },
   skeletonBody:   { padding: 14, gap: 8 },
-  skeletonLine:   { height: 12, backgroundColor: colores.gris400, borderRadius: 6, width: '100%' },
+  skeletonLine:   { height: 12, backgroundColor: colores.gris300, borderRadius: 6, width: '100%' },
 });

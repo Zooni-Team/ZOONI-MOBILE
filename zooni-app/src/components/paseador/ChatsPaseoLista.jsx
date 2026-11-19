@@ -24,6 +24,7 @@ const ESTADO = {
   aceptado: { txt: 'Agendado', color: C.teal },
   en_curso: { txt: 'En curso', color: C.rojo },
   finalizado: { txt: 'Finalizado', color: C.texto2 },
+  vencido: { txt: 'Vencido', color: C.texto2 },
 };
 
 export default function ChatsPaseoLista({ rol = 'paseador', vacioTexto }) {
@@ -104,7 +105,7 @@ const st = StyleSheet.create({
   lista: { padding: 16, flexGrow: 1 },
   item: {
     flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colores.blanco,
-    borderRadius: 16, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: colores.gris150,
+    borderRadius: 16, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: colores.gris100,
   },
   info: { flex: 1, minWidth: 0, gap: 2 },
   fila: { flexDirection: 'row', alignItems: 'center', gap: 4 },

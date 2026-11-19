@@ -5,7 +5,7 @@
 // 1. Resuelve imports sin extensión como lo hace Metro ('../lib/supabase' →
 //    '../lib/supabase.js', '../theme' → '../theme/index.js').
 // 2. Reemplaza lo que sólo existe en el teléfono por dobles de prueba
-//    (tests/dobles/): React Native, SecureStore, expo-crypto, el cliente de
+//    (tests/dobles/): React Native, SecureStore, el cliente de
 //    Supabase y las imágenes (require de .png).
 
 import { existsSync, statSync } from 'node:fs';
@@ -18,7 +18,6 @@ const doble = (nombre) => pathToFileURL(path.join(raiz, 'tests', 'dobles', nombr
 const PAQUETES = {
   'react-native': doble('react-native.mjs'),
   'expo-secure-store': doble('secure-store.mjs'),
-  'expo-crypto': doble('expo-crypto.mjs'),
   '@expo/vector-icons': doble('vacio.mjs'),
 };
 // Módulos de la app que se reemplazan enteros (por ruta, sin extensión)

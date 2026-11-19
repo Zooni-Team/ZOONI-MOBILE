@@ -1,8 +1,9 @@
 /**
- * imagenStorage.js — Subida de imágenes a Supabase Storage (bucket "public-images")
+ * imagenStorage.js — Subida de imágenes a Supabase Storage (bucket "public-images",
+ * y "consultas-privadas" para lo clínico, que se lee con URLs firmadas)
  *
  * Cada archivo va a <id de Supabase Auth>/<uso>/<nombre>: las políticas de
- * 063_storage.sql sólo dejan subir y borrar dentro de la carpeta propia, y el
+ * sección 063 de SUPABASE_PEGAR_TODO.sql sólo dejan subir y borrar dentro de la carpeta propia, y el
  * bucket limita tamaño y tipo del lado del servidor. Lo que el cliente declara
  * como contentType NO es la validación: es sólo una pista para Storage.
  *
@@ -10,6 +11,13 @@
  * en vez de una ruta con extensión, así que el tipo de imagen no se puede
  * sacar de la extensión del archivo — hay que leerlo del propio data URI.
  * En nativo (file://...) sí hay extensión, y no es un data URI.
+ *
+ * Borrar archivos (informe de seguridad #70) pasa por DOS caminos, a propósito:
+ * los `borrar*` de acá los llama la app al borrar la fila dueña (el archivo se
+ * va en el momento), y los triggers de MIGRACION_068 anotan en
+ * `archivos_por_borrar` todo lo que quede sin uso igual —cascadas, borrados
+ * hechos desde el SQL— para que `supabase/scripts/limpiar-storage.mjs` lo
+ * limpie después. Borrar dos veces el mismo archivo no es un error.
  */
 
 import { supabase, SUPABASE_ORIGIN } from '../lib/supabase';
@@ -55,8 +63,8 @@ function tipoDeImagen(uri) {
   }
   const candidato = (uri.split('.').pop() || '').split('?')[0].toLowerCase();
   // Una uri sin extensión (content://…, blob:…) deja como "candidato" la uri
-  // entera, con barras y dos puntos: eso rompería la key de Storage (ver
-  // subirArchivoPublico, que ya validaba esto).
+  // entera, con barras y dos puntos: eso rompería la key de Storage (informe
+  // #125; subirArchivoPublico ya validaba esto por su lado).
   const ext = /^[a-z0-9]{1,5}$/.test(candidato) ? candidato : 'jpg';
   return { mime: `image/${ext === 'jpg' ? 'jpeg' : ext}`, ext };
 }
@@ -79,51 +87,50 @@ export async function subirImagenPublica(uri, carpeta) {
   return data.publicUrl;
 }
 
+/** Bucket privado de estudios y recetas de consultas veterinarias (064). */
+export const BUCKET_CONSULTAS = 'consultas-privadas';
+
 /**
- * Sube una imagen a un bucket PRIVADO (ej. "fichas-medicas") y devuelve la
- * ruta de Storage, no una URL: un bucket privado no tiene URL pública. Para
- * mostrarla hace falta `obtenerUrlFirmada`.
+ * Sube una imagen a un bucket PRIVADO y devuelve su RUTA (no una URL): en un
+ * bucket privado no hay URL pública, se pide una firmada cada vez que se
+ * muestra (urlsFirmadas). Misma carpeta propia y mismo control de tipo que
+ * subirImagenPublica.
  */
-export async function subirImagenPrivada(uri, carpeta, bucket) {
+export async function subirImagenPrivada(uri, carpeta, bucket = BUCKET_CONSULTAS) {
   const { mime, ext } = tipoDeImagen(uri);
   const path = `${await carpetaPropia(carpeta)}/${nombreArchivo(ext)}`;
   const arraybuffer = await fetch(uri).then((res) => res.arrayBuffer());
 
-  const { error } = await supabase.storage.from(bucket).upload(path, arraybuffer, {
-    contentType: mime,
-  });
+  const { error } = await supabase.storage.from(bucket).upload(path, arraybuffer, { contentType: mime });
   if (error) throw error;
   return path;
 }
 
-/**
- * URL firmada (de corta duración) para un archivo de un bucket privado.
- * `segundos`: cuánto dura el acceso (300 = 5 min: alcanza para ver/cargar la
- * imagen en pantalla, no para dejar el link circulando).
- */
-export async function obtenerUrlFirmada(path, bucket, segundos = 300) {
-  if (!path) return null;
-  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, segundos);
-  if (error) throw error;
-  return data.signedUrl;
-}
+/** Una hora: alcanza para ver la pantalla; si vence, se pide otra al recargar. */
+const VIGENCIA_URL_FIRMADA_S = 60 * 60;
 
-/** Como `obtenerUrlFirmada`, pero para varias rutas en una sola llamada. */
-export async function obtenerUrlsFirmadas(paths, bucket, segundos = 300) {
-  const lista = [...new Set(paths.filter(Boolean))];
-  if (!lista.length) return new Map();
-  const { data, error } = await supabase.storage.from(bucket).createSignedUrls(lista, segundos);
+/**
+ * URLs firmadas para varias rutas de un bucket privado, en un solo pedido.
+ * Devuelve { [ruta]: url }. Storage sólo firma lo que la sesión puede leer
+ * (política zooni_privado_leer): una ruta ajena vuelve sin URL.
+ */
+export async function urlsFirmadas(rutas, bucket = BUCKET_CONSULTAS, segundos = VIGENCIA_URL_FIRMADA_S) {
+  const unicas = [...new Set(rutas.filter(Boolean))];
+  if (!unicas.length) return {};
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrls(unicas, segundos);
   if (error) throw error;
-  return new Map((data ?? []).filter((d) => !d.error).map((d) => [d.path, d.signedUrl]));
+  const porRuta = {};
+  for (const f of data ?? []) if (f.signedUrl && !f.error) porRuta[f.path] = f.signedUrl;
+  return porRuta;
 }
 
 /**
  * Borra un archivo de un bucket PRIVADO por su ruta. Nunca tira: borrar la
  * fila de la base ya pasó, y si el archivo no se pudo borrar sólo queda
- * ocupando espacio, no es un error para quien llama (informe de seguridad
- * #70 — antes nada se borraba nunca de Storage).
+ * ocupando espacio (y la 068 lo vuelve a anotar para el script de limpieza),
+ * no es un error para quien llama.
  */
-export async function borrarArchivoPrivado(path, bucket) {
+export async function borrarArchivoPrivado(path, bucket = BUCKET_CONSULTAS) {
   if (!path) return;
   await supabase.storage.from(bucket).remove([path]).catch(() => {});
 }

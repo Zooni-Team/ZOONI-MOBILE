@@ -1,4 +1,4 @@
-import { DIAS_SEMANA, MESES, parseFechaLocal } from './fechaLocal';
+import { DIAS_SEMANA, MESES, parseFechaLocal } from './fechaLocal.js';
 /**
  * tiempoRelativo.js — "hace 5 minutos", "ayer 21:40", "en línea"
  *
@@ -12,7 +12,7 @@ const MIN = 60 * 1000;
 const HORA = 60 * MIN;
 const DIA = 24 * HORA;
 
-/** "21:40" */
+/** "21:40" — la ÚNICA función que arma una hora HH:MM (acepta Date, ISO o timestamp). */
 export function horaCorta(valor) {
   const d = parseFechaLocal(valor);
   if (!d) return '';

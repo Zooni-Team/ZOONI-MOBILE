@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { buscarUsuarios, enviarSolicitud } from '../../api/comunidad';
+import { buscarUsuarios, enviarSolicitud } from '../../services/comunidadApi';
 import PersonaProfileModal from '../PersonaProfileModal';
 import { colores } from '../../theme';
 
@@ -9,6 +9,8 @@ export default function BuscadorUsuarios({ onSolicitudEnviada }) {
   const [query,    setQuery]    = useState('');
   const [results,  setResults]  = useState([]);
   const [loading,  setLoading]  = useState(false);
+  // null = todavía no se buscó; 'ok' | 'error' = resultado de la última búsqueda
+  const [estado,   setEstado]   = useState(null);
   const [enviados, setEnviados] = useState(new Set());
   const [perfilId, setPerfilId] = useState(null);
   const timer = useRef(null);
@@ -16,13 +18,19 @@ export default function BuscadorUsuarios({ onSolicitudEnviada }) {
   const handleChange = (text) => {
     setQuery(text);
     clearTimeout(timer.current);
-    if (text.trim().length < 2) { setResults([]); return; }
+    if (text.trim().length < 2) { setResults([]); setEstado(null); setLoading(false); return; }
     setLoading(true);
     timer.current = setTimeout(async () => {
       try {
         const d = await buscarUsuarios(text);
         setResults(d.resultados || []);
-      } catch {}
+        setEstado('ok');
+      } catch {
+        // Sin red, o un texto que el firewall de Supabase frena (ej. "' or 1=1"):
+        // sin resultados (no los de la búsqueda anterior) y un aviso.
+        setResults([]);
+        setEstado('error');
+      }
       setLoading(false);
     }, 400);
   };
@@ -52,8 +60,14 @@ export default function BuscadorUsuarios({ onSolicitudEnviada }) {
         {loading && <ActivityIndicator size="small" color={colores.verde} />}
       </View>
 
-      {query.length < 2 && (
-        <Text style={styles.hint}>Buscá por nombre o mascota</Text>
+      {query.trim().length < 2 && (
+        <Text style={styles.hint}>Buscá por nombre, apellido o @usuario</Text>
+      )}
+      {query.trim().length >= 2 && !loading && estado === 'ok' && results.length === 0 && (
+        <Text style={styles.hint}>No encontramos a nadie con "{query.trim()}"</Text>
+      )}
+      {query.trim().length >= 2 && !loading && estado === 'error' && (
+        <Text style={styles.hint}>No pudimos buscar ahora. Revisá la conexión y probá de nuevo.</Text>
       )}
 
       <FlatList
@@ -99,14 +113,14 @@ const styles = StyleSheet.create({
   inputWrap:   { flexDirection: 'row', alignItems: 'center', backgroundColor: colores.gris50, borderRadius: 20, paddingHorizontal: 14, height: 44, marginBottom: 10 },
   input:       { flex: 1, fontSize: 14, color: colores.texto },
   hint:        { color: colores.textoTenue, fontSize: 13, textAlign: 'center', marginTop: 12 },
-  item:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colores.gris150 },
+  item:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colores.gris100 },
   persona:     { flex: 1, flexDirection: 'row', alignItems: 'center' },
-  avatar:      { width: 38, height: 38, borderRadius: 19, backgroundColor: colores.gris150, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  avatar:      { width: 38, height: 38, borderRadius: 19, backgroundColor: colores.gris100, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
   info:        { flex: 1 },
   nombre:      { fontWeight: '700', fontSize: 14, color: colores.texto },
   sub:         { fontSize: 12, color: colores.textoSecundario, marginTop: 2 },
   btnAdd:      { backgroundColor: colores.verde, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6 },
-  btnYa:       { backgroundColor: colores.gris250 },
+  btnYa:       { backgroundColor: colores.gris100 },
   btnAddText:  { color: colores.blanco, fontWeight: '700', fontSize: 12 },
   btnYaText:   { color: colores.textoSecundario },
 });

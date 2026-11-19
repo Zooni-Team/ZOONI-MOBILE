@@ -28,7 +28,10 @@ import PaseadorDrawer from '../../components/paseador/PaseadorDrawer';
 import { C, PillButton, Vacio } from '../../components/paseador/PaseadorUI';
 import { configNegocio } from '../../constants/negocios';
 import {
-  contarNoLeidosNegocio, fetchMiNegocio, fetchPedidosNegocio, fetchTurnosNegocio,
+  contarNoLeidosNegocio,
+  fetchMiNegocio,
+  fetchPedidosNegocio,
+  fetchTurnosNegocio,
 } from '../../services/negocioApi';
 import { fetchRolesCuenta } from '../../services/paseadorApi';
 import { clearCurrentUserId, setModo, MODO_DUENO } from '../../config/session';

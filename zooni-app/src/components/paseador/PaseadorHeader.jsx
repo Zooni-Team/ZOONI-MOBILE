@@ -19,17 +19,23 @@ import { useNavigation } from '@react-navigation/native';
 
 import { Avatar, C, Chip, sombra } from './PaseadorUI';
 import {
-  contarNoLeidosPaseo, destinoNotificacionPaseador, fetchNotificacionesPaseador,
-  marcarNotificacionesLeidas, marcarNotificacionPaseadorLeida,
+  contarNoLeidosPaseo,
+  destinoNotificacionPaseador,
+  fetchNotificacionesPaseador,
+  marcarNotificacionesLeidas,
+  marcarNotificacionPaseadorLeida,
 } from '../../services/paseadorApi';
 import { tiempoRelativoCorto } from '../../utils/tiempoRelativo';
 import { colores } from '../../theme';
+import { INTERVALO_LISTAS_MS } from '../../constants/intervalos';
 
 export default function PaseadorHeader({
   perfil, subtitulo, mostrarEstado = true, titulo, onMenu, onChatsSinLeer, onIrASeccion,
   chip, contarChats,
 }) {
   const navigation = useNavigation();
+  // Las funciones que manda el padre cambian de identidad en cada render: se
+  // leen por ref para no reiniciar el refresco periódico a cada rato.
   const contarRef = useRef(contarChats);
   contarRef.current = contarChats;
   const onChatsSinLeerRef = useRef(onChatsSinLeer);
@@ -52,7 +58,7 @@ export default function PaseadorHeader({
 
   useEffect(() => {
     cargar();
-    const t = setInterval(cargar, 30000);
+    const t = setInterval(cargar, INTERVALO_LISTAS_MS);
     return () => clearInterval(t);
   }, [cargar]);
 
@@ -107,7 +113,7 @@ export default function PaseadorHeader({
             texto={chip.texto}
             icono={chip.on ? 'radio-button-on' : 'radio-button-off'}
             color={chip.on ? C.teal : C.texto2}
-            fondo={chip.on ? C.menta : colores.gris200}
+            fondo={chip.on ? C.menta : colores.gris100}
             style={{ marginTop: 3 }}
           />
         ) : mostrarEstado && perfil ? (
@@ -115,7 +121,7 @@ export default function PaseadorHeader({
             texto={perfil.disponible ? 'Disponible' : 'No disponible'}
             icono={perfil.disponible ? 'radio-button-on' : 'radio-button-off'}
             color={perfil.disponible ? C.teal : C.texto2}
-            fondo={perfil.disponible ? C.menta : colores.gris200}
+            fondo={perfil.disponible ? C.menta : colores.gris100}
             style={{ marginTop: 3 }}
           />
         ) : subtitulo ? (

@@ -1,250 +1,208 @@
 # Falta por hacer
 
-Estado al cortar la refactorización. Ordenado por prioridad.
+Ordenado por prioridad. Lo hecho en la última pasada está al final.
 
-## 1. Para que lo hecho funcione (hacerlo YA, en este orden)
-1. **Desplegar las Edge Functions** (si no, las cuentas viejas no pueden entrar
-   después del paso 2):
+## 1. Para que lo hecho funcione (en este orden)
+
+1. **Base de datos** — Supabase → SQL Editor, pegar cada archivo entero → Run,
+   en orden: `supabase/MIGRACION_064_SOBRE_063.sql`, `…065…`, `…066…`,
+   `…067…`, `…068_ARCHIVOS_HUERFANOS.sql` y por último
+   `…070_ENDURECIMIENTO_SEGURIDAD.sql`. Cada uno se fija que esté el anterior,
+   verifica lo que hizo y es idempotente: volver a pegar uno que ya estaba no
+   rompe nada. Si la base ya tiene hasta la 068, alcanza con la 070.
+   (Base vacía: primero `supabase/SUPABASE_PEGAR_TODO.sql` y después esos seis.)
+
+   ⚠ **La 070 va última a propósito.** Endurece políticas que la 066 restituye
+   permisivas (la que corre al final es la que queda) y la app ya depende de
+   ella: `"Mascota"` pasa a devolver sólo las filas propias y todo lo ajeno se
+   lee por la vista `mascota_publica`. Correr la app nueva contra una base sin
+   la 070 funciona; la 070 sin la app nueva, no (las pantallas de Match y
+   Comunidad dejarían de traer mascotas).
+2. **ZooniVet** — la función cambió (nombre leído de la base, cupo diario,
+   tiempo máximo, CORS por lista de orígenes, errores sin detalles internos):
    ```bash
-   supabase login
-   supabase link --project-ref <ref-del-proyecto>
-   supabase functions deploy migrar-cuenta --no-verify-jwt
-   supabase secrets set GROQ_API_KEY=gsk_...
+   supabase secrets set ALLOWED_ORIGINS=https://tu-dominio.vercel.app
    supabase functions deploy zoonivet-chat
    ```
-2. **Pegar `supabase/SUPABASE_PEGAR_TODO.sql` entero** en Supabase → SQL Editor → Run.
-3. Authentication → Providers → Email: habilitado (decidir "Confirm email", ver README).
-4. Cargar en Vercel las variables de `zooni-app/.env.example` y redesplegar.
-5. Probar en la app real: login con cuenta vieja, registro, Match (like
-   recíproco), pedido en pet shop, turno, paseo completo, ZooniVet, subir foto.
-   Nada de esto se probó contra la base real (sólo contra Postgres local y
-   dobles de prueba).
-6. Cuando `select count(*) from user_credentials` dé 0: borrar
-   `zooni-app/src/services/authLegado.js`, su uso en `authApi.js` y
-   `consultaRespaldo` en `services/perfilesPublicos.js`.
-
-## 2. Refactor pendiente (código)
-- ~~Elegir fotos repetido en 18 archivos~~ — hecho: `utils/elegirImagen.js`
-  (`elegirImagen`, `elegirMultimedia`), reemplazado en los 18 archivos. De
-  paso quita el EXIF (GPS) de cada foto antes de subirla (informe #69).
-- ~~Componentes casi iguales a unificar~~ — hecho, salvo uno (ver abajo):
-  - `fichaMedica/CardAplicado.jsx` y `CardSugerido.jsx` (Vacunas y
-    Tratamientos): reciben el `styles` de la pantalla y los datos ya
-    formateados; `CardSugerido` tiene dos layouts (`"simple"`/`"detallado"`).
-  - `ui/Campo.jsx` e `ui/InputPassword.jsx` (registros de Negocio y
-    Paseador).
-  - `ui/Estrellas.jsx` (lectura, con medias estrellas) y su export
-    `EstrellasInput` (para elegir tocando) — unificó 4 definiciones
-    (`resenas/ResenasPaseadorModal`, `Paseador/tabs/PerfilTab`,
-    `MisPaseosScreen`, `resenas/CalificarPaseoModal`).
-  - `ui/EspecieTile.jsx` (RegisterStep1 y AltaMascota — ya decía en un
-    comentario "igual que en RegisterStep1", eran bit a bit iguales).
-  - `ui/PetIllustration.jsx` (Home y FichaMedica) — Home pide sombra
-    (`sombra`, con sus variantes web/iOS) y FichaMedica no (default).
-  - **`EventoCard` (Calendario y Eventos): NO se unificó a propósito.**
-    Después de leer las dos, no son "casi iguales": la de Calendario es un
-    ítem compacto de agenda personal (editar/eliminar, color por
-    proximidad); la de Eventos es una tarjeta de evento público de la
-    comunidad (foto, categoría, botón "Agregar al calendario", abre Google
-    Maps, descripción expandible). Forzarlas a un solo componente hubiera
-    significado un componente con un `if` gigante y props que no se pisan
-    en nada real — más acoplamiento, no menos. Quedan como están.
-  `npm run lint` y `npm test` quedaron en verde después de este cambio.
-- ~~7 avisos de ESLint~~ (`react-hooks/exhaustive-deps`) — hecho: `cargarDatos`
-  (Closet, Eventos) y `animarHero` (Consultas, Tratamientos) en `useCallback`,
-  movidos antes del `useEffect`/`useCallback` que los usa; `onChatsSinLeer`
-  (PaseadorHeader) por un ref, igual que `contarChats`, para no reiniciar el
-  intervalo de 30 s cada vez que el padre pasa una función nueva;
-  `valueFromX`/`updateFromX` (sliders de Match) en `useCallback`. `npm run
-  lint` da 0 avisos.
-- Smoke test en el navegador: se probó login y registro paso 1–2 (FechaPicker);
-  falta recorrer el resto de pantallas con una base real.
-- Pantallas gigantes (SRP): `EventosScreen`, `CalendarioScreen`, `HomeScreen`,
-  `TratamientosScreen`, `VacunasScreen` (800–1000 líneas): separar
-  subcomponentes en archivos y la carga de datos en hooks.
-- `services/paseadorApi.js` (~1.500 líneas) y `negocioApi.js` (~1.200): partir
-  por tema (perfil, solicitudes, pagos, reseñas, chat / catálogo, turnos, pedidos).
-
-## 3. Diseño
-- Grises `gris50`–`gris600` en `src/theme/colores.js`: **ya están definidos**
-  (8 tonos entre `#F5F5F5` y `#D8D8D8`), pero son casi idénticos entre sí
-  porque se migraron con un codemod sin tocar un píxel — **no** se tocaron en
-  esta pasada: unificarlos a una escala realmente corta cambiaría el matiz
-  exacto de fondos/bordes en toda la app sin forma de verlo acá (sin
-  dispositivo/build real), así que sigue siendo la decisión de diseño
-  pendiente que ya marcaba este archivo (ver `docs/claude/estilos.md`).
-- Modo oscuro: no existe.
-
-## 4. Base y seguridad
-
-**Auditoría de seguridad de nov-2026** (`INFORME_SEGURIDAD_ZOONI.md`, 150
-hallazgos): la mayoría de los de RLS/RPC/Edge Functions/Storage se corrigieron
-en `supabase/SUPABASE_PEGAR_TODO.sql` sección `070_endurecimiento_seguridad`
-(pegarla entera en Supabase → SQL Editor → Run) y en las dos Edge Functions.
-Lo que **falta para que esos arreglos funcionen de punta a punta**, por orden:
-
-1. ~~App — leer mascotas de otras personas desde `mascota_publica`~~ — hecho:
-   `api/comunidad` (amigos, búsqueda, carteles), `matchApi` (candidatos,
-   detalle de match, tarjeta propia — ésta sigue por "Mascota" porque es la
-   propia), `perfilApi.fetchPerfilPublico`, `negocioApi.mascotasPorId` y
-   `paseadorApi` (enriquecer paseos, reseñas). `calcularEdadAnios(FechaNacimiento)`
-   pasó a usar la columna `EdadAnios` ya calculada donde el dato viene de la
-   vista. Pendiente del lado de la base (no de esta pasada): `negocioApi` y
-   `paseadorApi` perdieron el peso/fecha de nacimiento de mascotas ajenas
-   (no están en `mascota_publica`) — hace falta una vista/política aparte
-   para negocio-con-turno y paseador-con-paseo que sí los incluya.
-2. ~~App — `fichaMedicaApi.js`~~ — hecho: `subirImagenConsulta` sube al bucket
-   privado `fichas-medicas` (`utils/imagenStorage.subirImagenPrivada`) y
-   `fetchConsultas` resuelve la URL con `createSignedUrl` (300 s). Las
-   consultas viejas con URL pública completa siguen mostrándose igual.
-3. ~~App — `services/comun.js` `notificar()`~~ — hecho: ahora llama a
-   `supabase.rpc('crear_notificacion', {...})`; si no hay match/amistad/trato
-   con el destino la RPC tira error y se traga igual (nunca rompe el flujo,
-   como antes), sólo se loguea en `__DEV__`.
-4. ~~App — `migrar-cuenta`~~ — hecho: `iniciarSesionConPassword` devuelve
-   `debeCambiarContrasena`, y los tres login (dueño, paseador, negocio)
-   mandan a `ConfigCambiarContrasena` (con un aviso) antes de entrar cuando
-   viene en `true`. Límite conocido: sólo se avisa UNA vez, en el momento de
-   la migración (`migrar-cuenta` borra el hash viejo, así que no hay forma de
-   volver a detectarlo en un login posterior) — si la persona vuelve atrás
-   sin cambiarla, nadie se lo vuelve a pedir. Forzarlo de verdad (bloquear la
-   navegación hasta que la cambie) queda para otra pasada.
-5. **Dashboard de Supabase** (no se puede activar desde el SQL):
-   - Authentication → Providers → Email → **Confirm email: activar**.
+   Sin `ALLOWED_ORIGINS` el navegador no deja que la app web la llame (en
+   nativo no hay CORS, así que ahí anda igual).
+3. **Borrar la Edge Function vieja** si alguna vez se desplegó (era un
+   oráculo de contraseñas sin límite; ya no está en el repo ni la llama nadie):
+   ```bash
+   supabase functions delete migrar-cuenta
+   ```
+4. **Storage** — mudar las imágenes de consultas viejas al bucket privado y
+   borrar los archivos huérfanos (clave service_role: Project Settings → API;
+   nunca va en la app ni en el repo). Primero en modo prueba:
+   ```bash
+   SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SERVICE_ROLE_KEY=… node supabase/scripts/limpiar-storage.mjs
+   SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node supabase/scripts/limpiar-storage.mjs --aplicar
+   ```
+   Conviene repetirlo cada tanto (las mascotas purgadas van dejando archivos).
+5. **Dashboard de Supabase** (no se puede hacer desde el SQL):
+   - Authentication → Providers → Email → **"Confirm email": activar**
+     (hallazgo #21: con la auto-confirmación, un `signUp` con un mail ajeno
+     puede quedarse con una cuenta vieja sin migrar).
+   - Authentication → Policies → contraseña mínima de 8 caracteres (#76), para
+     que no dependa sólo de la app.
    - Database → Extensions → activar `pg_cron` y programar
-     `SELECT _purgar_datos_antiguos();` (purga `PaseoTrack` y `sos_call_logs`
-     viejos).
-   - Authentication → Policies → contraseña mínima 8 caracteres.
-   - `supabase secrets set ALLOWED_ORIGINS=https://tu-dominio,...` en las dos
-     Edge Functions (si no, el CORS restringido no deja pasar a la app real).
-6. **Probar después de pegar el SQL** (nada de esto se probó contra una base
-   real, sólo se revisó línea por línea): registro y login de cuenta vieja y
-   nueva, Match completo, pedido, turno, paseo completo (incluido pausar/
-   reanudar: el nuevo control anti-trampa de `SegundosAcumulados`/
-   `DistanciaMetros` puede ser demasiado estricto si el teléfono estuvo sin
-   señal y manda un salto grande al reconectar — si pasa, avisar para
-   relajar el margen de tolerancia), pedir amistad y aceptarla, bloquear a
-   alguien, ZooniVet.
-7. Pendiente sin resolver todavía (quedó anotado en el propio SQL, al final
-   de la sección 070, por qué): límite de frecuencia general en toda
-   escritura, firma real de archivos subidos (no sólo el `contentType`),
-   nombres de archivo no predecibles, piso de precio por minuto en
-   solicitudes abiertas de paseo. (La limpieza de Storage al borrar filas
-   —#70— sí se hizo, del lado de la app: ver más abajo.)
+     `SELECT _purgar_datos_antiguos();` una vez por día (#74: purga
+     `PaseoTrack` y `sos_call_logs` viejos).
+   - Revisar la restricción por dominio/referrer de la clave de Google Places
+     (#150), en Google Cloud Console.
+6. **Desplegar la app** (Vercel redespliega solo al pushear).
+7. **Probar en la app real, contra la base real.** Nada de abajo se probó
+   contra un Supabase de verdad (ver "Cómo se verificó"), y después del merge
+   de esta pasada hay dos cosas que conviene mirar primero:
+   - **Mascotas ajenas**: Match (candidatos, detalle, chat), Comunidad
+     (amigos, buscador, carteles), pacientes de un negocio y mascotas de un
+     paseo. Si alguna lista aparece vacía, es que quedó leyendo `"Mascota"` en
+     vez de `mascota_publica`.
+   - **Paseo completo con pausar/reanudar**: el control anti-trampa de
+     `SegundosAcumulados`/`DistanciaMetros` puede ser demasiado estricto si el
+     teléfono estuvo sin señal y manda un salto grande al reconectar. El
+     margen (+30 s, 15 m/s) está en `_paseo_al_actualizar`, en la 070.
+   - Y además: login con cuenta vieja (tiene que pedir cambiar la contraseña
+     si la vieja no llega a 8 caracteres), registro, pedido, turno, ZooniVet,
+     subir foto, consulta con imagen, chat en vivo con dos sesiones,
+     Calendario, Eventos, Tiempo en la app.
+   - **CSP**: `vercel.json` ahora manda `Content-Security-Policy`. No se pudo
+     probar contra un build real: si algo deja de cargar después de desplegar,
+     mirar la consola del navegador por violaciones de CSP y ajustar **esa
+     línea** antes que sacar la cabecera entera.
 
-### Hallazgos del lado de la app (`INFORME_SEGURIDAD_ZOONI.md`), ya resueltos
-- **#24** Leaflet dentro de los iframes `srcDoc` (`MapaPaseo`, `ZonaMapaPicker`,
-  `ComunidadScreen`) — ver el detalle completo más abajo.
-- **#40** `NotificationsPanel`: el nombre/foto del chat y el nombre/tipo del
-  negocio ya no vienen de `DataExtra` (cualquiera con una relación puede
-  haberlos escrito) — se resuelven de la base por `chatDeMatchPorMascota` /
-  `fetchServiciosPorId`.
-- **#41** `PopupServicio`: `google_maps_url` sólo se abre si es un link real de
-  Google Maps (`https://` + host conocido); si no, se arma uno propio con
-  lat/lng.
-- **#42** `MediaResena`: `esUrlPropia()` (nuevo, en `utils/imagenStorage.js`)
-  valida que la foto/video de una reseña sea del propio Storage (o `data:`)
-  antes de mostrarla o abrirla.
-- **#68 / #138** Fotos de perfil de Google/Facebook: `socialAuthApi.js` ahora
-  las descarga y las sube a `public-images` (`copiarFotoSocial`) en vez de
-  guardar el link externo — sólo para cuentas **nuevas** de acá en adelante;
-  las que ya tienen el link de Google/Facebook guardado no se migran solas.
-- **#69** EXIF de las fotos: lo saca `utils/elegirImagen.js` (ver arriba).
-- **#65** Lat/Lng exactos de Match: **ya estaba resuelto** por el trigger de
-  `070` (`round(..., 2)` antes de guardar en `"User"`), no hizo falta tocar
-  la app.
-- **#67** Área exacta a Overpass: **ya estaba resuelto** — `lugaresOsm.js` ya
-  redondeaba a una grilla de 0.02° antes de armar la consulta.
-- **#81** Mail existente revelado en el registro: **no se tocó a propósito**
-  — hoy es un mensaje explícito e intencional ("ya hay una cuenta con este
-  mail"); volverlo ambiguo es una decisión de producto, no un bug, y cambiar
-  la UX de registro no entraba en esta pasada.
-- **#82** Mail recordado tras cerrar sesión: opt-out nuevo en Configuración ›
-  Cuenta y seguridad › Sesión ("Recordar mi mail en este dispositivo"),
-  `settingsStore.device.recordar_mail` (default `true`).
-- **#123** `buscarUsuarios`: escapa `%`/`_`/`\` antes del `ilike` y exige 2
-  caracteres (ya lo pedía el buscador, ahora también la función).
-- **#124** Filtros `.or()` armados con ids: forzados a `Number(...)` en los 9
-  lugares que interpolaban (`chatStore`, `paseadorApi`, `matchApi`,
-  `perfilApi`, `api/comunidad`) — el más importante es
-  `matchApi.chatDeMatchPorMascota`, cuyo id puede venir de `DataExtra`.
-- **#125** `subirImagenPublica`: la extensión de una uri sin punto
-  (`content://…`, `blob:…`) ya no se cuela en la key de Storage; cae a `jpg`,
-  igual que `subirArchivoPublico`.
-- **#126 / #127** `console.error`/`console.log` con detalle de Supabase: los
-  ~16 lugares quedaron detrás de `if (__DEV__)`. El detalle real (`e.detalle`)
-  que se mostraba EN PANTALLA en `NegocioRegistroScreen`,
-  `PaseadorRegistroScreen` y `SolicitarPaseoScreen` también quedó sólo para
-  `__DEV__` — sin tocar la lógica que sí necesita leer `err.detalle` para
-  decidir qué campo marcar (`servicios_invalidos`, `genero_invalido`…), eso
-  no es "exponerlo", es leerlo.
-- **#128** `resetDemoMatchState` (borraba Votos reales desde "Restablecer
-  filtros" en Match): eliminada.
-- **#130** `app.json`: `android.allowBackup: false`. El permiso explícito
-  (`android.permissions`) **no** se tocó: no hay forma de armar la lista a
-  ciegas sin arriesgar romper cámara/ubicación en un build real que no se
-  puede probar acá.
-- **#132** `vercel.json`: `npm ci` en vez de `npm install` (se verificó que
-  el lockfile está sincronizado).
-- **#142** `zooni-app/.expo/README.md` y `devices.json`: sacados del índice
-  de git (`git rm --cached`), quedan en el disco.
-- **#144** `api.js`: `getStoredToken`/`saveToken` (muertas) eliminadas;
-  `clearToken` se mantiene (sí se usa al cerrar sesión).
-- **#145** El `<script>` y los dos `<style>` en línea de `public/index.html`
-  pasaron a `public/touch-fix.js` y `public/app-shell.css`.
-- **#46 / #47 / #131** `vercel.json`: `Content-Security-Policy`,
-  `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
-  `Permissions-Policy` nuevos. La CSP permite `unpkg.com` (Leaflet),
-  `*.supabase.co`, `places.googleapis.com`, los tres Overpass y los tiles de
-  OSM — **no se pudo probar contra un build real**: si algo de la app deja
-  de cargar después de desplegar, revisar la consola del navegador por
-  violaciones de CSP y ajustar esa línea antes que sacar la cabecera entera.
+## 2. Decisiones de producto pendientes
 
-- **#24** Leaflet en los iframes `srcDoc` (`MapaPaseo.jsx`, `ZonaMapaPicker.jsx`,
-  `ComunidadScreen.jsx`): `integrity`+`crossorigin` en el CSS y el JS de
-  unpkg, y `sandbox="allow-scripts"` (sin `allow-same-origin`) en los tres
-  `<iframe>` — así el iframe queda en otro origen; si unpkg se compromete, el
-  script ya no puede leer el `localStorage`/sesión de la app aunque pasara el
-  hash (y si no pasa el hash, el navegador ni lo ejecuta). La comunicación
-  pasó de llamadas directas a `contentWindow.__zooniX` (dejan de funcionar
-  entre orígenes distintos) a `postMessage` en los dos sentidos. La
-  geolocalización de `ComunidadScreen` (antes pedida DENTRO del iframe) se
-  movió a React: un iframe sandboxed sin `allow-same-origin` no hereda la
-  `Permissions-Policy: geolocation=(self)` del sitio, así que pedirla adentro
-  habría dejado de andar. Probado en un servidor local aparte (no se pudo
-  probar dentro de la app real, que necesita login): los hashes SRI son
-  correctos (Leaflet carga e inicializa el mapa) y el `postMessage` viaja en
-  los dos sentidos con el iframe sandboxed; confirmado además que el acceso
-  directo a `contentWindow` quedó bloqueado (por eso hacía falta el cambio).
-  **Probar en la app real** igual: mini-mapa del Home, mapa de Paseo activo,
-  selector de zona del paseador/negocio, mapa de Comunidad (ubicación propia,
-  tocar un pin, doble tap para cartel, arrastrar el mapa).
+- **Veterinarias reales** en `veterinary_clinics`: hoy el SOS muestra las
+  líneas de emergencia y la salida a Google Maps, sin lista propia.
+- **Verificación de paseadores**: no hay quién verifique. El dueño ve
+  "Identidad sin verificar todavía" y puede contratar igual. `verificado` sólo
+  lo cambia alguien con acceso al SQL (067).
+- **Dos Match con la misma persona** (uno por mascota) son dos chats; se
+  distinguen por las mascotas en el nombre. ¿Unificarlos?
+- **Mail existente revelado en el registro** (#81): hoy el mensaje es
+  explícito ("ya hay una cuenta con este mail"). Volverlo ambiguo mejora la
+  privacidad y empeora la UX: es una decisión de producto, no un bug.
 
-- **#70** `.remove()` de Storage al borrar la fila dueña: `eliminarFotoMascota`
-  (`petsApi.js`), `eliminarConsulta` (`fichaMedicaApi.js`, bucket privado o
-  público según sea una consulta nueva o vieja) y `borrarItem` de negocio
-  (`negocioApi.js`) ahora leen la URL/ruta antes de borrar la fila y limpian
-  el archivo después (nuevos `borrarImagenPublica`/`borrarArchivoPrivado` en
-  `utils/imagenStorage.js`, nunca tiran si falla — la fila ya se borró).
-  Quedan afuera a propósito: reseñas (no tienen un "borrar" en la app todavía)
-  y reemplazar la foto de portada de una mascota (`setFotoPrincipalMascota`
-  sube la nueva pero no borra la vieja — no es un borrado de fila, es un caso
-  aparte, menor).
-- **#83 / #84** `lib/supabase.js`: `almacenNativo.setItem` ahora borra los
-  trozos de SecureStore sobrantes cuando la sesión nueva ocupa menos que la
-  anterior, y las tres operaciones (get/set/remove) usan
-  `keychainAccessible: WHEN_UNLOCKED_THIS_DEVICE_ONLY`.
-- **#129** `imagenBase64.js` `desdeUrl()` borra el archivo temporal (con
-  `try/finally`) apenas lo lee a base64, se use o no para el PDF.
+## 3. Código
 
-**Lo anterior, ya resuelto por la migración vieja (060-063):**
-- Cascadas al borrar mascota no son parejas (`eventos_calendario`,
-  `historial_peso`, `consultas_veterinarias` con CASCADE; `MascotaVacuna`,
-  `Tratamiento`, `HistorialEvento`, `Voto`, `Match` sin). *(sigue pendiente,
-  no lo tocó la auditoría de seguridad)*
-- Chats por consulta periódica → Supabase Realtime. *(sigue pendiente)*
-- Límite de mensajes por usuario en `zoonivet-chat`. *(sigue pendiente)*
+- **Modo oscuro**: no existe ("Próximamente" en Configuración › Tema). Ahora
+  es viable: todos los colores salen de `theme/colores.js` (`npm test` lo
+  controla), pero hay que diseñar la paleta oscura y revisar pantalla por
+  pantalla.
+- Pantallas todavía grandes (500–850 líneas): `NegocioPublicoScreen`,
+  `MisMascotasScreen`, `ClosetScreen`, `PerfilScreen`, `SosScreen`,
+  `ComunidadScreen`, `FichaMedicaScreen`. Mismo método que Home, Calendario,
+  Eventos y las de salud: carga de datos a un hook, piezas a
+  `components/<tema>/`.
+- ZooniVet: el historial de la conversación lo manda la app, así que alguien
+  con su propia sesión puede fabricar respuestas "previas" del asistente
+  (hallazgo #43). Arreglo de fondo: guardar la conversación en la base.
+- Probar en iOS y Android (la prueba de humo de esta pasada fue en la web).
+- Grises `gris50`–`gris400` en `theme/colores.js`: quedaron 5 tonos muy
+  parecidos entre sí porque se migraron con un codemod sin tocar un píxel.
+  Unificarlos a una escala más corta cambiaría el matiz de fondos y bordes en
+  toda la app, y sin un build real no hay forma de verlo: decisión de diseño
+  pendiente.
+
+## 4. Deuda que el informe de seguridad dejó anotada
+
+Lo que la auditoría pedía y **no** se resolvió (está al final de la 070, con
+el motivo de cada uno): límite de frecuencia general en toda escritura (#38),
+firma real del contenido de un archivo subido y no sólo el `contentType`
+(#71), nombres de archivo no predecibles (#135–#137), piso de precio por
+minuto en solicitudes abiertas de paseo (#119), `search_path` vacío en las
+funciones viejas de 000-063 (#100), `EliminarCuentaScreen` que todavía no
+llama a ningún servicio (#22).
+
+Dos límites conocidos de lo que **sí** se hizo:
+- `negocioApi` y `paseadorApi` perdieron el **peso** y la fecha de nacimiento
+  de mascotas ajenas (no están en `mascota_publica`). El precio por tamaño
+  sigue bien porque la vista expone `Tamano`; lo que falta es el peso en la
+  ficha del paciente. Haría falta una vista aparte para negocio-con-turno y
+  paseador-con-paseo.
+- El aviso de "cambiá la contraseña" tras migrar una cuenta vieja se da **una
+  sola vez**: la 065 borra el hash viejo, así que después no hay forma de
+  distinguir esa cuenta. Forzarlo de verdad (bloquear la navegación hasta
+  cambiarla) queda pendiente.
 
 ## 5. Defensa oral
-Repasar `docs/claude/flujos.md` (responde las preguntas del PDF) y la sección
-060–062 de `SUPABASE_PEGAR_TODO.sql`.
+Repasar `docs/claude/flujos.md` (responde las preguntas de la devolución) y
+`docs/claude/base-de-datos.md` (orden de los SQL y qué hace cada migración).
+
+---
+
+## Hecho en esta pasada: merge de las dos ramas
+
+`master` tenía un commit (`dfe98cc`, la auditoría de seguridad de 150
+hallazgos) y `origin/master` otros siete (064–068, refactor por tema, datos
+inventados afuera). **Los dos lados habían hecho trabajo distinto sobre la
+misma base**, así que quedarse con uno destruía la mitad: se mergearon los 49
+archivos en conflicto preservando las dos cosas.
+
+**Lo que hubo que decidir, no sólo elegir**
+- El bloque `070_endurecimiento_seguridad` vivía **dentro** de
+  `SUPABASE_PEGAR_TODO.sql`. Ahí habría corrido *antes* de la 066, que
+  restituye las políticas permisivas de base: el endurecimiento quedaba
+  deshecho. Pasó a ser `MIGRACION_070_ENDURECIMIENTO_SEGURIDAD.sql`, que corre
+  última, con su guarda ("falta la 068") y su verificación final.
+- `_paseo_al_actualizar` estaba redefinida en los dos lados. La versión
+  mergeada suma los controles anti-trampa de la 070 **y** el manejo de
+  `Id_Mascota = NULL` de la 064 (sin eso, la purga de una mascota rompía el
+  paseo que la referenciaba).
+- La 070 creaba la tabla `migracion_intentos` y un bucket `fichas-medicas`
+  que **ya existían con otra forma** en la 067 y la 064 (`consultas-privadas`).
+  Se quitaron los duplicados: su consumidor (la Edge Function `migrar-cuenta`)
+  ya no existe, y la app quedó toda sobre `consultas-privadas`.
+- `elegirImagen` y `Estrellas` estaban escritos dos veces con APIs distintas.
+  Quedó la firma de `origin/master` (la que ya usan los 19 call sites) **con**
+  el borrado de EXIF que aportaba el otro lado (#69).
+- `debeCambiarContrasena` (#90) lo daba la Edge Function borrada. Ahora sale de
+  la RPC `migrar_cuenta_legada` + `esPasswordValida`: si la cuenta se acaba de
+  migrar y esa contraseña no cumple la regla de hoy, los tres logins mandan a
+  cambiarla.
+- El borrado de archivos de Storage (#70) estaba resuelto dos veces: triggers
+  en la 068 y `.remove()` del lado de la app. **Quedaron las dos**, a
+  propósito: la app lo borra en el momento y los triggers cubren cascadas y
+  borrados hechos desde el SQL. Además, así queda tapado el único caso que la
+  068 no cubre (`negocio_items.foto`).
+- `vercel.json`: las cabeceras de seguridad de un lado + el rewrite que excluye
+  `/api/` y la función `api/lugares.js` del otro (si ese rewrite se perdía, la
+  API quedaba servida por el `index.html`). La CSP se ajustó: Overpass salió de
+  `connect-src` porque el navegador ya no lo llama (va por `/api/lugares`), y
+  entró `nominatim.openstreetmap.org`, que sí llama.
+
+**Base**
+- `MIGRACION_070_ENDURECIMIENTO_SEGURIDAD.sql` nueva, con
+  `supabase/tests/pruebas_070.sql`: que `"Mascota"` no devuelva filas ajenas,
+  que `mascota_publica` no exponga columnas clínicas, que no se pueda insertar
+  una notificación a mano, que el paseador no pueda inflar el progreso ni
+  aceptar su propio paseo, que no se pueda reseñar un paseo sin finalizar, y
+  que lo de la 064–068 siga en pie después de endurecer.
+- `SUPABASE_PEGAR_TODO.sql` conserva el arreglo del hallazgo **crítico #1**
+  (`completar_perfil_paseador` tomaba `p_id_user` sin compararlo con la sesión
+  y estaba otorgada a `anon`) y el #134 (el `ON CONFLICT` volvía a poner
+  `public` en los buckets en cada corrida).
+
+**App**
+- Lecturas de mascotas ajenas por `mascota_publica` re-aplicadas sobre la
+  estructura nueva: `matchApi`, `comunidadApi`, `services/paseador/paseos.js`
+  y `resenas.js`, `services/negocio/enriquecer.js`.
+- `imagenStorage` quedó con `urlsFirmadas`/`subirImagenPrivada` de un lado y
+  `esUrlPropia` + los `borrar*` + el arreglo de la extensión (#125) del otro.
+- `zoonivet-chat`: cupo diario y versión exacta de supabase-js de un lado;
+  CORS por lista de orígenes, límites de palabra en los disparadores de
+  emergencia (#96, "trabajo" ya no dispara por "ajo") y el filtro de dosis
+  escritas con palabras ("media pastilla"), del otro.
+- `#82` (toggle "Recordar mi mail en este dispositivo") re-aplicado en
+  Configuración › Cuenta y seguridad › Sesión.
+
+**Cómo se verificó**
+- `npm run lint` y `npm test` en verde (ver el detalle al correrlos).
+- **No se pudo verificar acá**, y hay que hacerlo antes de tocar producción:
+  - `node supabase/scripts/probar-esquema.mjs` — **no corrió**: esta máquina no
+    tiene Postgres local ni Docker. Es la única forma de comprobar que la
+    secuencia `base → 064…068 → 070` se aplica dos veces sin romperse y que
+    `pruebas_070.sql` pasa. **Correrlo antes de pegar nada en Supabase.**
+  - `deno check` de `zoonivet-chat` — no hay `deno` instalado.
+  - Recorrido en el navegador contra un Supabase simulado.

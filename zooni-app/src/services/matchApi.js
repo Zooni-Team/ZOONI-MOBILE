@@ -16,8 +16,8 @@ import * as SecureStore from 'expo-secure-store';
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
 import { fetchIdsBloqueados } from './moderacionApi';
-import { DEFAULT_FILTROS } from '../data/matchDemo';
-import { subirImagenPublica } from '../utils/imagenStorage';
+import { DEFAULT_FILTROS } from '../constants/match';
+import { subirImagenPublica } from './imagenStorage';
 import { distanciaKm } from '../utils/geo';
 import { calcularEdadAnios } from '../utils/calcularEdad';
 import { mapaPerfilesPorId, perfilPorId } from './perfilesPublicos';
@@ -77,17 +77,19 @@ function mapPerfil(mascota, miUsuario, fotosPorMascota) {
     genero: user.Genero ?? null,
     edad: user.Edad ?? null,
     foto_perfil_url: user.FotoPerfil ?? null,
+    // "Ubicacion" ya es el texto completo ("Almagro, CABA"): antes iba en
+    // barrio Y en ciudad y la tarjeta mostraba "Almagro, CABA, Almagro, CABA".
     barrio: user.Ubicacion ?? null,
-    ciudad: user.Ubicacion ?? null,
+    ciudad: null,
     distancia_km: distanciaKm(puntoDe(miUsuario), puntoDe(user)),
     mascota: {
       id: mascota.Id_Mascota,
       nombre: mascota.Nombre,
       especie: mascota.Especie,
       raza: mascota.Raza,
-      // De otras personas viene por `mascota_publica`, que no expone
-      // FechaNacimiento (dato sensible) y da "EdadAnios" ya calculada; la
-      // propia tarjeta ("Así te ven") sigue viniendo de "Mascota" directo.
+      // De otras personas la mascota viene por "mascota_publica", que no
+      // expone FechaNacimiento (dato de salud) y da "EdadAnios" ya calculada;
+      // la tarjeta propia ("Así te ven") sigue saliendo de "Mascota".
       edad_anios: mascota.EdadAnios ?? calcularEdadAnios(mascota.FechaNacimiento),
       foto_real_url: mascota.Foto ?? null,
       // Todas las fotos (portada + galería) para el carrusel de la tarjeta
@@ -147,8 +149,9 @@ async function obtenerCandidatos() {
   const [{ data: miUsuario }, { data: candidatos, error }, { data: votos }, { data: matches }] = await Promise.all([
     supabase.from('User').select('Lat, Lng').eq('Id_User', getCurrentUserId()).single(),
     // Nunca mascotas propias, ni archivadas/en memoria/eliminadas
-    // (mascota_publica ya filtra Estado = 'active'), ni las que su dueño
-    // sacó del pool de Match. De otra persona: sólo columnas no sensibles.
+    // (mascota_publica ya filtra Estado = 'active' y a los bloqueados), ni
+    // las que su dueño sacó del pool de Match. De otra persona sólo se leen
+    // las columnas no sensibles: por eso la vista y no "Mascota" (#12).
     supabase.from('mascota_publica').select('*')
       .neq('Id_User', getCurrentUserId())
       .eq('VisibleEnMatch', true),
@@ -280,6 +283,7 @@ export async function fetchDetalleMatch(matchId) {
     perfilPorId(otroUserId, 'Id_User, Nombre, Apellido, NombreUsuario, Edad, Genero, FotoPerfil, Ubicacion, Lat, Lng, Intereses')
       .then((data) => ({ data })),
     otraMascotaId
+      // Mascota de la otra persona: por la vista (#12), no por "Mascota".
       ? supabase.from('mascota_publica').select('*').eq('Id_Mascota', otraMascotaId).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
@@ -304,7 +308,7 @@ export async function fetchDetalleMatch(matchId) {
           nombre: mascota.Nombre,
           especie: mascota.Especie,
           raza: mascota.Raza,
-          edad: mascota.EdadAnios ?? null,
+          edad: mascota.EdadAnios ?? null,   // mascota_publica no trae FechaNacimiento
           sexo: mascota.Sexo ?? null,
           descripcion: mascota.Descripcion ?? null,
           fotoUrl: mascota.Foto ?? null,
@@ -445,8 +449,8 @@ export async function postMatchSkip(mascotaDestinoId) {
  * Devuelve { chatId, nombre, fotoPerfilUrl } o null.
  */
 export async function chatDeMatchPorMascota(idMascotaParam) {
-  // idMascota puede venir de DataExtra (datos que escribió otra cuenta): se
-  // fuerza a número antes de armar el filtro para no poder inyectar sintaxis
+  // El id puede venir de DataExtra, que escribió otra cuenta: se fuerza a
+  // número antes de armar el filtro, para que no se pueda inyectar sintaxis
   // de PostgREST en el .or() (informe de seguridad #124).
   const idMascota = Number(idMascotaParam);
   const { data: match } = await supabase
@@ -481,4 +485,3 @@ export async function previewMatchFiltros(filtros) {
   const candidatos = await obtenerCandidatos();
   return { cantidad: aplicarFiltros(candidatos, filtros).length };
 }
-

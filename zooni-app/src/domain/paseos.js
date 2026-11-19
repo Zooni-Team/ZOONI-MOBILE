@@ -10,10 +10,12 @@
  *   · domain/paseos.js      → qué cuesta un paseo, cuánto duró, cómo se muestra
  *   · services/paseadorApi  → leer y escribir en la base
  *
- * OJO: el precio y la comisión que VALEN los calcula la base (062_reglas_negocio.sql:
+ * OJO: el precio y la comisión que VALEN los calcula la base (sección 062 de SUPABASE_PEGAR_TODO.sql:
  * precio_paseo() y comision_zooni()). Lo de acá sirve para mostrarlos antes
  * de pedir el paseo; si cambia una regla, hay que cambiarla en los dos lados.
  */
+
+import { horaCorta } from '../utils/tiempoRelativo.js';
 
 export const DIAS = [
   { key: 'lun', label: 'Lunes' }, { key: 'mar', label: 'Martes' },
@@ -111,11 +113,8 @@ export function formatoTimer(segundos) {
   return hh > 0 ? `${hh}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-export function horaDe(iso) {
-  if (!iso) return '--:--';
-  const d = new Date(iso);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
+/** Hora de un paseo; "--:--" si todavía no tiene. */
+export const horaDe = (iso) => horaCorta(iso) || '--:--';
 
 /** "Hoy 17:30" / "Mañana 09:00" / "Vie 12/10 18:00" */
 export function cuandoDe(iso) {
@@ -287,3 +286,25 @@ export const PREGUNTAS_RESENA = [
 ];
 
 export const MEDIA_RESENA_MAX = 6;
+
+// ─────────────────────────────────────────────
+// PASEOS VENCIDOS
+// ─────────────────────────────────────────────
+// Un paseo que nadie hizo a tiempo no puede quedar "Esperando respuesta" ni
+// ofrecer "Iniciar paseo" diez días después. Misma regla que vencer_paseos()
+// en la base (066), que además lo deja guardado; acá se aplica al mostrar
+// para que se vea bien aunque la base todavía no haya pasado.
+//   · pendiente: vence 1 hora después de la hora pedida (nadie lo tomó)
+//   · aceptado:  vence 2 horas después de la hora en que debía terminar
+export const GRACIA_PENDIENTE_MS = 60 * 60 * 1000;
+export const GRACIA_ACEPTADO_MS = 2 * 60 * 60 * 1000;
+
+/** El estado a mostrar: el guardado, o 'vencido' si ya no se puede cumplir. */
+export function estadoVigente({ estado, fecha, duracionMin = 30 }, ahora = Date.now()) {
+  if (!fecha || !['pendiente', 'aceptado'].includes(estado)) return estado;
+  const inicio = new Date(fecha).getTime();
+  if (Number.isNaN(inicio)) return estado;
+  if (estado === 'pendiente' && inicio + GRACIA_PENDIENTE_MS < ahora) return 'vencido';
+  if (estado === 'aceptado' && inicio + duracionMin * 60000 + GRACIA_ACEPTADO_MS < ahora) return 'vencido';
+  return estado;
+}

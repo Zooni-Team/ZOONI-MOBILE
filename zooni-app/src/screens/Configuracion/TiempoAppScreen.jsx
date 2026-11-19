@@ -5,78 +5,88 @@
  * límite AVISA, no bloquea (bloquear podría dejar a alguien sin llegar a SOS).
  */
 
-import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 
 import {
   SettingsGroup, SettingsScreen, SettingsSelect, SettingsToggle, T,
 } from '../../components/settings/SettingsKit';
 import { getSettings, patchSettings } from '../../services/settingsStore';
-import { colores } from '../../theme';
+import { fetchUsoSemana, formatoDuracion } from '../../services/usoApp';
+import { colores, sombras } from '../../theme';
 
-// Demo: minutos por día de la última semana (L a D)
-const SEMANA = [
-  { dia: 'L', min: 45 }, { dia: 'M', min: 88 }, { dia: 'M', min: 62 },
-  { dia: 'J', min: 105 }, { dia: 'V', min: 38 }, { dia: 'S', min: 96 },
-  { dia: 'D', min: 72 },
-];
-const HOY = 6; // índice del día actual en SEMANA
-
-function formatMin(min) {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return h > 0 ? `${h} h ${m} min` : `${m} min`;
-}
+// Los 7 días terminan hoy: el último es el de hoy.
+const HOY = 6;
 
 export default function TiempoAppScreen() {
   const [wellbeing, setWellbeing] = useState({ ...getSettings().wellbeing });
   const [barraActiva, setBarraActiva] = useState(null);
+  // null mientras carga; si no se pudo leer, queda el error (sin números inventados)
+  const [semana, setSemana] = useState(null);
+  const [error, setError] = useState(false);
+
+  useFocusEffect(useCallback(() => {
+    let vigente = true;
+    fetchUsoSemana()
+      .then((dias) => { if (vigente) { setSemana(dias); setError(false); } })
+      .catch(() => { if (vigente) setError(true); });
+    return () => { vigente = false; };
+  }, []));
   const set = (patch) => {
     patchSettings('wellbeing', patch);
     setWellbeing({ ...getSettings().wellbeing });
   };
 
-  const maxMin = Math.max(...SEMANA.map((d) => d.min));
-  const total = SEMANA.reduce((acc, d) => acc + d.min, 0);
+  const maxSeg = Math.max(60, ...(semana ?? []).map((d) => d.segundos));
+  const total = (semana ?? []).reduce((acc, d) => acc + d.segundos, 0);
 
   return (
     <SettingsScreen title="Tiempo en la app">
 
-      {/* Gráfico de barras semanal (§3.5.4) */}
+      {/* Gráfico de barras de los últimos 7 días (§3.5.4) */}
       <View style={s.chartCard}>
-        {barraActiva != null && (
-          <Text style={s.chartTooltip}>{formatMin(SEMANA[barraActiva].min)}</Text>
-        )}
-        <View style={s.chartRow}>
-          {SEMANA.map((d, i) => (
-            <TouchableOpacity key={i} style={s.chartCol} onPress={() => setBarraActiva(i)}
-              accessibilityRole="button"
-              accessibilityLabel={`${d.dia}: ${formatMin(d.min)}`}>
-              <View style={[
-                s.chartBar,
-                { height: Math.max(8, (d.min / maxMin) * 120) },
-                { backgroundColor: i === HOY ? T.brandText : T.brand },
-              ]} />
-              <Text style={s.chartDia}>{d.dia}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {error ? (
+          <Text style={s.aviso}>No pudimos leer tu tiempo de uso. Revisá tu conexión.</Text>
+        ) : !semana ? (
+          <ActivityIndicator color={T.brand} style={s.cargando} />
+        ) : (
+          <>
+            {barraActiva != null && (
+              <Text style={s.chartTooltip}>{formatoDuracion(semana[barraActiva].segundos)}</Text>
+            )}
+            <View style={s.chartRow}>
+              {semana.map((d, i) => (
+                <TouchableOpacity key={d.fecha} style={s.chartCol} onPress={() => setBarraActiva(i)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${i === HOY ? 'Hoy' : d.fecha}: ${formatoDuracion(d.segundos)}`}>
+                  <View style={[
+                    s.chartBar,
+                    { height: Math.max(8, (d.segundos / maxSeg) * 120) },
+                    { backgroundColor: i === HOY ? T.brandText : T.brand },
+                  ]} />
+                  <Text style={s.chartDia}>{d.letra}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
-        {/* Resumen: Hoy / Promedio / Semana */}
-        <View style={s.statsRow}>
-          <View style={s.stat}>
-            <Text style={s.statValor}>{formatMin(SEMANA[HOY].min)}</Text>
-            <Text style={s.statLabel}>Hoy</Text>
-          </View>
-          <View style={s.stat}>
-            <Text style={s.statValor}>{formatMin(Math.round(total / 7))}</Text>
-            <Text style={s.statLabel}>Promedio diario</Text>
-          </View>
-          <View style={s.stat}>
-            <Text style={s.statValor}>{formatMin(total)}</Text>
-            <Text style={s.statLabel}>Esta semana</Text>
-          </View>
-        </View>
+            {/* Resumen: Hoy / Promedio / Semana */}
+            <View style={s.statsRow}>
+              <View style={s.stat}>
+                <Text style={s.statValor}>{formatoDuracion(semana[HOY].segundos)}</Text>
+                <Text style={s.statLabel}>Hoy</Text>
+              </View>
+              <View style={s.stat}>
+                <Text style={s.statValor}>{formatoDuracion(total / 7)}</Text>
+                <Text style={s.statLabel}>Promedio diario</Text>
+              </View>
+              <View style={s.stat}>
+                <Text style={s.statValor}>{formatoDuracion(total)}</Text>
+                <Text style={s.statLabel}>Últimos 7 días</Text>
+              </View>
+            </View>
+          </>
+        )}
       </View>
 
       <SettingsGroup label="Límites">
@@ -111,7 +121,7 @@ export default function TiempoAppScreen() {
         />
         <SettingsToggle
           label="Resumen semanal"
-          apoyo="Recibí cada lunes un resumen de tu uso."
+          apoyo="Los lunes, al abrir la app, te mostramos cuánto la usaste."
           value={wellbeing.weekly_summary}
           onChange={(v) => set({ weekly_summary: v })}
         />
@@ -124,8 +134,10 @@ export default function TiempoAppScreen() {
 const s = StyleSheet.create({
   chartCard: {
     backgroundColor: T.surface, borderRadius: 18, marginTop: 16, padding: 16,
-    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+    ...sombras.tarjeta,
   },
+  cargando: { paddingVertical: 60 },
+  aviso: { fontSize: 14, color: colores.rojoOscuro, textAlign: 'center', paddingVertical: 40 },
   chartTooltip: { textAlign: 'center', fontSize: 14, fontWeight: '700', color: T.brandText, marginBottom: 6 },
   chartRow:     { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 150 },
   chartCol:     { flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 6 },

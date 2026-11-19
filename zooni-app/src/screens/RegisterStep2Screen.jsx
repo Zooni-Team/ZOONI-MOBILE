@@ -25,12 +25,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { elegirImagen } from '../utils/elegirImagen';
 
 import { fetchRazas } from '../services/authApi';
 // alerta() y no Alert.alert: en react-native-web Alert.alert es un NO-OP y
 // estos avisos no se veían (mismo problema que trababa el registro sin explicar).
 import { alerta } from '../utils/dialogo';
-import { elegirImagen } from '../utils/elegirImagen';
 import { resolveCajaImage } from '../constants/registroImages';
 import { calcularEdad } from '../utils/calcularEdad';
 import { toISODateLocal } from '../utils/fechaLocal';
@@ -86,23 +86,16 @@ export default function RegisterStep2Screen() {
     return () => { cancelado = true; };
   }, [especie]);
 
-  const elegirDeGaleria = async () => {
+  const elegirFoto = async (camara) => {
     try {
-      const uri = await elegirImagen();
+      const uri = await elegirImagen({ camara });
       if (uri) setFotoUri(uri);
     } catch {
-      alerta('Error', 'No se pudo abrir la galería.');
+      alerta('Error', `No se pudo abrir la ${camara ? 'cámara' : 'galería'}.`);
     }
   };
-
-  const abrirCamara = async () => {
-    try {
-      const uri = await elegirImagen({ origen: 'camara' });
-      if (uri) setFotoUri(uri);
-    } catch {
-      alerta('Error', 'No se pudo abrir la cámara.');
-    }
-  };
+  const elegirDeGaleria = () => elegirFoto(false);
+  const abrirCamara = () => elegirFoto(true);
 
   const handleContinuar = () => {
     const errs = {};
@@ -273,7 +266,7 @@ const s = StyleSheet.create({
   },
 
   dropdown: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     marginBottom: 12,

@@ -24,12 +24,13 @@ import HoraPicker from '../components/HoraPicker';
 import { useMisMascotas } from '../hooks/useMisMascotas';
 import { resolveMascotaVisual } from '../constants/petImages';
 import { DIAS_SEMANA, DIA_DE_JS } from '../constants/negocios';
-import { horarioDelDia, minutosDe } from '../services/negocioApi';
-import {
-  MEDIOS_PAGO, crearSolicitudPaseo, direccionDe, fetchPaseadorPublico, formatoDuracion, formatoPlata, precioPara,
-  serviciosDe,
-} from '../services/paseadorApi';
+import { horarioDelDia, minutosDe } from '../domain/negocios';
+import { MEDIOS_PAGO, formatoDuracion, formatoPlata, precioPara, serviciosDe } from '../domain/paseos';
+import { crearSolicitudPaseo, fetchPaseadorPublico } from '../services/paseadorApi';
+import { direccionDe, ubicarDireccion } from '../services/geocodificacion';
 import { colores, sombras } from '../theme';
+import { formatearFecha } from '../utils/fechaLocal';
+import { horaCorta } from '../utils/tiempoRelativo';
 
 function proximaHoraRedonda() {
   const d = new Date(Date.now() + 2 * 3600 * 1000);
@@ -37,8 +38,6 @@ function proximaHoraRedonda() {
   return d;
 }
 
-const fechaTexto = (d) => d.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
-const horaTexto = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
 /** ¿El paseo (desde `fecha`, `duracion` minutos) cae fuera de los horarios del paseador? */
 function fueraDeHorario(horarios, fecha, duracion) {
@@ -122,17 +121,36 @@ export default function SolicitarPaseoScreen() {
     enviandoRef.current = true;
     setEnviando(true);
     try {
+      // Dirección escrita a mano: tiene que existir (antes se aceptaba
+      // "gttt7tt"). Con "Usar mi ubicación" ya vienen las coordenadas.
+      let punto = coords;
+      if (!punto) {
+        try {
+          punto = await ubicarDireccion(direccion, { cerca: paseador });
+        } catch {
+          punto = undefined; // el buscador no responde: no se frena el pedido por eso
+        }
+        if (punto === null) {
+          setErrores(['No encontramos esa dirección. Escribí calle y altura (ej. "Av. Cabildo 2250, Belgrano") o usá tu ubicación.']);
+          return;
+        }
+      }
       await crearSolicitudPaseo({
         paseador, mascota, fecha, duracionMin: duracion, direccion, medioPago,
-        lat: coords?.lat ?? paseador.lat, lng: coords?.lng ?? paseador.lng, notas,
+        lat: punto?.lat ?? paseador.lat, lng: punto?.lng ?? paseador.lng, notas,
       });
       navigation.replace('MisPaseos', { enviada: paseador.nombreCompleto });
     } catch (err) {
-      if (__DEV__) console.error('[Solicitar paseo]', err?.message, err?.detalle ?? err);
-      const detalle = __DEV__ && err?.detalle ? `\n\nDetalle: ${err.detalle}` : '';
+      console.error('[Solicitar paseo]', err?.message, err?.detalle ?? err);
+      const porRegla = {
+        fecha_pasada: 'Ese horario ya pasó. Elegí uno de al menos 15 minutos desde ahora.',
+        paseo_superpuesto: `${mascota?.nombre ?? 'Tu mascota'} ya tiene un paseo pedido en ese horario. Revisalo en Mis paseos.`,
+        direccion_invalida: 'Revisá la dirección: escribí calle y altura.',
+      }[err?.message];
+      if (porRegla) { setErrorGeneral(porRegla); return; }
       setErrorGeneral(err?.message === 'migracion_pendiente'
-        ? `A la base de datos le falta Zooni Paseadores: es necesario correr las migraciones 035 y 038.${detalle}`
-        : `No se pudo enviar la solicitud.${detalle}`);
+        ? `A la base de datos le falta Zooni Paseadores: es necesario correr las migraciones 035 y 038.${err?.detalle ? `\n\nDetalle: ${err.detalle}` : ''}`
+        : `No se pudo enviar la solicitud.${err?.detalle ? `\n\nDetalle: ${err.detalle}` : ''}`);
     } finally {
       enviandoRef.current = false;
       setEnviando(false);
@@ -223,11 +241,11 @@ export default function SolicitarPaseoScreen() {
           <View style={s.fila}>
             <TouchableOpacity style={[s.campo, { flex: 1.6 }]} onPress={() => setPicker('fecha')}>
               <Ionicons name="calendar-outline" size={18} color={colores.verde} />
-              <Text style={s.campoTxt} numberOfLines={1}>{fechaTexto(fecha)}</Text>
+              <Text style={s.campoTxt} numberOfLines={1}>{formatearFecha(fecha, 'diaSemana')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[s.campo, { flex: 1 }]} onPress={() => setPicker('hora')}>
               <Ionicons name="time-outline" size={18} color={colores.verde} />
-              <Text style={s.campoTxt}>{horaTexto(fecha)}</Text>
+              <Text style={s.campoTxt}>{horaCorta(fecha)}</Text>
             </TouchableOpacity>
           </View>
 

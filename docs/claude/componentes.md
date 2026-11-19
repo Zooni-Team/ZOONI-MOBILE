@@ -13,7 +13,8 @@ prop. Si creás uno que se va a usar en más de una pantalla, va a `components/u
 | Un aviso breve flotante ("Guardado ✓") | `ui/Toast` + `hooks/useToast` | `const { toast, mostrarToast } = useToast(); mostrarToast('Listo'); <Toast {...toast} />` · color: `mostrarToast('Error', colores.rojo)` |
 | Un aviso que ocupa lugar en el layout | patrón `AvisoInline` de `PerfilScreen` con el mismo `useToast` | |
 | Placeholder mientras carga | `ui/Skeleton` (`<Skeleton style={s.card}>…</Skeleton>`) o `SkeletonBloque` (`width`, `height`) | la animación ya está; vos das la forma |
-| Alerta / confirmación que funcione en web | `utils/dialogo` → `alerta(titulo, texto)`, `confirmar(...)` | `Alert.alert` no anda en web |
+| Alerta / confirmación que funcione en web | `utils/dialogo` → `alerta(titulo, texto)`, `await confirmar(titulo, texto, { textoOk, destructivo })` | `Alert.alert` con botones no anda en web |
+| "No se pudo cargar" con Reintentar | `salud/AvisoError` (`mensaje`, `onReintentar`) | nunca mostrar "no hay nada" cuando lo que pasó es un error |
 | Cartel modal con estilo Zooni | `AppDialog` | |
 
 ## Elegir valores
@@ -34,36 +35,18 @@ prop. Si creás uno que se va a usar en más de una pantalla, va a `components/u
 |---|---|
 | Menú lateral del dueño | `HamburgerDrawer` (proveedores: `paseador/PaseadorDrawer`) |
 | Encabezado de la Ficha Médica y sus secciones | `PetHero` |
+| Pantalla de registros de salud (Vacunas, Tratamientos, Consultas) | `salud/PantallaSalud` (volver, selector de mascota, hero, hoja blanca, recargar, Toast) + `hooks/useRegistrosSalud(traer)` |
+| Sección con título, "Añadir" y lista que resuelve cargando / vacía / con datos | `salud/SeccionSalud` |
+| Un registro cargado (con editar / eliminar opcionales y espacio para una imagen) | `salud/TarjetaRegistro` |
+| Algo sugerido por el calendario ("Registrar" / "Aplicada") | `salud/TarjetaSugerido` |
+| Formulario corto en una ventana (título, campos, Cancelar / Guardar fijos, error adentro) | `salud/ModalFormulario` + `CampoTexto`, `CampoFecha` |
+| Inicio: mascota animada con flechas y foto/avatar | `home/HeroMascota` · botones: `home/BotonesHome` · datos: `hooks/useHome` |
+| Calendario de Cuidados | `calendario/RecordatorioCard`, `RecordatorioDetalleModal`, `FormularioRecordatorio` · datos: `hooks/useCalendario` |
+| Evento público (agenda) | `eventos/EventoPublicoCard` · datos: `hooks/useEventosPublicos` |
 | Panel de notificaciones de Home | `NotificationsPanel` |
 | Perfil de otra persona | `PersonaProfileModal` |
 | Botones de Home y su modal | `NavButton`, `AddButtonModal`, `DraggableList` |
 | Login con Google / Facebook | `BotonesSociales` |
-
-## Formularios
-`ui/Campo.jsx` (label + ayuda/error alrededor de un input) y
-`ui/InputPassword.jsx` (input de contraseña con ojito) — antes duplicados en
-`NegocioRegistroScreen` y `PaseadorRegistroScreen`. Reciben `styles` (el `s`
-de la pantalla) y, `InputPassword`, también `colores` (el `C` de la pantalla).
-
-## Puntajes
-`ui/Estrellas.jsx` — `Estrellas` (sólo lectura, con medias estrellas para
-promedios) y `EstrellasInput` (para elegir tocando, sin medias; prop
-`borrable` para poder volver a 0). Antes cuatro definiciones casi iguales
-repartidas en `resenas/*`, `MisPaseosScreen` y `Paseador/tabs/PerfilTab`.
-
-## Ficha médica
-`fichaMedica/CardAplicado.jsx` y `fichaMedica/CardSugerido.jsx` — tarjeta de un
-ítem aplicado y de uno sugerido del calendario (Vacunas, Tratamientos). Reciben
-el `styles` de la pantalla (cada una sigue dueña de su paleta) y los datos ya
-formateados (`lineas`, `contador`, `estado`…); `CardSugerido` tiene dos
-layouts: `"simple"` (Tratamientos) y `"detallado"` (Vacunas, con estado y dosis).
-
-## Ilustración de mascota
-`ui/PetIllustration.jsx` — imagen de la mascota con la sombra siguiendo su
-silueta (no un cuadrado). Antes duplicado en HomeScreen y FichaMedicaScreen.
-Props: `source`, `label`, `style` + opcionales `esFoto`/`estiloFoto` (foto
-real: recorte/marco) y `sombra`/`estiloSombraWeb`/`estiloSombraIOS` (sólo
-HomeScreen la pide; FichaMedica sigue sin sombra, que es el default).
 
 ## Kits por módulo
 - **Proveedores** (`paseador/PaseadorUI.jsx`): `C`, `sombra`, `PillButton`, `Card`,
@@ -76,9 +59,31 @@ HomeScreen la pide; FichaMedica sigue sin sombra, que es el default).
 - **Match** (`match/`), **Comunidad** (`Comunidad/`), **Reseñas** (`resenas/`):
   componentes propios de cada módulo.
 
+- **Formularios** (`ui/CampoFormulario.jsx`): `Campo` (rótulo + ayuda + error),
+  `InputPassword`, `estilosCampo`.
+- **Calificaciones** (`ui/Estrellas.jsx`): `Estrellas` (mostrar, admite medias)
+  y `EstrellasInput` (elegir; `borrable`).
+- **Especie** (`EspecieTile.jsx`): tarjeta para elegir perro/gato/… (registro y
+  alta de mascota).
+
 ## Elegir fotos
-`utils/elegirImagen.elegirImagen({ origen, calidad, allowsEditing, aspect, frontal })`
-— pide permiso, abre galería o cámara y devuelve la uri ya recomprimida sin
-EXIF (sin la ubicación GPS de la foto). Para fotos + video con selección
-múltiple (reseñas de paseo): `elegirMultimedia({ origen, limite })`.
-Para **subir** la foto elegida: `utils/imagenStorage.subirImagenPublica(uri, carpeta)`.
+Siempre con `utils/elegirImagen`: `await elegirImagen({ camara, cuadrada, frontal, calidad })`
+devuelve la uri o `null` (canceló / sin permiso; el aviso ya lo muestra).
+Para varias fotos y videos (reseñas): `elegirMedios({ camara, limite })`.
+Nunca llamar a `expo-image-picker` directo desde una pantalla.
+
+Toda foto que sale de ahí se recomprime, así que va **sin EXIF** (sin la
+ubicación GPS de quien la sacó): informe de seguridad #69. Es la razón de más
+peso para no saltear este helper.
+
+Para **subir** la foto elegida: `services/imagenStorage.subirImagenPublica(uri, carpeta)`.
+Si es información clínica (consultas): `subirImagenPrivada(uri, carpeta)` devuelve
+la **ruta** en el bucket privado, y se muestra con `urlsFirmadas([rutas])`.
+
+## Pantallas grandes: cómo se parten
+
+Una pantalla dibuja; la carga de datos va a un hook (`hooks/useXxx`) y cada
+pieza que se puede nombrar va a su archivo en `components/<tema>/`. Ejemplos:
+`HomeScreen` (165 líneas) = `useHome` + `HeroMascota` + `BotonesHome`;
+`CalendarioScreen` = `useCalendario` + `components/calendario/*`. Las
+animaciones que sólo le importan a una pieza viven en esa pieza.

@@ -1,679 +1,223 @@
 /**
- * VacunasScreen.jsx — Pantalla "Vacunas" de Zooni
+ * VacunasScreen.jsx — Vacunas de una mascota.
  *
- * Navega desde FichaMedicaScreen con { petId }.
- * Muestra vacunas aplicadas (editables/eliminables) y el calendario sugerido
- * según la especie de la mascota, con opción de marcar cada una como aplicada.
+ * Llega desde la Ficha Médica con { petId } (o usa la mascota activa). Muestra
+ * las vacunas ya aplicadas (se pueden agregar, editar y eliminar) y las que le
+ * corresponden según el calendario, que se registran con un toque.
+ *
+ * El armazón y las tarjetas son los mismos que en Tratamientos
+ * (components/salud); acá queda sólo lo propio de las vacunas.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Dimensions,
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  RefreshControl,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useState } from 'react';
 
-import { parseFechaLocal } from '../utils/fechaLocal';
-import PetHero from '../components/PetHero';
-import SelectorMascota from '../components/SelectorMascota';
-import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
-import { MASCOTA_VACIA } from '../constants/mascotaVacia';
 import FechaPicker from '../components/FechaPicker';
+import AvisoError from '../components/salud/AvisoError';
+import ModalFormulario, { CampoFecha, CampoTexto } from '../components/salud/ModalFormulario';
+import PantallaSalud from '../components/salud/PantallaSalud';
+import SeccionSalud from '../components/salud/SeccionSalud';
+import TarjetaRegistro from '../components/salud/TarjetaRegistro';
+import TarjetaSugerido from '../components/salud/TarjetaSugerido';
+import { useRegistrosSalud } from '../hooks/useRegistrosSalud';
+import { useToast } from '../hooks/useToast';
 import {
-  fetchVacunas,
-  crearVacunaAplicada,
-  marcarVacunaSugerida,
-  editarVacunaAplicada,
-  eliminarVacunaAplicada,
+  crearVacunaAplicada, editarVacunaAplicada, eliminarVacunaAplicada, fetchVacunas, marcarVacunaSugerida,
 } from '../services/fichaMedicaApi';
 import { colores } from '../theme';
-import Skeleton from '../components/ui/Skeleton';
-import Toast from '../components/ui/Toast';
-import { useToast } from '../hooks/useToast';
-import { diasHasta, formatearFecha, toISODateLocal } from '../utils/fechaLocal';
-import CardAplicado from '../components/fichaMedica/CardAplicado';
-import CardSugerido from '../components/fichaMedica/CardSugerido';
+import { confirmar } from '../utils/dialogo';
+import { diasHasta, formatearFecha, parseFechaLocal, toISODateLocal } from '../utils/fechaLocal';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const traerVacunas = async (idMascota) => {
+  const { mascota, aplicadas, sugeridas } = await fetchVacunas(idMascota);
+  return { mascota, aplicados: aplicadas, sugeridos: sugeridas };
+};
 
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
-
-/** Color de la línea "Próxima dosis" de un card aplicado. */
+/** Color de "Próxima dosis": rojo si ya pasó, ámbar si falta un mes o menos. */
 function colorProximaDosis(fechaISO) {
-  if (!fechaISO) return colores.textoSecundario;
-  const dias = diasHasta(fechaISO);
+  const dias = fechaISO ? diasHasta(fechaISO) : null;
+  if (dias == null) return undefined;
   if (dias < 0) return colores.rojo;
-  if (dias <= 30) return colores.ambar;
-  return colores.textoSecundario;
+  if (dias <= 30) return colores.ambarOscuro;
+  return undefined;
 }
 
-/** Estado + color de una vacuna sugerida (calendario). */
+/**
+ * Estado de una vacuna del calendario. La lista ya viene filtrada por edad,
+ * peso y raza (fetchVacunas): si aparece y no está aplicada, le corresponde.
+ */
 function estadoSugerida(sugerida) {
-  if (!sugerida.applied) return { texto: 'Aún no corresponde', color: colores.textoSecundario };
+  if (!sugerida.applied) return { texto: 'Pendiente', color: colores.ambarOscuro };
   const dias = diasHasta(sugerida.proximo_refuerzo);
-  if (dias === null) return { texto: 'Al día', color: colores.verde };
-  if (dias < 0) return { texto: 'Vencida', color: colores.rojo };
-  if (dias <= 30) return { texto: 'Refuerzo próximo', color: colores.ambar };
-  return { texto: 'Al día', color: colores.verde };
+  if (dias != null && dias < 0) return { texto: 'Vencida', color: colores.rojo };
+  if (dias != null && dias <= 30) return { texto: 'Refuerzo próximo', color: colores.ambarOscuro };
+  return { texto: 'Al día', color: colores.verdeOscuro };
 }
 
-// ─── COMPONENTE: SKELETON ─────────────────────────────────────────────────────
-
-function SkeletonCard() {
-  return (
-    <Skeleton style={s.skeletonCard}>
-      <View style={s.skeletonLine1} />
-      <View style={s.skeletonLine2} />
-      <View style={s.skeletonLine3} />
-    </Skeleton>
-  );
+/** Fecha del refuerzo según la frecuencia del catálogo (6 meses o anual). */
+function proximoRefuerzo(fecha, sugerida) {
+  const meses = sugerida?.frecuencia_descripcion?.includes('6 meses') ? 6 : 12;
+  const d = new Date(fecha);
+  d.setMonth(d.getMonth() + meses);
+  return toISODateLocal(d);
 }
 
-// ─── SCREEN PRINCIPAL ─────────────────────────────────────────────────────────
+const FORM_VACIO = { nombre: '', descripcion: '', fecha: null, veterinaria: '' };
 
 export default function VacunasScreen() {
-  const navigation = useNavigation();
-  const route = useRoute();
-  // Estado y no constante: con más de una mascota el selector de arriba la
-  // cambia sin salir de la pantalla (`cargar` depende de idMascota y recarga).
-  const [petId, setPetId] = useState(route.params?.petId || null);
-
-  const { mascotaActiva: mascotaActivaDemo } = useUsuarioActivo();
-
-  const [mascota,          setMascota]          = useState(null);
-  const [vacunasAplicadas, setVacunasAplicadas] = useState([]);
-  const [vacunasSugeridas, setVacunasSugeridas] = useState([]);
-  const [loading,          setLoading]          = useState(true);
-  const [refreshing,       setRefreshing]       = useState(false);
-
-  const [modalVisible,          setModalVisible]          = useState(false);
-  const [modalModo,              setModalModo]             = useState('añadir'); // 'añadir' | 'marcar' | 'editar'
-  const [vacunaEnEdicion,        setVacunaEnEdicion]       = useState(null);
-  const [vacunaPreseleccionada,  setVacunaPreseleccionada] = useState(null);
-
-  const [formTitulo,      setFormTitulo]      = useState('');
-  const [formDescripcion, setFormDescripcion] = useState('');
-  const [formFecha,       setFormFecha]       = useState(null);
-  const [formTipo,        setFormTipo]        = useState('Vacuna');
-  const [formVeterinaria, setFormVeterinaria] = useState('');
-  const [formErrors,      setFormErrors]      = useState({});
-
-  const [guardando,        setGuardando]        = useState(false);
-  const [showFechaPicker,  setShowFechaPicker]  = useState(false);
-
+  const salud = useRegistrosSalud(traerVacunas);
   const { toast, mostrarToast } = useToast();
 
-  const heroScale   = useRef(new Animated.Value(0.88)).current;
-  const heroOpacity = useRef(new Animated.Value(0)).current;
-  const modalScale   = useRef(new Animated.Value(0.92)).current;
-  const modalOpacity = useRef(new Animated.Value(0)).current;
+  // `edicion`: null (cerrado) · { modo: 'nueva' } · { modo: 'sugerida', sugerida }
+  // · { modo: 'editar', vacuna }. Una sola variable dice qué hace "Guardar".
+  const [edicion, setEdicion] = useState(null);
+  const [visible, setVisible] = useState(false);
+  const [form, setForm] = useState(FORM_VACIO);
+  const [errores, setErrores] = useState({});
+  const [guardando, setGuardando] = useState(false);
+  const [errorGuardar, setErrorGuardar] = useState(null);
+  const [eligiendoFecha, setEligiendoFecha] = useState(false);
 
-  // ── Carga inicial ──────────────────────────────────────────────────────────
-  const idMascota = petId ?? mascotaActivaDemo?.id;
+  const cambiar = (campo, valor) => {
+    setForm((f) => ({ ...f, [campo]: valor }));
+    setErrores((e) => (e[campo] ? { ...e, [campo]: null } : e));
+  };
 
-  const cargar = useCallback(async (silencioso = false) => {
-    if (!silencioso) setLoading(true);
-    try {
-      if (idMascota) {
-        const { mascota: m, aplicadas, sugeridas } = await fetchVacunas(idMascota);
-        setMascota(m);
-        setVacunasAplicadas(aplicadas);
-        setVacunasSugeridas(sugeridas);
-      } else {
-        // Logueado pero sin mascota activa todavía: pantalla vacía, no la
-        // mascota de demo (era la de OTRA cuenta, con vacunas ajenas).
-        setMascota(MASCOTA_VACIA);
-        setVacunasAplicadas([]);
-        setVacunasSugeridas([]);
-      }
-    } catch {
-      // Un error de red no puede inventar la mascota ni sus vacunas: se conserva
-      // lo último bueno y, si no había nada, queda el placeholder neutro.
-      setMascota((m) => m ?? MASCOTA_VACIA);
-    }
-    setLoading(false);
-    Animated.parallel([
-      Animated.timing(heroScale,   { toValue: 1, duration: 350, useNativeDriver: true }),
-      Animated.timing(heroOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
-    ]).start();
-  }, [heroOpacity, heroScale, idMascota]);
+  // La fecha arranca en hoy y se calcula al abrir: sigue bien si la app quedó
+  // abierta de un día para el otro.
+  const abrir = (nuevaEdicion, valores) => {
+    setEdicion(nuevaEdicion);
+    setForm({ ...FORM_VACIO, fecha: new Date(), ...valores });
+    setErrores({});
+    setErrorGuardar(null);
+    setVisible(true);
+  };
+  const abrirNueva = () => abrir({ modo: 'nueva' });
+  const abrirSugerida = (sugerida) => abrir({ modo: 'sugerida', sugerida }, { nombre: sugerida.nombre });
+  const abrirEditar = (vacuna) => abrir({ modo: 'editar', vacuna }, {
+    nombre: vacuna.nombre,
+    descripcion: vacuna.descripcion ?? '',
+    fecha: parseFechaLocal(vacuna.fecha_aplicacion),
+    veterinaria: vacuna.veterinaria ?? '',
+  });
 
-  useEffect(() => { cargar(); }, [cargar]);
+  async function guardar() {
+    const faltan = {};
+    if (!form.nombre.trim()) faltan.nombre = 'Escribí el nombre de la vacuna';
+    if (!form.fecha) faltan.fecha = 'Elegí la fecha en que se aplicó';
+    if (Object.keys(faltan).length) { setErrores(faltan); return; }
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await cargar(true);
-    setRefreshing(false);
-  }, [cargar]);
-
-  // ── Modal ────────────────────────────────────────────────────────────────
-  // La fecha de aplicación arranca en el día de hoy (se calcula al abrir el
-  // modal, así el valor sigue siendo correcto si la app quedó abierta de un
-  // día para el otro). Igual que en Tratamientos y Consultas.
-  function abrirModalAnadir() {
-    setFormTitulo(''); setFormDescripcion(''); setFormFecha(new Date());
-    setFormTipo('Vacuna'); setFormVeterinaria(''); setFormErrors({});
-    setVacunaEnEdicion(null); setVacunaPreseleccionada(null);
-    setModalModo('añadir');
-    abrirModal();
-  }
-
-  function abrirModalMarcar(sugerida) {
-    setFormTitulo(sugerida.nombre); setFormDescripcion(''); setFormFecha(new Date());
-    setFormTipo('Vacuna'); setFormVeterinaria(''); setFormErrors({});
-    setVacunaPreseleccionada(sugerida); setVacunaEnEdicion(null);
-    setModalModo('marcar');
-    abrirModal();
-  }
-
-  function abrirModalEditar(vacuna) {
-    setFormTitulo(vacuna.nombre);
-    setFormDescripcion(vacuna.descripcion ?? '');
-    setFormFecha(parseFechaLocal(vacuna.fecha_aplicacion));
-    setFormTipo(vacuna.tipo ?? 'Vacuna');
-    setFormVeterinaria(vacuna.veterinaria ?? '');
-    setFormErrors({});
-    setVacunaEnEdicion(vacuna); setVacunaPreseleccionada(null);
-    setModalModo('editar');
-    abrirModal();
-  }
-
-  function abrirModal() {
-    setModalVisible(true);
-    Animated.parallel([
-      Animated.timing(modalScale,   { toValue: 1, duration: 220, useNativeDriver: true }),
-      Animated.timing(modalOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
-    ]).start();
-  }
-
-  function cerrarModal() {
-    Keyboard.dismiss();
-    Animated.parallel([
-      Animated.timing(modalScale,   { toValue: 0.92, duration: 160, useNativeDriver: true }),
-      Animated.timing(modalOpacity, { toValue: 0,    duration: 160, useNativeDriver: true }),
-    ]).start(() => {
-      setModalVisible(false);
-      modalScale.setValue(0.92);
-      modalOpacity.setValue(0);
-      setTimeout(() => setFormErrors({}), 200);
-    });
-  }
-
-  // ── Guardar (añadir / marcar / editar) ─────────────────────────────────────
-  async function guardarVacuna() {
-    const errors = {};
-    if (!formTitulo.trim()) errors.titulo = 'Este campo es requerido';
-    if (!formFecha)         errors.fecha  = 'Seleccioná una fecha';
-    if (Object.keys(errors).length > 0) { setFormErrors(errors); return; }
-
+    const datos = {
+      descripcion: form.descripcion.trim() || null,
+      fecha_aplicacion: toISODateLocal(form.fecha),
+      tipo: edicion.vacuna?.tipo ?? 'Vacuna',
+      veterinaria: form.veterinaria.trim() || null,
+    };
     setGuardando(true);
-
-    const fechaISO = toISODateLocal(formFecha);
-    const frecuenciaMeses = vacunaPreseleccionada?.frecuencia_descripcion?.includes('6 meses') ? 6 : 12;
-    const proximoRefuerzo = (() => {
-      const d = new Date(formFecha);
-      d.setMonth(d.getMonth() + frecuenciaMeses);
-      return toISODateLocal(d);
-    })();
-
+    setErrorGuardar(null);
     try {
-      if (modalModo === 'añadir') {
-        const nueva = await crearVacunaAplicada(idMascota, {
-          nombre: formTitulo.trim(),
-          descripcion: formDescripcion.trim() || null,
-          fecha_aplicacion: fechaISO,
-          proximo_refuerzo: null,
-          tipo: formTipo,
-          veterinaria: formVeterinaria.trim() || null,
-        });
-        setVacunasAplicadas((prev) => [nueva, ...prev]);
-        cerrarModal();
-        mostrarToast('Vacuna registrada correctamente', colores.verde);
-      } else if (modalModo === 'marcar') {
-        const nueva = await marcarVacunaSugerida(idMascota, vacunaPreseleccionada.id, {
-          descripcion: formDescripcion.trim() || null,
-          fecha_aplicacion: fechaISO,
-          proximo_refuerzo: proximoRefuerzo,
-          tipo: formTipo,
-          veterinaria: formVeterinaria.trim() || null,
-        });
-        setVacunasAplicadas((prev) => [nueva, ...prev]);
-        setVacunasSugeridas((prev) => prev.map((sg) => (
-          sg.id === vacunaPreseleccionada.id
-            ? { ...sg, applied: true, proximo_refuerzo: proximoRefuerzo }
-            : sg
+      if (edicion.modo === 'editar') {
+        const editada = await editarVacunaAplicada(edicion.vacuna.id, { ...datos, nombre: form.nombre.trim() });
+        salud.setAplicados((prev) => prev.map((v) => (v.id === editada.id ? editada : v)));
+        mostrarToast('Vacuna actualizada', colores.verde);
+      } else if (edicion.modo === 'sugerida') {
+        const refuerzo = proximoRefuerzo(form.fecha, edicion.sugerida);
+        const nueva = await marcarVacunaSugerida(salud.idMascota, edicion.sugerida.id, { ...datos, proximo_refuerzo: refuerzo });
+        salud.setAplicados((prev) => [nueva, ...prev]);
+        salud.setSugeridos((prev) => prev.map((sg) => (
+          sg.id === edicion.sugerida.id ? { ...sg, applied: true, proximo_refuerzo: refuerzo } : sg
         )));
-        cerrarModal();
-        mostrarToast('Vacuna registrada correctamente', colores.verde);
+        mostrarToast('Vacuna registrada', colores.verde);
       } else {
-        const editada = await editarVacunaAplicada(vacunaEnEdicion.id, {
-          nombre: formTitulo.trim(),
-          descripcion: formDescripcion.trim() || null,
-          fecha_aplicacion: fechaISO,
-          tipo: formTipo,
-          veterinaria: formVeterinaria.trim() || null,
-        });
-        setVacunasAplicadas((prev) => prev.map((v) => (v.id === vacunaEnEdicion.id ? editada : v)));
-        cerrarModal();
-        mostrarToast('Vacuna actualizada correctamente', colores.verde);
+        const nueva = await crearVacunaAplicada(salud.idMascota, { ...datos, nombre: form.nombre.trim(), proximo_refuerzo: null });
+        salud.setAplicados((prev) => [nueva, ...prev]);
+        mostrarToast('Vacuna registrada', colores.verde);
       }
+      setVisible(false);
     } catch {
-      mostrarToast('No se pudo guardar la vacuna', colores.rojo);
+      setErrorGuardar('No se pudo guardar la vacuna. Revisá tu conexión y probá de nuevo.');
     } finally {
       setGuardando(false);
     }
   }
 
-  // ── Eliminar ─────────────────────────────────────────────────────────────
-  function eliminarVacuna(vacunaId) {
-    // Alert.alert con botones es un no-op en react-native-web: en el navegador
-    // nunca aparecía el diálogo (ni el botón "Eliminar" se llegaba a tocar).
-    if (Platform.OS === 'web') {
-      if (window.confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) confirmarEliminar(vacunaId);
-      return;
-    }
-    Alert.alert(
-      '¿Eliminar vacuna?',
-      '¿Seguro que querés eliminar este registro? Esta acción no se puede deshacer.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: () => confirmarEliminar(vacunaId) },
-      ],
-    );
-  }
-
-  async function confirmarEliminar(vacunaId) {
-    const vacuna = vacunasAplicadas.find((v) => v.id === vacunaId);
+  async function eliminar(vacuna) {
+    const ok = await confirmar(`¿Eliminar ${vacuna.nombre}?`, 'Esta acción no se puede deshacer.',
+      { textoOk: 'Eliminar', destructivo: true });
+    if (!ok) return;
     try {
-      await eliminarVacunaAplicada(vacunaId);
-      setVacunasAplicadas((prev) => prev.filter((v) => v.id !== vacunaId));
-      // Si venía del calendario sugerido, esa tarjeta tiene que volver a
-      // mostrarse como pendiente — si no, quedaba marcada "Aplicada" para
-      // siempre y no dejaba volver a registrarla.
-      if (vacuna?.vacuna_sugerida_id != null) {
-        setVacunasSugeridas((prev) => prev.map((sg) => (
-          sg.id === vacuna.vacuna_sugerida_id
-            ? { ...sg, applied: false, proximo_refuerzo: null }
-            : sg
+      await eliminarVacunaAplicada(vacuna.id);
+      salud.setAplicados((prev) => prev.filter((v) => v.id !== vacuna.id));
+      // Si venía del calendario, su tarjeta vuelve a quedar pendiente (si no,
+      // seguía "Aplicada" y no dejaba registrarla otra vez).
+      if (vacuna.vacuna_sugerida_id != null) {
+        salud.setSugeridos((prev) => prev.map((sg) => (
+          sg.id === vacuna.vacuna_sugerida_id ? { ...sg, applied: false, proximo_refuerzo: null } : sg
         )));
       }
-      mostrarToast('Vacuna eliminada', colores.rojo);
+      mostrarToast('Vacuna eliminada', colores.texto);
     } catch {
-      mostrarToast('No se pudo eliminar la vacuna', colores.rojo);
+      mostrarToast('No se pudo eliminar la vacuna. Probá de nuevo.', colores.rojo);
     }
   }
 
-  // ── Datos de la mascota ────────────────────────────────────────────────────
-  const m = mascota ?? mascotaActivaDemo ?? {
-    nombre: 'Tu mascota', especie: 'perro', raza: null,
-    peso: null, fecha_nacimiento: null, imagen_asset: 'perro_default',
-  };
+  const editando = edicion?.modo === 'editar';
 
-  const tituloModal = modalModo === 'editar' ? 'Editar vacuna'
-    : modalModo === 'marcar' ? 'Marcar vacuna'
-    : 'Nueva vacuna';
-  const tituloEditable = modalModo === 'añadir' || modalModo === 'editar';
-
-  // ── RENDER ───────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={s.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+    <>
+      <PantallaSalud titulo="Vacunas" mascota={salud.mascota} petId={salud.petId} onCambiarMascota={salud.setPetId}
+        cargando={salud.cargando} refrescando={salud.refrescando} onRefrescar={salud.refrescar} toast={toast}>
 
-      <Toast {...toast} />
+        {salud.error ? <AvisoError onReintentar={() => salud.reintentar()} /> : null}
 
-      <View style={s.screenBg}>
+        <SeccionSalud titulo="Vacunas" onAnadir={salud.idMascota ? abrirNueva : undefined}
+          cargando={salud.cargando} items={salud.aplicados}
+          vacio={salud.error ? '' : 'Todavía no cargaste ninguna vacuna'}
+          renderItem={(v) => (
+            <TarjetaRegistro key={v.id} queEs="vacuna" nombre={v.nombre} descripcion={v.descripcion}
+              lineas={[
+                { texto: `Aplicada: ${formatearFecha(v.fecha_aplicacion) ?? '—'}` },
+                {
+                  texto: `Próxima dosis: ${v.proximo_refuerzo ? formatearFecha(v.proximo_refuerzo) : '—'}`,
+                  color: colorProximaDosis(v.proximo_refuerzo),
+                },
+                { texto: `Veterinaria: ${v.veterinaria ?? 'Sin registro'}` },
+              ]}
+              onEditar={() => abrirEditar(v)} onEliminar={() => eliminar(v)} />
+          )} />
 
-        {/* Header mínimo */}
-        <View style={s.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={s.headerBtn}
-            accessibilityLabel="Volver" hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Ionicons name="arrow-back" size={26} color={colores.texto} />
-          </TouchableOpacity>
-        </View>
+        <SeccionSalud titulo="Vacunas sugeridas" icono="calendar-outline" placeholders={3}
+          cargando={salud.cargando} items={salud.sugeridos}
+          vacio={salud.error ? '' : 'No hay vacunas sugeridas para esta especie'}
+          renderItem={(sg, i) => (
+            // `dosis` ("1 de 3", "Refuerzo") ubica la vacuna dentro del plan: sin
+            // eso, tres dosis de la misma se leían como tres vacunas sueltas.
+            <TarjetaSugerido key={sg.id} orden={i} nombre={sg.nombre} detalle={sg.dosis}
+              estado={estadoSugerida(sg)} frecuencia={sg.frecuencia_descripcion}
+              aplicada={sg.applied} onRegistrar={() => abrirSugerida(sg)} />
+          )} />
+      </PantallaSalud>
 
-        <SelectorMascota valor={petId} onCambiar={setPetId} style={{ marginBottom: 6 }} />
+      <ModalFormulario visible={visible}
+        titulo={editando ? 'Editar vacuna' : 'Registrar vacuna'}
+        textoGuardar={editando ? 'Guardar cambios' : 'Guardar'}
+        guardando={guardando} error={errorGuardar} onGuardar={guardar} onCerrar={() => setVisible(false)}>
+        {/* Una vacuna del calendario se registra con su nombre tal cual. */}
+        <CampoTexto etiqueta="Vacuna" placeholder="Ej.: Antirrábica" value={form.nombre}
+          bloqueado={edicion?.modo === 'sugerida'} error={errores.nombre}
+          onChangeText={(v) => cambiar('nombre', v)} returnKeyType="next" maxLength={120} />
+        <CampoFecha etiqueta="Fecha de aplicación" valor={form.fecha} error={errores.fecha}
+          onAbrir={() => setEligiendoFecha(true)} />
+        <CampoTexto etiqueta="Veterinaria (opcional)" placeholder="Dónde se la aplicaron" value={form.veterinaria}
+          onChangeText={(v) => cambiar('veterinaria', v)} returnKeyType="next" maxLength={120} />
+        <CampoTexto etiqueta="Notas (opcional)" placeholder="Marca, lote, reacciones…" value={form.descripcion}
+          onChangeText={(v) => cambiar('descripcion', v)} multilinea maxLength={400} />
+      </ModalFormulario>
 
-        <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent}
-          showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh}
-              colors={[colores.verde]} tintColor={colores.verde} />
-          }>
-
-          {/* ── HERO ── (compartido con Tratamientos, Consultas y Curiosidades) */}
-          <PetHero mascota={m} titulo="Vacunas" anim={{ scale: heroScale, opacity: heroOpacity }} />
-
-          {/* ── CARD BLANCO ── */}
-          <View style={s.whiteCard}>
-
-            {/* ── SECCIÓN VACUNAS APLICADAS ── */}
-            <View style={s.secRow}>
-              <Text style={s.secTitulo}>Vacunas</Text>
-              <TouchableOpacity style={s.btnAnadir} onPress={abrirModalAnadir}>
-                <Ionicons name="add" size={16} color={colores.blanco} />
-                <Text style={s.btnAnadirTxt}>Añadir</Text>
-              </TouchableOpacity>
-            </View>
-
-            {loading ? (
-              <View><SkeletonCard /><SkeletonCard /></View>
-            ) : vacunasAplicadas.length === 0 ? (
-              <View style={s.emptyRow}>
-                <Ionicons name="create-outline" size={14} color={colores.textoSecundario} />
-                <Text style={s.emptyTxt}>No hay vacunas registradas</Text>
-              </View>
-            ) : (
-              vacunasAplicadas.map((v) => (
-                <CardAplicado
-                  key={v.id}
-                  styles={s}
-                  nombre={v.nombre}
-                  descripcion={v.descripcion}
-                  lineas={[
-                    { texto: `Aplicada: ${formatearFecha(v.fecha_aplicacion) ?? '—'}` },
-                    {
-                      texto: `Próxima dosis: ${v.proximo_refuerzo ? formatearFecha(v.proximo_refuerzo) : '—'}`,
-                      color: colorProximaDosis(v.proximo_refuerzo),
-                    },
-                    { texto: `Veterinaria: ${v.veterinaria ?? 'Sin registro'}`, unaLinea: true },
-                  ]}
-                  onEditar={() => abrirModalEditar(v)}
-                  onEliminar={() => eliminarVacuna(v.id)}
-                  editarLabel="Editar vacuna"
-                  eliminarLabel="Eliminar vacuna"
-                />
-              ))
-            )}
-
-            {/* ── SECCIÓN CALENDARIO SUGERIDO ── */}
-            <View style={s.secSugeridosRow}>
-              <Ionicons name="calendar-outline" size={16} color={colores.texto} />
-              <Text style={s.secSugeridosTitulo}>Vacunas sugeridas</Text>
-            </View>
-
-            {loading ? (
-              <View><SkeletonCard /><SkeletonCard /><SkeletonCard /></View>
-            ) : vacunasSugeridas.length === 0 ? (
-              <Text style={s.emptyTxt}>No hay vacunas sugeridas para esta especie</Text>
-            ) : (
-              vacunasSugeridas.map((sug, i) => {
-                const estado = estadoSugerida(sug);
-                return (
-                  <CardSugerido
-                    key={sug.id}
-                    styles={s}
-                    index={i}
-                    nombre={sug.nombre}
-                    subtitulo={sug.dosis || null}
-                    estado={estado}
-                    frecuencia={sug.frecuencia_descripcion}
-                    aplicado={sug.applied}
-                    botonTexto="Marcar"
-                    onPress={() => abrirModalMarcar(sug)}
-                    layout="detallado"
-                  />
-                );
-              })
-            )}
-
-          </View>
-        </ScrollView>
-      </View>
-
-      {/* ── MODAL AÑADIR / MARCAR / EDITAR ── */}
-      <Modal visible={modalVisible} transparent animationType="none" onRequestClose={cerrarModal}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={cerrarModal}>
-            <TouchableOpacity activeOpacity={1}>
-              <Animated.View style={[s.modalCard, { transform: [{ scale: modalScale }], opacity: modalOpacity }]}>
-                <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-
-                  <Text style={s.modalTitulo}>{tituloModal}</Text>
-
-                  {/* Título / nombre */}
-                  <TextInput
-                    style={[s.input, !tituloEditable && s.inputDisabled, formErrors.titulo && s.inputError]}
-                    placeholder="Nombre de la vacuna"
-                    placeholderTextColor={colores.textoTenue}
-                    value={formTitulo}
-                    editable={tituloEditable}
-                    onChangeText={(v) => { setFormTitulo(v); if (formErrors.titulo) setFormErrors((p) => ({ ...p, titulo: null })); }}
-                    returnKeyType="next"
-                  />
-                  {formErrors.titulo && <Text style={s.errorTxt}>{formErrors.titulo}</Text>}
-
-                  {/* Descripción */}
-                  <TextInput
-                    style={[s.input, s.inputMulti]}
-                    placeholder="Descripción opcional"
-                    placeholderTextColor={colores.textoTenue}
-                    value={formDescripcion}
-                    onChangeText={setFormDescripcion}
-                    multiline
-                    numberOfLines={3}
-                    textAlignVertical="top"
-                  />
-
-                  {/* Fecha */}
-                  <TouchableOpacity
-                    style={[s.inputFecha, formErrors.fecha && s.inputError]}
-                    onPress={() => setShowFechaPicker(true)}
-                  >
-                    <Text style={[s.inputFechaTxt, !formFecha && { color: colores.textoTenue }]}>
-                      {formFecha ? formatearFecha(formFecha) : 'dd/mm/aaaa'}
-                    </Text>
-                    <Ionicons name="calendar-outline" size={18} color={colores.textoSecundario} />
-                  </TouchableOpacity>
-                  {formErrors.fecha && <Text style={s.errorTxt}>{formErrors.fecha}</Text>}
-
-                  {/* Tipo — fijo en "Vacuna": esta pantalla es específicamente de
-                      vacunas, no tiene sentido registrar acá un tratamiento o una
-                      desparasitación (para eso está la pantalla de Tratamientos). */}
-                  <View style={[s.inputFecha, s.inputDisabled]}>
-                    <Text style={s.inputFechaTxt}>{formTipo}</Text>
-                  </View>
-
-                  {/* Veterinaria */}
-                  <TextInput
-                    style={s.input}
-                    placeholder="Veterinaria (opcional)"
-                    placeholderTextColor={colores.textoTenue}
-                    value={formVeterinaria}
-                    onChangeText={setFormVeterinaria}
-                    returnKeyType="done"
-                  />
-
-                  {/* Botón Guardar */}
-                  <TouchableOpacity style={s.btnGuardar} onPress={guardarVacuna} disabled={guardando}>
-                    {guardando
-                      ? <ActivityIndicator size="small" color={colores.blanco} />
-                      : <Text style={s.btnGuardarTxt}>{modalModo === 'editar' ? 'Guardar cambios' : 'Guardar'}</Text>
-                    }
-                  </TouchableOpacity>
-
-                  {/* Botón Cancelar */}
-                  <TouchableOpacity style={s.btnCancelar} onPress={cerrarModal}>
-                    <Text style={s.btnCancelarTxt}>Cancelar</Text>
-                  </TouchableOpacity>
-
-                </ScrollView>
-              </Animated.View>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      <FechaPicker
-        visible={showFechaPicker}
-        titulo="Fecha de aplicación"
-        valor={formFecha ?? new Date()}
-        onConfirmar={(d) => { setFormFecha(d); setShowFechaPicker(false); if (formErrors.fecha) setFormErrors((p) => ({ ...p, fecha: null })); }}
-        onCancelar={() => setShowFechaPicker(false)}
-      />
-    </SafeAreaView>
+      {/* Una vacuna aplicada no puede tener fecha futura. */}
+      <FechaPicker visible={eligiendoFecha} titulo="Fecha de aplicación" sinFuturo
+        valor={form.fecha ?? new Date()}
+        onConfirmar={(d) => { cambiar('fecha', d); setEligiendoFecha(false); }}
+        onCancelar={() => setEligiendoFecha(false)} />
+    </>
   );
 }
-
-// ─── ESTILOS ─────────────────────────────────────────────────────────────────
-
-const s = StyleSheet.create({
-  safeArea:      { flex: 1, backgroundColor: colores.menta },
-  screenBg:      { flex: 1, width: '100%', backgroundColor: colores.menta },
-  scroll:        { flex: 1 },
-  scrollContent: { flexGrow: 1 },
-
-  // Header
-  header:    { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, backgroundColor: 'transparent' },
-  headerBtn: { width: 32, alignItems: 'center', justifyContent: 'center' },
-
-  // Hero → components/PetHero.jsx (compartido con Tratamientos, Consultas y Curiosidades)
-
-  // Card blanco (mismo bottom sheet que Tratamientos y Consultas)
-  whiteCard: {
-    backgroundColor: colores.blanco,
-    borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    paddingHorizontal: 20, paddingTop: 22, paddingBottom: 40,
-    minHeight: 400,
-  },
-
-  // Sección row
-  secRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  secTitulo: { fontSize: 18, fontWeight: '700', color: colores.texto },
-
-  // Botón Añadir
-  btnAnadir: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: colores.verde, borderRadius: 20,
-    paddingVertical: 8, paddingHorizontal: 16,
-    shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 3,
-  },
-  btnAnadirTxt: { fontSize: 14, fontWeight: '700', color: colores.blanco },
-
-  // Empty
-  emptyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 4, marginBottom: 18 },
-  emptyTxt: { fontSize: 14, color: colores.textoSecundario, textAlign: 'center', marginTop: 4, marginBottom: 18 },
-
-  // Card aplicado
-  cardAplicado: {
-    backgroundColor: colores.blanco,
-    borderRadius: 14, borderWidth: 1, borderColor: colores.gris200,
-    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
-    paddingHorizontal: 14, paddingVertical: 12,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginBottom: 10,
-  },
-  cardLeft:   { flex: 1, paddingRight: 10, gap: 3 },
-  cardRight:  { flexDirection: 'column', gap: 8, alignItems: 'center', justifyContent: 'center' },
-  cardNombre: { fontSize: 14, fontWeight: '700', color: colores.texto, marginBottom: 4 },
-  cardDesc:   { fontSize: 12, color: colores.texto, fontStyle: 'italic', marginBottom: 4 },
-  cardField:  { fontSize: 12, color: colores.textoSecundario },
-
-  btnEditar: {
-    backgroundColor: colores.turquesa, width: 36, height: 36, borderRadius: 10,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
-  },
-  btnEliminar: {
-    backgroundColor: colores.rojo, width: 36, height: 36, borderRadius: 10,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
-  },
-
-  // Sección sugeridos
-  secSugeridosRow:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 24, marginBottom: 12 },
-  secSugeridosTitulo: { fontSize: 16, fontWeight: '700', color: colores.texto },
-
-  // Card sugerido
-  cardSugerido: {
-    backgroundColor: colores.blanco,
-    borderRadius: 12, borderWidth: 1, borderColor: colores.gris200,
-    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2,
-    paddingHorizontal: 14, paddingVertical: 12,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginBottom: 10,
-  },
-  // minWidth: 0 + maxWidth en la columna de al lado: sin esto, un texto largo
-  // en cualquiera de los dos lados (nombre o frecuencia) puede empujar al otro
-  // a un ancho casi nulo y el texto se parte letra por letra (bug real visto
-  // con una frecuencia larga).
-  cardSugeridoLeft:  { flex: 1, minWidth: 0, paddingRight: 8 },
-  cardSugeridoRight: { maxWidth: '45%', alignItems: 'flex-end', justifyContent: 'center', gap: 4 },
-  sugeridoNombre: { fontSize: 14, fontWeight: '700', color: colores.texto },
-  sugeridoDosis:  { fontSize: 11, color: colores.verdeOscuro, fontWeight: '700', marginTop: 2 },
-  sugeridoEstado: { fontSize: 12, textAlign: 'right' },
-  sugeridoFrec:   { fontSize: 12, color: colores.textoSecundario, textAlign: 'right' },
-
-  btnMarcar: {
-    backgroundColor: colores.verde, borderRadius: 14, paddingVertical: 5, paddingHorizontal: 12,
-    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.10, shadowRadius: 3, elevation: 2,
-  },
-  btnMarcarTxt: { fontSize: 13, fontWeight: '700', color: colores.blanco },
-
-  badgeAplicada: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: '#E8F8F0', borderRadius: 14, paddingVertical: 5, paddingHorizontal: 10,
-  },
-  badgeAplicadaTxt: { fontSize: 12, fontWeight: '700', color: colores.verde },
-
-  // Skeleton
-  skeletonCard:  { backgroundColor: colores.gris300, borderRadius: 12, padding: 16, marginBottom: 10, gap: 8 },
-  skeletonLine1: { height: 14, backgroundColor: colores.gris600, borderRadius: 6, width: '60%' },
-  skeletonLine2: { height: 11, backgroundColor: colores.gris600, borderRadius: 6, width: '80%' },
-  skeletonLine3: { height: 11, backgroundColor: colores.gris600, borderRadius: 6, width: '50%' },
-
-  // Toast
-
-  // Modal
-  overlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.50)', justifyContent: 'center', alignItems: 'center' },
-  modalCard: {
-    backgroundColor: colores.blanco, borderRadius: 20,
-    width: Math.min(SCREEN_WIDTH * 0.88, 360),
-    paddingHorizontal: 22, paddingTop: 24, paddingBottom: 20,
-    shadowColor: colores.negro, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 10,
-    maxHeight: '90%',
-  },
-  modalTitulo: { fontSize: 18, fontWeight: '700', color: colores.verde, textAlign: 'center', marginBottom: 20 },
-
-  input: {
-    borderWidth: 1.5, borderColor: colores.gris500, borderRadius: 10,
-    paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 14, color: colores.texto, backgroundColor: colores.blanco,
-    marginBottom: 12,
-  },
-  inputDisabled: { backgroundColor: colores.gris50, color: colores.texto },
-  inputError:    { borderColor: colores.rojo },
-  inputMulti:    { height: 80, textAlignVertical: 'top' },
-  inputFecha: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    borderWidth: 1.5, borderColor: colores.gris500, borderRadius: 10,
-    paddingHorizontal: 14, paddingVertical: 12,
-    marginBottom: 12, backgroundColor: colores.blanco,
-  },
-  inputFechaTxt: { flex: 1, fontSize: 14, color: colores.texto },
-  errorTxt:      { fontSize: 11, color: colores.rojo, marginTop: -8, marginBottom: 8, marginLeft: 4 },
-
-  btnGuardar: {
-    width: '100%', height: 48, borderRadius: 30,
-    backgroundColor: colores.verde, alignItems: 'center', justifyContent: 'center',
-    shadowColor: colores.negro, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
-  },
-  btnGuardarTxt: { fontSize: 15, fontWeight: '700', color: colores.blanco },
-  btnCancelar:   { width: '100%', height: 44, borderRadius: 30, backgroundColor: colores.gris300, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
-  btnCancelarTxt: { fontSize: 15, fontWeight: '700', color: colores.texto },
-});

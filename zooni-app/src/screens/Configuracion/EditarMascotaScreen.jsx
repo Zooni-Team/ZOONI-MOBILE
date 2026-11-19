@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { elegirImagen } from '../../utils/elegirImagen';
 
 import { fetchRazas } from '../../services/authApi';
 import {
@@ -26,7 +27,6 @@ import FechaPicker from '../../components/FechaPicker';
 import { alerta } from '../../utils/dialogo';
 import { colores } from '../../theme';
 import { formatearFecha } from '../../utils/fechaLocal';
-import { elegirImagen } from '../../utils/elegirImagen';
 
 const P = {
   bgTop: '#E4F9EA', text: colores.texto, textSoft: colores.textoSecundario, textSoftMint: colores.verdeGrisaceo,

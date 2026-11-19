@@ -32,9 +32,13 @@ import { clearToken, fetchHome } from '../../services/api';
 import { clearCurrentUserId } from '../../config/session';
 import { getSettings, subscribeSettings } from '../../services/settingsStore';
 import { fetchMisMascotas } from '../../services/petsApi';
+import { formatoDuracion, segundosHoy } from '../../services/usoApp';
+import { mailDeLaSesion } from '../../services/authApi';
 import { colores } from '../../theme';
+import appJson from '../../../app.json';
 
-const APP_VERSION = 'Zooni 1.4.2 (build 218)';
+// La versión sale de app.json: una sola fuente para la tienda y para la app.
+const APP_VERSION = `Zooni ${appJson.expo.version}`;
 
 // Valores secundarios legibles (§3.4)
 const TEMA_LABEL = { light: 'Claro', dark: 'Oscuro', auto: 'Automático' };
@@ -55,6 +59,14 @@ export default function ConfiguracionScreen() {
   // Usuario y mascota activa para el encabezado del drawer (igual que Home)
   useFocusEffect(useCallback(() => {
     fetchHome().then(setHomeData).catch(() => {});
+  }, []));
+
+  // Mail de la sesión (el de Supabase Auth) y tiempo de uso de hoy
+  const [mail, setMail] = useState(null);
+  const [usoHoy, setUsoHoy] = useState(null);
+  useFocusEffect(useCallback(() => {
+    mailDeLaSesion().then(setMail);
+    setUsoHoy(segundosHoy());
   }, []));
 
   // Cantidad real de mascotas activas del usuario (valor secundario de la fila)
@@ -116,13 +128,13 @@ export default function ConfiguracionScreen() {
         {/* Grupo 1 — Cuenta */}
         <SettingsGroup label="Cuenta">
           <SettingsRow icon="person-outline" tint="cuenta" label="Cuenta y Seguridad"
-            value="nacho@zooni.app" onPress={ir('ConfigCuenta')} />
+            value={mail ?? undefined} onPress={ir('ConfigCuenta')} />
           <SettingsRow icon="color-palette-outline" tint="apariencia" label="Tema de la aplicación"
             value={TEMA_LABEL[settings.device.theme]} onPress={ir('ConfigTema')} />
           <SettingsRow icon="film-outline" tint="medios" label="Medios y Calidad"
             value={CALIDAD_LABEL[settings.device.upload_quality]} onPress={ir('ConfigMedios')} />
           <SettingsRow icon="time-outline" tint="tiempo" label="Tiempo en la app"
-            value="1 h 12 min hoy" onPress={ir('ConfigTiempo')} />
+            value={usoHoy != null ? `${formatoDuracion(usoHoy)} hoy` : undefined} onPress={ir('ConfigTiempo')} />
         </SettingsGroup>
 
         {/* Grupo 2 — Mascotas y privacidad */}

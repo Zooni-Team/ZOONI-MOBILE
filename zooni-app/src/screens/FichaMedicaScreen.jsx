@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, RefreshControl, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Platform, RefreshControl, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Print from 'expo-print';
@@ -21,7 +21,6 @@ import { calcularEdad } from '../utils/calcularEdad';
 import { parseFechaLocal, toISODateLocal } from '../utils/fechaLocal';
 import { resolveMascotaVisual } from '../constants/petImages';
 import { SkeletonBloque } from '../components/ui/Skeleton';
-import PetIllustration from '../components/ui/PetIllustration';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import { useMisMascotas } from '../hooks/useMisMascotas';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
@@ -39,8 +38,6 @@ import { imagenADataUri } from '../utils/imagenBase64';
 import { colores } from '../theme';
 import { formatearFecha } from '../utils/fechaLocal';
 import { capitalizar } from '../utils/texto';
-
-// ─── DATOS DEMO (sin backend conectado — mismos datos que Vacunas/Tratamientos) ──
 
 // ─── COMPONENTES ─────────────────────────────────────────────────────────────
 
@@ -351,7 +348,8 @@ export default function FichaMedicaScreen() {
             {loading ? (
               <SkeletonBloque width={110} height={110} borderRadius={20} />
             ) : (
-              <PetIllustration source={petImg} label={`Ilustración de ${m.nombre}`} style={s.heroImg} />
+              // Sin sombra: sobre un PNG transparente dibuja un rectángulo.
+              <Image source={petImg} style={s.heroImg} resizeMode="contain" accessibilityLabel={`Ilustración de ${m.nombre}`} />
             )}
 
             {/* Flechas para alternar entre mascotas, igual que en el Home.

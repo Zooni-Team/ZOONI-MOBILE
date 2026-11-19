@@ -224,13 +224,13 @@ const s = StyleSheet.create({
   subtitulo: { fontSize: 18, fontWeight: '700', color: colores.texto, textAlign: 'center', marginBottom: 16 },
 
   input: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 10,
     paddingHorizontal: 16, paddingVertical: 14,
     fontSize: 15, color: colores.texto, backgroundColor: colores.blanco, marginBottom: 10,
   },
   inputRow: {
     flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 10,
     paddingHorizontal: 16, backgroundColor: colores.blanco, marginBottom: 16,
   },
   inputPass: { flex: 1, paddingVertical: 14, fontSize: 15, color: colores.texto },
@@ -255,7 +255,7 @@ const s = StyleSheet.create({
   },
   btnCrearTxt: { fontSize: 16, fontWeight: '700', color: colores.texto },
 
-  separador: { height: 1, backgroundColor: colores.gris200, marginVertical: 20 },
+  separador: { height: 1, backgroundColor: colores.gris100, marginVertical: 20 },
 
   proveedorPregunta: { fontSize: 13, color: colores.textoSecundario, textAlign: 'center', marginBottom: 10 },
   btnProveedor: {

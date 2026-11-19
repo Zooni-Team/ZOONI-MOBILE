@@ -13,7 +13,8 @@
     "setup:home-assets": "node assets/setup-home-assets.js",
     "verify:paseos": "node --no-warnings scripts/verificar-paseos.mjs",
     "lint": "eslint src App.jsx index.js scripts tests",
-    "test": "node --import ./tests/registrar.mjs --test \"tests/**/*.test.mjs\" && npm run -s verify:pdf && npm run -s verify:paseos"
+    "test": "node --import ./tests/registrar.mjs --test \"tests/**/*.test.mjs\" && npm run -s verify:pdf && npm run -s verify:paseos && npm run -s verify:colores",
+    "verify:colores": "node --no-warnings scripts/verificar-colores.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",
@@ -24,7 +25,6 @@
     "@supabase/supabase-js": "^2.110.0",
     "expo": "^51.0.0",
     "expo-asset": "~10.0.10",
-    "expo-crypto": "~13.0.2",
     "expo-file-system": "~17.0.1",
     "expo-font": "^12.0.10",
     "expo-haptics": "~13.0.1",

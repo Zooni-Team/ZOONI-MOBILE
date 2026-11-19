@@ -10,7 +10,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Avatar, C, Card, Chip } from './PaseadorUI';
-import { cuandoDe, formatoPlata } from '../../services/paseadorApi';
+import { cuandoDe, formatoPlata } from '../../domain/paseos';
 import { colores } from '../../theme';
 
 const DIEZ_MIN = 10 * 60 * 1000;

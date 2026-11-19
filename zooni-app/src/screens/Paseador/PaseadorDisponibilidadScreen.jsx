@@ -21,8 +21,9 @@ import { C, Card, PillButton, Seccion } from '../../components/paseador/Paseador
 import ZonaMapaPicker from '../../components/paseador/ZonaMapaPicker';
 import HorariosEditor from '../../components/negocio/HorariosEditor';
 import { DIAS_SEMANA } from '../../constants/negocios';
-import { minutosDe } from '../../services/negocioApi';
-import { HORARIOS_DEFAULT, actualizarPerfilPaseador, fetchPerfilPaseador } from '../../services/paseadorApi';
+import { minutosDe } from '../../domain/negocios';
+import { HORARIOS_DEFAULT } from '../../domain/paseos';
+import { actualizarPerfilPaseador, fetchPerfilPaseador } from '../../services/paseadorApi';
 import { alerta } from '../../utils/dialogo';
 import { colores } from '../../theme';
 
@@ -170,7 +171,7 @@ const s = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '700', color: C.texto, marginBottom: 6 },
   ayuda: { fontSize: 13, color: C.texto2, lineHeight: 18, marginBottom: 4 },
   input: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11,
     fontSize: 15, color: C.texto, backgroundColor: colores.blanco,
   },
   zonas: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },

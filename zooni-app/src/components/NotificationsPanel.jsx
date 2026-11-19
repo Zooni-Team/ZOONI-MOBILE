@@ -16,7 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { fetchNotificaciones, marcarNotificacionLeida, marcarTodasLeidas } from '../services/api';
 import { chatDeMatchPorMascota } from '../services/matchApi';
-import { fetchServiciosPorId } from '../api/comunidad';
+import { fetchServiciosPorId } from '../services/comunidadApi';
 import { resolveMascotaVisual } from '../constants/petImages';
 import { colores } from '../theme';
 
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: colores.gris150,
+    borderBottomColor: colores.gris100,
   },
   itemUnread: { backgroundColor: 'rgba(45, 189, 114, 0.08)' },
   avatarWrap: { marginRight: 10 },

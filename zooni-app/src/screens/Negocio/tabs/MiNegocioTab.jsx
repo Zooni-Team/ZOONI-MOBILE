@@ -30,9 +30,8 @@ import {
   Campo, DatosTipoNegocio, InputTexto, datosInicialesNegocio, datosNegocioParaGuardar, useDatosNegocio,
   validarDatosNegocio,
 } from '../../../components/negocio/CamposNegocio';
-import {
-  actualizarNegocio, resumenHorarios, subirLogoNegocio,
-} from '../../../services/negocioApi';
+import { actualizarNegocio, subirLogoNegocio } from '../../../services/negocioApi';
+import { resumenHorarios } from '../../../domain/negocios';
 import { sanitizarDigitos } from '../../../utils/sanitizar';
 import { colores } from '../../../theme';
 
@@ -76,7 +75,7 @@ export default function MiNegocioTab({ negocio, setNegocio, tipo, cfg, avisar, n
   const total = tipo === 'peluqueria' ? 4 : 3;
 
   const cambiarLogo = async () => {
-    const uri = await elegirImagen({ allowsEditing: true, aspect: [1, 1] });
+    const uri = await elegirImagen({ cuadrada: true });
     if (!uri) return;
     setSubiendoLogo(true);
     try {

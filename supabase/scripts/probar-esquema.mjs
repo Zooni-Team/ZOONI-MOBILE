@@ -2,8 +2,10 @@
 // probar-esquema.mjs — ¿El esquema se puede reconstruir desde cero?
 //
 // Crea una base vacía en un Postgres LOCAL, carga tests/shim_supabase.sql (lo
-// mínimo de Supabase: roles, auth.uid(), storage) y corre SUPABASE_PEGAR_TODO.sql. Después las corre OTRA VEZ: si la segunda pasada falla,
-// alguna migración no es idempotente. Sale con código != 0 ante cualquier error.
+// mínimo de Supabase: roles, auth.uid(), storage) y corre la secuencia real:
+// SUPABASE_PEGAR_TODO.sql y después MIGRACION_064…, en orden. Después la corre
+// OTRA VEZ: si la segunda pasada falla, algo no es idempotente. Al final, las
+// pruebas de tests/. Sale con código != 0 ante cualquier error.
 //
 // Uso:
 //   PGHOST=localhost PGPORT=5432 PGUSER=postgres node supabase/scripts/probar-esquema.mjs
@@ -12,11 +14,16 @@
 // No toca la base de Supabase: trabaja sobre una base temporal `zooni_prueba`.
 
 import { spawnSync } from 'node:child_process';
+import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const DIR_SUPABASE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TODO = path.join(DIR_SUPABASE, 'SUPABASE_PEGAR_TODO.sql');
+// La base y las migraciones, en el orden en que se pegan en Supabase.
+const SECUENCIA = [
+  'SUPABASE_PEGAR_TODO.sql',
+  ...readdirSync(DIR_SUPABASE).filter((f) => /^MIGRACION_\d{3}_.*\.sql$/.test(f)).sort(),
+].map((f) => path.join(DIR_SUPABASE, f));
 
 const PSQL = process.env.PSQL ?? 'psql';
 const BASE = process.env.ZOONI_BASE_PRUEBA ?? 'zooni_prueba';
@@ -46,10 +53,16 @@ if (!creada.ok) {
 correrArchivo(path.join(DIR_SUPABASE, 'tests', 'shim_supabase.sql'));
 
 for (const pasada of [1, 2]) {
-  correrArchivo(TODO);
-  console.log(`✓ pasada ${pasada}: SUPABASE_PEGAR_TODO.sql sin errores`);
+  SECUENCIA.forEach(correrArchivo);
+  console.log(`✓ pasada ${pasada}: ${SECUENCIA.map((f) => path.basename(f)).join(' → ')}`);
 }
 
-const pruebas = path.join(DIR_SUPABASE, 'tests', 'pruebas_rls.sql');
-correrArchivo(pruebas);
-console.log('✓ pruebas de RLS y reglas de negocio');
+// pruebas_rls crea los helpers pg_temp.como / salir que usa pruebas_064: van
+// juntas en la misma sesión de psql.
+const pruebas = ['pruebas_rls.sql', 'pruebas_064.sql', 'pruebas_065.sql', 'pruebas_066.sql', 'pruebas_067.sql', 'pruebas_068.sql', 'pruebas_070.sql'].map((f) => path.join(DIR_SUPABASE, 'tests', f));
+const r = psql(['-1', ...pruebas.flatMap((f) => ['-f', f])], { base: BASE });
+if (!r.ok) {
+  console.error(`\n✗ pruebas\n${r.salida}`);
+  process.exit(1);
+}
+console.log('✓ pruebas de RLS, reglas de negocio, 064 (purga, cupo, bucket privado) 065 (login de cuentas viejas) 066 (paseos vencidos, peso, opiniones) 067 (funciones cerradas) 068 (archivos huérfanos) y 070 (mascota_publica, notificaciones, anti-trampa de paseos)');

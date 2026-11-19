@@ -18,9 +18,8 @@
 import { supabase } from '../lib/supabase';
 import { setCurrentUserId, setModo, MODO_DUENO } from '../config/session';
 import { toISODateLocal } from '../utils/fechaLocal';
-import { subirImagenPublica } from '../utils/imagenStorage';
+import { subirImagenPublica } from './imagenStorage';
 import { marcarPresencia } from './presenciaApi';
-import { loginLegado } from './authLegado';
 import { esPasswordValida } from '../utils/validacion';
 
 // ─────────────────────────────────────────────
@@ -53,18 +52,27 @@ function ordenarRazas(razas) {
 // ─────────────────────────────────────────────
 
 /**
- * Cuenta vieja → Supabase Auth. Devuelve:
- *   { migrada: true, debeCambiarContrasena }  se migró (la vieja no cumplía
- *     la política nueva de contraseñas → hay que pedirle que la cambie)
- *   { migrada: false }                        no había cuenta vieja con ese mail/contraseña
- *   null                                       la Edge Function no está desplegada (o no hay red)
+ * Cuenta vieja (contraseña SHA-256 de antes de Supabase Auth) → Auth.
+ * La migración la hace la base (065, migrar_cuenta_legada: compara el hash, crea
+ * el usuario de Auth con bcrypt y borra el hash viejo; 067 le pone límite de
+ * intentos). Devuelve true si migró, false si no había cuenta vieja que
+ * coincida. Si la base no responde, tira el error tal cual: no es lo mismo
+ * "no hay red" que "contraseña incorrecta".
  */
 async function migrarCuentaVieja(mail, password) {
-  const { data, error } = await supabase.functions.invoke('migrar-cuenta', {
-    body: { email: mail, password },
-  });
-  if (error) return null;
-  return { migrada: !!data?.migrada, debeCambiarContrasena: !!data?.debeCambiarContrasena };
+  const { data, error } = await supabase.rpc('migrar_cuenta_legada', { p_mail: mail, p_password: password });
+  if (error) throw error;
+  return data === true;
+}
+
+/** Mail de la sesión de Supabase Auth (o null si no hay sesión o no se pudo leer). */
+export async function mailDeLaSesion() {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data?.session?.user?.email ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** Traduce la sesión de Auth a la cuenta de Zooni. */
@@ -81,24 +89,29 @@ async function cuentaDeLaSesion() {
 /**
  * Inicia sesión con mail y contraseña. NO elige el modo de la app: eso lo
  * hace quien llama (login de dueño, de paseador o de negocio).
- * @returns {{ id, nombre, apellido, email, fotoPerfil, legado?: boolean, debeCambiarContrasena?: boolean }}
+ * @returns {{ id, nombre, apellido, email, fotoPerfil, debeCambiarContrasena? }}
  * Lanza Error('credenciales') si mail o contraseña no coinciden (sin decir cuál).
+ *
+ * `debeCambiarContrasena` sale en true cuando la cuenta se acaba de migrar
+ * (ver migrarCuentaVieja) y la contraseña que traía de antes no cumple la
+ * regla de hoy: la 065 la pasa a bcrypt tal cual, así que una contraseña de
+ * 4 caracteres de la época del SHA-256 seguiría sirviendo. Los tres logins
+ * mandan a ConfigCambiarContrasena cuando viene en true.
+ *
+ * Límite conocido: se avisa UNA sola vez, en el login de la migración. La 065
+ * borra el hash viejo, así que después no hay forma de distinguir esa cuenta
+ * de cualquier otra; si la persona no cambia la contraseña ahí, nadie se lo
+ * vuelve a pedir. Forzarlo de verdad (bloquear la navegación) queda pendiente.
  */
 export async function iniciarSesionConPassword(email, password) {
   const mail = email.trim().toLowerCase();
 
-  let debeCambiarContrasena = false;
+  let migrada = false;
   let { error } = await supabase.auth.signInWithPassword({ email: mail, password });
   if (error && /invalid login credentials|invalid_credentials/i.test(`${error.code} ${error.message}`)) {
-    const resultado = await migrarCuentaVieja(mail, password);
-    if (resultado?.migrada) {
-      debeCambiarContrasena = resultado.debeCambiarContrasena;
+    migrada = await migrarCuentaVieja(mail, password);
+    if (migrada) {
       ({ error } = await supabase.auth.signInWithPassword({ email: mail, password }));
-    } else if (resultado === null) {
-      // TRANSICIÓN: la Edge Function migrar-cuenta todavía no está desplegada.
-      // Mientras tanto se entra como antes, sin JWT. Borrar authLegado.js y
-      // este bloque cuando la función esté desplegada (ver README → Supabase).
-      return loginLegado(mail, password);
     }
   }
   if (error) {
@@ -108,9 +121,9 @@ export async function iniciarSesionConPassword(email, password) {
     throw error;
   }
   const cuenta = await cuentaDeLaSesion();
-  // Cuenta recién migrada con una contraseña que no cumple la política nueva
-  // (informe de seguridad #90): quien llama debe mandar a cambiarla.
-  return debeCambiarContrasena ? { ...cuenta, debeCambiarContrasena: true } : cuenta;
+  return migrada && !esPasswordValida(password)
+    ? { ...cuenta, debeCambiarContrasena: true }
+    : cuenta;
 }
 
 /**
@@ -202,7 +215,7 @@ export async function login(email, password) {
  *
  * Avisa temprano, en la misma pantalla donde se escribe. No es la garantía:
  * entre el paso 3 y el 4 alguien más puede quedarse con ese mail. La garantía
- * es el índice único del servidor (053_mail_unico.sql).
+ * es el índice único del servidor (sección 053 de SUPABASE_PEGAR_TODO.sql).
  *
  * Se pregunta con la RPC disponibilidad_registro (060): con RLS un anónimo ya
  * no puede leer la tabla "User", y esta función sólo responde sí/no.

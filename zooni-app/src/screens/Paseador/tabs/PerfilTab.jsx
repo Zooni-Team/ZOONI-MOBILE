@@ -15,26 +15,30 @@ import {
   TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
 import { elegirImagen } from '../../../utils/elegirImagen';
+
 import { Avatar, C, Card, Chip, PillButton, Seccion, Stat } from '../../../components/paseador/PaseadorUI';
+import { actualizarPerfilPaseador, fetchResenas, fetchRolesCuenta } from '../../../services/paseadorApi';
 import {
-  actualizarPerfilPaseador, experienciaEnZooni, fetchResenas, formatoDuracion, formatoPlata,
-  serviciosDe, validarServicios,
-} from '../../../services/paseadorApi';
+  experienciaEnZooni,
+  formatoDuracion,
+  formatoPlata,
+  serviciosDe,
+  validarServicios,
+} from '../../../domain/paseos';
 import ResenasPaseadorModal from '../../../components/resenas/ResenasPaseadorModal';
 import CantidadPerros from '../../../components/paseador/CantidadPerros';
 import ServiciosEditor, { filasDesdeServicios, serviciosDesdeFilas } from '../../../components/paseador/ServiciosEditor';
 import ZonaMapaPicker from '../../../components/paseador/ZonaMapaPicker';
 import { actualizarMiFotoPerfil } from '../../../services/perfilApi';
 import { clearCurrentUserId, getCurrentUserId, setModo, MODO_DUENO } from '../../../config/session';
-import { supabase } from '../../../lib/supabase';
 import { alerta, confirmar } from '../../../utils/dialogo';
 import { tiempoRelativo } from '../../../utils/tiempoRelativo';
 import { colores } from '../../../theme';
-import Estrellas from '../../../components/ui/Estrellas';
+import { Estrellas } from '../../../components/ui/Estrellas';
 
 const TAMANO_LABEL = { chico: 'Chicos', mediano: 'Medianos', grande: 'Grandes' };
+
 
 function FilaMenu({ icono, titulo, sub, onPress, color = C.texto }) {
   return (
@@ -66,8 +70,9 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
 
   const cargar = useCallback(async () => {
     fetchResenas().then(setResenas).catch(() => setResenas({ promedio: null, cantidad: 0, totalPaseos: 0, primerPaseo: null, resenas: [] }));
-    const { data } = await supabase.from('Mascota').select('Id_Mascota').eq('Id_User', getCurrentUserId()).limit(1);
-    setTieneMascotas((data?.length ?? 0) > 0);
+    // ¿También es dueño? (para ofrecer pasar al modo dueño)
+    const roles = await fetchRolesCuenta().catch(() => null);
+    setTieneMascotas(!!roles?.esDueno);
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
@@ -93,7 +98,7 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
   };
 
   const elegirFoto = async (desdeCamara) => {
-    const uri = await elegirImagen({ origen: desdeCamara ? 'camara' : 'galeria', allowsEditing: true, aspect: [1, 1] });
+    const uri = await elegirImagen({ camara: desdeCamara, cuadrada: true });
     if (uri) setEditPerfil((f) => ({ ...f, fotoUri: uri }));
   };
 
@@ -360,11 +365,11 @@ const s = StyleSheet.create({
   stats: { flexDirection: 'row', alignItems: 'center', marginTop: 18 },
   rating: { fontSize: 30, fontWeight: '900', color: C.texto },
   statEtiqueta: { fontSize: 12, color: C.texto2, fontWeight: '600', marginTop: 2 },
-  divisor: { width: 1, alignSelf: 'stretch', backgroundColor: colores.gris150, marginHorizontal: 12 },
+  divisor: { width: 1, alignSelf: 'stretch', backgroundColor: colores.gris100, marginHorizontal: 12 },
   bio: { fontSize: 14, color: C.texto, lineHeight: 20, marginTop: 14 },
 
   servicio: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
-  servicioBorde: { borderTopWidth: 1, borderTopColor: colores.gris150 },
+  servicioBorde: { borderTopWidth: 1, borderTopColor: colores.gris100 },
   servicioIcono: { width: 40, height: 40, borderRadius: 12, backgroundColor: C.menta, alignItems: 'center', justifyContent: 'center' },
   servicioTitulo: { fontSize: 15, fontWeight: '800', color: C.texto },
   servicioSub: { fontSize: 12, color: C.texto2, marginTop: 1 },
@@ -396,11 +401,11 @@ const s = StyleSheet.create({
     borderRadius: 20, backgroundColor: C.menta,
   },
   fotoBtnTxt: { fontSize: 14, fontWeight: '700', color: C.texto },
-  sheetHandle: { width: 44, height: 5, borderRadius: 3, backgroundColor: colores.gris400, alignSelf: 'center', marginBottom: 14 },
+  sheetHandle: { width: 44, height: 5, borderRadius: 3, backgroundColor: colores.gris300, alignSelf: 'center', marginBottom: 14 },
   sheetTitulo: { fontSize: 19, fontWeight: '900', color: C.texto, marginBottom: 14 },
   sheetLabel: { fontSize: 13, fontWeight: '700', color: C.texto, marginTop: 16, marginBottom: 8 },
   bioInput: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12, padding: 12, minHeight: 80,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 12, padding: 12, minHeight: 80,
     fontSize: 14, color: C.texto, textAlignVertical: 'top',
   },
 });

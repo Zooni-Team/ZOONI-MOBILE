@@ -171,12 +171,12 @@ const s = StyleSheet.create({
   titulo: { fontSize: 18, fontWeight: '700', color: C.texto, marginBottom: 16, textAlign: 'center' },
 
   input: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 10,
     paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, color: C.texto,
     backgroundColor: colores.blanco, marginBottom: 10,
   },
   inputRow: {
-    flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colores.gris500,
+    flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colores.gris300,
     borderRadius: 10, paddingHorizontal: 16, backgroundColor: colores.blanco, marginBottom: 16,
   },
   inputPass: { flex: 1, paddingVertical: 14, fontSize: 15, color: C.texto },
@@ -189,6 +189,6 @@ const s = StyleSheet.create({
   activarTitulo: { fontSize: 15, fontWeight: '800', color: C.texto },
   activarTxt: { fontSize: 13, color: C.texto2, marginTop: 2, lineHeight: 18 },
 
-  separador: { height: 1, backgroundColor: colores.gris200, marginVertical: 22 },
+  separador: { height: 1, backgroundColor: colores.gris100, marginVertical: 22 },
   pregunta: { fontSize: 14, color: C.texto2, textAlign: 'center', marginBottom: 12 },
 });

@@ -5,22 +5,10 @@
  */
 
 import { supabase } from '../lib/supabase';
+import { urlsFirmadas, borrarArchivoPrivado, borrarImagenPublica } from './imagenStorage';
 import { calcularEdadMeses } from '../utils/calcularEdad';
 import { aplicaParaMascota } from '../utils/filtrarPorMascota';
-import {
-  obtenerUrlsFirmadas, subirImagenPrivada, borrarArchivoPrivado, borrarImagenPublica,
-} from '../utils/imagenStorage';
-
-// Bucket PRIVADO (informe de seguridad #13/#14): las imágenes de consultas
-// veterinarias no se muestran por URL pública, sólo con firma de corta
-// duración (`obtenerUrlFirmada`/`obtenerUrlsFirmadas`, abajo).
-const BUCKET_FICHAS = 'fichas-medicas';
-
-/** Sube la foto de una consulta al bucket privado. Para mostrarla después,
- * `fetchConsultas` ya la devuelve con su URL firmada resuelta. */
-export function subirImagenConsulta(uri) {
-  return subirImagenPrivada(uri, 'consultas', BUCKET_FICHAS);
-}
+import { normalizarBusqueda } from '../utils/texto';
 
 function mapMascota(m) {
   if (!m) return null;
@@ -46,9 +34,8 @@ export async function fetchMascota(petId) {
 export async function actualizarPeso(petId, peso) {
   const { data, error } = await supabase.from('Mascota').update({ Peso: peso }).eq('Id_Mascota', petId).select().single();
   if (error) throw error;
-  // Registro histórico best-effort: si la migración 016 no está corrida,
-  // el peso igual queda actualizado (solo se pierde el punto del historial).
-  try { await supabase.from('historial_peso').insert({ mascota_id: petId, peso_kg: peso }); } catch { /* sin tabla */ }
+  // El punto del historial lo agrega la base (trigger de 066), sea cual sea
+  // la pantalla que cambió el peso.
   return mapMascota(data);
 }
 
@@ -123,7 +110,13 @@ export async function fetchVacunas(petId) {
       pesoMinKg: v.PesoMinKg, pesoMaxKg: v.PesoMaxKg, razas: v.Razas,
     }, perfil))
     .map((v) => {
-      const aplicacion = (aplicadas ?? []).find((a) => a.Id_Vacuna === v.Id_Vacuna);
+      // Por id del catálogo, o por nombre si se cargó a mano ("Añadir" guarda
+      // NombreLibre sin Id_Vacuna): si no, una Séxtuple cargada a mano
+      // seguía figurando como pendiente.
+      const nombre = normalizarBusqueda(v.Nombre).trim();
+      const aplicacion = (aplicadas ?? []).find((a) => a.Id_Vacuna === v.Id_Vacuna)
+        ?? (aplicadas ?? []).find((a) => a.Id_Vacuna == null
+          && normalizarBusqueda(a.NombreLibre).trim() === nombre);
       return {
         id: v.Id_Vacuna,
         nombre: v.Nombre,
@@ -300,22 +293,27 @@ export async function eliminarTratamiento(id) {
 // CONSULTAS VETERINARIAS (anotaciones de consultas pasadas)
 // ─────────────────────────────────────────────
 
-function mapConsulta(row) {
+function mapConsulta(row, firmadas = {}) {
   return {
     id: row.id,
     fecha: row.fecha,
     motivo: row.motivo,
     notas: row.notas,
     veterinario: row.veterinario,
-    imagen_url: row.imagen_url ?? null,
+    imagen_path: row.imagen_path ?? null,
+    // Imagen nueva: URL firmada del bucket privado (vence). Consultas viejas,
+    // anteriores a 064: la URL pública que quedó guardada.
+    imagen_url: (row.imagen_path ? firmadas[row.imagen_path] : row.imagen_url) ?? null,
   };
 }
 
-/** `imagen_url` puede ser una ruta del bucket privado "fichas-medicas" (desde
- * esta migración) o, en consultas viejas, una URL pública entera (bucket
- * "public-images", de antes del informe de seguridad #13/#14). */
-function esUrlCompleta(v) {
-  return typeof v === 'string' && /^https?:\/\//i.test(v);
+/** Firma las imágenes privadas de un lote de filas. Si falla, sin imágenes (no sin consultas). */
+async function firmarImagenes(rows) {
+  try {
+    return await urlsFirmadas(rows.map((r) => r.imagen_path));
+  } catch {
+    return {};
+  }
 }
 
 /** Trae las consultas registradas de la mascota (más reciente primero). */
@@ -326,17 +324,9 @@ export async function fetchConsultas(petId) {
     .eq('mascota_id', petId)
     .order('fecha', { ascending: false });
   if (error) throw error;
-  const filas = data ?? [];
-
-  const rutas = filas.map((f) => f.imagen_url).filter((v) => v && !esUrlCompleta(v));
-  const firmadas = rutas.length
-    ? await obtenerUrlsFirmadas(rutas, BUCKET_FICHAS).catch(() => new Map())
-    : new Map();
-
-  return filas.map((row) => mapConsulta({
-    ...row,
-    imagen_url: esUrlCompleta(row.imagen_url) ? row.imagen_url : (firmadas.get(row.imagen_url) ?? null),
-  }));
+  const rows = data ?? [];
+  const firmadas = await firmarImagenes(rows);
+  return rows.map((r) => mapConsulta(r, firmadas));
 }
 
 /** PGRST204 = PostgREST no encontró una columna del insert en el esquema. */
@@ -346,6 +336,10 @@ function esColumnaInexistente(error, columna) {
     || /could not find the .* column/i.test(error?.message ?? '');
 }
 
+/**
+ * Alta de una consulta. La imagen, si hay, ya está subida al bucket privado:
+ * llega su ruta en `datos.imagen_path` (ver subirImagenPrivada).
+ */
 export async function crearConsulta(petId, datos) {
   const base = {
     mascota_id: petId,
@@ -357,17 +351,17 @@ export async function crearConsulta(petId, datos) {
 
   const { data, error } = await supabase
     .from('consultas_veterinarias')
-    .insert({ ...base, imagen_url: datos.imagen_url ?? null })
+    .insert({ ...base, imagen_path: datos.imagen_path ?? null })
     .select()
     .single();
 
-  if (!error) return mapConsulta(data);
+  if (!error) return mapConsulta(data, await firmarImagenes([data]));
 
-  // La migración 030 (que agrega imagen_url) puede no estar corrida en esta
-  // base: PostgREST devuelve 400 PGRST204 por la columna desconocida y se
-  // perdía la consulta entera. Reintentamos sin la imagen para no bloquear el
-  // alta — correr 030/031 en el SQL Editor habilita el adjunto.
-  if (!esColumnaInexistente(error, 'imagen_url')) throw error;
+  // Si 064 (que agrega imagen_path) no está corrida en esta base, PostgREST
+  // devuelve 400 PGRST204 por la columna desconocida y se perdía la consulta
+  // entera. Reintentamos sin la imagen para no bloquear el alta — correr
+  // SUPABASE_PEGAR_TODO.sql habilita el adjunto.
+  if (!esColumnaInexistente(error, 'imagen_path')) throw error;
 
   const { data: dataSinImagen, error: error2 } = await supabase
     .from('consultas_veterinarias')
@@ -379,14 +373,17 @@ export async function crearConsulta(petId, datos) {
 }
 
 export async function eliminarConsulta(id) {
-  const { data: fila } = await supabase
-    .from('consultas_veterinarias').select('imagen_url').eq('id', id).maybeSingle();
+  // La imagen se lee ANTES de borrar la fila: después no hay de dónde sacar la
+  // ruta. Puede ser del bucket privado (consultas nuevas, imagen_path) o una
+  // URL pública entera (consultas de antes de la 064). Los triggers de la 068
+  // también la anotan para el script de limpieza; esto la saca en el momento
+  // y nunca tira: la fila ya se borró (#70).
+  const { data: fila } = await supabase.from('consultas_veterinarias')
+    .select('imagen_path, imagen_url').eq('id', id).maybeSingle();
+
   const { error } = await supabase.from('consultas_veterinarias').delete().eq('id', id);
   if (error) throw error;
-  if (fila?.imagen_url) {
-    // Ruta del bucket privado (consultas nuevas) o URL pública completa
-    // (consultas de antes del informe de seguridad #13/#14).
-    if (esUrlCompleta(fila.imagen_url)) borrarImagenPublica(fila.imagen_url);
-    else borrarArchivoPrivado(fila.imagen_url, BUCKET_FICHAS);
-  }
+
+  if (fila?.imagen_path) borrarArchivoPrivado(fila.imagen_path);
+  else if (fila?.imagen_url) borrarImagenPublica(fila.imagen_url);
 }

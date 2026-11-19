@@ -113,6 +113,10 @@ export default function CuentaSeguridadScreen() {
   const [dialogo, setDialogo] = useState(null); // cartel Zooni { titulo, mensaje, botones }
   const [recordarMail, setRecordarMail] = useState(() => getSettings().device.recordar_mail);
 
+  // Informe de seguridad #82: el mail quedaba precargado en el login después
+  // de cerrar sesión, también en un teléfono compartido. Sigue siendo el
+  // default (es cómodo), pero ahora se puede apagar — y al apagarlo se olvida
+  // el que ya estaba guardado.
   const cambiarRecordarMail = (valor) => {
     patchSettings('device', { recordar_mail: valor });
     setRecordarMail(valor);
@@ -137,7 +141,7 @@ export default function CuentaSeguridadScreen() {
   // ── Foto de perfil: sube la imagen elegida (cámara o galería) ──
   const tomarFoto = async (desdeGaleria) => {
     try {
-      const uri = await elegirImagen({ origen: desdeGaleria ? 'galeria' : 'camara' });
+      const uri = await elegirImagen({ camara: !desdeGaleria });
       if (!uri) return;
       await actualizarMiFotoPerfil(uri);
       refrescar();

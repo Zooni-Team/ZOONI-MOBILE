@@ -17,13 +17,13 @@ import {
   TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { elegirImagen } from '../../utils/elegirImagen';
 
 import { C, PillButton } from '../paseador/PaseadorUI';
 import { TAMANOS, configNegocio } from '../../constants/negocios';
-import { validarItem } from '../../services/negocioApi';
+import { validarItem } from '../../domain/negocios';
 import { sanitizarDigitos } from '../../utils/sanitizar';
 import { confirmar } from '../../utils/dialogo';
-import { elegirImagen } from '../../utils/elegirImagen';
 import { colores } from '../../theme';
 
 const DURACIONES = [15, 30, 45, 60, 90, 120];
@@ -58,7 +58,7 @@ export default function ItemFormModal({ visible, tipo, item, onGuardar, onBorrar
   const set = (k, v) => { setF((x) => ({ ...x, [k]: v })); setError(null); };
 
   const elegirFoto = async () => {
-    const uri = await elegirImagen({ allowsEditing: true, aspect: [1, 1] });
+    const uri = await elegirImagen({ cuadrada: true });
     if (uri) set('foto', uri);
   };
 
@@ -249,7 +249,7 @@ const s = StyleSheet.create({
 
   label: { fontSize: 13, fontWeight: '700', color: C.texto, marginTop: 16, marginBottom: 8 },
   input: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
     fontSize: 15, color: C.texto, backgroundColor: colores.blanco,
   },
   textarea: { minHeight: 80, textAlignVertical: 'top' },
@@ -265,7 +265,7 @@ const s = StyleSheet.create({
   tamano: { fontSize: 13, fontWeight: '800', color: C.texto },
   tamanoDet: { fontSize: 11, color: C.texto2, marginBottom: 6 },
   montoBox: {
-    flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colores.gris500, borderRadius: 12,
+    flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colores.gris300, borderRadius: 12,
     paddingHorizontal: 12, backgroundColor: colores.blanco,
   },
   signo: { fontSize: 18, fontWeight: '900', color: C.texto, marginRight: 4 },

@@ -16,7 +16,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 import { Avatar, C, Stat, Vacio } from './PaseadorUI';
-import { fetchMisPaseos, formatoDistancia, formatoTiempoPaseado, formatoPlata } from '../../services/paseadorApi';
+import { fetchMisPaseos } from '../../services/paseadorApi';
+import { formatoDistancia, formatoTiempoPaseado, formatoPlata } from '../../domain/paseos';
 import { colores } from '../../theme';
 import { formatearFecha } from '../../utils/fechaLocal';
 
@@ -142,7 +143,7 @@ const s = StyleSheet.create({
 
   paseo: {
     backgroundColor: C.card, borderRadius: 16, padding: 14, marginBottom: 10,
-    borderWidth: 1, borderColor: colores.gris150,
+    borderWidth: 1, borderColor: colores.gris100,
   },
   paseoTop: { flexDirection: 'row', alignItems: 'center' },
   paseoNum: { fontSize: 12, fontWeight: '800', color: C.teal },

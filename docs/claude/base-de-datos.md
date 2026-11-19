@@ -2,30 +2,41 @@
 
 ← [índice](README.md) · seguridad en [seguridad](seguridad.md) · reglas en [flujos](flujos.md) · pruebas en [testing](testing.md)
 
-## Un solo archivo
-**`supabase/SUPABASE_PEGAR_TODO.sql`** es TODA la base (PostgreSQL / Supabase):
-tablas, relaciones, índices, funciones, triggers, RLS, permisos, Storage y
-catálogos. Se pega entero en Supabase → SQL Editor → Run.
-- Idempotente: sirve para un proyecto vacío y para el que ya tiene datos.
-- Corre en una transacción: si algo falla, no se aplica nada.
-- Está dividido en secciones `000` → `070` (marcadas `>>>> NNN_nombre <<<<`).
-  `070_endurecimiento_seguridad` es la auditoría de nov-2026 (150 hallazgos,
-  `INFORME_SEGURIDAD_ZOONI.md`): en vez de reescribir las secciones viejas,
-  corrige "encima" con `CREATE OR REPLACE` / `DROP POLICY IF EXISTS` +
-  `CREATE POLICY`, que corren después en la misma transacción.
-- Antes: desplegar las Edge Functions `migrar-cuenta` y `zoonivet-chat`.
-- `supabase/config.toml` documenta (y, si se usa `supabase link` +
-  `supabase config push`, también aplica) la configuración de Authentication
-  que hoy se toca a mano en el dashboard — ver seguridad.md.
+## Una secuencia, en orden
+La base completa (PostgreSQL / Supabase) es:
+
+1. **`supabase/SUPABASE_PEGAR_TODO.sql`** — base `000` → `063`: tablas,
+   relaciones, índices, funciones, triggers, RLS, permisos, Storage y
+   catálogos (secciones marcadas `>>>> NNN_nombre <<<<`).
+2. **`supabase/MIGRACION_064_*.sql` … `MIGRACION_068_*.sql`**, por número.
+3. **`supabase/MIGRACION_070_ENDURECIMIENTO_SEGURIDAD.sql`** — la auditoría de
+   nov-2026 (150 hallazgos, `INFORME_SEGURIDAD_ZOONI.md`). En vez de reescribir
+   las secciones viejas, corrige "encima" con `CREATE OR REPLACE` /
+   `DROP POLICY IF EXISTS` + `CREATE POLICY` / `REVOKE`+`GRANT`. Va **última**
+   a propósito: endurece varias políticas que la 066 restituye permisivas, y la
+   que corre al final es la que queda.
+
+Cada archivo se pega **entero** en Supabase → SQL Editor → Run. Cada uno:
+- corre en una transacción (si algo falla, no se aplica nada);
+- empieza comprobando que esté el anterior y termina verificando lo que hizo
+  (si la verificación falla, ROLLBACK);
+- es idempotente: la secuencia entera se puede volver a correr.
+
+⚠ Nunca volver a pegar sólo `SUPABASE_PEGAR_TODO.sql` en una base que ya tiene
+las migraciones: reabriría lo que ellas cierran. Siempre la secuencia.
 
 ### Cambiar la base
-1. Agregá una sección nueva **al final** (antes de "Verificación final"),
-   idempotente (`IF NOT EXISTS`, `CREATE OR REPLACE`, `ON CONFLICT`,
-   `DROP POLICY IF EXISTS`). Tabla nueva = RLS + políticas en la misma sección.
-2. `node supabase/scripts/probar-esquema.mjs` (Postgres local: corre el archivo
-   dos veces + `supabase/tests/pruebas_rls.sql`).
-3. Pegá en Supabase sólo la sección nueva (o el archivo entero, es idempotente).
-   Nada se cambia "a mano en el dashboard" sin escribirlo acá.
+1. Creá `supabase/MIGRACION_0NN_QUE_HACE.sql` con el mismo formato (chequeo
+   del anterior, `BEGIN`…`COMMIT`, verificación al final), idempotente
+   (`IF NOT EXISTS`, `CREATE OR REPLACE`, `ON CONFLICT`, `DROP … IF EXISTS`).
+   Tabla nueva = RLS + políticas en la misma migración. Función `SECURITY
+   DEFINER` nueva = `REVOKE … FROM public, anon, authenticated` explícito y,
+   si la llama la app, agregarla a la lista blanca de la 067.
+2. Sus pruebas en `supabase/tests/pruebas_0NN.sql` y sumarlas a
+   `supabase/scripts/probar-esquema.mjs`.
+3. `node supabase/scripts/probar-esquema.mjs` (Postgres local: secuencia
+   completa dos veces + todas las pruebas).
+4. Pegarla en Supabase. Nada se cambia "a mano en el dashboard".
 
 ## Tablas
 
@@ -43,12 +54,7 @@ catálogos. Se pega entero en Supabase → SQL Editor → Run.
 | Internas | `__MigrationLog`, `zooni_politica_tablas` | nadie desde la app |
 
 Vista **`perfil_publico`**: lo que se ve de otra persona (sin mail, edad en vez
-de fecha, ubicación a ~1 km, teléfono sólo con un paseo/turno/pedido en común
-y vigente — no caduco ni cancelado/rechazado —, nada si hay un bloqueo de por
-medio). Vista **`mascota_publica`**: lo que se ve de la mascota de otra
-persona (sin microchip, señas particulares, estado de salud, fallecimiento ni
-archivado — para eso, `"Mascota"` directa sólo responde filas propias desde
-`070_endurecimiento_seguridad`).
+de fecha, ubicación a ~1 km, teléfono sólo con un paseo/turno/pedido en común).
 
 ## Funciones y triggers importantes
 | Qué | Dónde (sección) |
@@ -56,7 +62,6 @@ archivado — para eso, `"Mascota"` directa sólo responde filas propias desde
 | `usuario_actual()` — JWT → `Id_User`; base de todas las políticas | 060 |
 | `login_social()`, `registrar_social_con_mascota`, `registrar_paseador_social`, `activar_paseador_social`, `registrar_negocio_sesion`, `activar_negocio_sesion` — altas y login con sesión de Auth | 043, 060 |
 | `disponibilidad_registro(mail, usuario)` | 060 |
-| `_credencial_legada`, `_completar_migracion_cuenta` — para `migrar-cuenta` (sólo service_role) | 060 |
 | Helpers RLS: `es_mi_mascota`, `soy_dueno_negocio`, `soy_dueno_servicio`, `participo_en_match`, `participo_en_paseo`, `soy_walker_de_paseo`, `soy_paseador`, `son_amigos`, `tengo_trato_con` | 061 |
 | Pedidos: `_pedido_al_crear` (precios, total, reserva de stock con bloqueo), `_pedido_al_actualizar` (transiciones, devuelve stock) | 062 |
 | Turnos: `_turno_al_crear` (candado por negocio, superposición, precio válido), `_turno_al_actualizar` | 062 |
@@ -64,7 +69,31 @@ archivado — para eso, `"Mascota"` directa sólo responde filas propias desde
 | Match: `votar_mascota(origen, destino, le_gusta)` | 062 |
 | ZooniVet: `get_pet_chat_context(pet_id)` (sólo service_role) | 051, 061 |
 | Storage: buckets `public-images` (5 MB) y `resenas` (50 MB), carpeta por usuario | 063 |
+| Storage privado: `consultas-privadas` (10 MB, URLs firmadas); `consultas_veterinarias.imagen_path` | 064 |
+| `purgar_mascotas_eliminadas()` — borra las `deleted` vencidas (sólo service_role / pg_cron) | 064 |
+| ZooniVet: `zoonivet_consumir_cupo(id_user, limite)` + tabla `zoonivet_uso` (sólo service_role) | 064 |
+| Realtime: `Mensaje` y `paseo_mensajes` en la publicación `supabase_realtime` | 064 |
+| `migrar_cuenta_legada(mail, contraseña)` — cuenta vieja (sha256) → Supabase Auth, la llama el login sin sesión (anon) | 065 |
+| Paseos: estado `vencido`, `vencer_paseos()` (app + pg_cron cada 15 min), `_paseo_validar_alta` (no en el pasado, con dirección, sin superponer la misma mascota), `_paseo_validar_cambio` (un vencido no se acepta ni inicia) | 066 |
+| `_mascota_registrar_peso`: todo cambio de `Mascota.Peso` deja su punto en `historial_peso` | 066 |
+| `paseador_opiniones`: nadie opina de sí mismo (política) | 066 |
+| Sin veterinarias de ejemplo en `veterinary_clinics` (desactivadas) | 066 |
+| Funciones SECURITY DEFINER cerradas por lista blanca; `migracion_intentos` (5 fallos / 15 min); `_sin_autoverificarse` | 067 |
+| `archivos_por_borrar` + triggers en `Mascota`, `mascota_fotos`, `consultas_veterinarias`; `archivos_para_borrar()`, `consultas_a_privatizar()`, `privatizar_imagen_consulta()` (sólo service_role, los usa `supabase/scripts/limpiar-storage.mjs`). Se borran las RPC del login con hash | 068 |
 
-## Relaciones a revisar
-Borrado de mascotas: la app hace borrado lógico. Las FK hijas no son parejas
-(ver [faltaporhacer.md](../../faltaporhacer.md)).
+**Si una base muestra datos ajenos** (pasó en producción: una política
+`USING (true)` creada a mano sobrevivía, y como las políticas se suman con OR,
+anulaba las de 061): pegar `supabase/MIGRACION_066_RLS_REAPLICAR.sql`. Borra
+TODAS las políticas de `public`, las vuelve a crear y verifica con la sesión
+de un usuario real que `User` devuelve 1 fila. Nunca crear políticas desde el
+dashboard: sólo en el SQL del repo.
+
+## Borrado de mascotas
+La app hace borrado lógico (`Estado = 'deleted'`, `PurgarDespues` = +30 días) y
+`purgar_mascotas_eliminadas()` borra la fila después. Regla única para toda FK
+hacia `Mascota` (064): columna NOT NULL → `ON DELETE CASCADE`; columna que
+admite NULL → `ON DELETE SET NULL`. `Paseo.Id_Mascota` admite NULL a propósito
+(el paseo guarda lo que cobró el paseador) y `_paseo_al_actualizar` acepta ese
+NULL sólo si la mascota ya no existe. Los mensajes de un `Match` se van con él.
+Los archivos de Storage de la mascota quedan anotados (068) y los borra
+`supabase/scripts/limpiar-storage.mjs`.

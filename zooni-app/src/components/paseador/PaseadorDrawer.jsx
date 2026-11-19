@@ -148,7 +148,7 @@ const st = StyleSheet.create({
   avatarIniTxt: { fontSize: 16, fontWeight: '700', color: colores.verdeExito },
   nombre: { fontSize: 16, fontWeight: '700', color: colores.texto },
   sub: { fontSize: 13, color: colores.textoSecundario, marginTop: 2 },
-  divisor: { height: 1, backgroundColor: colores.gris400, marginVertical: 4 },
+  divisor: { height: 1, backgroundColor: colores.gris300, marginVertical: 4 },
   item: { flexDirection: 'row', alignItems: 'center', height: 52, paddingHorizontal: 20 },
   itemActivo: { backgroundColor: 'rgba(45, 189, 114, 0.12)' },
   icono: { marginRight: 14 },

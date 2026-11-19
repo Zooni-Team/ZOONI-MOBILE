@@ -32,13 +32,21 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useMisMascotas } from '../hooks/useMisMascotas';
 import { resolveMascotaVisual } from '../constants/petImages';
 import { TAMANOS, configNegocio, tamanoPorPeso } from '../constants/negocios';
+import { crearTurno, fetchNegocioPublico, fetchOcupados } from '../services/negocioApi';
 import {
-  crearTurno, distanciaAlLocalKm, fetchNegocioPublico, fetchOcupados, formatoPlata, horaTexto, horarioDelDia,
-  precioTurno, radioBuscaYLlevaKm, recargoDomicilio, textoPrecioItem, turnosLibres,
-} from '../services/negocioApi';
-import { buscarLugar, direccionDe } from '../services/paseadorApi';
+  distanciaAlLocalKm,
+  horarioDelDia,
+  precioTurno,
+  radioBuscaYLlevaKm,
+  recargoDomicilio,
+  textoPrecioItem,
+  turnosLibres,
+} from '../domain/negocios';
+import { formatoPlata } from '../domain/paseos';
+import { buscarLugar, direccionDe } from '../services/geocodificacion';
 import { colores, sombras } from '../theme';
 import { formatearFecha } from '../utils/fechaLocal';
+import { horaCorta } from '../utils/tiempoRelativo';
 
 const kmTexto = (km) => `${km.toFixed(1).replace('.', ',')} km`;
 
@@ -398,7 +406,7 @@ export default function ReservarTurnoScreen() {
                       return (
                         <TouchableOpacity key={h.toISOString()} style={[s.hora, on && s.horaOn]} onPress={() => setHora(h)}
                           accessibilityRole="radio" accessibilityState={{ selected: on }}>
-                          <Text style={[s.horaTxt, on && { color: colores.blanco }]}>{horaTexto(h)}</Text>
+                          <Text style={[s.horaTxt, on && { color: colores.blanco }]}>{horaCorta(h)}</Text>
                         </TouchableOpacity>
                       );
                     })}
@@ -468,7 +476,7 @@ export default function ReservarTurnoScreen() {
             <View style={[s.card, { marginTop: 22 }]}>
               <Text style={s.resumenTitulo}>Tu turno</Text>
               <Text style={s.resumenFila}><Ionicons name="paw" size={14} color={colores.verde} /> {mascota.nombre} · {item.nombre}</Text>
-              <Text style={s.resumenFila}><Ionicons name="calendar" size={14} color={colores.verde} /> {formatearFecha(hora, 'diaSemana')} a las {horaTexto(hora)} ({item.duracionMin} min)</Text>
+              <Text style={s.resumenFila}><Ionicons name="calendar" size={14} color={colores.verde} /> {formatearFecha(hora, 'diaSemana')} a las {horaCorta(hora)} ({item.duracionMin} min)</Text>
               {aDomicilio ? <Text style={s.resumenFila}><Ionicons name="home" size={14} color={colores.verde} /> {esVet ? 'En tu casa' : 'Busca y lleva'}</Text> : null}
               {esVet && urgente ? <Text style={[s.resumenFila, { color: colores.rojo }]}><Ionicons name="alert-circle" size={14} color={colores.rojo} /> Urgencia</Text> : null}
               <View style={s.resumenTotal}>
@@ -577,7 +585,7 @@ const s = StyleSheet.create({
   resumenFila: { fontSize: 14, color: colores.texto, marginTop: 4 },
   resumenTotal: {
     flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingTop: 10,
-    borderTopWidth: 1, borderTopColor: colores.gris75,
+    borderTopWidth: 1, borderTopColor: colores.gris100,
   },
   resumenTotalTxt: { fontSize: 18, fontWeight: '900', color: colores.texto },
 

@@ -22,20 +22,34 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 CREATE SCHEMA IF NOT EXISTS auth;
 GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
 
+-- Mismas columnas que usa 065 al crear un usuario (las de Supabase Auth)
 CREATE TABLE IF NOT EXISTS auth.users (
-  id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  email              text,
-  encrypted_password text,
-  email_confirmed_at timestamptz DEFAULT now(),
-  raw_user_meta_data jsonb DEFAULT '{}'::jsonb,
-  created_at         timestamptz DEFAULT now()
+  id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  instance_id            uuid,
+  aud                    varchar(255),
+  role                   varchar(255),
+  email                  text,
+  encrypted_password     text,
+  email_confirmed_at     timestamptz DEFAULT now(),
+  raw_app_meta_data      jsonb DEFAULT '{}'::jsonb,
+  raw_user_meta_data     jsonb DEFAULT '{}'::jsonb,
+  created_at             timestamptz DEFAULT now(),
+  updated_at             timestamptz DEFAULT now(),
+  confirmation_token     varchar(255),
+  recovery_token         varchar(255),
+  email_change_token_new varchar(255),
+  email_change           varchar(255)
 );
 
 CREATE TABLE IF NOT EXISTS auth.identities (
-  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id    uuid REFERENCES auth.users(id) ON DELETE CASCADE,
-  provider   text,
-  identity_data jsonb
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  provider_id     text,
+  provider        text,
+  identity_data   jsonb,
+  last_sign_in_at timestamptz,
+  created_at      timestamptz DEFAULT now(),
+  updated_at      timestamptz DEFAULT now()
 );
 
 -- En Supabase, auth.uid() sale del claim `sub` del JWT del pedido. Acá se

@@ -1,34 +1,49 @@
 /**
- * elegirImagen.js — elegir una foto (o foto/video, para reseñas) de la
- * galería o la cámara.
+ * elegirImagen.js — Pedir permiso y elegir una foto (galería o cámara).
  *
- * Único lugar que pide permiso y abre expo-image-picker: antes cada pantalla
- * lo hacía por su cuenta, con mensajes y opciones levemente distintos (ver
- * faltaporhacer.md). Además recomprime cada foto con expo-image-manipulator
- * antes de devolverla, lo que descarta sus metadatos EXIF (incluye la
- * ubicación GPS de quien sacó la foto) — informe de seguridad #69: ninguna
- * foto subida a un bucket público debe llevar esos datos.
+ * Antes cada pantalla repetía lo mismo (permiso → aviso si no lo dan →
+ * launchImageLibrary/launchCamera → leer assets[0].uri), con pequeñas
+ * diferencias que nadie había elegido a propósito. Ahora:
+ *
+ *   const uri = await elegirImagen();                       // galería
+ *   const uri = await elegirImagen({ camara: true });       // cámara
+ *   const uri = await elegirImagen({ cuadrada: true });     // recorte 1:1 (logos, avatares)
+ *   if (!uri) return;                                       // canceló o sin permiso
+ *
+ * Sin permiso avisa con alerta() (que también anda en web) y devuelve null.
+ * Para varias fotos y videos a la vez (reseñas) está elegirMedios.
+ *
+ * Toda foto que sale de acá pasa por limpiarExif(): se recomprime con
+ * expo-image-manipulator, lo que descarta sus metadatos EXIF (incluida la
+ * ubicación GPS de quien la sacó) — informe de seguridad #69: ninguna foto
+ * que termine en un bucket público debe llevar esos datos.
  */
 
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
+
 import { alerta } from './dialogo';
 
-const CALIDAD_DEFAULT = 0.7;
+/** Calidad JPEG por defecto: buena para pantalla, liviana para subir. */
+export const CALIDAD_FOTO = 0.7;
 
 async function pedirPermiso(camara) {
   const permiso = camara
     ? await ImagePicker.requestCameraPermissionsAsync()
     : await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!permiso.granted) {
-    alerta('Sin permiso', `Habilitá el acceso a la ${camara ? 'cámara' : 'galería'} desde la configuración del dispositivo.`);
-    return false;
-  }
-  return true;
+  if (permiso.granted) return true;
+  alerta(
+    'Sin permiso',
+    `Habilitá el acceso a la ${camara ? 'cámara' : 'galería'} desde la configuración del dispositivo.`,
+  );
+  return false;
 }
 
-/** Recomprime y quita los metadatos EXIF de una foto. Si no se puede (ej. un
- * formato que el manipulador no soporta), se sube la original. */
+/**
+ * Recomprime la foto para que el archivo resultante no tenga EXIF (#69). Si el
+ * manipulador no soporta el formato, se devuelve la original: perder la foto
+ * sería peor que subirla con metadatos.
+ */
 async function limpiarExif(uri, calidad) {
   try {
     const res = await ImageManipulator.manipulateAsync(uri, [], {
@@ -42,59 +57,57 @@ async function limpiarExif(uri, calidad) {
 }
 
 /**
- * Elige UNA foto. Devuelve la uri lista para subir, o `null` si se canceló o
- * no había permiso.
- *
- * opciones: `origen` ('galeria' | 'camara'), `calidad` (0–1), `allowsEditing`,
- * `aspect` ([ancho, alto], con `allowsEditing`), `frontal` (cámara frontal,
- * para selfies), `quitarExif` (default true).
+ * Devuelve la uri local de la foto elegida (ya sin EXIF), o null si canceló o
+ * no hay permiso.
+ * opciones: { camara = false, cuadrada = false, frontal = false, calidad }
  */
-export async function elegirImagen(opciones = {}) {
-  const {
-    origen = 'galeria', calidad = CALIDAD_DEFAULT, allowsEditing = false, aspect, frontal = false, quitarExif = true,
-  } = opciones;
-  const camara = origen === 'camara';
+export async function elegirImagen({ camara = false, cuadrada = false, frontal = false, calidad = CALIDAD_FOTO } = {}) {
   if (!(await pedirPermiso(camara))) return null;
 
-  const opcionesPicker = { mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: calidad, allowsEditing, aspect };
-  if (frontal) opcionesPicker.cameraType = ImagePicker.CameraType.front;
-
+  const opciones = {
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    quality: calidad,
+    ...(cuadrada ? { allowsEditing: true, aspect: [1, 1] } : {}),
+  };
   const res = camara
-    ? await ImagePicker.launchCameraAsync(opcionesPicker)
-    : await ImagePicker.launchImageLibraryAsync(opcionesPicker);
-  if (res.canceled || !res.assets?.[0]?.uri) return null;
+    ? await ImagePicker.launchCameraAsync({
+      ...opciones,
+      ...(frontal ? { cameraType: ImagePicker.CameraType.front } : {}),
+    })
+    : await ImagePicker.launchImageLibraryAsync(opciones);
 
-  const uri = res.assets[0].uri;
-  return quitarExif ? limpiarExif(uri, calidad) : uri;
+  if (res.canceled) return null;
+  const uri = res.assets?.[0]?.uri ?? null;
+  return uri ? limpiarExif(uri, calidad) : null;
 }
 
 /**
- * Elige una o varias fotos/video (reseñas de paseo). Devuelve
- * `[{ uri, mimeType, tipo: 'imagen' | 'video', fileSize }]`, o `[]` si se
- * canceló o no había permiso. `limite`: cuántos ítems se pueden elegir de la
- * galería. `fileSize` es el tamaño original (antes de quitar EXIF), para que
- * quien llama pueda filtrar por peso máximo.
+ * Varias fotos y videos (galería) o uno (cámara). Devuelve los assets de
+ * expo-image-picker tal cual ([] si canceló o no hay permiso), porque quien
+ * llama necesita mimeType, duración y tamaño para filtrar — sólo se reemplaza
+ * la `uri` de las imágenes por la versión sin EXIF (los videos van tal cual:
+ * el manipulador no los toca).
+ * opciones: { camara = false, limite = 1, videoMaxSegundos = 60 }
  */
-export async function elegirMultimedia(opciones = {}) {
-  const { origen = 'galeria', limite = 1, duracionMaxVideo = 60, calidad = CALIDAD_DEFAULT } = opciones;
-  const camara = origen === 'camara';
+export async function elegirMedios({ camara = false, limite = 1, videoMaxSegundos = 60 } = {}) {
   if (!(await pedirPermiso(camara))) return [];
-
-  const opcionesPicker = {
+  const opciones = {
     mediaTypes: ImagePicker.MediaTypeOptions.All,
-    quality: calidad,
-    videoMaxDuration: duracionMaxVideo,
+    quality: CALIDAD_FOTO,
+    videoMaxDuration: videoMaxSegundos,
     allowsMultipleSelection: !camara,
     selectionLimit: limite,
   };
   const res = camara
-    ? await ImagePicker.launchCameraAsync(opcionesPicker)
-    : await ImagePicker.launchImageLibraryAsync(opcionesPicker);
+    ? await ImagePicker.launchCameraAsync(opciones)
+    : await ImagePicker.launchImageLibraryAsync(opciones);
   if (res.canceled) return [];
 
   return Promise.all((res.assets ?? []).map(async (a) => {
-    const esVideo = a.type === 'video' || a.mimeType?.startsWith('video/') || /\.(mp4|mov|m4v|webm|3gp)$/i.test(a.uri);
-    const uri = esVideo ? a.uri : await limpiarExif(a.uri, calidad);
-    return { uri, mimeType: a.mimeType, tipo: esVideo ? 'video' : 'imagen', fileSize: a.fileSize };
+    const esVideo = a.type === 'video'
+      || a.mimeType?.startsWith('video/')
+      || /\.(mp4|mov|m4v|webm|3gp)$/i.test(a.uri ?? '');
+    if (esVideo || !a.uri) return a;
+    return { ...a, uri: await limpiarExif(a.uri, CALIDAD_FOTO) };
   }));
 }

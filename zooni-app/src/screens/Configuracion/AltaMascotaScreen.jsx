@@ -35,7 +35,6 @@ import { resolveCajaImage } from '../../constants/registroImages';
 import OpcionPicker from '../../components/OpcionPicker';
 import FechaPicker from '../../components/FechaPicker';
 import SliderAmarillo from '../../components/SliderAmarillo';
-import EspecieTile from '../../components/ui/EspecieTile';
 import { fetchRazas } from '../../services/authApi';
 import { crearMascota } from '../../services/petsApi';
 import { toISODateLocal } from '../../utils/fechaLocal';
@@ -46,6 +45,7 @@ import AppDialog from '../../components/AppDialog';
 import { colores } from '../../theme';
 import { capitalizar } from '../../utils/texto';
 import { formatearFecha } from '../../utils/fechaLocal';
+import EspecieTile from '../../components/EspecieTile';
 
 const SEXOS = ['Macho', 'Hembra'];
 
@@ -60,6 +60,8 @@ const IMAGEN_ASSET_POR_ESPECIE = {
   hamster: 'hamster_default',
   raton: 'hamster_default',
 };
+
+/** Tile de especie — igual que en RegisterStep1 */
 
 export default function AltaMascotaScreen() {
   const navigation = useNavigation();
@@ -130,23 +132,16 @@ export default function AltaMascotaScreen() {
     setPaso(2);
   };
 
-  const elegirDeGaleria = async () => {
+  const elegirFoto = async (camara) => {
     try {
-      const uri = await elegirImagen();
+      const uri = await elegirImagen({ camara });
       if (uri) setFotoUri(uri);
     } catch {
-      Alert.alert('Error', 'No se pudo abrir la galería.');
+      Alert.alert('Error', `No se pudo abrir la ${camara ? 'cámara' : 'galería'}.`);
     }
   };
-
-  const abrirCamara = async () => {
-    try {
-      const uri = await elegirImagen({ origen: 'camara' });
-      if (uri) setFotoUri(uri);
-    } catch {
-      Alert.alert('Error', 'No se pudo abrir la cámara.');
-    }
-  };
+  const elegirDeGaleria = () => elegirFoto(false);
+  const abrirCamara = () => elegirFoto(true);
 
   const guardar = async () => {
     const errs = {};
@@ -228,7 +223,7 @@ export default function AltaMascotaScreen() {
 
               <Animated.View style={[s.grid, { transform: [{ translateX: gridShake }] }]}>
                 {ESPECIES.map((e) => (
-                  <EspecieTile key={e.key} styles={s} especie={e} seleccionada={especie === e.key}
+                  <EspecieTile key={e.key} especie={e} seleccionada={especie === e.key}
                     onPress={() => { setEspecie(e.key); setRaza(null); }} />
                 ))}
               </Animated.View>
@@ -407,12 +402,12 @@ const s = StyleSheet.create({
   },
   cardHeader: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colores.gris150, marginBottom: 14,
+    paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colores.gris100, marginBottom: 14,
   },
   cardHeaderTxt: { flex: 1, fontSize: 15, fontWeight: '700', color: colores.verde },
 
   input: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
     fontSize: 15, color: colores.texto, marginBottom: 18,
   },
@@ -421,19 +416,6 @@ const s = StyleSheet.create({
   errorTxt: { fontSize: 11, color: colores.rojo, marginTop: -12, marginBottom: 12, marginLeft: 4 },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  tileWrap: { width: '47%', flexGrow: 1 },
-  tile: {
-    backgroundColor: colores.blanco, borderRadius: 14, padding: 14,
-    borderWidth: 1, borderColor: colores.gris200,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: colores.negro, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2,
-    minHeight: 92,
-  },
-  tileOn: { backgroundColor: colores.verde, borderColor: colores.verde },
-  tileEmoji: { fontSize: 32, marginBottom: 6 },
-  tileImg: { width: 40, height: 40, marginBottom: 6 },
-  tileLabel: { fontSize: 14, fontWeight: '700', color: colores.texto },
-  tileLabelOn: { color: colores.blanco },
 
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -451,7 +433,7 @@ const s = StyleSheet.create({
   },
 
   dropdown: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 10,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     marginBottom: 12,

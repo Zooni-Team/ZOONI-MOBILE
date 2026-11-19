@@ -10,7 +10,9 @@ import { View, ActivityIndicator, AppState, StyleSheet } from 'react-native';
 
 import { restaurarSesion, loadStoredModo, esperarSesion, haySesion, setModo, MODO_PASEADOR } from './src/config/session';
 import { ThemeProvider, useTheme } from './src/theme';
+import { crearLinking, tituloDePestana } from './src/constants/rutas';
 import { iniciarLatidoPresencia, marcarPresencia } from './src/services/presenciaApi';
+import { avisarResumenSemanal, empezarUso, pausarUso } from './src/services/usoApp';
 import HomeScreen        from './src/screens/HomeScreen';
 import LoginScreen       from './src/screens/LoginScreen';
 import RegisterStep1Screen from './src/screens/RegisterStep1Screen';
@@ -19,7 +21,6 @@ import RegisterStep3Screen from './src/screens/RegisterStep3Screen';
 import RegisterStep4Screen from './src/screens/RegisterStep4Screen';
 import MatchScreen       from './src/screens/MatchScreen';
 import MatchFiltersScreen from './src/screens/MatchFiltersScreen';
-import PlaceholderScreen from './src/screens/PlaceholderScreen';
 import ComunidadScreen   from './src/screens/Comunidad/ComunidadScreen';
 import ClosetScreen      from './src/screens/ClosetScreen';
 import FichaMedicaScreen from './src/screens/FichaMedicaScreen';
@@ -146,7 +147,8 @@ export default function App() {
 
   // Latido de presencia: mantiene actualizado "última vez en línea" mientras la
   // app está abierta y lo refresca al volver del segundo plano (si se quedó
-  // dormida, el último latido puede ser de hace rato).
+  // dormida, el último latido puede ser de hace rato). Al lado se mide el
+  // tiempo de uso (services/usoApp), que sólo cuenta con sesión iniciada.
   //
   // Espera a que la sesión esté restaurada ANTES de latir: este efecto corría en
   // paralelo con restaurarSesion(), así que el primer latido salía con el id
@@ -159,12 +161,19 @@ export default function App() {
     esperarSesion().then(() => {
       if (cancelado || !haySesion()) return;
       frenar = iniciarLatidoPresencia();
+      avisarResumenSemanal();
     });
+    empezarUso();
 
     const sub = AppState.addEventListener('change', (estado) => {
-      if (estado === 'active' && haySesion()) marcarPresencia(true);
+      if (estado === 'active') {
+        if (haySesion()) marcarPresencia(true);
+        empezarUso();
+      } else {
+        pausarUso();
+      }
     });
-    return () => { cancelado = true; frenar?.(); sub.remove(); };
+    return () => { cancelado = true; frenar?.(); pausarUso(); sub.remove(); };
   }, []);
 
   if (!initialRoute) {
@@ -190,8 +199,14 @@ function RootNavigator({ initialRoute, initialParams }) {
   // Los params iniciales sólo van a la pantalla con la que arranca la app
   const p = (name) => (name === initialRoute ? initialParams : undefined);
   const { reduceMotion } = useTheme();
+  // URL y título de pestaña en web (constants/rutas.js). Se arma una vez: la
+  // sesión ya está resuelta cuando se monta el navegador.
+  const [linking] = useState(() => crearLinking(haySesion(), initialRoute));
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      linking={linking}
+      documentTitle={{ formatter: (_opciones, ruta) => tituloDePestana(ruta?.name) }}
+    >
       <Stack.Navigator
         initialRouteName={initialRoute}
         screenOptions={{ headerShown: false, animation: reduceMotion ? 'none' : 'default' }}
@@ -207,7 +222,6 @@ function RootNavigator({ initialRoute, initialParams }) {
           <Stack.Screen name="MisMascotas"   component={MisMascotasScreen} />
           <Stack.Screen name="Match"         component={MatchScreen} />
           <Stack.Screen name="MatchFilters"  component={MatchFiltersScreen} />
-          <Stack.Screen name="Planificador"  component={PlaceholderScreen} />
           <Stack.Screen name="Calendario"    component={CalendarioScreen} />
           <Stack.Screen name="Chat"          component={ChatScreen} />
           <Stack.Screen name="Mensajes"      component={MensajesScreen} />
@@ -221,7 +235,6 @@ function RootNavigator({ initialRoute, initialParams }) {
           <Stack.Screen name="VirtualVet" component={VirtualVetScreen} />
           <Stack.Screen name="Consultas" component={ConsultasScreen} />
           <Stack.Screen name="SOS"           component={SosScreen} />
-          <Stack.Screen name="VeterinariaDetalle" component={PlaceholderScreen} />
           <Stack.Screen name="Configuracion"        component={ConfiguracionScreen} />
           <Stack.Screen name="ConfigCuenta"         component={CuentaSeguridadScreen} />
           <Stack.Screen name="ConfigTema"           component={TemaScreen} />
@@ -240,7 +253,6 @@ function RootNavigator({ initialRoute, initialParams }) {
           <Stack.Screen name="AltaMascota"          component={AltaMascotaScreen} />
           <Stack.Screen name="EditarMascota"        component={EditarMascotaScreen} />
           <Stack.Screen name="EliminarMascota"      component={EliminarMascotaScreen} />
-          <Stack.Screen name="Notificaciones" component={PlaceholderScreen} />
           <Stack.Screen name="ElegirModo"             component={ElegirModoScreen} initialParams={p('ElegirModo')} />
           {/* Zooni Paseadores (proveedores) */}
           <Stack.Screen name="ProveedorTipo"          component={ProveedorTipoScreen} />

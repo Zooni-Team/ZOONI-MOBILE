@@ -33,18 +33,22 @@ import {
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { calcularEdadAnios } from '../../utils/calcularEdad';
 import { elegirImagen } from '../../utils/elegirImagen';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { C, PillButton, sombra } from '../../components/paseador/PaseadorUI';
+import { Campo, InputPassword } from '../../components/ui/CampoFormulario';
+import { HORARIOS_DEFAULT, validarServicios } from '../../domain/paseos';
 import {
-  HORARIOS_DEFAULT, activarPaseador, activarPaseadorSocial, completarPerfilPaseador, fetchMiFotoPerfil,
+  activarPaseador,
+  activarPaseadorSocial,
+  completarPerfilPaseador,
+  fetchMiFotoPerfil,
   registrarPaseadorSocial,
-  registrarPaseador, validarServicios,
+  registrarPaseador,
 } from '../../services/paseadorApi';
 import CantidadPerros from '../../components/paseador/CantidadPerros';
-import Campo from '../../components/ui/Campo';
-import InputPassword from '../../components/ui/InputPassword';
 import ServiciosEditor, { filasDesdeServicios, serviciosDesdeFilas } from '../../components/paseador/ServiciosEditor';
 import FechaPicker from '../../components/FechaPicker';
 import ZonaMapaPicker, { RADIO_MAX, RADIO_MIN } from '../../components/paseador/ZonaMapaPicker';
@@ -72,21 +76,13 @@ const TAMANOS = [
   { key: 'grande', label: 'Grande', detalle: '+25 kg' },
 ];
 
-function edadDe(nacimiento, hoy = new Date()) {
-  let edad = hoy.getFullYear() - nacimiento.getFullYear();
-  const cumplioEsteAnio = hoy.getMonth() > nacimiento.getMonth()
-    || (hoy.getMonth() === nacimiento.getMonth() && hoy.getDate() >= nacimiento.getDate());
-  if (!cumplioEsteAnio) edad -= 1;
-  return edad;
-}
 
 /** Campo "Foto de tu cara": círculo con la vista previa + cámara / galería. */
 function CampoFoto({ uri, error, onElegir }) {
   const elegir = async (camara) => {
-    const uri = await elegirImagen({
-      origen: camara ? 'camara' : 'galeria', allowsEditing: true, aspect: [1, 1], frontal: camara,
-    });
-    if (uri) onElegir(uri);
+    // Cámara frontal: es una foto de la cara del paseador
+    const elegida = await elegirImagen({ camara, cuadrada: true, frontal: true });
+    if (elegida) onElegir(elegida);
   };
 
   return (
@@ -145,7 +141,7 @@ export default function PaseadorRegistroScreen() {
     email: social?.email ?? '', telefono: '', password: '', password2: '',
   });
   const [verFecha, setVerFecha] = useState(false);
-  const edad = usuario.fechaNacimiento ? edadDe(usuario.fechaNacimiento) : null;
+  const edad = calcularEdadAnios(usuario.fechaNacimiento);
   const [perfil, setPerfil] = useState({
     zona: '', lat: null, lng: null, radioKm: null, maxPerros: 3,
     tamanos: ['chico', 'mediano', 'grande'], bio: '',
@@ -254,7 +250,7 @@ export default function PaseadorRegistroScreen() {
         try {
           fotoUrl = await actualizarMiFotoPerfil(foto);
         } catch (errFoto) {
-          if (__DEV__) console.error('[Registro paseador] foto', errFoto);
+          console.error('[Registro paseador] foto', errFoto);
           setErrorGeneral('Tu cuenta quedó creada, pero no se pudo subir la foto. Es necesario subirla para continuar: tocá el botón de nuevo.');
           return;
         }
@@ -277,13 +273,9 @@ export default function PaseadorRegistroScreen() {
       });
     } catch (err) {
       const msg = err?.message;
-      // El detalle real de Supabase queda en la consola sólo en desarrollo
-      // (informe de seguridad #126/#127); en pantalla, sólo en migracion_pendiente
-      // y en el catch-all genérico, también sólo en desarrollo. El resto de la
-      // lógica abajo SÍ sigue mirando err.detalle (ids de constraint) para
-      // decidir qué campo marcar: eso no es exponer el detalle, es leerlo.
-      if (__DEV__) console.error('[Registro paseador]', msg, err?.detalle ?? err);
-      const detalle = __DEV__ && err?.detalle ? `\n\nDetalle: ${err.detalle}` : '';
+      // El detalle real de Supabase queda en la consola y en pantalla
+      console.error('[Registro paseador]', msg, err?.detalle ?? err);
+      const detalle = err?.detalle ? `\n\nDetalle: ${err.detalle}` : '';
       if (msg === 'email_existente') {
         setPaso(1);
         setErrores({ email: 'Ya hay una cuenta con este mail.' });
@@ -366,19 +358,19 @@ export default function PaseadorRegistroScreen() {
                 onElegir={(u) => { setFoto(u); setErrores((e) => ({ ...e, foto: null })); }} />
               <View style={s.fila}>
                 <View style={{ flex: 1 }}>
-                  <Campo styles={s} label="Nombre" error={errores.nombre}>
+                  <Campo label="Nombre" error={errores.nombre}>
                     <TextInput style={[s.input, errores.nombre && s.inputError]} value={usuario.nombre}
                       onChangeText={(v) => setU('nombre', v.slice(0, 50))} placeholder="Juan" placeholderTextColor={C.gris} />
                   </Campo>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Campo styles={s} label="Apellido" error={errores.apellido}>
+                  <Campo label="Apellido" error={errores.apellido}>
                     <TextInput style={[s.input, errores.apellido && s.inputError]} value={usuario.apellido}
                       onChangeText={(v) => setU('apellido', v.slice(0, 50))} placeholder="Pérez" placeholderTextColor={C.gris} />
                   </Campo>
                 </View>
               </View>
-              <Campo styles={s} label="Género" error={errores.genero}>
+              <Campo label="Género" error={errores.genero}>
                 <View style={s.generos}>
                   {GENEROS.map((g) => {
                     const on = usuario.genero === g.key;
@@ -392,7 +384,7 @@ export default function PaseadorRegistroScreen() {
                   })}
                 </View>
               </Campo>
-              <Campo styles={s} label="Fecha de nacimiento" error={errores.fechaNacimiento}>
+              <Campo label="Fecha de nacimiento" error={errores.fechaNacimiento}>
                 <TouchableOpacity style={[s.input, s.fechaBtn, errores.fechaNacimiento && s.inputError]}
                   onPress={() => setVerFecha(true)} accessibilityLabel="Elegir fecha de nacimiento">
                   <Text style={[s.fechaTxt, !usuario.fechaNacimiento && { color: C.gris }]}>
@@ -405,7 +397,7 @@ export default function PaseadorRegistroScreen() {
                 {edad != null && !errores.fechaNacimiento ? <Text style={s.ayuda}>Tenés {edad} años</Text> : null}
               </Campo>
               {!social && (
-                <Campo styles={s} label="Correo electrónico" error={errores.email}>
+                <Campo label="Correo electrónico" error={errores.email}>
                   <TextInput style={[s.input, errores.email && s.inputError]} value={usuario.email}
                     onChangeText={(v) => setU('email', v.trim())} placeholder="vos@mail.com" placeholderTextColor={C.gris}
                     keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
@@ -414,19 +406,19 @@ export default function PaseadorRegistroScreen() {
                     autoComplete="username" textContentType="username" />
                 </Campo>
               )}
-              <Campo styles={s} label="Teléfono" error={errores.telefono}>
+              <Campo label="Teléfono" error={errores.telefono}>
                 <TextInput style={[s.input, errores.telefono && s.inputError]} value={usuario.telefono}
                   onChangeText={(v) => setU('telefono', sanitizarDigitos(v, 15))} placeholder="11 2345 6789" placeholderTextColor={C.gris}
                   keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber" />
               </Campo>
               {!social && (
                 <>
-                  <Campo styles={s} label="Contraseña" error={errores.password}>
-                    <InputPassword styles={s} colores={C} value={usuario.password} error={errores.password}
+                  <Campo label="Contraseña" error={errores.password}>
+                    <InputPassword value={usuario.password} error={errores.password}
                       onChangeText={(v) => setU('password', v)} placeholder="Mínimo 7 caracteres" />
                   </Campo>
-                  <Campo styles={s} label="Repetí la contraseña" error={errores.password2}>
-                    <InputPassword styles={s} colores={C} value={usuario.password2} error={errores.password2}
+                  <Campo label="Repetí la contraseña" error={errores.password2}>
+                    <InputPassword value={usuario.password2} error={errores.password2}
                       onChangeText={(v) => setU('password2', v)} placeholder="Repetila" />
                   </Campo>
                 </>
@@ -488,7 +480,7 @@ export default function PaseadorRegistroScreen() {
               </View>
               {errores.tamanos && <Text style={s.errorCampo}>{errores.tamanos}</Text>}
 
-              <Campo styles={s} label="Contales a los dueños sobre vos (opcional)">
+              <Campo label="Contales a los dueños sobre vos (opcional)">
                 <TextInput style={[s.input, s.textarea]} value={perfil.bio} multiline maxLength={500}
                   onChangeText={(v) => setP('bio', v)} placeholderTextColor={C.gris}
                   placeholder="Ej: Paseo por Parque Centenario, mando fotos durante el paseo." />
@@ -552,7 +544,7 @@ const s = StyleSheet.create({
 
   label: { fontSize: 13, fontWeight: '700', color: C.texto, marginBottom: 6 },
   input: {
-    borderWidth: 1, borderColor: colores.gris500, borderRadius: 12,
+    borderWidth: 1, borderColor: colores.gris300, borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: C.texto, backgroundColor: colores.blanco,
   },
   inputError: { borderColor: C.rojo },

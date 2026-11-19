@@ -36,10 +36,10 @@ import {
   DIAS_SEMANA, MEDIOS_PAGO_NEGOCIO, TAMANOS, configNegocio,
 } from '../constants/negocios';
 import { ESPECIES_NEGOCIO } from '../components/negocio/CamposNegocio';
-import {
-  abiertoAhora, costoEnvio, crearPedido, fetchNegocioPublico, formatoPlata, horarioDelDia, textoPrecioItem,
-} from '../services/negocioApi';
-import { direccionDe } from '../services/paseadorApi';
+import { abiertoAhora, costoEnvio, horarioDelDia, textoPrecioItem } from '../domain/negocios';
+import { crearPedido, fetchNegocioPublico } from '../services/negocioApi';
+import { formatoPlata } from '../domain/paseos';
+import { direccionDe } from '../services/geocodificacion';
 import { alerta } from '../utils/dialogo';
 import { colores, sombras } from '../theme';
 import { normalizarBusqueda } from '../utils/texto';
@@ -765,7 +765,7 @@ const s = StyleSheet.create({
 
   categoria: { fontSize: 13, fontWeight: '900', color: colores.verde, textTransform: 'uppercase', marginTop: 8, marginBottom: 2 },
   servicio: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
-  servicioBorde: { borderTopWidth: 1, borderTopColor: colores.gris75 },
+  servicioBorde: { borderTopWidth: 1, borderTopColor: colores.gris100 },
   servicioNombre: { fontSize: 15, fontWeight: '800', color: colores.texto },
   servicioDesc: { fontSize: 12, color: colores.textoSecundario, marginTop: 2 },
   porTamano: { fontSize: 12, color: colores.texto, marginTop: 4, fontWeight: '600' },
@@ -818,7 +818,7 @@ const s = StyleSheet.create({
   carritoTotal: { fontSize: 16, fontWeight: '900', color: colores.texto, marginRight: 6 },
 
   // Hoja del pedido
-  linea: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colores.gris75 },
+  linea: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colores.gris100 },
   lineaNombre: { fontSize: 14, fontWeight: '700', color: colores.texto },
   lineaPrecio: { fontSize: 12, color: colores.textoSecundario, marginTop: 2 },
   label: { fontSize: 15, fontWeight: '800', color: colores.texto, marginTop: 22, marginBottom: 10 },
@@ -832,7 +832,7 @@ const s = StyleSheet.create({
   ayuda: { fontSize: 12, color: colores.textoSecundario, marginTop: 8 },
   totalFila: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
   totalTxt: { fontSize: 14, color: colores.textoSecundario, fontWeight: '600' },
-  totalFinal: { borderTopWidth: 1, borderTopColor: colores.gris75, marginTop: 6, paddingTop: 10 },
+  totalFinal: { borderTopWidth: 1, borderTopColor: colores.gris100, marginTop: 6, paddingTop: 10 },
   totalFinalTxt: { fontSize: 18, fontWeight: '900', color: colores.texto },
   minimo: { fontSize: 13, color: colores.rojo, fontWeight: '700', marginTop: 8 },
   error: { marginTop: 14, padding: 12, borderRadius: 12, backgroundColor: colores.rojoFondo, fontSize: 13, color: colores.rojo },

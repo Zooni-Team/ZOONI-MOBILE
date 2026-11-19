@@ -305,14 +305,14 @@ const s = StyleSheet.create({
   btnDescartarTxt: { fontSize:15, fontWeight:'700', color:colores.rojoOscuro },
 
   usuarioRow:    { flexDirection:'row', alignItems:'center', justifyContent:'space-between',
-                   borderWidth:1.5, borderColor:colores.gris250, borderRadius:10, backgroundColor:'#FAFAFA',
+                   borderWidth:1.5, borderColor:colores.gris100, borderRadius:10, backgroundColor:'#FAFAFA',
                    paddingHorizontal:14, paddingVertical:10, marginBottom:12 },
   usuarioRowLbl: { fontSize:12, color:'#8A8A8A' },
   usuarioRowVal: { fontSize:15, fontWeight:'700', color:colores.texto, marginTop:2 },
   usuarioRowRight:{ flexDirection:'row', alignItems:'center', gap:4 },
   usuarioRowCfg: { fontSize:13, fontWeight:'700', color:colores.verdeOscuro },
 
-  input:       { borderWidth:1.5, borderColor:colores.gris500, borderRadius:10,
+  input:       { borderWidth:1.5, borderColor:colores.gris300, borderRadius:10,
                  paddingHorizontal:14, paddingVertical:12,
                  fontSize:14, color:colores.texto, backgroundColor:colores.blanco, marginBottom:12 },
   inputMulti:  { height:80, textAlignVertical:'top' },
@@ -324,7 +324,7 @@ const s = StyleSheet.create({
                      alignItems:'center', justifyContent:'center',
                      shadowColor:colores.negro, shadowOffset:{width:0,height:3}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
   btnGuardarTxt:   { fontSize:15, fontWeight:'700', color:colores.blanco },
-  btnCancelar:     { width:'100%', height:44, borderRadius:30, backgroundColor:colores.gris300,
+  btnCancelar:     { width:'100%', height:44, borderRadius:30, backgroundColor:colores.gris200,
                      alignItems:'center', justifyContent:'center', marginTop:10 },
   btnCancelarTxt:  { fontSize:15, fontWeight:'700', color:colores.texto },
 });

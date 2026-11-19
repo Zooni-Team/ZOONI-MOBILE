@@ -25,7 +25,7 @@ import { Platform } from 'react-native';
 
 import { supabase } from '../lib/supabase';
 import { setCurrentUserId } from '../config/session';
-import { subirImagenPublica } from '../utils/imagenStorage';
+import { subirImagenPublica } from './imagenStorage';
 
 export const PROVEEDORES = {
   google: { nombre: 'Google' },

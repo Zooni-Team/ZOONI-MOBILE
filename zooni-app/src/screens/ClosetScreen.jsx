@@ -153,7 +153,7 @@ export default function ClosetScreen() {
       setMascota(data.mascota);
       setAvatares(data.avatares);
       setAvatarSeleccionado(data.mascota.imagen_asset);
-    } catch (err) {
+    } catch {
       Alert.alert('Error', 'No se pudieron cargar los avatares. Intentá de nuevo.');
     } finally {
       setLoading(false);
@@ -167,7 +167,7 @@ export default function ClosetScreen() {
       return;
     }
     cargarDatos();
-  }, [petId, navigation, cargarDatos]);
+  }, [petId, cargarDatos, navigation]);
 
   // ── Animar preview al seleccionar ─────────────────────────────────────────
 
@@ -623,7 +623,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: colores.gris300,
+    borderColor: colores.gris200,
     shadowColor: colores.negro,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,

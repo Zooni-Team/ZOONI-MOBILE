@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Alert, Image, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { eliminarCartel } from '../../api/comunidad';
+import { eliminarCartel } from '../../services/comunidadApi';
 import PersonaProfileModal from '../PersonaProfileModal';
 import { colores } from '../../theme';
 
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   tipoRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
   badge:    { width: 10, height: 10, borderRadius: 5 },
   tipoText: { fontWeight: '700', fontSize: 14, color: colores.texto },
-  foto:     { width: '100%', height: 140, borderRadius: 12, marginBottom: 10, backgroundColor: colores.gris200 },
+  foto:     { width: '100%', height: 140, borderRadius: 12, marginBottom: 10, backgroundColor: colores.gris100 },
   infoRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   mascota:  { fontSize: 15, fontWeight: '700', color: colores.texto },
   info:     { fontSize: 13, color: colores.textoSecundario },

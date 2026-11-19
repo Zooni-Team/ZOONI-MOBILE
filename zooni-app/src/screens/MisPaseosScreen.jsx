@@ -20,13 +20,18 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import CalificarPaseoModal from '../components/resenas/CalificarPaseoModal';
 import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
+import { cancelarPaseoDueno, fetchMisPaseosDueno } from '../services/paseadorApi';
 import {
-  cancelarPaseoDueno, cuandoDe, fetchMisPaseosDueno, formatoDistancia, formatoTiempoPaseado,
-  formatoPlata, formatoTimer, segundosDePaseo,
-} from '../services/paseadorApi';
+  cuandoDe,
+  formatoDistancia,
+  formatoTiempoPaseado,
+  formatoPlata,
+  formatoTimer,
+  segundosDePaseo,
+} from '../domain/paseos';
 import { confirmar } from '../utils/dialogo';
 import { colores } from '../theme';
-import Estrellas from '../components/ui/Estrellas';
+import { Estrellas } from '../components/ui/Estrellas';
 
 const ESTADOS = {
   pendiente: { txt: 'Esperando respuesta', icono: 'hourglass-outline', color: colores.ambar, fondo: colores.ambarFondo },
@@ -35,7 +40,9 @@ const ESTADOS = {
   finalizado: { txt: 'Finalizado', icono: 'flag', color: colores.textoSecundario, fondo: colores.gris100 },
   rechazado: { txt: 'Rechazado', icono: 'close-circle', color: colores.rojo, fondo: colores.rojoFondo },
   cancelado: { txt: 'Cancelado', icono: 'ban', color: colores.textoSecundario, fondo: colores.gris100 },
+  vencido: { txt: 'Vencido · nadie lo hizo a tiempo', icono: 'time-outline', color: colores.textoSecundario, fondo: colores.gris100 },
 };
+
 
 export default function MisPaseosScreen() {
   const navigation = useNavigation();
@@ -98,6 +105,19 @@ export default function MisPaseosScreen() {
     cargar();
   };
 
+  // Se compara con lo pactado: "Duró 4 min" de un paseo de 120 no puede
+  // leerse como un paseo normal. Sin GPS registrado se dice, no "0 m".
+  const resumenFinalizado = (p) => {
+    const duro = formatoTiempoPaseado(p.segundosAcumulados);
+    const corto = (p.segundosAcumulados ?? 0) < p.duracionMin * 60 * 0.6;
+    const recorrido = p.distanciaMetros > 0
+      ? `${formatoDistancia(p.distanciaMetros)} recorridos`
+      : 'sin recorrido registrado';
+    return corto
+      ? `Pactado ${p.duracionMin} min · duró ${duro} · ${recorrido}`
+      : `Duró ${duro} · ${recorrido}`;
+  };
+
   const renderPaseo = ({ item: p }) => {
     const est = ESTADOS[p.estado] ?? ESTADOS.pendiente;
     const puedeCancelar = ['pendiente', 'aceptado'].includes(p.estado);
@@ -129,12 +149,12 @@ export default function MisPaseosScreen() {
         )}
         {p.estado === 'finalizado' && (
           <Text style={s.resumen}>
-            Duró {formatoTiempoPaseado(p.segundosAcumulados)} · {formatoDistancia(p.distanciaMetros)} recorridos
+            {resumenFinalizado(p)}
           </Text>
         )}
         {p.estado === 'finalizado' && p.rating != null && (
           <View style={{ marginTop: 8, alignItems: 'flex-start' }}>
-            <Estrellas valor={p.rating} size={16} />
+            <Estrellas valor={p.rating} size={16} gap={6} />
             {p.resena ? <Text style={s.resenaTxt}>“{p.resena}”</Text> : null}
           </View>
         )}

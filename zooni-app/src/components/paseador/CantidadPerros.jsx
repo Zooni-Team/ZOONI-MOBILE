@@ -48,7 +48,7 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   valor: {
-    minWidth: 64, height: 44, borderWidth: 1, borderColor: colores.gris500, borderRadius: 12, paddingHorizontal: 8,
+    minWidth: 64, height: 44, borderWidth: 1, borderColor: colores.gris300, borderRadius: 12, paddingHorizontal: 8,
     fontSize: 24, fontWeight: '900', color: C.texto, textAlign: 'center', backgroundColor: colores.blanco,
   },
   valorError: { borderColor: C.rojo },

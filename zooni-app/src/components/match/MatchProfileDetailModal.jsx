@@ -15,7 +15,7 @@ import {
   Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { especieIcono, PET_TYPE_OPTIONS } from '../../data/matchDemo';
+import { especieIcono, PET_TYPE_OPTIONS } from '../../constants/match';
 import { resolveMascotaVisual } from '../../constants/petImages';
 import { colores } from '../../theme';
 
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 20 },
   photoSection: {
     width: '100%',
-    backgroundColor: colores.gris300,
+    backgroundColor: colores.gris200,
     overflow: 'hidden',
   },
   petPhoto: { width: '100%', height: '100%', resizeMode: 'cover' },

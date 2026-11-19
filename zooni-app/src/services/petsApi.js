@@ -3,7 +3,7 @@
  *
  * Todas las funciones operan SOLO sobre las mascotas del usuario logueado
  * (getCurrentUserId()), nunca datos al azar. Requiere la migración
- * 020_mis_mascotas.sql (columnas Estado / ArchivadaEn / etc.).
+ * sección 020 de SUPABASE_PEGAR_TODO.sql (columnas Estado / ArchivadaEn / etc.).
  *
  * Estados: active → archived → active · → memorial (falleció) · → deleted
  * (borrado lógico con 30 días de gracia; el cliente nunca ve las deleted).
@@ -14,7 +14,7 @@
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
 import { enRango, sanitizarDigitos, sanitizarTexto } from '../utils/sanitizar';
-import { subirImagenPublica, borrarImagenPublica } from '../utils/imagenStorage';
+import { subirImagenPublica, borrarImagenPublica } from './imagenStorage';
 import { edadResumida } from '../utils/calcularEdad';
 
 export const LIMITE_ACTIVAS = 10;
@@ -322,9 +322,14 @@ export async function agregarFotoMascota(idMascota, uri) {
 
 /** Elimina una foto de la galería (no la portada). */
 export async function eliminarFotoMascota(fotoId) {
+  // La URL se lee ANTES de borrar la fila. El trigger de la 068 también la
+  // anota en archivos_por_borrar; esto la saca de Storage en el momento y
+  // nunca tira (la fila ya se borró) — informe #70.
   const { data: fila } = await supabase.from('mascota_fotos').select('url').eq('id', fotoId).maybeSingle();
+
   const { error } = await supabase.from('mascota_fotos').delete().eq('id', fotoId);
   if (error) throw error;
+
   if (fila?.url) borrarImagenPublica(fila.url);
   return true;
 }

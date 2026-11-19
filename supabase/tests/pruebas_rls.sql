@@ -1,3 +1,5 @@
+-- ⚠ NO PEGAR EN SUPABASE. Archivo de pruebas para un Postgres LOCAL (lo corre
+--   supabase/scripts/probar-esquema.mjs). Crea usuarios de prueba.
 -- pruebas_rls.sql — Pruebas de seguridad y reglas de negocio del esquema.
 --
 -- Las corre `node supabase/scripts/probar-esquema.mjs` contra un Postgres
@@ -205,8 +207,8 @@ BEGIN
   ON CONFLICT (id_user) DO UPDATE SET servicios = EXCLUDED.servicios;
 
   PERFORM pg_temp.como(beto_auth);
-  INSERT INTO "Paseo" ("Id_Mascota", "Id_Dueno", "Id_Walker", "FechaProgramada", "DuracionMin", "Precio")
-  VALUES (mascota_beto, beto, ana, now() + interval '1 day', 30, 1)
+  INSERT INTO "Paseo" ("Id_Mascota", "Id_Dueno", "Id_Walker", "FechaProgramada", "DuracionMin", "Precio", "Direccion")
+  VALUES (mascota_beto, beto, ana, now() + interval '1 day', 30, 1, 'Av. Cabildo 2250')
   RETURNING "Id_Paseo" INTO paseo;
   SELECT "Precio" INTO v FROM "Paseo" WHERE "Id_Paseo" = paseo;
   ASSERT v = 5000, 'el precio del paseo sale del perfil del paseador';
