@@ -275,7 +275,10 @@ CREATE TRIGGER trg_servicio_al_actualizar BEFORE UPDATE ON servicios
   FOR EACH ROW EXECUTE FUNCTION _servicio_al_actualizar();
 
 -- ─── 10. subscriptions: sólo lectura para el cliente (#11) ──────────────────
+-- Se borran el nombre viejo (solo_mias) y el de acá: la 066 reaplica las
+-- políticas de base, así que al correr esta migración después ya existe.
 DROP POLICY IF EXISTS solo_mias ON subscriptions;
+DROP POLICY IF EXISTS subscriptions_ver ON subscriptions;
 CREATE POLICY subscriptions_ver ON subscriptions FOR SELECT TO authenticated
   USING (user_id = usuario_actual());
 REVOKE INSERT, UPDATE, DELETE ON subscriptions FROM authenticated;
@@ -554,6 +557,10 @@ CREATE TRIGGER trg_paseador_opinion_al_crear BEFORE INSERT ON paseador_opiniones
   FOR EACH ROW EXECUTE FUNCTION _paseador_opinion_al_crear();
 
 DROP POLICY IF EXISTS paseador_opiniones_mias ON paseador_opiniones;
+DROP POLICY IF EXISTS paseador_opiniones_ver ON paseador_opiniones;
+DROP POLICY IF EXISTS paseador_opiniones_crear ON paseador_opiniones;
+DROP POLICY IF EXISTS paseador_opiniones_editar ON paseador_opiniones;
+DROP POLICY IF EXISTS paseador_opiniones_borrar ON paseador_opiniones;
 CREATE POLICY paseador_opiniones_ver ON paseador_opiniones FOR SELECT TO authenticated USING (true);
 CREATE POLICY paseador_opiniones_crear ON paseador_opiniones FOR INSERT TO authenticated
   WITH CHECK (id_autor = usuario_actual());
