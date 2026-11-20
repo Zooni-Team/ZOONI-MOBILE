@@ -89,7 +89,7 @@ export default function TabServicios({
         keyExtractor={s => String(s.id)}
         renderItem={({ item: s }) => (
           <TouchableOpacity style={styles.item} onPress={() => onSeleccionar(s)}>
-            <View style={[styles.iconCircle, { backgroundColor: COLORES[s.tipo] || '#888' }]}>
+            <View style={[styles.iconCircle, { backgroundColor: COLORES[s.tipo] || colores.gris600 }]}>
               <Ionicons name={ICONOS[s.tipo] || 'location-outline'} size={16} color={colores.blanco} />
             </View>
             <View style={styles.info}>

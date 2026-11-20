@@ -78,6 +78,33 @@ export async function setCurrentUserId(id, mail) {
  * Al arrancar la app: ¿hay una sesión de Supabase Auth guardada? Si la hay,
  * se pregunta a la base qué cuenta es. Devuelve el Id_User o null.
  */
+// Un error de red (o un 5xx pasajero) no es lo mismo que "no hay cuenta":
+// antes cualquiera de los dos dejaba a la persona deslogueada al abrir la app
+// con mala señal, aunque su sesión fuera válida. Se reintenta un par de veces.
+const ESPERAS_REINTENTO_MS = [600, 1800];
+const esErrorPasajero = (error) => {
+  const status = Number(error?.status ?? error?.context?.status ?? 0);
+  // Un error de Postgres/PostgREST trae `code` (P0001, PGRST…): ése es una
+  // respuesta de verdad, no se reintenta.
+  return (!error?.code && status === 0) || status >= 500
+    || /fetch|network|timeout|conexi/i.test(String(error?.message ?? ''));
+};
+
+async function cuentaDeLaSesionConReintentos() {
+  for (let intento = 0; ; intento += 1) {
+    let respuesta;
+    try {
+      respuesta = await supabase.rpc('login_social');
+    } catch (e) {
+      respuesta = { data: null, error: e };
+    }
+    const { data, error } = respuesta;
+    if (!error) return data;
+    if (!esErrorPasajero(error) || intento >= ESPERAS_REINTENTO_MS.length) return null;
+    await new Promise((r) => setTimeout(r, ESPERAS_REINTENTO_MS[intento]));
+  }
+}
+
 export async function restaurarSesion() {
   try {
     const { data } = await supabase.auth.getSession();
@@ -85,8 +112,8 @@ export async function restaurarSesion() {
       currentUserId = null;
       return null;
     }
-    const { data: cuenta, error } = await supabase.rpc('login_social');
-    currentUserId = !error && cuenta && !cuenta.nuevo ? cuenta.id : null;
+    const cuenta = await cuentaDeLaSesionConReintentos();
+    currentUserId = cuenta && !cuenta.nuevo ? cuenta.id : null;
     return currentUserId;
   } catch {
     currentUserId = null;

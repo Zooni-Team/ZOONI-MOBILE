@@ -330,7 +330,7 @@ export default function MatchScreen() {
             accessibilityLabel="Abrir menú"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="menu" size={30} color="#0A0A0A" />
+            <Ionicons name="menu" size={30} color={colores.negroSuave} />
           </TouchableOpacity>
 
           {/* Acceso al propio perfil, arriba a la izquierda como en las apps de

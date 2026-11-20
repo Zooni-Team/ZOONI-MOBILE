@@ -24,6 +24,34 @@ import { supabase, SUPABASE_ORIGIN } from '../lib/supabase';
 
 const BUCKET = 'public-images';
 
+// Los mismos topes que cada bucket fija del lado del servidor (SQL base, 064).
+// Se controlan ANTES de subir para avisar enseguida, en vez de mandar 40 MB
+// por datos móviles y recién ahí recibir el rechazo.
+const MAX_BYTES_POR_BUCKET = {
+  'public-images': 5 * 1024 * 1024,
+  'consultas-privadas': 10 * 1024 * 1024,
+  resenas: 50 * 1024 * 1024,
+};
+
+/**
+ * Lee el archivo local (o data URI) a subir. Antes no se miraba `res.ok`:
+ * una uri vencida subía la página de error como si fuera la imagen.
+ * Tira Error('archivo_ilegible') o Error('archivo_muy_grande') (con .maxMb).
+ */
+async function leerArchivo(uri, bucket) {
+  const res = await fetch(uri);
+  // status 0: así contesta iOS un file:// local que se leyó bien.
+  if (!res.ok && res.status !== 0) throw new Error('archivo_ilegible');
+  const buffer = await res.arrayBuffer();
+  const max = MAX_BYTES_POR_BUCKET[bucket];
+  if (max && buffer.byteLength > max) {
+    const e = new Error('archivo_muy_grande');
+    e.maxMb = Math.round(max / (1024 * 1024));
+    throw e;
+  }
+  return buffer;
+}
+
 /**
  * ¿Esta URL apunta a nuestro propio Storage? Para mostrar contenido que viene
  * de una fila de la base (foto de perfil, media de una reseña…) escrita por
@@ -76,7 +104,7 @@ function tipoDeImagen(uri) {
 export async function subirImagenPublica(uri, carpeta) {
   const { mime, ext } = tipoDeImagen(uri);
   const path = `${await carpetaPropia(carpeta)}/${nombreArchivo(ext)}`;
-  const arraybuffer = await fetch(uri).then((res) => res.arrayBuffer());
+  const arraybuffer = await leerArchivo(uri, BUCKET);
 
   const { error } = await supabase.storage.from(BUCKET).upload(path, arraybuffer, {
     contentType: mime,
@@ -99,7 +127,7 @@ export const BUCKET_CONSULTAS = 'consultas-privadas';
 export async function subirImagenPrivada(uri, carpeta, bucket = BUCKET_CONSULTAS) {
   const { mime, ext } = tipoDeImagen(uri);
   const path = `${await carpetaPropia(carpeta)}/${nombreArchivo(ext)}`;
-  const arraybuffer = await fetch(uri).then((res) => res.arrayBuffer());
+  const arraybuffer = await leerArchivo(uri, bucket);
 
   const { error } = await supabase.storage.from(bucket).upload(path, arraybuffer, { contentType: mime });
   if (error) throw error;
@@ -184,7 +212,7 @@ export async function subirArchivoPublico(uri, carpeta, { bucket = BUCKET, mimeH
   const ext = extOk ? tipo.ext : esVideo ? 'mp4' : 'jpg';
   const mime = extOk ? tipo.mime : esVideo ? 'video/mp4' : 'image/jpeg';
   const path = `${await carpetaPropia(carpeta)}/${nombreArchivo(ext)}`;
-  const arraybuffer = await fetch(uri).then((res) => res.arrayBuffer());
+  const arraybuffer = await leerArchivo(uri, bucket);
 
   const { error } = await supabase.storage.from(bucket).upload(path, arraybuffer, { contentType: mime });
   if (error) throw error;

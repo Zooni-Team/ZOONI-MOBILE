@@ -34,6 +34,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { Avatar, C, Card, PillButton, Seccion, Stat, Vacio, sombra } from '../../../components/paseador/PaseadorUI';
 import MapaPaseo from '../../../components/paseador/MapaPaseo';
+import { useReloj } from '../../../hooks/useReloj';
 import PaseoCard from '../../../components/paseador/PaseoCard';
 import PagoFormModal from '../../../components/paseador/PagoFormModal';
 import ModalidadCobro from '../../../components/paseador/ModalidadCobro';
@@ -79,7 +80,6 @@ function PaseoEnCurso({
   const { posicion, ruta, gpsError } = seguimiento;
   const [elegidoId, setElegidoId] = useState(null);
   const [verSumar, setVerSumar] = useState(false);
-  const [, setTick] = useState(0);
   const mapaApi = useRef(null);
 
   const grupo = paseosActivos.length > 1;
@@ -89,12 +89,8 @@ function PaseoEnCurso({
   const enPausa = paseosActivos.filter((p) => !p.reanudadoEn).length;
   const puedeSumar = paseosActivos.length < (perfil?.maxPerros ?? 3);
 
-  // Timer: re-render cada segundo mientras alguno corre
-  useEffect(() => {
-    if (!corriendo) return undefined;
-    const t = setInterval(() => setTick((x) => x + 1), 1000);
-    return () => clearInterval(t);
-  }, [corriendo]);
+  // El cronómetro avanza dentro de PaseoUnico / FilaPaseo (useReloj): ya no se
+  // re-dibuja la pestaña entera (con el mapa) cada segundo.
 
   const centrar = () => {
     if (posicion) mapaApi.current?.centrar(posicion.lat, posicion.lng);
@@ -127,7 +123,7 @@ function PaseoEnCurso({
       <View style={s.topBar} pointerEvents="box-none">
         {/* Sin header en pantalla completa: el menú flota sobre el mapa */}
         <TouchableOpacity style={[s.mapBtn, { marginRight: 10 }]} onPress={abrirMenu} accessibilityLabel="Abrir menú">
-          <Ionicons name="menu" size={24} color="#0A0A0A" />
+          <Ionicons name="menu" size={24} color={colores.negroSuave} />
         </TouchableOpacity>
         <View style={[s.vivo, !corriendo && { backgroundColor: colores.gris100 }]}>
           <View style={[s.vivoPunto, !corriendo && { backgroundColor: C.gris }]} />
@@ -195,6 +191,7 @@ function PaseoEnCurso({
 /** Card de una sola mascota: timer y distancia grandes, como siempre. */
 function PaseoUnico({ paseo, ocupado, onPausa, onFinalizar, onChat }) {
   const corriendo = !!paseo.reanudadoEn;
+  useReloj(corriendo);
   const segundos = segundosDePaseo(paseo);
   const progreso = Math.min(1, segundos / (paseo.duracionMin * 60));
   return (
@@ -251,6 +248,7 @@ function PaseoUnico({ paseo, ocupado, onPausa, onFinalizar, onChat }) {
 /** Una mascota del grupo: su tiempo, distancia, progreso y sus propios botones. */
 export function FilaPaseo({ paseo, elegido = false, onElegir, ocupado, onPausa, onFinalizar, onChat }) {
   const corriendo = !!paseo.reanudadoEn;
+  useReloj(corriendo);
   const segundos = segundosDePaseo(paseo);
   const progreso = Math.min(1, segundos / (paseo.duracionMin * 60));
   // Sin onElegir (en Inicio) la fila es un View: un Touchable deshabilitado

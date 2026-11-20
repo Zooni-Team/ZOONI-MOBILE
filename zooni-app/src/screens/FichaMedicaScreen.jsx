@@ -327,7 +327,7 @@ export default function FichaMedicaScreen() {
         <View style={s.header}>
           <TouchableOpacity onPress={() => setDrawerOpen(true)} style={s.headerBtn} accessibilityLabel="Abrir menú"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="menu" size={30} color="#0A0A0A" />
+            <Ionicons name="menu" size={30} color={colores.negroSuave} />
           </TouchableOpacity>
         </View>
 

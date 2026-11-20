@@ -18,7 +18,8 @@
 import { supabase } from '../lib/supabase';
 import { setCurrentUserId, setModo, MODO_DUENO } from '../config/session';
 import { toISODateLocal } from '../utils/fechaLocal';
-import { subirImagenPublica } from './imagenStorage';
+import { borrarImagenPublica, subirImagenPublica } from './imagenStorage';
+import { errorBase } from './comun';
 import { marcarPresencia } from './presenciaApi';
 import { esPasswordValida } from '../utils/validacion';
 
@@ -178,11 +179,14 @@ export async function login(email, password) {
   // intervalo figuraría desconectado en Comunidad.
   marcarPresencia(true);
 
-  const { data: mascotas } = await supabase
+  // Si esta consulta falla, la app trataría a la persona como si no tuviera
+  // mascotas (y la mandaría a dar de alta una): mejor avisar el error.
+  const { data: mascotas, error: errMascotas } = await supabase
     .from('Mascota')
     .select('Id_Mascota, Nombre, Especie, Raza, ImagenAsset')
     .eq('Id_User', usuario.id)
     .order('EsActiva', { ascending: false });
+  if (errMascotas) throw errorBase(errMascotas);
 
   const mascotaActiva = mascotas?.[0] ?? null;
 
@@ -275,7 +279,13 @@ const IMAGEN_ASSET_POR_ESPECIE = {
  *   }
  * Lanza Error('email_existente') si ya hay una cuenta con ese mail.
  * Con contraseña NO deja la sesión abierta: el flujo vuelve al Login con un
- * banner de éxito.
+ * banner de éxito. Si el alta falla a mitad de camino, tampoco: se cierra la
+ * sesión recién creada y se borra la foto ya subida.
+ *
+ * `usuarioNoGuardado: true` en la respuesta = la cuenta se creó pero el
+ * @usuario lo tomó otra persona entre el paso 3 y este (se elige de nuevo en
+ * Perfil). Antes se tiraba 'usuario_existente' con la cuenta YA creada, y al
+ * reintentar la persona recibía "ese mail ya está en uso" y quedaba trabada.
  */
 export async function registro(datos) {
   const { mascota, usuario, social } = datos;
@@ -292,10 +302,23 @@ export async function registro(datos) {
   // 1. Sesión de Auth (con proveedor ya existe; con contraseña se crea acá)
   if (!social) await crearCuentaConPassword(mail, usuario.password);
 
+  let fotoMascotaUrl = null;
+  // Si algo falla de acá en adelante, no queda una sesión abierta a medias ni
+  // una foto huérfana en Storage.
+  const deshacer = async () => {
+    if (fotoMascotaUrl) await borrarImagenPublica(fotoMascotaUrl);
+    if (!social) await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+  };
+
   // 2. Foto real de la mascota (Storage exige sesión: va después del signUp)
-  const fotoMascotaUrl = mascota.fotoUri
-    ? await subirImagenPublica(mascota.fotoUri, 'mascotas')
-    : null;
+  try {
+    fotoMascotaUrl = mascota.fotoUri
+      ? await subirImagenPublica(mascota.fotoUri, 'mascotas')
+      : null;
+  } catch (e) {
+    await deshacer();
+    throw e;
+  }
 
   // 3. Usuario + mascota + rol en una transacción del servidor
   const ubicacionDisplay = [usuario.ciudad, usuario.provincia].filter(Boolean).join(', ') || null;
@@ -323,6 +346,7 @@ export async function registro(datos) {
     },
   });
   if (error) {
+    await deshacer();
     if (String(error.message ?? '').includes('email_existente') || error.code === '23505') {
       throw new Error('email_existente');
     }
@@ -330,22 +354,33 @@ export async function registro(datos) {
     throw error;
   }
 
-  // 4. Detalles que la RPC no recibe (con la sesión de la cuenta nueva)
+  // 4. Detalles que la RPC no recibe (con la sesión de la cuenta nueva).
+  // La cuenta YA existe: nada de acá puede abortar el registro.
+  let usuarioNoGuardado = false;
   if (nombreUsuario) {
     const { error: errUsuario } = await supabase.from('User')
       .update({ NombreUsuario: nombreUsuario }).eq('Id_User', data.id);
-    if (errUsuario && String(errUsuario.message ?? '').includes('idx_user_nombreusuario')) {
-      throw new Error('usuario_existente');
+    if (errUsuario) {
+      usuarioNoGuardado = true;
+      if (__DEV__) console.warn('[registro] @usuario', errUsuario.message);
     }
   }
   if (fotoMascotaUrl) {
-    await supabase.from('Mascota').update({ Foto: fotoMascotaUrl }).eq('Id_User', data.id);
+    const { error: errFoto } = await supabase.from('Mascota')
+      .update({ Foto: fotoMascotaUrl }).eq('Id_User', data.id);
+    if (errFoto) {
+      // La mascota queda sin foto (se puede cargar después): que no quede
+      // además el archivo ocupando lugar.
+      if (__DEV__) console.warn('[registro] foto', errFoto.message);
+      await borrarImagenPublica(fotoMascotaUrl);
+    }
   }
 
   if (!social) await supabase.auth.signOut({ scope: 'local' });
 
   return {
     mensaje: 'Cuenta creada exitosamente',
+    usuarioNoGuardado,
     usuario: { id: data.id, nombre: usuario.nombre.trim(), apellido: usuario.apellido.trim(), email: data.email ?? mail },
   };
 }

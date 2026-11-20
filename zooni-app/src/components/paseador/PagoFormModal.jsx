@@ -10,7 +10,7 @@
  *        onGuardar({ monto, medio, fecha, nota }) · onBorrar() · onCerrar
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { C, PillButton } from './PaseadorUI';
 import FechaPicker from '../FechaPicker';
 import { MEDIOS_PAGO, aCentavos, formatoPlata } from '../../domain/paseos';
-import { parseDecimal, sanitizarDecimal } from '../../utils/sanitizar';
+import { parseMonto, sanitizarMonto } from '../../utils/sanitizar';
 import { confirmar } from '../../utils/dialogo';
 import { colores } from '../../theme';
 import { formatearFecha } from '../../utils/fechaLocal';
@@ -41,8 +41,13 @@ export default function PagoFormModal({
   const [error, setError] = useState(null);
   const [guardando, setGuardando] = useState(false);
 
+  // Se inicializa sólo al ABRIR el modal: si la cuenta se recarga con el modal
+  // abierto (cambia `saldo`), no se pisa lo que la persona estaba escribiendo.
+  const estabaVisible = useRef(false);
   useEffect(() => {
-    if (!visible) return;
+    const recienAbierto = visible && !estabaVisible.current;
+    estabaVisible.current = visible;
+    if (!recienAbierto) return;
     const inicial = pago?.monto ?? montoInicial ?? (saldo > 0 ? saldo : null);
     setMonto(inicial ? aTexto(inicial) : '');
     setMedio(pago?.medio ?? medioSugerido ?? null);
@@ -51,7 +56,7 @@ export default function PagoFormModal({
     setError(null);
   }, [visible, pago, saldo, medioSugerido, montoInicial]);
 
-  const valor = aCentavos(parseDecimal(monto) ?? 0);
+  const valor = aCentavos(parseMonto(monto) ?? 0);
 
   const guardar = async () => {
     if (!(valor > 0)) { setError('Es necesario el monto que te pagó'); return; }
@@ -94,7 +99,7 @@ export default function PagoFormModal({
           <View style={[s.montoBox, error && !(valor > 0) && { borderColor: C.rojo }]}>
             <Text style={s.signo}>$</Text>
             <TextInput style={s.montoInput} value={monto} keyboardType="decimal-pad" placeholder="0"
-              placeholderTextColor="#C8C8C8" onChangeText={(v) => { setMonto(sanitizarDecimal(v).slice(0, 11)); setError(null); }} />
+              placeholderTextColor={colores.gris450} onChangeText={(v) => { setMonto(sanitizarMonto(v).slice(0, 14)); setError(null); }} />
           </View>
           {!pago && saldo > 0 && (
             <View style={s.atajos}>

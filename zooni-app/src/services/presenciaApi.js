@@ -11,12 +11,18 @@
  * Nada de acá bloquea la UI: si falla el latido, la app sigue igual.
  */
 
+import { AppState } from 'react-native';
+
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
 import { perfilesPorId } from './perfilesPublicos';
 
 // Más seguido que esto no aporta: el umbral de "en línea" es de 5 minutos.
 const INTERVALO_MS = 2 * 60 * 1000;
+// El freno entre latidos es MENOR que el intervalo: si eran iguales, un timer
+// que se disparaba un milisegundo antes salteaba el latido y quedaba uno cada
+// 4 minutos, pegado al umbral ("en línea" parpadeaba).
+const LATIDO_MINIMO_MS = 90 * 1000;
 
 let ultimoLatido = 0;
 
@@ -28,8 +34,10 @@ export async function marcarPresencia(forzar = false) {
   const userId = getCurrentUserId();
   if (!userId) return;
 
+  // Con la app (o la pestaña) en segundo plano no se está "en línea".
+  if (!forzar && AppState.currentState && AppState.currentState !== 'active') return;
   const ahora = Date.now();
-  if (!forzar && ahora - ultimoLatido < INTERVALO_MS) return;
+  if (!forzar && ahora - ultimoLatido < LATIDO_MINIMO_MS) return;
   ultimoLatido = ahora;
 
   try {

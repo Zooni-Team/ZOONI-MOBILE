@@ -35,6 +35,15 @@ const USER_AGENT = 'ZooniApp/1.0 (app de mascotas; github.com/Zooni-Team)';
 const AREA_MAX_GRADOS2 = 0.25; // igual que lugaresOsm.js
 const MAX_RESULTADOS = 200;
 const ESPERA_OVERPASS_MS = 12000;
+// Nominatim también puede colgarse: sumado a los 12 s de Overpass, sin tope
+// se pasaba de los 30 s de la función y Vercel cortaba con un 504.
+const ESPERA_NOMINATIM_MS = 6000;
+// La app (lugaresOsm.js) alinea siempre la caja a esta grilla. Se exige del
+// lado del servidor: con floats libres, cada caja distinta era una entrada
+// nueva en el CDN y cualquiera podía usar la función de proxy para martillar
+// a Overpass/Nominatim (y que bloquearan el User-Agent de Zooni).
+const GRILLA = 0.02;
+const enGrilla = (x) => Math.abs(x / GRILLA - Math.round(x / GRILLA)) < 1e-6;
 
 // Nominatim no busca por etiqueta: busca texto y se filtra por categoría.
 // (Probado en CABA: "veterinario" → amenity=veterinary, "pet shop" → shop=pet;
@@ -102,7 +111,10 @@ async function desdeNominatim({ s, w, n, e }) {
       q, viewbox: `${w},${n},${e},${s}`, bounded: '1', format: 'jsonv2',
       limit: '50', addressdetails: '1', extratags: '1',
     })}`;
-    const r = await fetch(url, { headers: { 'User-Agent': USER_AGENT, 'Accept-Language': 'es' } });
+    const r = await fetch(url, {
+      headers: { 'User-Agent': USER_AGENT, 'Accept-Language': 'es' },
+      signal: AbortSignal.timeout(ESPERA_NOMINATIM_MS),
+    });
     if (!r.ok) throw new Error(`nominatim ${r.status}`);
     for (const x of await r.json()) {
       const clave = `${x.osm_type}${x.osm_id}`;
@@ -121,9 +133,15 @@ module.exports = async function handler(req, res) {
   const valida = Object.values(caja).every(Number.isFinite)
     && caja.s < caja.n && caja.w < caja.e
     && Math.abs(caja.s) <= 90 && Math.abs(caja.n) <= 90
+    && Math.abs(caja.w) <= 180 && Math.abs(caja.e) <= 180
     && (caja.n - caja.s) * (caja.e - caja.w) <= AREA_MAX_GRADOS2;
   if (!valida) {
     res.status(400).json({ error: 'caja inválida o demasiado grande' });
+    return;
+  }
+  if (!Object.values(caja).every(enGrilla)) {
+    res.setHeader('Cache-Control', 'public, s-maxage=86400');
+    res.status(400).json({ error: `la caja tiene que estar alineada a una grilla de ${GRILLA}°` });
     return;
   }
 

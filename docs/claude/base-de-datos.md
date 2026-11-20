@@ -15,6 +15,12 @@ La base completa (PostgreSQL / Supabase) es:
    `DROP POLICY IF EXISTS` + `CREATE POLICY` / `REVOKE`+`GRANT`. Va **última**
    a propósito: endurece varias políticas que la 066 restituye permisivas, y la
    que corre al final es la que queda.
+4. **`supabase/MIGRACION_071_INTEGRIDAD.sql`** — después de la 070: el
+   anti-trampa del paseo con ancla fija (el margen ya no se acumula update a
+   update), el límite de 10 mascotas activas en la base,
+   `marcar_mascota_principal()` en una transacción y la fecha de cada mensaje
+   puesta por la base. La app funciona con o sin ella (marcar principal cae
+   al camino viejo si la RPC no existe).
 
 Cada archivo se pega **entero** en Supabase → SQL Editor → Run. Cada uno:
 - corre en una transacción (si algo falla, no se aplica nada);

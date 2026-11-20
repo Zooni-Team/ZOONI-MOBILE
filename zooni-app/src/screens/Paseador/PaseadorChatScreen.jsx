@@ -297,7 +297,7 @@ const s = StyleSheet.create({
   burbujaYo: { alignSelf: 'flex-end', backgroundColor: C.burbujaYo, borderBottomRightRadius: 6 },
   burbujaOtro: {
     alignSelf: 'flex-start', backgroundColor: colores.blanco, borderBottomLeftRadius: 6,
-    borderWidth: 1, borderColor: '#EAEAEA',
+    borderWidth: 1, borderColor: colores.gris220,
   },
   burbujaTxt: { fontSize: 15, color: C.texto, lineHeight: 20 },
   hora: { fontSize: 10, color: C.texto2, alignSelf: 'flex-end', marginTop: 2 },
@@ -318,7 +318,7 @@ const s = StyleSheet.create({
   },
   input: {
     flex: 1, minHeight: 46, maxHeight: 110, borderRadius: 23, backgroundColor: C.fondo,
-    borderWidth: 1, borderColor: '#E3E3E3', paddingHorizontal: 16, paddingVertical: 12,
+    borderWidth: 1, borderColor: colores.gris250, paddingHorizontal: 16, paddingVertical: 12,
     fontSize: 15, color: C.texto,
   },
   enviar: {

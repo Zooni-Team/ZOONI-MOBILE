@@ -84,7 +84,17 @@ export default function useSeguimientoPaseos(activos, setActivos) {
       return;
     }
     const salto = distanciaMetros(prev, punto);
-    if (salto < SALTO_MIN_M || salto > SALTO_MAX_M) return;
+    if (salto < SALTO_MIN_M) return;
+    if (salto > SALTO_MAX_M) {
+      // Salto grande (se perdió la señal, o el teléfono estuvo bloqueado y el
+      // navegador pausó el GPS): no se suma, pero se re-ancla en el punto
+      // nuevo. Antes se descartaba sin mover el ancla y, como todas las
+      // lecturas siguientes quedaban lejos del punto viejo, el recorrido se
+      // congelaba por el resto del paseo.
+      ultimo.current = punto;
+      setRuta((r) => [...r, punto]);
+      return;
+    }
 
     ultimo.current = punto;
     setRuta((r) => [...r, punto]);

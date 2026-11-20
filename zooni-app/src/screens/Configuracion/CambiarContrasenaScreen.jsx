@@ -14,9 +14,10 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { SettingsBanner, SettingsGroup, SettingsScreen, T } from '../../components/settings/SettingsKit';
 import { cambiarMiContrasena } from '../../services/perfilApi';
 import AppDialog from '../../components/AppDialog';
+import { PASSWORD_MIN } from '../../utils/validacion';
 
 function fuerza(pass) {
-  if (pass.length < 8) return { nivel: 'debil', label: 'Débil', color: T.sosRedText, ratio: 0.33 };
+  if (pass.length < PASSWORD_MIN) return { nivel: 'debil', label: 'Débil', color: T.sosRedText, ratio: 0.33 };
   const variedad =
     (/[a-z]/.test(pass) ? 1 : 0) + (/[A-Z]/.test(pass) ? 1 : 0) +
     (/[0-9]/.test(pass) ? 1 : 0) + (/[^a-zA-Z0-9]/.test(pass) ? 1 : 0);
@@ -38,7 +39,7 @@ export default function CambiarContrasenaScreen() {
   const [dialogo, setDialogo] = useState(null);
 
   const f = useMemo(() => fuerza(nueva), [nueva]);
-  const valido = actual.length >= 1 && nueva.length >= 8 && nueva === repetir && !guardando;
+  const valido = actual.length >= 1 && nueva.length >= PASSWORD_MIN && nueva === repetir && !guardando;
 
   const guardar = async () => {
     setGuardando(true);
@@ -88,7 +89,7 @@ export default function CambiarContrasenaScreen() {
           <Text style={s.label}>Nueva contraseña</Text>
           <TextInput style={s.input} value={nueva} onChangeText={setNueva}
             secureTextEntry autoComplete="new-password" textContentType="newPassword"
-            placeholder="Mínimo 8 caracteres" placeholderTextColor={T.textSoft} />
+            placeholder={`Mínimo ${PASSWORD_MIN} caracteres`} placeholderTextColor={T.textSoft} />
           {nueva.length > 0 && (
             <View style={s.fuerzaWrap}>
               <View style={s.fuerzaTrack}>

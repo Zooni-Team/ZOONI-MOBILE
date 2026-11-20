@@ -32,6 +32,17 @@ import {
 import { confirmar } from '../utils/dialogo';
 import { colores } from '../theme';
 import { Estrellas } from '../components/ui/Estrellas';
+import { useReloj } from '../hooks/useReloj';
+
+/** "Paseando · 12:34 · 1,2 km": se re-dibuja sólo esta línea cada segundo. */
+function TiempoEnVivo({ paseo }) {
+  useReloj(!!paseo.reanudadoEn);
+  return (
+    <Text style={s.vivoTxt}>
+      {paseo.reanudadoEn ? 'Paseando' : 'En pausa'} · {formatoTimer(segundosDePaseo(paseo))} · {formatoDistancia(paseo.distanciaMetros)}
+    </Text>
+  );
+}
 
 const ESTADOS = {
   pendiente: { txt: 'Esperando respuesta', icono: 'hourglass-outline', color: colores.ambar, fondo: colores.ambarFondo },
@@ -55,7 +66,6 @@ export default function MisPaseosScreen() {
   const [aviso, setAviso] = useState(route.params?.enviada
     ? `¡Listo! Le enviamos tu solicitud a ${route.params.enviada}. Te avisamos cuando responda.` : null);
   const [calificando, setCalificando] = useState(null); // paseo
-  const [, setTick] = useState(0);
 
   const cargar = useCallback(async () => {
     try {
@@ -71,13 +81,13 @@ export default function MisPaseosScreen() {
 
   useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
 
-  // En curso: refresco del estado cada 15 s y del timer cada segundo
+  // En curso: refresco del estado cada 15 s (el cronómetro avanza solo en
+  // TiempoEnVivo, sin re-dibujar la pantalla entera cada segundo)
   const hayEnCurso = !!paseos?.some((p) => p.estado === 'en_curso');
   useEffect(() => {
     if (!hayEnCurso) return undefined;
     const t1 = setInterval(cargar, 15000);
-    const t2 = setInterval(() => setTick((x) => x + 1), 1000);
-    return () => { clearInterval(t1); clearInterval(t2); };
+    return () => clearInterval(t1);
   }, [hayEnCurso, cargar]);
 
   useEffect(() => {
@@ -142,9 +152,7 @@ export default function MisPaseosScreen() {
         {p.estado === 'en_curso' && (
           <View style={s.vivo}>
             <View style={s.vivoPunto} />
-            <Text style={s.vivoTxt}>
-              {p.reanudadoEn ? 'Paseando' : 'En pausa'} · {formatoTimer(segundosDePaseo(p))} · {formatoDistancia(p.distanciaMetros)}
-            </Text>
+            <TiempoEnVivo paseo={p} />
           </View>
         )}
         {p.estado === 'finalizado' && (
@@ -187,7 +195,7 @@ export default function MisPaseosScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={colores.menta} />
       <View style={s.header}>
         <TouchableOpacity onPress={() => setDrawerOpen(true)} hitSlop={10} accessibilityLabel="Abrir menú">
-          <Ionicons name="menu" size={28} color="#0A0A0A" />
+          <Ionicons name="menu" size={28} color={colores.negroSuave} />
         </TouchableOpacity>
         <Text style={s.titulo}>Mis paseos</Text>
         <TouchableOpacity onPress={() => navigation.navigate('Comunidad')} hitSlop={10} accessibilityLabel="Buscar paseador">

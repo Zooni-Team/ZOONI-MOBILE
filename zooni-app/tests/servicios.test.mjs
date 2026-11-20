@@ -163,11 +163,22 @@ describe('zoonivetApi', () => {
   test('manda la pregunta a la Edge Function (sin clave en el cliente)', async () => {
     fake.funcion('zoonivet-chat', { data: { texto: 'Hola', emergencia: false } });
     const r = await preguntarZooniVet({ ctx, historial: [{ role: 'user', content: 'a', extra: 1 }], mensaje: 'b' });
-    assert.deepEqual(r, { texto: 'Hola', emergencia: false });
+    assert.deepEqual(r, { texto: 'Hola', emergencia: false, firma: null });
     const { body } = fake.de('funcion')[0];
     assert.equal(body.petId, 4);
     assert.deepEqual(body.historial, [{ role: 'user', content: 'a' }]);
     assert.equal('usuario' in body, false, 'el nombre lo lee la función, no lo manda la app');
+  });
+  test('la firma de cada respuesta vuelve en el historial (sin ella, la función descarta el turno)', async () => {
+    fake.funcion('zoonivet-chat', { data: { texto: 'Hola', emergencia: false, firma: 'f'.repeat(64) } });
+    const r = await preguntarZooniVet({
+      ctx,
+      historial: [{ role: 'user', content: 'a' }, { role: 'assistant', content: 'b', firma: 'x'.repeat(64) }],
+      mensaje: 'c',
+    });
+    assert.equal(r.firma, 'f'.repeat(64));
+    const { body } = fake.de('funcion')[0];
+    assert.deepEqual(body.historial[1], { role: 'assistant', content: 'b', firma: 'x'.repeat(64) });
   });
   test('función sin desplegar → SERVICIO_NO_DISPONIBLE; error con código → ese código', async () => {
     await assert.rejects(preguntarZooniVet({ ctx, mensaje: 'x' }), (e) => e.code === 'SERVICIO_NO_DISPONIBLE');

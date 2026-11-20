@@ -52,7 +52,18 @@ const almacenNativo = {
     const partes = await Promise.all(
       Array.from({ length: cantidad }, (_, i) => SecureStore.getItemAsync(`${clave}_${i}`, OPCIONES))
     );
-    return partes.some((p) => p == null) ? null : partes.join('');
+    if (partes.some((p) => p == null)) return null;
+    const valor = partes.join('');
+    // La escritura en trozos no es atómica: si la app se cerró a mitad de un
+    // setItem, quedan trozos nuevos mezclados con viejos. Una sesión mezclada
+    // no es JSON válido: se descarta (como "sin sesión") en vez de pasársela
+    // rota a Supabase Auth.
+    try {
+      JSON.parse(valor);
+    } catch {
+      return null;
+    }
+    return valor;
   },
   async setItem(clave, valor) {
     // Cuántos trozos había antes: si la sesión nueva ocupa menos, hay que

@@ -154,7 +154,7 @@ export default function MensajesScreen() {
       <View style={st.header}>
         <TouchableOpacity onPress={() => setDrawerOpen(true)} accessibilityLabel="Abrir menú"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="menu" size={28} color="#0A0A0A" />
+          <Ionicons name="menu" size={28} color={colores.negroSuave} />
         </TouchableOpacity>
         <Text style={st.titulo}>Mensajes</Text>
         {/* Mantiene el título centrado compensando el ancho del ícono. */}
@@ -178,7 +178,7 @@ export default function MensajesScreen() {
           contentContainerStyle={st.lista}
           ListEmptyComponent={
             <View style={st.vacio}>
-              <Ionicons name="chatbubbles-outline" size={36} color="#CCCCCC" style={{ marginBottom: 8 }} />
+              <Ionicons name="chatbubbles-outline" size={36} color={colores.gris420} style={{ marginBottom: 8 }} />
               <Text style={st.vacioTxt}>{textoVacio}</Text>
             </View>
           }
@@ -247,7 +247,7 @@ export default function MensajesScreen() {
             const s = item.datos;
             return (
               <TouchableOpacity style={st.item} onPress={() => abrirChatServicio(s)}>
-                <View style={[st.iconCircle, { backgroundColor: COLORES_SERVICIO[s.tipo] || '#888' }]}>
+                <View style={[st.iconCircle, { backgroundColor: COLORES_SERVICIO[s.tipo] || colores.gris600 }]}>
                   <Ionicons name={ICONOS_SERVICIO[s.tipo] || 'storefront-outline'} size={18} color={colores.blanco} />
                 </View>
                 <View style={st.info}>

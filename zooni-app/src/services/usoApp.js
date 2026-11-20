@@ -76,7 +76,21 @@ async function cargarHoy(idUser) {
  * Guarda lo acumulado. Si la app estuvo abierta de un día para el otro, lo
  * pendiente se anota al día en que se guarda (la diferencia es de minutos).
  */
-export async function guardarUso() {
+let guardando = null; // el guardado en curso (para no correr dos a la vez)
+
+/**
+ * Serializado: tick() y pausarUso() podían guardar a la vez; los dos subían el
+ * mismo total y restaban lo guardado dos veces, así que `pendientes` quedaba
+ * negativo y se perdía tiempo. Ahora el segundo espera al primero y vuelve a
+ * mirar qué queda.
+ */
+export function guardarUso() {
+  if (guardando) return guardando.then(() => guardarUso());
+  guardando = guardarUnaVez().finally(() => { guardando = null; });
+  return guardando;
+}
+
+async function guardarUnaVez() {
   cortar();
   const idUser = usuarioMedido;
   if (!idUser || pendientes <= 0) return;
@@ -88,7 +102,7 @@ export async function guardarUso() {
       .upsert({ user_id: idUser, date: diaGuardado, total_seconds: total }, { onConflict: 'user_id,date' });
     if (error) throw error;
     guardadosHoy = total;
-    pendientes -= aGuardar;
+    pendientes = Math.max(0, pendientes - aGuardar);
   } catch {
     // Queda en `pendientes`: se reintenta en el próximo guardado.
   }

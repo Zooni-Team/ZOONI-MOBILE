@@ -27,11 +27,18 @@ async function leerPagos() {
 
 // ── Cada cuánto le cobra el paseador a cada dueño (045) ─────────────────────
 
-/** { [idDueno]: { modalidad, ultimoRecordatorio } }. Sin la 045 → {}. */
+/**
+ * { [idDueno]: { modalidad, ultimoRecordatorio } }. Sin la 045 → {}.
+ * Cualquier OTRO error se propaga: antes también devolvía {} y todas las
+ * cuentas pasaban en silencio a "por paseo".
+ */
 async function leerConfigCuentas() {
   const { data, error } = await supabase.from('paseo_cuenta_config')
     .select('id_dueno, modalidad, ultimo_recordatorio').eq('id_walker', getCurrentUserId());
-  if (error) return {};
+  if (error) {
+    if (esEsquemaFaltante(error)) return {};
+    throw errorApp('error_base', error);
+  }
   return Object.fromEntries((data ?? []).map((r) => [String(r.id_dueno), {
     modalidad: r.modalidad, ultimoRecordatorio: r.ultimo_recordatorio,
   }]));
@@ -72,6 +79,18 @@ export async function revisarRecordatoriosCobro() {
     let enviados = 0;
     for (const [idDueno, c] of pendientes) {
       const cierre = ultimoCierre(c.modalidad);
+      // Primero se "reclama" el período con un UPDATE condicional y recién
+      // después se avisa. Antes se avisaba primero y el error del UPDATE se
+      // ignoraba: si fallaba, o con dos dispositivos abiertos a la vez, el
+      // recordatorio salía repetido.
+      let reclamo = supabase.from('paseo_cuenta_config').update({ ultimo_recordatorio: cierre })
+        .eq('id_walker', getCurrentUserId()).eq('id_dueno', Number(idDueno));
+      reclamo = c.ultimoRecordatorio
+        ? reclamo.lt('ultimo_recordatorio', cierre)
+        : reclamo.is('ultimo_recordatorio', null);
+      const { data: reclamadas, error: errReclamo } = await reclamo.select('id_dueno');
+      if (errReclamo || !reclamadas?.length) continue; // lo avisó otro dispositivo, o falló
+
       const cuenta = cuentas.find((x) => String(x.idDueno) === idDueno);
       if (cuenta?.saldo > 0) {
         const periodo = c.modalidad === 'semanal' ? 'la semana' : 'el mes';
@@ -80,8 +99,6 @@ export async function revisarRecordatoriosCobro() {
         await notificarPaseo(getCurrentUserId(), titulo, mensaje, 'pagos');
         enviados += 1;
       }
-      await supabase.from('paseo_cuenta_config').update({ ultimo_recordatorio: cierre })
-        .eq('id_walker', getCurrentUserId()).eq('id_dueno', Number(idDueno));
     }
     return enviados;
   } catch {
@@ -108,8 +125,10 @@ export async function fetchCuentasCorrientes() {
   // está, la cuenta igual se arma sin ese dato)
   const medios = {};
   if (paseos.length) {
-    const { data } = await supabase.from('Paseo').select('"Id_Paseo","MedioPago"')
+    const { data, error } = await supabase.from('Paseo').select('"Id_Paseo","MedioPago"')
       .in('Id_Paseo', paseos.map((p) => p.id));
+    // Sin la columna (044) la cuenta se arma igual; otro error se avisa.
+    if (error && !esEsquemaFaltante(error)) throw errorApp('error_base', error);
     (data ?? []).forEach((r) => { medios[r.Id_Paseo] = r.MedioPago; });
   }
 
@@ -212,16 +231,21 @@ export async function registrarPago(pago) {
 /** Corrige un pago ya anotado (monto, medio, fecha o nota). */
 export async function editarPago(id, pago) {
   const fila = filaPago(pago);
-  const { error } = await supabase.from('paseo_pagos')
+  const { data, error } = await supabase.from('paseo_pagos')
     .update({ ...fila, actualizado_en: new Date().toISOString() })
-    .eq('id', id).eq('id_walker', getCurrentUserId());
+    .eq('id', id).eq('id_walker', getCurrentUserId())
+    .select('id');
   if (error) throw errorDePagos(error);
+  // 0 filas = el pago ya no existe (o la RLS no deja): no decir "guardado".
+  if (!data?.length) throw errorApp('pago_inexistente');
 }
 
 export async function borrarPago(id) {
-  const { error } = await supabase.from('paseo_pagos').delete()
-    .eq('id', id).eq('id_walker', getCurrentUserId());
+  const { data, error } = await supabase.from('paseo_pagos').delete()
+    .eq('id', id).eq('id_walker', getCurrentUserId())
+    .select('id');
   if (error) throw errorDePagos(error);
+  if (!data?.length) throw errorApp('pago_inexistente');
 }
 
 /** Paseos finalizados del período, del más nuevo al más viejo. */

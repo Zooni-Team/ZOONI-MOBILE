@@ -14,7 +14,7 @@
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
 import { perfilesPorId } from './perfilesPublicos';
-import { notificar, resumir } from './comun';
+import { errorBase, notificar, resumir } from './comun';
 
 function mapRow(row) {
   return {
@@ -30,47 +30,69 @@ function mapRow(row) {
   };
 }
 
-/** Mensajes de un chat de Match o de un chat de Servicio, del más viejo al más nuevo. */
+/** Cuántos mensajes se traen por chat: los últimos N (antes, el historial entero en cada aviso). */
+const MAX_MENSAJES = 200;
+
+/**
+ * Mensajes de un chat de Match o de un chat de Servicio, del más viejo al más
+ * nuevo (los últimos MAX_MENSAJES). Si la base falla, TIRA: antes devolvía []
+ * y un corte de red en pleno polling vaciaba el chat en pantalla.
+ */
 export async function getMensajes({ matchId, servicioId }) {
   if (!matchId && !servicioId) return [];
-  let query = supabase.from('Mensaje').select('*').order('fecha', { ascending: true });
+  let query = supabase.from('Mensaje').select('*')
+    .order('fecha', { ascending: false }).order('id', { ascending: false }).limit(MAX_MENSAJES);
   query = matchId
     ? query.eq('idMatch', matchId)
     // Un servicio puede tener mensajes de varios clientes distintos — sin este
     // filtro por usuario, cada uno vería la conversación de todos los demás.
     : query.eq('idServicio', servicioId).eq('idUsuario', getCurrentUserId());
   const { data, error } = await query;
-  if (error || !data) return [];
-  return data.map(mapRow);
+  if (error) throw errorBase(error);
+  return (data ?? []).reverse().map(mapRow);
 }
 
+/** El otro integrante de un Match, o null si no se encontró (nunca yo mismo). */
 async function resolverOtroUsuario(matchId) {
-  const { data } = await supabase.from('Match').select('*').eq('id', matchId).single();
-  if (!data) return getCurrentUserId();
-  return data.idUsuarioUno === getCurrentUserId() ? data.idUsuarioDos : data.idUsuarioUno;
+  const { data } = await supabase.from('Match').select('idUsuarioUno, idUsuarioDos').eq('id', matchId).maybeSingle();
+  if (!data) return null;
+  const miId = getCurrentUserId();
+  return data.idUsuarioUno === miId ? data.idUsuarioDos : data.idUsuarioUno;
 }
 
-/** Envía un mensaje mío a un chat de Match o de Servicio y devuelve la lista actualizada. */
+async function avisarAlOtroDelMatch(matchId, texto) {
+  const otroId = await resolverOtroUsuario(matchId);
+  if (!otroId) return;
+  const { data: yo } = await supabase.from('User').select('Nombre, Apellido').eq('Id_User', getCurrentUserId()).maybeSingle();
+  const nombreMio = `${yo?.Nombre ?? ''} ${yo?.Apellido ?? ''}`.trim() || 'Alguien';
+  await notificar(otroId, `Nuevo mensaje de ${nombreMio}`, resumir(texto), { tipo: 'mensaje' });
+}
+
+/**
+ * Envía un mensaje mío a un chat de Match o de Servicio y devuelve la lista
+ * actualizada (o null si el mensaje se guardó pero la lista no se pudo releer:
+ * la pantalla la vuelve a pedir sola).
+ *
+ * Una vez insertado el mensaje, nada puede hacer que esta función tire: antes
+ * la notificación iba después del insert con await, y si fallaba la pantalla
+ * decía "no se envió", la persona reintentaba y el mensaje quedaba duplicado.
+ * La fecha la pone la base (MIGRACION_071), no el reloj del teléfono.
+ */
 export async function enviarMensaje({ matchId, servicioId, texto }) {
-  const row = { idUsuario: getCurrentUserId(), texto, fecha: new Date().toISOString() };
+  const limpio = String(texto ?? '').trim().slice(0, 2000);
+  if (!limpio) return null;
+  const row = { idUsuario: getCurrentUserId(), texto: limpio };
   if (matchId) row.idMatch = matchId;
   else row.idServicio = servicioId;
 
   const { error } = await supabase.from('Mensaje').insert(row);
-  if (error) throw error;
+  if (error) throw errorBase(error);
 
-  // Servicio con negocio de Zooni detrás: al dueño del negocio le llega la
-  // notificación y lo lleva a la sección Mensajes de su app
-  if (servicioId) avisarAlNegocio(servicioId, texto).catch(() => {});
+  // Avisos: fire-and-forget, nunca rompen el envío.
+  if (servicioId) avisarAlNegocio(servicioId, limpio).catch(() => {});
+  if (matchId) avisarAlOtroDelMatch(matchId, limpio).catch(() => {});
 
-  if (matchId) {
-    const otroId = await resolverOtroUsuario(matchId);
-    const { data: yo } = await supabase.from('User').select('Nombre, Apellido').eq('Id_User', getCurrentUserId()).single();
-    const nombreMio = `${yo?.Nombre ?? ''} ${yo?.Apellido ?? ''}`.trim() || 'Alguien';
-    await notificar(otroId, `Nuevo mensaje de ${nombreMio}`, resumir(texto), { tipo: 'mensaje' });
-  }
-
-  return getMensajes({ matchId, servicioId });
+  return getMensajes({ matchId, servicioId }).catch(() => null);
 }
 
 async function avisarAlNegocio(servicioId, texto) {
@@ -78,7 +100,7 @@ async function avisarAlNegocio(servicioId, texto) {
   if (!pin?.id_negocio) return;
   const { data: negocio } = await supabase.from('negocio_perfil').select('id_user').eq('id', pin.id_negocio).maybeSingle();
   if (!negocio?.id_user || negocio.id_user === getCurrentUserId()) return;
-  const { data: yo } = await supabase.from('User').select('Nombre, Apellido').eq('Id_User', getCurrentUserId()).single();
+  const { data: yo } = await supabase.from('User').select('Nombre, Apellido').eq('Id_User', getCurrentUserId()).maybeSingle();
   const nombreMio = `${yo?.Nombre ?? ''} ${yo?.Apellido ?? ''}`.trim() || 'Un cliente';
   await notificar(negocio.id_user, `Mensaje de ${nombreMio}`, resumir(texto), { tipo: 'negocio', destino: 'mensajes' });
 }

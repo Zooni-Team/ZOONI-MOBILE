@@ -101,7 +101,7 @@ export default function PopupCartel({ cartel, userId, onClose, onEliminado }) {
             Publicado por: <Text style={styles.metaLink}>{cartel.publicado_por}</Text> · {fecha}
           </Text>
         </TouchableOpacity>
-        {parseInt(cartel.usuario_id) === userId && (
+        {cartel.usuario_id != null && Number(cartel.usuario_id) === Number(userId) && (
           <TouchableOpacity style={styles.btnElim} onPress={handleEliminar}>
             <Ionicons name="trash-outline" size={16} color={colores.blanco} />
             <Text style={styles.btnElimText}>Eliminar Cartel</Text>

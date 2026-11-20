@@ -231,7 +231,7 @@ export default function ClosetScreen() {
 
   const botonBg = botonColor.interpolate({
     inputRange: [0, 1],
-    outputRange: ['#CCCCCC', colores.amarillo],
+    outputRange: [colores.gris420, colores.amarillo],
   });
 
   const rotateDeg = previewRotate.interpolate({
@@ -260,7 +260,7 @@ export default function ClosetScreen() {
             accessibilityLabel="Abrir menú"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="menu" size={30} color="#0A0A0A" />
+            <Ionicons name="menu" size={30} color={colores.negroSuave} />
           </TouchableOpacity>
         </View>
         <View style={styles.headerDivider} />

@@ -110,6 +110,8 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%;background:${colores.me
     }
   };
   window.addEventListener('message',function(e){
+    // Sólo órdenes de la app que contiene el mapa (no de otra ventana)
+    if(e.source!==window.parent)return;
     var m=e.data;
     if(!m||m.tipo!=='zooni-cmd'||typeof api[m.metodo]!=='function')return;
     api[m.metodo].apply(null,m.args||[]);

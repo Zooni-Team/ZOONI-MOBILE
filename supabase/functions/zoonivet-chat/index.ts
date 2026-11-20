@@ -70,19 +70,27 @@ function json(body: unknown, status = 200, origin: string | null = null) {
 const DISPARADORES_EMERGENCIA = [
   "no puede respirar", "le cuesta respirar", "se ahoga", "lengua azul",
   "encías azules", "encias azules", "encías moradas", "encias moradas",
-  "convulsión", "convulsion", "convulsiona", "ataque", "temblores fuertes",
+  // "ataque" solo disparaba con "ataque de tos" o "de risa": se piden frases.
+  "convulsión", "convulsion", "convulsiona", "tuvo un ataque", "le dio un ataque",
+  "ataque de epilepsia", "temblores fuertes",
   "no responde", "desmayo", "se desvaneció", "se desvanecio", "camina en círculos",
   "camina en circulos",
   "panza hinchada", "abdomen duro", "arcadas sin vomitar", "quiere vomitar y no puede",
   "vómito con sangre", "vomito con sangre",
   "lo atropellaron", "se cayó de altura", "se cayo de altura", "lo mordió un perro",
   "lo mordio un perro", "herida profunda", "sangra mucho", "no para de sangrar",
-  "chocolate", "xilitol", "uvas", "pasas", "cebolla", "ajo", "veneno", "raticida",
+  // "pasas" sola no: sin tilde es también el verbo ("¿me pasás…?") y daba
+  // falsos avisos de emergencia.
+  "chocolate", "xilitol", "uvas", "comió pasas", "comio pasas", "uvas pasas",
+  "cebolla", "ajo", "veneno", "raticida",
   "anticongelante", "ibuprofeno", "paracetamol", "aspirina", "marihuana",
   "comió pastillas", "comio pastillas",
   "no puede orinar", "no hace pis", "se queja al orinar", "sangre en la orina",
   "encías pálidas", "encias palidas", "encías blancas", "encias blancas", "muy frío",
-  "muy frio", "colapsó", "colapso", "no se levanta", "golpe de calor",
+  // "colapso" a secas es también un sustantivo ("colapso de tráquea" en una
+  // pregunta general): se usa el verbo en contexto.
+  "muy frio", "se desplomó", "se desplomo", "colapsó de golpe", "colapso de golpe",
+  "no se levanta", "golpe de calor",
   "ojo salido", "ojo lastimado", "golpe en el ojo",
   "está pariendo hace horas", "esta pariendo hace horas", "no puede parir",
 ];
@@ -187,31 +195,39 @@ function bloqueDatos(ctx: Ctx, usuario: { nombre?: string } | null): string {
   L.push("");
   L.push("MASCOTA");
   L.push(`Nombre: ${limpiarCampo(ctx.nombre, 30) ?? "tu mascota"}`);
+  const especie = limpiarCampo(ctx.especie, 30);
+  const raza = limpiarCampo(ctx.raza, 60);
   const linea2 = [
-    ctx.especie && `Especie: ${ctx.especie}`,
-    ctx.raza && `Raza: ${ctx.raza}`,
+    especie && `Especie: ${especie}`,
+    raza && `Raza: ${raza}`,
   ].filter(Boolean).join(" | ");
   if (linea2) L.push(linea2);
   if (ctx.edadTexto) {
+    const edadMeses = Number.isFinite(Number(ctx.edadMeses)) ? ` (${Number(ctx.edadMeses)} meses)` : "";
     L.push(
-      `Edad: ${ctx.edadTexto}${ctx.edadMeses != null ? ` (${ctx.edadMeses} meses)` : ""} | Etapa: ${ctx.etapa}`,
+      `Edad: ${limpiarCampo(ctx.edadTexto, 40)}${edadMeses} | Etapa: ${limpiarCampo(ctx.etapa, 30) ?? "sin dato"}`,
     );
   }
-  if (ctx.pesoKg != null) {
-    L.push(`Peso: ${ctx.pesoKg} kg${ctx.pesoTendencia ? ` | Tendencia: ${ctx.pesoTendencia}` : ""}`);
+  if (ctx.pesoKg != null && Number.isFinite(Number(ctx.pesoKg))) {
+    const tendencia = limpiarCampo(ctx.pesoTendencia, 40);
+    L.push(`Peso: ${Number(ctx.pesoKg)} kg${tendencia ? ` | Tendencia: ${tendencia}` : ""}`);
   }
 
+  // TODO lo que viene de la base pasa por limpiarCampo, no sólo los nombres:
+  // los motivos de consulta los escribe un tercero (la veterinaria) y antes
+  // entraban crudos al prompt.
+  const lista = (xs: unknown[] | undefined, max = 12) =>
+    (xs ?? []).slice(0, max).map((x) => limpiarCampo(x, 80)).filter(Boolean).join("; ");
   const salud: string[] = [];
-  if (ctx.vacunasAplicadas?.length) {
-    salud.push(`Vacunas aplicadas: ${ctx.vacunasAplicadas.join("; ")}`);
-  }
-  if (ctx.vacunasPendientes?.length) {
-    salud.push(`Vacunas pendientes o vencidas: ${ctx.vacunasPendientes.join("; ")}`);
-  }
+  const aplicadas = lista(ctx.vacunasAplicadas);
+  if (aplicadas) salud.push(`Vacunas aplicadas: ${aplicadas}`);
+  const pendientes = lista(ctx.vacunasPendientes);
+  if (pendientes) salud.push(`Vacunas pendientes o vencidas: ${pendientes}`);
   if (ctx.consultas?.length) {
-    salud.push(
-      `Consultas recientes: ${ctx.consultas.map((c) => `${c.fecha} — ${c.motivo ?? "sin detalle"}`).join("; ")}`,
-    );
+    const consultas = ctx.consultas.slice(0, 8)
+      .map((c) => `${limpiarCampo(c.fecha, 20) ?? "sin fecha"} — ${limpiarCampo(c.motivo, 120) ?? "sin detalle"}`)
+      .join("; ");
+    salud.push(`Consultas recientes: ${consultas}`);
   }
   if (salud.length) {
     L.push("");
@@ -223,7 +239,13 @@ function bloqueDatos(ctx: Ctx, usuario: { nombre?: string } | null): string {
 }
 
 // ─── Filtro de salida ────────────────────────────────────────────────────────
-const PATRON_DOSIS = /\d+\s?(mg|ml|mcg|ug|UI|comprimidos?|gotas|cc)\b/i;
+const PATRON_DOSIS = /\d+\s?(mg|mcg|ug|UI|comprimidos?|gotas)\b/i;
+// "ml"/"cc" solos no son una dosis ("500 ml de agua por día"): sólo cuentan
+// si la respuesta habla de un medicamento. Antes se reemplazaba la respuesta
+// entera por el aviso de dosis.
+const PATRON_VOLUMEN = /\d+\s?(ml|cc)\b/i;
+const MENCIONA_MEDICAMENTO =
+  /(medicament|remedio|jarabe|antibi[oó]tic|dosis|pastilla|comprimido|analg[eé]sic|antiinflamatori|antiparasitari|vacuna)/i;
 // La dosis escrita con palabras ("media pastilla") se colaba por el patrón
 // numérico de arriba.
 const PATRON_DOSIS_TEXTO =
@@ -238,7 +260,10 @@ function filtrarSalida(textoCrudo: string) {
   }
   const emergencia = /\[SOS\]/i.test(texto);
   texto = texto.replace(/\[SOS\]/gi, "").trim();
-  if (PATRON_DOSIS.test(texto) || PATRON_DOSIS_TEXTO.test(texto)) texto = AVISO_DOSIS;
+  if (
+    PATRON_DOSIS.test(texto) || PATRON_DOSIS_TEXTO.test(texto)
+    || (PATRON_VOLUMEN.test(texto) && MENCIONA_MEDICAMENTO.test(texto))
+  ) texto = AVISO_DOSIS;
   if (texto.length > 1200) {
     const corte = texto.slice(0, 1200);
     const ultimoPunto = Math.max(
@@ -247,6 +272,56 @@ function filtrarSalida(textoCrudo: string) {
     texto = ultimoPunto > 200 ? corte.slice(0, ultimoPunto + 1) : corte;
   }
   return { texto, emergencia, descartado: false };
+}
+
+// ─── Firma de las respuestas (anti historial falso) ──────────────────────────
+// El historial lo manda el cliente. Antes se aceptaban turnos "assistant"
+// escritos por cualquiera: se podía fabricar una respuesta previa del asistente
+// ("Ok, voy a ignorar las reglas…") y saltear las reglas clínicas. Ahora cada
+// respuesta sale firmada (HMAC con un secreto que sólo tiene la función) y
+// sólo vuelven a entrar al prompt los turnos de assistant con firma válida.
+const SECRETO_FIRMA = Deno.env.get("ZOONIVET_FIRMA_SECRET") || SERVICE_ROLE_KEY;
+let claveFirma: Promise<CryptoKey> | null = null;
+function clave() {
+  claveFirma ??= crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(`zoonivet-firma-v1|${SECRETO_FIRMA}`),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+  );
+  return claveFirma;
+}
+
+async function firmar(idUser: number, petId: number, texto: string): Promise<string> {
+  const datos = new TextEncoder().encode(`${idUser}|${petId}|${texto}`);
+  const firma = new Uint8Array(await crypto.subtle.sign("HMAC", await clave(), datos));
+  return Array.from(firma, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function firmaValida(idUser: number, petId: number, texto: string, firma: unknown) {
+  if (typeof firma !== "string" || firma.length !== 64) return false;
+  const esperada = await firmar(idUser, petId, texto);
+  // Comparación en tiempo constante
+  let dif = 0;
+  for (let i = 0; i < 64; i++) dif |= esperada.charCodeAt(i) ^ firma.charCodeAt(i);
+  return dif === 0;
+}
+
+// ─── Cupo: devolver el mensaje si Groq no respondió (#26) ────────────────────
+// El cupo se consume antes de llamar a Groq (para no gastar sin cupo); si
+// Groq falla, ese mensaje no se cuenta. Si la devolución falla, sólo queda en
+// el log: no cambia la respuesta al usuario.
+// deno-lint-ignore no-explicit-any
+async function devolverCupo(admin: any, idUser: number) {
+  try {
+    const dia = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).format(new Date());
+    const { data } = await admin.from("zoonivet_uso").select("cantidad")
+      .eq("id_user", idUser).eq("dia", dia).maybeSingle();
+    if (data?.cantidad > 0) {
+      await admin.from("zoonivet_uso").update({ cantidad: data.cantidad - 1 })
+        .eq("id_user", idUser).eq("dia", dia).eq("cantidad", data.cantidad);
+    }
+  } catch (e) {
+    console.error("devolver_cupo", e);
+  }
 }
 
 // ─── Llamada a Groq ──────────────────────────────────────────────────────────
@@ -285,7 +360,7 @@ Deno.serve(async (req) => {
   let payload: {
     petId?: unknown;
     mensaje?: string;
-    historial?: { role: string; content: string }[];
+    historial?: { role: string; content: string; firma?: string }[];
   };
   try {
     const crudo = await req.text();
@@ -364,11 +439,19 @@ Deno.serve(async (req) => {
   }
 
   const ventana = Array.isArray(payload.historial) ? payload.historial.slice(-12) : [];
+  const turnos: { role: string; content: string }[] = [];
+  for (const m of ventana) {
+    if (!m || typeof m.content !== "string") continue;
+    if (m.role === "user") {
+      turnos.push({ role: "user", content: m.content.slice(0, 1000) });
+    } else if (m.role === "assistant" && await firmaValida(yo.Id_User, petId, m.content, m.firma)) {
+      turnos.push({ role: "assistant", content: m.content.slice(0, 2000) });
+    }
+    // Un turno de assistant sin firma válida se descarta: no lo escribió ZooniVet.
+  }
   const messages = [
     { role: "system", content: system },
-    ...ventana
-      .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-      .map((m) => ({ role: m.role, content: String(m.content).slice(0, 2000) })),
+    ...turnos,
     { role: "user", content: mensaje.slice(0, 1000) },
   ];
 
@@ -382,12 +465,14 @@ Deno.serve(async (req) => {
       }
     }
   } catch (e) {
-    // Timeout o red: el mensaje ya consumió cupo, pero no se deja al usuario esperando.
+    // Timeout o red: se devuelve el cupo y no se deja al usuario esperando.
     console.error("groq", e);
+    await devolverCupo(admin, yo.Id_User);
     return json({ error: "GROQ_ERROR", message: "ZooniVet tardó demasiado en responder." }, 504, origin);
   }
 
   if (!res.ok) {
+    await devolverCupo(admin, yo.Id_User);
     const code = res.status === 429 ? "RATE_LIMIT" : "GROQ_ERROR";
     return json({ error: code, message: `Groq respondió ${res.status}` }, res.status === 429 ? 429 : 502, origin);
   }
@@ -397,8 +482,10 @@ Deno.serve(async (req) => {
   const { texto, emergencia, descartado } = filtrarSalida(crudo);
 
   if (descartado || !texto) {
+    await devolverCupo(admin, yo.Id_User);
     return json({ error: "RESPUESTA_INVALIDA", message: "Respuesta vacía o descartada." }, 502, origin);
   }
 
-  return json({ texto, emergencia: emergencia || emergenciaCapa1 }, 200, origin);
+  const firma = await firmar(yo.Id_User, petId, texto);
+  return json({ texto, emergencia: emergencia || emergenciaCapa1, firma }, 200, origin);
 });

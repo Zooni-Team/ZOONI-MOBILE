@@ -156,6 +156,8 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
     setUserMarker: function(lat,lng){ setUserMarker(lat,lng); }
   };
   window.addEventListener('message',function(e){
+    // Sólo órdenes de la app que contiene el mapa (no de otra ventana)
+    if(e.source!==window.parent)return;
     var m=e.data;
     if(!m||m.tipo!=='zooni-cmd'||typeof zooniMap[m.metodo]!=='function')return;
     zooniMap[m.metodo].apply(null,m.args||[]);
@@ -270,7 +272,11 @@ export default function ComunidadScreen() {
       }
     };
     window.addEventListener('message', onMessage);
-    return () => window.removeEventListener('message', onMessage);
+    return () => {
+      window.removeEventListener('message', onMessage);
+      // Un movimiento recién hecho no tiene que cargar la zona ya desmontada
+      clearTimeout(boundsTimer.current);
+    };
   }, []); // eslint-disable-line
 
   // ── Carga de datos ─────────────────────────────────────────────────────────
@@ -370,16 +376,24 @@ export default function ComunidadScreen() {
   // El stack deja montada Comunidad al ir a otra pantalla: sin este corte el
   // mapa seguía consultando (y reintentando OpenStreetMap) de fondo.
   const enFoco = useIsFocused();
+  // La zona y la posición se leen de refs: si fueran dependencias, cada
+  // movimiento del mapa reiniciaba los 30 s y, con el mapa en uso, nunca
+  // llegaba a refrescar.
+  const bboxRef = useRef(bbox);
+  bboxRef.current = bbox;
+  const posRef = useRef(userPos);
+  posRef.current = userPos;
   useEffect(() => {
     if (!enFoco) return undefined;
     const iv = setInterval(() => {
-      if (bbox)    cargarZona(bbox);
+      if (bboxRef.current) cargarZona(bboxRef.current);
       cargarPaseadores();
       cargarAmigos();
-      if (userPos) actualizarUbicacion(userPos.lat, userPos.lng).catch(() => {});
+      const pos = posRef.current;
+      if (pos) actualizarUbicacion(pos.lat, pos.lng).catch(() => {});
     }, 30000);
     return () => clearInterval(iv);
-  }, [enFoco, bbox, userPos, cargarZona, cargarPaseadores, cargarAmigos]);
+  }, [enFoco, cargarZona, cargarPaseadores, cargarAmigos]);
 
   // ── Sincroniza markers cuando cambian ─────────────────────────────────────
   useEffect(() => {
@@ -435,7 +449,7 @@ export default function ComunidadScreen() {
           onPress={() => setDrawerOpen(true)}
           accessibilityLabel="Abrir menú"
         >
-          <Ionicons name="menu" size={30} color="#0A0A0A" />
+          <Ionicons name="menu" size={30} color={colores.negroSuave} />
         </TouchableOpacity>
 
         {/* Banner modo cartel */}
@@ -625,7 +639,7 @@ const styles = StyleSheet.create({
     shadowColor: colores.negro, shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 10,
   },
   handleRow: { alignItems: 'center', paddingVertical: 10 },
-  handle:    { width: 40, height: 4, borderRadius: 2, backgroundColor: '#CCCCCC' },
+  handle:    { width: 40, height: 4, borderRadius: 2, backgroundColor: colores.gris420 },
   tabsRow:   { flexDirection: 'row', paddingHorizontal: 12, paddingBottom: 8, maxHeight: 48, flexGrow: 0, flexShrink: 0 },
   tabBtn:    { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20, marginRight: 6 },
   tabBtnOn:  { backgroundColor: colores.verde },

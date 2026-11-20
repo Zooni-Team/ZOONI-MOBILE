@@ -49,7 +49,7 @@ export default function PaseadorChatsScreen() {
       <View style={s.header}>
         <TouchableOpacity onPress={() => setMenuAbierto(true)} style={s.menu}
           accessibilityLabel="Abrir menú" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="menu" size={28} color="#0A0A0A" />
+          <Ionicons name="menu" size={28} color={colores.negroSuave} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={s.titulo}>Chats</Text>

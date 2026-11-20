@@ -14,16 +14,9 @@
     { passive: false }
   );
 
-  var ultimoTap = 0;
-  document.addEventListener(
-    'touchend',
-    function (e) {
-      var ahora = Date.now();
-      if (ahora - ultimoTap < 300) e.preventDefault(); // doble tap → zoom
-      ultimoTap = ahora;
-    },
-    { passive: false }
-  );
+  // El doble tap → zoom lo frena `touch-action: manipulation` (app-shell.css).
+  // Antes había además un preventDefault en todo `touchend` a menos de 300 ms
+  // del anterior: anulaba el segundo toque en botones +/− y al tocar rápido.
 
   // Dos dedos o más: siempre pellizco, nunca scroll de la página
   document.addEventListener(

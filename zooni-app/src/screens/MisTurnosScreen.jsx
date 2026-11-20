@@ -413,7 +413,7 @@ export default function MisTurnosScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={colores.menta} />
       <View style={s.header}>
         <TouchableOpacity onPress={() => setDrawerOpen(true)} hitSlop={10} accessibilityLabel="Abrir menú">
-          <Ionicons name="menu" size={28} color="#0A0A0A" />
+          <Ionicons name="menu" size={28} color={colores.negroSuave} />
         </TouchableOpacity>
         <Text style={s.titulo}>Turnos y pedidos</Text>
         <TouchableOpacity onPress={() => navigation.navigate('Comunidad')} hitSlop={10} accessibilityLabel="Buscar servicios">

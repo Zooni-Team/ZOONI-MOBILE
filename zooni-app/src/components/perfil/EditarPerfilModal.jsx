@@ -262,7 +262,7 @@ export default function EditarPerfilModal({ visible, perfil, onCerrar, onGuardad
             </View>
             <View style={s.usuarioRowRight}>
               <Text style={s.usuarioRowCfg}>Cambiar</Text>
-              <Ionicons name="chevron-forward" size={16} color="#8A8A8A" />
+              <Ionicons name="chevron-forward" size={16} color={colores.gris550} />
             </View>
           </TouchableOpacity>
 
@@ -305,9 +305,9 @@ const s = StyleSheet.create({
   btnDescartarTxt: { fontSize:15, fontWeight:'700', color:colores.rojoOscuro },
 
   usuarioRow:    { flexDirection:'row', alignItems:'center', justifyContent:'space-between',
-                   borderWidth:1.5, borderColor:colores.gris100, borderRadius:10, backgroundColor:'#FAFAFA',
+                   borderWidth:1.5, borderColor:colores.gris100, borderRadius:10, backgroundColor:colores.gris30,
                    paddingHorizontal:14, paddingVertical:10, marginBottom:12 },
-  usuarioRowLbl: { fontSize:12, color:'#8A8A8A' },
+  usuarioRowLbl: { fontSize:12, color:colores.gris550 },
   usuarioRowVal: { fontSize:15, fontWeight:'700', color:colores.texto, marginTop:2 },
   usuarioRowRight:{ flexDirection:'row', alignItems:'center', gap:4 },
   usuarioRowCfg: { fontSize:13, fontWeight:'700', color:colores.verdeOscuro },

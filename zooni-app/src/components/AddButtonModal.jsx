@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
   // Hoja blanca que sube desde abajo
   sheet: { backgroundColor: colores.blanco, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 32, maxHeight: '75%' },
-  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#D0D0D0', alignSelf: 'center', marginTop: 10, marginBottom: 4 },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colores.gris410, alignSelf: 'center', marginTop: 10, marginBottom: 4 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colores.gris300 },
   title: { fontSize: 17, fontWeight: '700', color: colores.texto },
   item: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colores.gris50 },

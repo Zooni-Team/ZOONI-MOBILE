@@ -37,6 +37,7 @@ import { etiquetaDia, horaCorta, mismoDia } from '../utils/tiempoRelativo';
 import { colores } from '../theme';
 import { INTERVALO_RELOJ_CHAT_MS } from '../constants/intervalos';
 import { useRecargaEnVivo } from '../hooks/useRecargaEnVivo';
+import { alerta } from '../utils/dialogo';
 
 /**
  * Tildes de estado, solo en MIS mensajes (como WhatsApp):
@@ -72,7 +73,14 @@ export default function ChatScreen() {
   const scrollRef = useRef(null);
 
   const cargar = useCallback(async () => {
-    const guardados = await getMensajes({ matchId: chatId, servicioId });
+    let guardados;
+    try {
+      guardados = await getMensajes({ matchId: chatId, servicioId });
+    } catch {
+      // Sin red o la base no respondió: se conserva lo que ya se ve en
+      // pantalla (antes el chat quedaba vacío) y el próximo aviso reintenta.
+      return;
+    }
     setMensajes(guardados);
     if (chatId) marcarLeidosMatch(chatId).catch(() => {});
     if (servicioId) marcarLeidosServicio(servicioId).catch(() => {});
@@ -110,7 +118,12 @@ export default function ChatScreen() {
     setTexto('');
     try {
       const actualizados = await enviarMensaje({ matchId: chatId, servicioId, texto: contenido });
-      setMensajes(actualizados);
+      if (actualizados) setMensajes(actualizados);
+      else cargar();
+    } catch {
+      // No se guardó: se devuelve el texto al campo para no perderlo.
+      setTexto((actual) => actual || contenido);
+      alerta('No se pudo enviar el mensaje', 'Revisá tu conexión y probá de nuevo.');
     } finally {
       setEnviando(false);
     }
@@ -313,7 +326,7 @@ const s = StyleSheet.create({
   },
   input: {
     flex: 1, maxHeight: 100, borderRadius: 22,
-    borderWidth: 1.5, borderColor: colores.gris300, backgroundColor: '#FAFAFA',
+    borderWidth: 1.5, borderColor: colores.gris300, backgroundColor: colores.gris30,
     paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, color: colores.texto,
   },
   btnEnviar: {

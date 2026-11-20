@@ -30,6 +30,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { registro } from '../services/authApi';
 import { setCurrentUserId, setModo, MODO_DUENO } from '../config/session';
 import { alerta } from '../utils/dialogo';
+import { MENSAJE_PASSWORD_CORTA } from '../utils/validacion';
 import { PAISES } from '../constants/registroAssets';
 import { resolveMascotaBasicoImage } from '../constants/registroImages';
 import { colores } from '../theme';
@@ -124,7 +125,7 @@ export default function RegisterStep4Screen() {
     }
     setCargando(true);
     try {
-      const { usuario: creado } = await registro({
+      const { usuario: creado, usuarioNoGuardado } = await registro({
         social: datos.social ?? null,
         mascota: {
           nombre: datos.nombre,
@@ -151,6 +152,9 @@ export default function RegisterStep4Screen() {
           telefono: telefono.trim() || null,
         },
       });
+      if (usuarioNoGuardado) {
+        alerta('Tu cuenta ya está creada', 'Alguien tomó ese nombre de usuario recién: elegí otro desde tu Perfil.');
+      }
       if (datos.social) {
         await setCurrentUserId(creado.id, creado.email);
         await setModo(MODO_DUENO);
@@ -182,7 +186,7 @@ export default function RegisterStep4Screen() {
       } else if (err?.message === 'confirmar_mail') {
         alerta('Confirmá tu mail', 'Te mandamos un mail para confirmar la cuenta. Confirmalo y volvé a registrarte con el mismo mail y contraseña para terminar.');
       } else if (err?.message === 'password_corta') {
-        alerta('Contraseña inválida', 'La contraseña debe tener al menos 7 caracteres.');
+        alerta('Contraseña inválida', MENSAJE_PASSWORD_CORTA);
       } else {
         alerta('No se pudo crear la cuenta', 'Revisá tu internet e intentá de nuevo.');
       }

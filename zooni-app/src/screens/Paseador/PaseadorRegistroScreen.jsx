@@ -60,7 +60,7 @@ import { sanitizarDigitos } from '../../utils/sanitizar';
 import { toISODateLocal } from '../../utils/fechaLocal';
 import { colores } from '../../theme';
 import { EMAIL_REGEX } from '../../utils/validacion';
-import { PASSWORD_MIN } from '../../utils/validacion';
+import { MENSAJE_PASSWORD_CORTA, PASSWORD_MIN } from '../../utils/validacion';
 import { formatearFecha } from '../../utils/fechaLocal';
 
 const EDAD_MINIMA = 18;
@@ -296,7 +296,7 @@ export default function PaseadorRegistroScreen() {
         setErrorGeneral('Te mandamos un mail para confirmar la cuenta. Confirmalo y volvé a registrarte con el mismo mail y contraseña para terminar.');
       } else if (msg === 'password_corta') {
         setPaso(1);
-        setErrores({ password: 'La contraseña debe tener al menos 7 caracteres.' });
+        setErrores({ password: MENSAJE_PASSWORD_CORTA });
       } else if (msg === 'credenciales') {
         setErrorGeneral('Es necesario volver a iniciar sesión: tu contraseña no coincide.');
       } else {
@@ -415,7 +415,7 @@ export default function PaseadorRegistroScreen() {
                 <>
                   <Campo label="Contraseña" error={errores.password}>
                     <InputPassword value={usuario.password} error={errores.password}
-                      onChangeText={(v) => setU('password', v)} placeholder="Mínimo 7 caracteres" />
+                      onChangeText={(v) => setU('password', v)} placeholder={`Mínimo ${PASSWORD_MIN} caracteres`} />
                   </Campo>
                   <Campo label="Repetí la contraseña" error={errores.password2}>
                     <InputPassword value={usuario.password2} error={errores.password2}

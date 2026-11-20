@@ -16,8 +16,37 @@ import { getCurrentUserId } from '../config/session';
 import { enRango, sanitizarDigitos, sanitizarTexto } from '../utils/sanitizar';
 import { subirImagenPublica, borrarImagenPublica } from './imagenStorage';
 import { edadResumida } from '../utils/calcularEdad';
+import { toISODateLocal } from '../utils/fechaLocal';
+import { esFuncionInexistente } from './comun';
 
+// El mismo número lo controla la base (trigger de MIGRACION_071): acá es sólo
+// para avisar antes de subir la foto.
 export const LIMITE_ACTIVAS = 10;
+
+function errorLimite() {
+  const err = new Error('limite');
+  err.code = 'LIMITE_ACTIVAS';
+  return err;
+}
+
+/** El trigger de la 071 rechazó el alta/recuperación por el límite. */
+const esErrorDeLimite = (error) => String(error?.message ?? '').includes('limite_mascotas_activas');
+
+function errorNoEncontrada() {
+  const err = new Error('mascota_no_encontrada');
+  err.code = 'MASCOTA_NO_ENCONTRADA';
+  return err;
+}
+
+/** Estado actual de una mascota propia. Tira si la base falla o si no es mía. */
+async function estadoPrevio(id) {
+  const { data, error } = await supabase
+    .from('Mascota').select('"Estado","EsActiva"')
+    .eq('Id_Mascota', id).eq('Id_User', getCurrentUserId()).maybeSingle();
+  if (error) throw error;
+  if (!data) throw errorNoEncontrada();
+  return data;
+}
 
 export const MOTIVOS_ARCHIVO = [
   { value: 'foster_ended',      label: 'Terminó el tránsito' },
@@ -131,26 +160,31 @@ export async function fetchMisMascotas() {
  */
 export async function archivarMascota(id, motivo = null, motivoTexto = null) {
   const esMemorial = motivo === 'deceased';
-  const { data: previa } = await supabase
-    .from('Mascota').select('"Estado","EsActiva"').eq('Id_Mascota', id).single();
-  if (previa && previa.Estado !== 'active') return { promovida: null }; // idempotente
+  // Antes el error de esta lectura se ignoraba y se seguía "a ciegas".
+  const previa = await estadoPrevio(id);
+  if (previa.Estado !== 'active') return { promovida: null }; // idempotente
 
-  const { error } = await supabase
+  const { data: cambiadas, error } = await supabase
     .from('Mascota')
     .update({
       Estado: esMemorial ? 'memorial' : 'archived',
       ArchivadaEn: new Date().toISOString(),
       MotivoArchivo: motivo,
       MotivoArchivoTexto: motivoTexto,
-      FechaFallecimiento: esMemorial ? new Date().toISOString().slice(0, 10) : null,
+      // Fecha LOCAL: toISOString() es UTC y de noche (UTC-3) guardaba el día siguiente.
+      FechaFallecimiento: esMemorial ? toISODateLocal(new Date()) : null,
       EsActiva: false,
     })
     .eq('Id_Mascota', id)
-    .eq('Id_User', getCurrentUserId());
+    .eq('Id_User', getCurrentUserId())
+    .eq('Estado', 'active')
+    .select('Id_Mascota');
   if (error) throw error;
+  // 0 filas: otro dispositivo la cambió mientras tanto. Nada que hacer.
+  if (!cambiadas?.length) return { promovida: null };
 
   await registrarHistorial(id, 'active', esMemorial ? 'memorial' : 'archived', motivo);
-  const promovida = previa?.EsActiva ? await promoverPrincipalSiHaceFalta(id) : null;
+  const promovida = previa.EsActiva ? await promoverPrincipalSiHaceFalta(id) : null;
   return { promovida };
 }
 
@@ -159,12 +193,8 @@ export async function archivarMascota(id, motivo = null, motivoTexto = null) {
  */
 export async function recuperarMascota(id) {
   const { activas } = await fetchMisMascotas();
-  if (activas.length >= LIMITE_ACTIVAS) {
-    const err = new Error('limite');
-    err.code = 'LIMITE_ACTIVAS';
-    throw err;
-  }
-  const { error } = await supabase
+  if (activas.length >= LIMITE_ACTIVAS) throw errorLimite();
+  const { data: cambiadas, error } = await supabase
     .from('Mascota')
     .update({
       Estado: 'active',
@@ -175,8 +205,10 @@ export async function recuperarMascota(id) {
       FechaFallecimiento: null,
     })
     .eq('Id_Mascota', id)
-    .eq('Id_User', getCurrentUserId());
-  if (error) throw error;
+    .eq('Id_User', getCurrentUserId())
+    .select('Id_Mascota');
+  if (error) throw esErrorDeLimite(error) ? errorLimite() : error;
+  if (!cambiadas?.length) throw errorNoEncontrada();
   await registrarHistorial(id, 'archived', 'active', null);
   // Si no quedaba ninguna principal, la recuperada asume
   await promoverPrincipalSiHaceFalta(-1);
@@ -189,10 +221,9 @@ export async function recuperarMascota(id) {
 export async function eliminarMascota(id) {
   const ahora = new Date();
   const purga = new Date(ahora.getTime() + 30 * 24 * 60 * 60 * 1000);
-  const { data: previa } = await supabase
-    .from('Mascota').select('"Estado","EsActiva"').eq('Id_Mascota', id).single();
+  const previa = await estadoPrevio(id);
 
-  const { error } = await supabase
+  const { data: cambiadas, error } = await supabase
     .from('Mascota')
     .update({
       Estado: 'deleted',
@@ -201,18 +232,26 @@ export async function eliminarMascota(id) {
       EsActiva: false,
     })
     .eq('Id_Mascota', id)
-    .eq('Id_User', getCurrentUserId());
+    .eq('Id_User', getCurrentUserId())
+    .select('Id_Mascota');
   if (error) throw error;
+  if (!cambiadas?.length) throw errorNoEncontrada();
 
-  await registrarHistorial(id, previa?.Estado ?? null, 'deleted', null);
-  if (previa?.EsActiva) await promoverPrincipalSiHaceFalta(id);
+  await registrarHistorial(id, previa.Estado, 'deleted', null);
+  if (previa.EsActiva) await promoverPrincipalSiHaceFalta(id);
   return true;
 }
 
 /**
- * Transacción manual: baja la principal anterior y sube la nueva.
+ * Baja la principal anterior y sube la nueva en UNA transacción (RPC de la
+ * 071). Antes eran dos UPDATE sueltos: si el segundo fallaba, la cuenta
+ * quedaba sin principal. Sin la 071 todavía pegada, cae al camino viejo.
  */
 export async function marcarPrincipal(id) {
+  const { error: errRpc } = await supabase.rpc('marcar_mascota_principal', { p_id_mascota: id });
+  if (!errRpc) return true;
+  if (!esFuncionInexistente(errRpc)) throw errRpc;
+
   const userId = getCurrentUserId();
   const { error: errBaja } = await supabase
     .from('Mascota').update({ EsActiva: false })
@@ -234,11 +273,7 @@ export async function marcarPrincipal(id) {
 export async function crearMascota(datos) {
   const userId = getCurrentUserId();
   const { activas } = await fetchMisMascotas();
-  if (activas.length >= LIMITE_ACTIVAS) {
-    const err = new Error('limite');
-    err.code = 'LIMITE_ACTIVAS';
-    throw err;
-  }
+  if (activas.length >= LIMITE_ACTIVAS) throw errorLimite();
 
   // Sanitización + validación de rangos antes de tocar la base
   const peso = datos.peso ?? null;
@@ -279,6 +314,9 @@ export async function crearMascota(datos) {
   const { data, error } = await supabase
     .from('Mascota').insert(fila).select().single();
   if (error) {
+    // La foto ya se subió: si la mascota no se crea, no tiene que quedar huérfana.
+    if (fotoUrl && fotoUrl !== datos.fotoUrl) await borrarImagenPublica(fotoUrl);
+    if (esErrorDeLimite(error)) throw errorLimite();
     // Microchip duplicado: nunca se revela de quién es
     if (String(error.message ?? '').includes('idx_mascota_microchip')) {
       const err = new Error('microchip');

@@ -56,7 +56,7 @@ export default function ServiciosEditor({ filas, onCambio, error }) {
             <View style={s.cajaInputRow}>
               <TextInput style={s.cajaInput} value={f.minutos} keyboardType="number-pad"
                 onChangeText={(v) => cambiar(f.id, 'minutos', sanitizarDigitos(v, 3))}
-                placeholder="Ej: 45" placeholderTextColor="#C8C8C8"
+                placeholder="Ej: 45" placeholderTextColor={colores.gris450}
                 accessibilityLabel={`Duración del paseo ${i + 1} en minutos`} />
               <Text style={s.cajaUnidad}>min</Text>
             </View>
@@ -67,7 +67,7 @@ export default function ServiciosEditor({ filas, onCambio, error }) {
               <Text style={s.signo}>$</Text>
               <TextInput style={s.cajaInput} value={f.precio} keyboardType="number-pad"
                 onChangeText={(v) => cambiar(f.id, 'precio', sanitizarDigitos(v, 7))}
-                placeholder="Precio" placeholderTextColor="#C8C8C8"
+                placeholder="Precio" placeholderTextColor={colores.gris450}
                 accessibilityLabel={`Precio del paseo ${i + 1}`} />
             </View>
           </View>

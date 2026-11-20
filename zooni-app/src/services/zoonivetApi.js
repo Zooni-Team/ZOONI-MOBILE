@@ -124,7 +124,10 @@ function errorZooniVet(code, mensaje) {
 }
 
 /**
- * Pregunta a ZooniVet. Devuelve { texto, emergencia }.
+ * Pregunta a ZooniVet. Devuelve { texto, emergencia, firma }.
+ * `firma` hay que guardarla junto a la respuesta y mandarla de vuelta en el
+ * historial: la función descarta los turnos de assistant sin firma válida
+ * (así nadie puede inventarle respuestas previas al asistente).
  * Errores (err.code): SIN_API_KEY · RATE_LIMIT · CUPO_AGOTADO (límite diario
  * por usuario, 064) · SERVICIO_NO_DISPONIBLE · RESPUESTA_INVALIDA · GROQ_ERROR.
  */
@@ -133,7 +136,9 @@ export async function preguntarZooniVet({ ctx, historial = [], mensaje, signal }
     body: {
       petId: ctx.id,
       mensaje: String(mensaje ?? '').slice(0, 1000),
-      historial: historial.slice(-12).map((m) => ({ role: m.role, content: m.content })),
+      historial: historial.slice(-12).map((m) => (m.firma
+        ? { role: m.role, content: m.content, firma: m.firma }
+        : { role: m.role, content: m.content })),
       // El nombre de la persona lo lee la función de la base: no se manda.
     },
     signal,
@@ -151,7 +156,7 @@ export async function preguntarZooniVet({ ctx, historial = [], mensaje, signal }
     throw errorZooniVet('GROQ_ERROR', error.message);
   }
   if (!data?.texto) throw errorZooniVet('RESPUESTA_INVALIDA');
-  return { texto: data.texto, emergencia: !!data.emergencia };
+  return { texto: data.texto, emergencia: !!data.emergencia, firma: data.firma ?? null };
 }
 
 // ─── CHIPS DE SUGERENCIA personalizados ──────────────────────────────────────

@@ -58,7 +58,11 @@ const ICONO_LINEA = {
 // Abre el marcador del teléfono con el número listo para llamar.
 function llamar(numero, { clinicId = null, lineId = null } = {}) {
   logLlamadaSos({ telefono: numero, clinicId, lineId }); // fire-and-forget
-  Linking.openURL(`tel:${numero.replace(/[^0-9+]/g, '')}`);
+  const limpio = String(numero ?? '').replace(/[^0-9+]/g, '');
+  // Sin marcador (computadora, tablet sin línea) openURL falla: en una
+  // emergencia no puede fallar en silencio, se muestra el número para marcarlo.
+  Linking.openURL(`tel:${limpio}`)
+    .catch(() => alerta('Llamá a este número', `${numero}\n\nEste dispositivo no puede hacer llamadas: marcalo desde un teléfono.`));
 }
 
 function abrirMaps(url) {
@@ -543,7 +547,7 @@ const st = StyleSheet.create({
   limpiarTxt: { fontSize: 14, fontWeight: '700', color: colores.rojo },
   emptyBtn: { marginTop: 12, borderRadius: 20, borderWidth: 1.5, borderColor: colores.rojo, paddingHorizontal: 16, paddingVertical: 8 },
   emptyBtnTxt: { fontSize: 14, fontWeight: '700', color: colores.rojo },
-  safeArea: { flex: 1, backgroundColor: '#F7F7F7' },
+  safeArea: { flex: 1, backgroundColor: colores.gris40 },
 
   header: {
     height: 48, flexDirection: 'row', alignItems: 'center',
@@ -578,7 +582,7 @@ const st = StyleSheet.create({
   searchBox: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: colores.blanco, borderRadius: 24, paddingHorizontal: 16, paddingVertical: 4,
-    marginTop: 20, borderWidth: 1, borderColor: '#EAEAEA',
+    marginTop: 20, borderWidth: 1, borderColor: colores.gris220,
   },
   searchInput: { flex: 1, fontSize: 14, color: colores.texto, paddingVertical: 10 },
 
@@ -605,7 +609,7 @@ const st = StyleSheet.create({
   vetEstadoFila: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 },
   puntoEstado:   { width: 7, height: 7, borderRadius: 4 },
   vetEstadoTxt:  { fontSize: 13, fontWeight: '700' },
-  vetSep:        { fontSize: 13, color: '#CCCCCC' },
+  vetSep:        { fontSize: 13, color: colores.gris420 },
   vetDistancia:  { fontSize: 12, color: colores.textoSecundario, fontWeight: '600' },
 
   vetDato:      { fontSize: 13, color: colores.textoSecundario, lineHeight: 20, marginBottom: 2 },
@@ -613,7 +617,7 @@ const st = StyleSheet.create({
 
   verHorariosBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, alignSelf: 'flex-start' },
   verHorariosTxt: { fontSize: 12, fontWeight: '600', color: colores.textoSecundario },
-  horariosBox:    { backgroundColor: '#F7F7F7', borderRadius: 10, padding: 10, marginTop: 8, gap: 3 },
+  horariosBox:    { backgroundColor: colores.gris40, borderRadius: 10, padding: 10, marginTop: 8, gap: 3 },
   horarioFila:    { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   horarioDia:     { fontSize: 12, color: colores.textoSecundario, width: 78 },
   horarioRango:   { flex: 1, fontSize: 12, color: colores.textoSecundario, textAlign: 'right' },
@@ -646,7 +650,7 @@ const st = StyleSheet.create({
   buscarMapsBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: colores.blanco, borderRadius: 24, paddingVertical: 13, marginTop: 8,
-    borderWidth: 1.5, borderColor: '#EAEAEA',
+    borderWidth: 1.5, borderColor: colores.gris220,
   },
   buscarMapsTxt: { fontSize: 14, fontWeight: '700', color: colores.texto },
 

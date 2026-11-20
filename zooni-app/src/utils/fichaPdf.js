@@ -623,7 +623,7 @@ export function construirHtmlFicha(datos, fotoDataUri = null) {
   .et { width: 108px; font-size: 8.5px; color: ${colores.textoGris}; text-transform: uppercase; letter-spacing: .3px; }
   .val { font-size: 10px; color: ${colores.textoSecundario}; line-height: 1.5; }
 
-  .vacio { font-size: 10.5px; color: #AAA; font-style: italic; background: #FAFAFA; border-radius: 8px; padding: 9px 11px; }
+  .vacio { font-size: 10.5px; color: #AAA; font-style: italic; background: ${colores.gris30}; border-radius: 8px; padding: 9px 11px; }
   .alerta { margin-top: 8px; font-size: 10px; color: #D64545; }
   .alerta b { display: block; margin-bottom: 3px; }
 

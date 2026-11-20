@@ -55,7 +55,7 @@ export default function NavButton({
       >
         {/* En modo edición: ícono de drag (⠿) en vez del ícono normal */}
         {editMode ? (
-          <Ionicons name="reorder-three-outline" size={22} color="#888" style={styles.icon} />
+          <Ionicons name="reorder-three-outline" size={22} color={colores.gris600} style={styles.icon} />
         ) : (
           <Ionicons
             name={iconName}

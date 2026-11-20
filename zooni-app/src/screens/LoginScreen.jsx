@@ -259,7 +259,7 @@ const s = StyleSheet.create({
 
   proveedorPregunta: { fontSize: 13, color: colores.textoSecundario, textAlign: 'center', marginBottom: 10 },
   btnProveedor: {
-    backgroundColor: '#4A4A4A', borderRadius: 30, height: 48,
+    backgroundColor: colores.gris800, borderRadius: 30, height: 48,
     alignItems: 'center', justifyContent: 'center', alignSelf: 'center', paddingHorizontal: 28,
   },
   btnProveedorTxt: { fontSize: 14, fontWeight: '700', color: colores.blanco },

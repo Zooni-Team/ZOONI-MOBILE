@@ -85,11 +85,11 @@ export function VisorMedia({ items, indice, onCerrar }) {
           <View style={s.flechas}>
             <TouchableOpacity style={s.flecha} disabled={i === 0} onPress={() => setI((x) => x - 1)}
               accessibilityLabel="Anterior">
-              <Ionicons name="chevron-back" size={26} color={i === 0 ? '#666' : colores.blanco} />
+              <Ionicons name="chevron-back" size={26} color={i === 0 ? colores.gris700 : colores.blanco} />
             </TouchableOpacity>
             <TouchableOpacity style={s.flecha} disabled={i === items.length - 1} onPress={() => setI((x) => x + 1)}
               accessibilityLabel="Siguiente">
-              <Ionicons name="chevron-forward" size={26} color={i === items.length - 1 ? '#666' : colores.blanco} />
+              <Ionicons name="chevron-forward" size={26} color={i === items.length - 1 ? colores.gris700 : colores.blanco} />
             </TouchableOpacity>
           </View>
         )}

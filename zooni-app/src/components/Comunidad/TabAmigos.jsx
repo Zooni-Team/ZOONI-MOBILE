@@ -19,7 +19,7 @@ export default function TabAmigos({ onVerEnMapa }) {
 
   if (!amigos.length) return (
     <View style={styles.vacio}>
-      <Ionicons name="people-outline" size={36} color="#CCCCCC" style={{ marginBottom: 8 }} />
+      <Ionicons name="people-outline" size={36} color={colores.gris420} style={{ marginBottom: 8 }} />
       <Text style={styles.vacioText}>No tenés amigos agregados aún</Text>
     </View>
   );
@@ -35,7 +35,7 @@ export default function TabAmigos({ onVerEnMapa }) {
             <TouchableOpacity style={styles.persona} onPress={() => setPerfilId(a.usuario_id)}
               accessibilityRole="button" accessibilityLabel={`Ver perfil de ${a.nombre}`}>
               <View style={styles.avatarWrap}>
-                <View style={[styles.avatar, { borderColor: a.online ? colores.verde : '#CCCCCC' }]}>
+                <View style={[styles.avatar, { borderColor: a.online ? colores.verde : colores.gris420 }]}>
                   <Ionicons name="person" size={18} color={colores.textoTenue} />
                 </View>
                 {/* Punto verde de presencia, como en cualquier app de mensajes */}

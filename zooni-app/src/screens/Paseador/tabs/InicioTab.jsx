@@ -41,7 +41,6 @@ export default function InicioTab({
   const [guardando, setGuardando] = useState(false);
   // Paseo cuyo mapa se está viendo en grande (null = cerrado)
   const [mapaAmpliado, setMapaAmpliado] = useState(null);
-  const [, setTick] = useState(0);
 
   const cargar = useCallback(async () => {
     try {
@@ -59,13 +58,8 @@ export default function InicioTab({
   // Al iniciar o finalizar una mascota cambian la agenda y lo cobrado hoy
   useEffect(() => { cargar(); }, [cargar, paseosActivos.length]);
 
-  // Los timers del paseo en curso avanzan solos
+  // Los timers del paseo en curso avanzan solos dentro de FilaPaseo (useReloj).
   const alguienCamina = paseosActivos.some((p) => p.reanudadoEn);
-  useEffect(() => {
-    if (!alguienCamina) return undefined;
-    const t = setInterval(() => setTick((x) => x + 1), 1000);
-    return () => clearInterval(t);
-  }, [alguienCamina]);
 
   const refrescar = async () => {
     setRefrescando(true);

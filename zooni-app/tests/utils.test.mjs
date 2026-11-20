@@ -7,7 +7,9 @@ import { calcularEdad, calcularEdadAnios, calcularEdadMeses, calcularEdadPartes,
 import { capitalizar, claveComparable, escaparLike, incluyeTexto, normalizarBusqueda } from '../src/utils/texto.js';
 import { EMAIL_REGEX, PASSWORD_MIN, esEmailValido, esPasswordValida } from '../src/utils/validacion.js';
 import { distanciaKm, distanciaMetros } from '../src/utils/geo.js';
-import { sanitizarDecimal, sanitizarDigitos, sanitizarTexto } from '../src/utils/sanitizar.js';
+import {
+  parseDecimal, parseMonto, sanitizarDecimal, sanitizarDigitos, sanitizarEmail, sanitizarMonto, sanitizarTexto,
+} from '../src/utils/sanitizar.js';
 import { etiquetaDia, horaCorta, mismoDia, tiempoRelativo } from '../src/utils/tiempoRelativo.js';
 import { colores, COLOR_POR_HEX } from '../src/theme/colores.js';
 
@@ -83,9 +85,9 @@ test('validacion: mail y contraseña', () => {
   assert.ok(esEmailValido(' ana@zooni.app '));
   assert.ok(!esEmailValido('ana@zooni'));
   assert.ok(EMAIL_REGEX.test('a@b.co'));
-  assert.equal(PASSWORD_MIN, 7);
-  assert.ok(esPasswordValida('1234567'));
-  assert.ok(!esPasswordValida('123456'));
+  assert.equal(PASSWORD_MIN, 8);
+  assert.ok(esPasswordValida('12345678'));
+  assert.ok(!esPasswordValida('1234567'));
   assert.ok(!esPasswordValida(undefined));
 });
 
@@ -94,6 +96,32 @@ test('geo: una sola fórmula, null si falta un dato', () => {
   assert.equal(distanciaKm(obelisco, { lat: -34.6098, lng: -58.3925 }), 1.2);
   assert.equal(distanciaMetros(obelisco, { lat: null, lng: 1 }), null);
   assert.equal(distanciaMetros(obelisco, obelisco), 0);
+});
+
+test('montos en formato argentino ("1.500" son mil quinientos, no $1,50)', () => {
+  assert.equal(parseMonto('1.500'), 1500);
+  assert.equal(parseMonto('1.500.000'), 1500000);
+  assert.equal(parseMonto('1.500,50'), 1500.5);
+  assert.equal(parseMonto('166,66'), 166.66);
+  assert.equal(parseMonto('20000'), 20000);
+  assert.equal(parseMonto('2.5'), 2.5);
+  assert.equal(parseMonto(''), null);
+  assert.equal(parseMonto('abc'), null);
+  assert.equal(sanitizarMonto('$1.500,555x'), '1.500,55');
+  assert.equal(sanitizarMonto('12,5,0'), '12,50');
+});
+
+test('parseDecimal: vacío es null, no 0', () => {
+  assert.equal(parseDecimal(''), null);
+  assert.equal(parseDecimal('  '), null);
+  assert.equal(parseDecimal('12,5'), 12.5);
+});
+
+test('mail: la misma regla para validar y para sanitizar', () => {
+  assert.equal(esEmailValido('ana@zooni.a'), false);
+  assert.equal(sanitizarEmail('ana@zooni.a'), null);
+  assert.equal(esEmailValido('ana@zooni.ar'), true);
+  assert.equal(sanitizarEmail(' Ana@Zooni.AR '), 'ana@zooni.ar');
 });
 
 test('sanitizar: control chars, dígitos y decimales', () => {

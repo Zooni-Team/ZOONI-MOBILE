@@ -54,7 +54,7 @@ export default function ChatsPaseoLista({ rol = 'paseador', vacioTexto }) {
         onRefresh={async () => { setRefrescando(true); await cargar(); setRefrescando(false); }} />}
       ListEmptyComponent={
         <View style={st.vacio}>
-          <Ionicons name="chatbubbles-outline" size={36} color="#CCCCCC" />
+          <Ionicons name="chatbubbles-outline" size={36} color={colores.gris420} />
           <Text style={st.vacioTxt}>
             {vacioTexto ?? 'Todavía no tenés conversaciones. Aparecen cuando tenés solicitudes o paseos agendados.'}
           </Text>

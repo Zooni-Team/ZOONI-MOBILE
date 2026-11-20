@@ -61,16 +61,26 @@ export async function fetchTurnosNegocio(idNegocio, { desde, hasta, estados } = 
   return enriquecerTurnos(data ?? []);
 }
 
-/** Lo ya ocupado de un día: turnos pedidos o confirmados → [{ fecha, duracionMin }]. */
+// El turno más largo que puede empezar el día anterior y seguir en este.
+const TURNO_MAX_MS = 12 * 60 * 60000;
+
+/**
+ * Lo ya ocupado de un día: turnos pedidos o confirmados → [{ fecha, duracionMin }].
+ * Incluye los que empezaron el día anterior y siguen después de medianoche
+ * (antes no se veían y se podía reservar encima).
+ */
 export async function fetchOcupados(idNegocio, dia) {
   const desde = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate());
   const hasta = new Date(desde);
   hasta.setDate(hasta.getDate() + 1);
   const { data, error } = await supabase.from('negocio_turnos').select('fecha, duracion_min')
     .eq('id_negocio', idNegocio).in('estado', ['pendiente', 'confirmado'])
-    .gte('fecha', desde.toISOString()).lt('fecha', hasta.toISOString());
+    .gte('fecha', new Date(desde.getTime() - TURNO_MAX_MS).toISOString()).lt('fecha', hasta.toISOString());
   if (error) throw errorBase(error);
-  return (data ?? []).map((r) => ({ fecha: r.fecha, duracionMin: r.duracion_min }));
+  return (data ?? [])
+    .map((r) => ({ fecha: r.fecha, duracionMin: r.duracion_min ?? 30 }))
+    // Del día anterior, sólo los que todavía ocupan algo de este día
+    .filter((o) => new Date(o.fecha).getTime() + o.duracionMin * 60000 > desde.getTime());
 }
 
 /**
@@ -104,12 +114,18 @@ export async function cambiarEstadoTurno(negocio, turno, estado, { informe, moti
   return { ...turno, estado, informe: informe ?? turno.informe };
 }
 
-/** Guarda / corrige el informe de un turno ya atendido (sin cambiar el estado). */
+/**
+ * Guarda / corrige el informe de un turno ya atendido (sin cambiar el estado).
+ * Sólo de un turno COMPLETADO: antes se podía escribir el informe de uno
+ * pendiente o cancelado.
+ */
 export async function guardarInforme(negocio, turno, informe) {
-  const { error } = await supabase.from('negocio_turnos')
+  const { data, error } = await supabase.from('negocio_turnos')
     .update({ informe, actualizado_en: new Date().toISOString() })
-    .eq('id', turno.id).eq('id_negocio', negocio.id);
+    .eq('id', turno.id).eq('id_negocio', negocio.id).eq('estado', 'completado')
+    .select('id');
   if (error) throw errorBase(error);
+  if (!data?.length) throw new Error('turno_cambiado');
   return { ...turno, informe };
 }
 

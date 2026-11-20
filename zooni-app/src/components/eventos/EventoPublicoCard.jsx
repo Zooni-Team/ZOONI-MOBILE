@@ -415,14 +415,14 @@ const styles = StyleSheet.create({
   skeletonFecha: {
     height: 14,
     width: '50%',
-    backgroundColor: '#EBEBEB',
+    backgroundColor: colores.gris210,
     borderRadius: 10,
     marginTop: 10,
     marginHorizontal: 16,
   },
   skeletonDescripcion: {
     height: 60,
-    backgroundColor: '#EBEBEB',
+    backgroundColor: colores.gris210,
     borderRadius: 6,
     marginTop: 12,
     marginHorizontal: 16,

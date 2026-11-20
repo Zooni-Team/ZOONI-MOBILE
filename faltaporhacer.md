@@ -27,6 +27,18 @@ Ordenado por prioridad. Lo hecho en la última pasada está al final.
    las que reaplica la 066 (`42710: policy already exists`). Si en el futuro se
    mueve SQL de un archivo a otro, correr `probar-esquema.mjs` **antes** de
    pegarlo: eso lo agarra en segundos.
+1b. **Pegar la `MIGRACION_071_INTEGRIDAD.sql`** (después de la 070) — anti-trampa
+   del paseo con ancla fija, límite de mascotas en la base, mascota principal
+   atómica y fecha de mensajes del servidor. ⚠ **No se pudo probar contra un
+   Postgres**: antes de pegarla, correr `node supabase/scripts/probar-esquema.mjs`
+   (ya incluye `tests/pruebas_071.sql`). La app desplegada funciona sin ella.
+1c. **Redesplegar ZooniVet** (`supabase functions deploy zoonivet-chat`): ahora
+   firma cada respuesta y descarta del historial los turnos de assistant sin
+   firma válida (no se le pueden inventar respuestas previas), limpia todos
+   los campos del contexto y devuelve el cupo si Groq falla. La firma usa la
+   service_role como clave; para rotarla aparte:
+   `supabase secrets set ZOONIVET_FIRMA_SECRET=<algo largo y aleatorio>`.
+   Hasta redesplegarla, la app nueva sigue andando con la función vieja.
 2. **ZooniVet** — la función cambió (nombre leído de la base, cupo diario,
    tiempo máximo, CORS por lista de orígenes, errores sin detalles internos):
    ```bash

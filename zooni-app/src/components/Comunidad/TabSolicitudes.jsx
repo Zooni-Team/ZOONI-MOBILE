@@ -4,28 +4,48 @@ import { Ionicons } from '@expo/vector-icons';
 import { fetchSolicitudes, responderSolicitud } from '../../services/comunidadApi';
 import PersonaProfileModal from '../PersonaProfileModal';
 import { colores } from '../../theme';
+import { alerta } from '../../utils/dialogo';
 
 export default function TabSolicitudes({ onRespuesta }) {
   const [lista,   setLista]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [perfilId, setPerfilId] = useState(null);
+  const [errorCarga, setErrorCarga] = useState(false);
 
-  useEffect(() => {
-    fetchSolicitudes().then(d => setLista(d.solicitudes || [])).catch(() => {}).finally(() => setLoading(false));
-  }, []);
+  // Antes los dos errores se tragaban: si fallaba la carga se veía "No tenés
+  // solicitudes" y si fallaba aceptar, no pasaba nada.
+  const cargar = () => {
+    setLoading(true);
+    setErrorCarga(false);
+    fetchSolicitudes()
+      .then(d => setLista(d.solicitudes || []))
+      .catch(() => setErrorCarga(true))
+      .finally(() => setLoading(false));
+  };
+  useEffect(cargar, []);
 
   const responder = async (id, accion) => {
     try {
       await responderSolicitud(id, accion);
       setLista(prev => prev.filter(s => s.id !== id));
       if (accion === 'aceptar' && onRespuesta) onRespuesta();
-    } catch {}
+    } catch {
+      alerta('No se pudo responder la solicitud', 'Revisá tu conexión y probá de nuevo.');
+    }
   };
 
   if (loading) return <ActivityIndicator color={colores.verde} style={{ marginTop: 20 }} />;
+  if (errorCarga) return (
+    <View style={styles.vacio}>
+      <Text style={styles.vacioText}>No se pudieron cargar las solicitudes</Text>
+      <TouchableOpacity onPress={cargar} accessibilityRole="button">
+        <Text style={[styles.vacioText, { color: colores.verde, fontWeight: '700', marginTop: 8 }]}>Reintentar</Text>
+      </TouchableOpacity>
+    </View>
+  );
   if (!lista.length) return (
     <View style={styles.vacio}>
-      <Ionicons name="notifications-outline" size={34} color="#CCCCCC" style={{ marginBottom: 8 }} />
+      <Ionicons name="notifications-outline" size={34} color={colores.gris420} style={{ marginBottom: 8 }} />
       <Text style={styles.vacioText}>No tenés solicitudes pendientes</Text>
     </View>
   );

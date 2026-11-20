@@ -15,8 +15,9 @@
 
 import { useEffect, useRef } from 'react';
 import { Animated } from 'react-native';
+import { colores } from '../../theme';
 
-const GRIS_SKELETON = '#D0D0D0';
+const GRIS_SKELETON = colores.gris410;
 
 /** Opacidad animada en loop entre `min` y 1. Se detiene al desmontar. */
 export function usePulso({ min = 0.45, duracionMs = 900 } = {}) {

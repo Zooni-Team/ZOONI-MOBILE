@@ -59,6 +59,24 @@ export const colores = Object.freeze({
   gris200: '#E8E8E8',        // botones secundarios (Cancelar), placeholders de carga
   gris300: '#DDDDDD',        // bordes de inputs
   gris400: '#D8D8D8',        // líneas dentro de los placeholders de carga
+
+  // Neutros que estaban escritos a mano en varias pantallas (informe de
+  // errores #50). Mismo valor exacto que tenían: pasar a la paleta no cambia
+  // nada en pantalla, pero ya no se pueden volver a pegar sueltos (npm test)
+  // y el modo oscuro los puede redefinir en un solo lugar.
+  gris30: '#FAFAFA',          // fondos de listas muy claros
+  gris40: '#F7F7F7',          // fondo de pantalla del SOS, cajas de horarios
+  gris210: '#EBEBEB',         // separadores finos
+  gris220: '#EAEAEA',         // bordes de tarjetas
+  gris250: '#E3E3E3',         // bordes de burbujas de chat
+  gris410: '#D0D0D0',         // iconos apagados
+  gris420: '#CCCCCC',         // iconos de estado vacío, "handle" de hojas
+  gris450: '#C8C8C8',         // placeholders de inputs
+  gris550: '#8A8A8A',         // chevrons de Configuración
+  gris600: '#888888',         // texto auxiliar
+  gris700: '#666666',         // texto secundario oscuro
+  gris800: '#4A4A4A',         // texto de cuerpo oscuro
+  negroSuave: '#0A0A0A',      // iconos del encabezado (menú)
 });
 
 /**

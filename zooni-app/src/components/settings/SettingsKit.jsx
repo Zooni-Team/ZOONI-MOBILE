@@ -38,7 +38,7 @@ export const T = {
   text: colores.texto,
   textSoft: colores.textoSecundario,
   textSoftMint: colores.verdeGrisaceo,
-  chevron: '#8A8A8A',
+  chevron: colores.gris550,
   divider: colores.mentaGris,
   brand: colores.verde,
   brandText: colores.verdeOscuro,

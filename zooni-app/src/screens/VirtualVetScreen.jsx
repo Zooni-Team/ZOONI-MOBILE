@@ -46,6 +46,7 @@ import {
 } from '../services/zoonivetApi';
 import { colores } from '../theme';
 import { horaCorta } from '../utils/tiempoRelativo';
+import { alerta } from '../utils/dialogo';
 
 // ─── Tokens de estilo (sección 3.1) ─────────────────────────────────────────
 const C = {
@@ -115,7 +116,8 @@ function SosCard({ onVerVets }) {
       <TouchableOpacity style={styles.sosBtn} onPress={onVerVets}>
         <Text style={styles.sosBtnText}>Ver veterinarias abiertas</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.sosBtn} onPress={() => Linking.openURL('tel:08003330160')}>
+      <TouchableOpacity style={styles.sosBtn} onPress={() => Linking.openURL('tel:08003330160')
+          .catch(() => alerta('Llamá al 0800-333-0160', 'Este dispositivo no puede hacer llamadas: marcalo desde un teléfono.'))}>
         <Text style={styles.sosBtnText}>¿Comió algo tóxico? 0800-333-0160</Text>
       </TouchableOpacity>
     </View>
@@ -237,7 +239,7 @@ export default function VirtualVetScreen() {
     // Historial que ve el modelo: solo turnos reales (user/assistant), sin la card de SOS.
     const historial = mensajes
       .filter((m) => m.role === 'user' || m.role === 'assistant')
-      .map((m) => ({ role: m.role, content: m.content }));
+      .map((m) => ({ role: m.role, content: m.content, firma: m.firma }));
 
     setMensajes((prev) => [...prev, userMsg]);
     setInput('');
@@ -246,7 +248,7 @@ export default function VirtualVetScreen() {
 
     abortRef.current = new AbortController();
     try {
-      const { texto: respuesta, emergencia } = await preguntarZooniVet({
+      const { texto: respuesta, emergencia, firma } = await preguntarZooniVet({
         ctx,
         historial,
         mensaje: limpio,
@@ -254,7 +256,7 @@ export default function VirtualVetScreen() {
       });
       setMensajes((prev) => [
         ...prev,
-        { id: nuevoId(), role: 'assistant', content: respuesta, status: 'sent', emergencia, ts: Date.now() },
+        { id: nuevoId(), role: 'assistant', content: respuesta, status: 'sent', emergencia, firma, ts: Date.now() },
       ]);
     } catch (e) {
       setMensajes((prev) => [...prev, mensajeError(e)]);

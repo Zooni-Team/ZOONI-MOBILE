@@ -28,7 +28,7 @@ import {
 } from '../../services/petsApi';
 import { alerta } from '../../utils/dialogo';
 import { colores } from '../../theme';
-import { formatearFecha } from '../../utils/fechaLocal';
+import { formatearFecha, parseFechaLocal } from '../../utils/fechaLocal';
 import { capitalizar } from '../../utils/texto';
 
 // ─── TOKENS (§3.1) ───────────────────────────────────────────────────────────
@@ -190,8 +190,10 @@ function CardArchivada({ m, onPress, onRecuperar, onMenu, disabled }) {
 
 function CardMemoria({ m, onPress, onMenu }) {
   const img = resolveMascotaVisual(m);
-  const anioNac = m.fechaNacimiento ? new Date(m.fechaNacimiento).getFullYear() : null;
-  const anioFin = m.fechaFallecimiento ? new Date(m.fechaFallecimiento).getFullYear() : null;
+  // parseFechaLocal y no new Date('YYYY-MM-DD'): ese lo lee en UTC y en
+  // Argentina un 1/1 caía en el año anterior.
+  const anioNac = parseFechaLocal(m.fechaNacimiento)?.getFullYear() ?? null;
+  const anioFin = parseFechaLocal(m.fechaFallecimiento)?.getFullYear() ?? null;
   return (
     <View style={s.cardArchivada}>
       {/* Menú ⋮: por si se marcó "Falleció" sin querer (recuperar / eliminar) */}

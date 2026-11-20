@@ -249,7 +249,7 @@ export default function PerfilScreen() {
             <TouchableOpacity style={s.hBtn} hitSlop={{ top:12, bottom:12, left:12, right:12 }}
               onPress={() => setDrawerOpen(true)}
               accessibilityLabel="Abrir menú">
-              <Ionicons name="menu" size={30} color="#0A0A0A" />
+              <Ionicons name="menu" size={30} color={colores.negroSuave} />
             </TouchableOpacity>
           </View>
 
@@ -539,7 +539,7 @@ const s = StyleSheet.create({
                    shadowColor:colores.negro, shadowOffset:{width:0,height:2}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
   nombreBlock:  { alignItems:'center', marginTop:12, marginBottom:20, paddingHorizontal:20 },
   nombreUsuario:{ fontSize:20, fontWeight:'700', color:colores.texto, textAlign:'center' },
-  arrobaUsuario:{ fontSize:14, color:'#8A8A8A', textAlign:'center', marginTop:2 },
+  arrobaUsuario:{ fontSize:14, color:colores.gris550, textAlign:'center', marginTop:2 },
 
   // Card blanco
   card:        { backgroundColor:colores.blanco, borderTopLeftRadius:28, borderTopRightRadius:28,

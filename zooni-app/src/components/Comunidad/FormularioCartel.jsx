@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   btnFoto: { flex: 1, backgroundColor: colores.amarillo, borderRadius: 20, paddingVertical: 10, alignItems: 'center' },
   btnFotoText: { fontSize: 12, fontWeight: '700', color: colores.texto },
   btnsRow: { flexDirection: 'row', gap: 10, marginTop: 20, marginBottom: 8 },
-  btnCancel:    { flex: 1, backgroundColor: '#4A4A4A', borderRadius: 25, paddingVertical: 13, alignItems: 'center' },
+  btnCancel:    { flex: 1, backgroundColor: colores.gris800, borderRadius: 25, paddingVertical: 13, alignItems: 'center' },
   btnCancelText:{ color: colores.blanco, fontWeight: '700', fontSize: 14 },
   btnCrear:     { flex: 1, backgroundColor: colores.verde, borderRadius: 25, paddingVertical: 13, alignItems: 'center' },
   btnCrearText: { color: colores.blanco, fontWeight: '700', fontSize: 14 },
