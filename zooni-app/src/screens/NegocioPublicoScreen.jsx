@@ -23,245 +23,28 @@
  * Params: { idNegocio, vistaPrevia? }
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator, Image, KeyboardAvoidingView, Linking, Modal, Platform, SafeAreaView, ScrollView,
-  StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View,
-} from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Image, Linking, Modal, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 
 import { getCurrentUserId } from '../config/session';
 import {
+  DIA_DE_JS,
   DIAS_SEMANA, MEDIOS_PAGO_NEGOCIO, TAMANOS, configNegocio,
 } from '../constants/negocios';
-import { ESPECIES_NEGOCIO } from '../components/negocio/CamposNegocio';
-import { abiertoAhora, costoEnvio, horarioDelDia, textoPrecioItem } from '../domain/negocios';
-import { crearPedido, fetchNegocioPublico } from '../services/negocioApi';
+
+import { abiertoAhora, horarioDelDia, textoPrecioItem } from '../domain/negocios';
+import { fetchNegocioPublico } from '../services/negocioApi';
 import { formatoPlata } from '../domain/paseos';
-import { direccionDe } from '../services/geocodificacion';
+
 import { alerta } from '../utils/dialogo';
 import { colores, sombras } from '../theme';
 import { normalizarBusqueda } from '../utils/texto';
-
-const DIA_JS = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
-
-/** "Abre mañana a las 09:00" / "Abre el lunes a las 09:00" (o null si nunca abre). */
-function proximaApertura(horarios, ahora = new Date()) {
-  for (let i = 0; i < 8; i += 1) {
-    const d = new Date(ahora);
-    d.setDate(ahora.getDate() + i);
-    const h = horarioDelDia(horarios, d);
-    if (!h.activo) continue;
-    const [hh, mm] = h.desde.split(':').map(Number);
-    const abre = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hh, mm);
-    if (abre <= ahora) continue;
-    const cuando = i === 0 ? 'hoy' : i === 1 ? 'mañana' : `el ${DIAS_SEMANA.find((x) => x.key === DIA_JS[d.getDay()]).label.toLowerCase()}`;
-    return `Abre ${cuando} a las ${h.desde}`;
-  }
-  return null;
-}
-
-function Sello({ icono, texto, color = colores.verde, fondo = colores.mentaTarjeta }) {
-  return (
-    <View style={[s.sello, { backgroundColor: fondo }]}>
-      <Ionicons name={icono} size={13} color={color} />
-      <Text style={[s.selloTxt, { color }]}>{texto}</Text>
-    </View>
-  );
-}
-
-function Titulo({ children, extra }) {
-  return (
-    <View style={s.tituloFila}>
-      <Text style={s.titulo}>{children}</Text>
-      {extra}
-    </View>
-  );
-}
+import { HojaPedido, Stepper } from '../components/negocio/HojaPedido';
+import { proximaApertura, Sello, sellosDeNegocio, Titulo } from '../components/negocio/FichaNegocioUI';
 
 // ─── Hoja del pedido (pet shop) ─────────────────────────────────────────────
-
-function HojaPedido({ visible, negocio, lineas, onCantidad, onCerrar, onHecho, soloVista }) {
-  const d = negocio.datos ?? {};
-  const medios = MEDIOS_PAGO_NEGOCIO.filter((m) => (d.mediosPago ?? []).includes(m.key));
-  const [entrega, setEntrega] = useState(d.envios ? 'envio' : 'retiro');
-  const [direccion, setDireccion] = useState('');
-  const [medio, setMedio] = useState(null);
-  const [notas, setNotas] = useState('');
-  const [ubicando, setUbicando] = useState(false);
-  const [enviando, setEnviando] = useState(false);
-  const [error, setError] = useState(null);
-
-  useEffect(() => { if (visible) setError(null); }, [visible]);
-
-  const subtotal = lineas.reduce((a, x) => a + x.item.precio * x.cantidad, 0);
-  const envio = entrega === 'envio' ? (costoEnvio(negocio, subtotal) ?? 0) : 0;
-  const minimo = Number(d.pedidoMinimo) || 0;
-  const faltaMinimo = minimo > 0 && subtotal < minimo;
-  const gratisDesde = Number(d.envioGratisDesde) || 0;
-
-  const usarUbicacion = () => {
-    const geo = typeof navigator !== 'undefined' ? navigator.geolocation : null;
-    if (!geo) return;
-    setUbicando(true);
-    geo.getCurrentPosition(async (p) => {
-      const dir = await direccionDe(p.coords.latitude, p.coords.longitude);
-      if (dir) setDireccion(dir);
-      setUbicando(false);
-    }, () => setUbicando(false), { enableHighAccuracy: true, timeout: 10000 });
-  };
-
-  const pedir = async () => {
-    if (soloVista) { alerta('Vista previa', 'Así ven tus clientes el pedido. Desde acá no se puede comprar.'); return; }
-    if (faltaMinimo) { setError(`El pedido mínimo es ${formatoPlata(minimo)}.`); return; }
-    if (entrega === 'envio' && direccion.trim().length < 5) { setError('Escribí la dirección de entrega.'); return; }
-    if (!medio) { setError('Elegí cómo vas a pagar.'); return; }
-    setEnviando(true);
-    setError(null);
-    try {
-      const id = await crearPedido({ negocio, carrito: lineas, entrega, direccion, medioPago: medio, notas });
-      onHecho(id);
-    } catch (err) {
-      const m = err?.message;
-      setError(m === 'sin_stock' ? `Se agotó: ${(err.productos ?? []).join(', ')}. Sacalo del pedido para seguir.`
-        : m === 'pedido_minimo' ? `El pedido mínimo es ${formatoPlata(minimo)}.`
-          : m === 'negocio_cerrado' ? `${negocio.nombre} no está tomando pedidos en este momento.`
-            : m === 'sin_envios' ? 'Este pet shop no hace envíos: elegí retirar en el local.'
-              : 'No se pudo hacer el pedido. Probá de nuevo.');
-    } finally {
-      setEnviando(false);
-    }
-  };
-
-  return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onCerrar}>
-      <SafeAreaView style={s.safe}>
-        <View style={s.header}>
-          <TouchableOpacity onPress={onCerrar} hitSlop={10} accessibilityLabel="Cerrar">
-            <Ionicons name="close" size={26} color={colores.texto} />
-          </TouchableOpacity>
-          <Text style={s.headerTitulo}>Tu pedido</Text>
-          <View style={{ width: 26 }} />
-        </View>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
-            <View style={s.card}>
-              <Text style={s.cardTitulo}>{negocio.nombre}</Text>
-              {lineas.map(({ item, cantidad }) => (
-                <View key={item.id} style={s.linea}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.lineaNombre} numberOfLines={2}>{item.nombre}</Text>
-                    <Text style={s.lineaPrecio}>{formatoPlata(item.precio)} c/u</Text>
-                  </View>
-                  <Stepper cantidad={cantidad} max={item.stock} onCambio={(n) => onCantidad(item, n)} />
-                </View>
-              ))}
-            </View>
-
-            <Text style={s.label}>¿Cómo lo recibís?</Text>
-            <View style={{ gap: 10 }}>
-              <TouchableOpacity style={[s.opcion, entrega === 'retiro' && s.opcionOn]} onPress={() => setEntrega('retiro')}
-                accessibilityRole="radio" accessibilityState={{ selected: entrega === 'retiro' }}>
-                <Ionicons name="storefront" size={22} color={entrega === 'retiro' ? colores.blanco : colores.verde} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[s.opcionTitulo, entrega === 'retiro' && { color: colores.blanco }]}>Retiro en el local · Gratis</Text>
-                  <Text style={[s.opcionTxt, entrega === 'retiro' && { color: colores.mentaFondo }]} numberOfLines={1}>{negocio.direccion}</Text>
-                </View>
-              </TouchableOpacity>
-              {d.envios ? (
-                <TouchableOpacity style={[s.opcion, entrega === 'envio' && s.opcionOn]} onPress={() => setEntrega('envio')}
-                  accessibilityRole="radio" accessibilityState={{ selected: entrega === 'envio' }}>
-                  <Ionicons name="bicycle" size={22} color={entrega === 'envio' ? colores.blanco : colores.verde} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[s.opcionTitulo, entrega === 'envio' && { color: colores.blanco }]}>
-                      Envío a domicilio · {costoEnvio(negocio, subtotal) ? formatoPlata(costoEnvio(negocio, subtotal)) : 'Gratis'}
-                    </Text>
-                    <Text style={[s.opcionTxt, entrega === 'envio' && { color: colores.mentaFondo }]}>
-                      {d.demoraEnvio ?? 'A coordinar'} · hasta {d.radioEnvioKm ?? 3} km
-                      {gratisDesde && subtotal < gratisDesde ? ` · gratis desde ${formatoPlata(gratisDesde)}` : ''}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-
-            {entrega === 'envio' && (
-              <>
-                <Text style={s.label}>¿A dónde?</Text>
-                <View style={s.inputFila}>
-                  <TextInput style={s.inputFlex} value={direccion} onChangeText={(v) => setDireccion(v.slice(0, 300))}
-                    placeholder="Calle, número y piso/depto" placeholderTextColor={colores.textoTenue} />
-                  <TouchableOpacity onPress={usarUbicacion} hitSlop={8} accessibilityLabel="Usar mi ubicación">
-                    {ubicando ? <ActivityIndicator size="small" color={colores.verde} /> : <Ionicons name="locate" size={22} color={colores.verde} />}
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-
-            <Text style={s.label}>¿Cómo pagás?</Text>
-            <View style={s.chips}>
-              {medios.map((m) => {
-                const on = medio === m.key;
-                return (
-                  <TouchableOpacity key={m.key} style={[s.chip, on && s.chipOn]} onPress={() => setMedio(m.key)}
-                    accessibilityRole="radio" accessibilityState={{ selected: on }}>
-                    <Ionicons name={m.icono} size={16} color={on ? colores.blanco : colores.verde} />
-                    <Text style={[s.chipTxt, on && { color: colores.blanco }]}>{m.label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-            <Text style={s.ayuda}>Le pagás directo al pet shop al recibir o retirar.</Text>
-
-            <Text style={s.label}>Notas (opcional)</Text>
-            <TextInput style={[s.input, { minHeight: 70, textAlignVertical: 'top' }]} value={notas} onChangeText={setNotas}
-              multiline maxLength={500} placeholderTextColor={colores.textoTenue}
-              placeholder="Ej: si no está el sabor pollo, traé carne. Timbre 3B." />
-
-            <View style={[s.card, { marginTop: 18 }]}>
-              <View style={s.totalFila}><Text style={s.totalTxt}>Productos</Text><Text style={s.totalTxt}>{formatoPlata(subtotal)}</Text></View>
-              {entrega === 'envio' ? (
-                <View style={s.totalFila}><Text style={s.totalTxt}>Envío</Text><Text style={s.totalTxt}>{envio ? formatoPlata(envio) : 'Gratis'}</Text></View>
-              ) : null}
-              <View style={[s.totalFila, s.totalFinal]}>
-                <Text style={s.totalFinalTxt}>Total</Text>
-                <Text style={s.totalFinalTxt}>{formatoPlata(subtotal + envio)}</Text>
-              </View>
-              {faltaMinimo ? (
-                <Text style={s.minimo}>Te faltan {formatoPlata(minimo - subtotal)} para el pedido mínimo ({formatoPlata(minimo)}).</Text>
-              ) : null}
-            </View>
-
-            {error ? <Text style={s.error}>{error}</Text> : null}
-            <TouchableOpacity style={[s.btn, (enviando || faltaMinimo || !lineas.length) && { opacity: 0.6 }]} onPress={pedir}
-              disabled={enviando || !lineas.length} activeOpacity={0.85}>
-              {enviando ? <ActivityIndicator color={colores.texto} />
-                : <Text style={s.btnTxt}>Hacer pedido · {formatoPlata(subtotal + envio)}</Text>}
-            </TouchableOpacity>
-            <Text style={s.pie}>Te avisamos cuando {negocio.nombre} lo acepte y cuando esté {entrega === 'envio' ? 'en camino' : 'listo para retirar'}.</Text>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </Modal>
-  );
-}
-
-function Stepper({ cantidad, max, onCambio }) {
-  const tope = max == null ? 99 : max;
-  return (
-    <View style={s.stepper}>
-      <TouchableOpacity style={s.stepBtn} onPress={() => onCambio(cantidad - 1)} accessibilityLabel="Uno menos">
-        <Ionicons name={cantidad <= 1 ? 'trash-outline' : 'remove'} size={18} color={colores.verde} />
-      </TouchableOpacity>
-      <Text style={s.stepNum}>{cantidad}</Text>
-      <TouchableOpacity style={[s.stepBtn, cantidad >= tope && { opacity: 0.35 }]} disabled={cantidad >= tope}
-        onPress={() => onCambio(cantidad + 1)} accessibilityLabel="Uno más">
-        <Ionicons name="add" size={18} color={colores.verde} />
-      </TouchableOpacity>
-    </View>
-  );
-}
 
 // ─── Pantalla ───────────────────────────────────────────────────────────────
 
@@ -353,52 +136,12 @@ export default function NegocioPublicoScreen() {
 
   const abiertoYa = abiertoAhora(negocio.horarios);
   const hoy = horarioDelDia(negocio.horarios, new Date());
-  const keyHoy = DIA_JS[new Date().getDay()];
+  const keyHoy = DIA_DE_JS[new Date().getDay()];
   const realizadosTxt = negocio.realizados
     ? `${negocio.realizados} ${cfg.usaPedidos ? (negocio.realizados === 1 ? 'pedido entregado' : 'pedidos entregados') : (negocio.realizados === 1 ? 'turno atendido' : 'turnos atendidos')} en Zooni`
     : 'Nuevo en Zooni';
 
-  // Sellos según el tipo
-  const sellos = [];
-  if (negocio.tipo === 'veterinaria') {
-    if (d.urgencias24h) sellos.push({ icono: 'alert-circle', texto: 'Urgencias 24 h', color: colores.rojo, fondo: colores.rojoFondo });
-    if (d.aDomicilio) sellos.push({ icono: 'home', texto: 'Atiende a domicilio', color: colores.azul, fondo: colores.azulFondo });
-    (d.especies ?? []).forEach((e) => {
-      const esp = ESPECIES_NEGOCIO.find((x) => x.key === e);
-      if (esp) sellos.push({ icono: esp.icono, texto: esp.label });
-    });
-  }
-  if (negocio.tipo === 'peluqueria') {
-    if (d.buscaYLleva) {
-      sellos.push({
-        icono: 'car',
-        texto: `Busca y lleva${Number(d.buscaYLlevaCosto) ? ` · ${formatoPlata(d.buscaYLlevaCosto)}` : ' gratis'}`
-          + (Number(d.buscaYLlevaRadioKm) > 0 ? ` · hasta ${d.buscaYLlevaRadioKm} km` : ''),
-        color: colores.azul, fondo: colores.azulFondo,
-      });
-    }
-    if (d.hipoalergenicos) sellos.push({ icono: 'leaf', texto: 'Productos hipoalergénicos' });
-    (d.especies ?? []).forEach((e) => {
-      const esp = ESPECIES_NEGOCIO.find((x) => x.key === e);
-      if (esp) sellos.push({ icono: esp.icono, texto: esp.label });
-    });
-    if (d.tamanos?.length && d.tamanos.length < TAMANOS.length) {
-      sellos.push({ icono: 'resize', texto: `Sólo ${d.tamanos.map((t) => TAMANOS.find((x) => x.key === t)?.label.toLowerCase()).join(' y ')}`, color: colores.textoSecundario, fondo: colores.gris100 });
-    }
-  }
-  if (negocio.tipo === 'petshop') {
-    if (d.envios) {
-      sellos.push({
-        icono: 'bicycle',
-        texto: `Envíos ${Number(d.envioCosto) ? formatoPlata(d.envioCosto) : 'gratis'} · ${d.demoraEnvio ?? 'a coordinar'}`,
-        color: colores.azul, fondo: colores.azulFondo,
-      });
-      if (Number(d.envioGratisDesde)) sellos.push({ icono: 'gift', texto: `Envío gratis desde ${formatoPlata(d.envioGratisDesde)}` });
-    } else {
-      sellos.push({ icono: 'storefront', texto: 'Sólo retiro en el local', color: colores.textoSecundario, fondo: colores.gris100 });
-    }
-    if (Number(d.pedidoMinimo)) sellos.push({ icono: 'cart', texto: `Mínimo ${formatoPlata(d.pedidoMinimo)}`, color: colores.textoSecundario, fondo: colores.gris100 });
-  }
+  const sellos = sellosDeNegocio(negocio);
 
   const porCategoria = categorias
     .map((c) => ({ categoria: c, items: visibles.filter((i) => i.categoria === c) }))
@@ -711,7 +454,6 @@ const s = StyleSheet.create({
   vistaTxt: { flex: 1, fontSize: 13, fontWeight: '700', color: colores.azul },
 
   card: { backgroundColor: colores.blanco, borderRadius: 20, padding: 16, ...sombras.tarjeta },
-  cardTitulo: { fontSize: 17, fontWeight: '900', color: colores.texto, marginBottom: 6 },
   heroFila: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   logo: { width: 76, height: 76, borderRadius: 22 },
   nombre: { fontSize: 21, fontWeight: '900', color: colores.texto },
@@ -727,8 +469,6 @@ const s = StyleSheet.create({
   realizados: { fontSize: 13, color: colores.textoSecundario, marginTop: 12, fontWeight: '600' },
   descripcion: { fontSize: 14, color: colores.texto, marginTop: 10, lineHeight: 20 },
   sellos: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
-  sello: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 12 },
-  selloTxt: { fontSize: 12, fontWeight: '800' },
   direccion: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
   direccionTxt: { flex: 1, fontSize: 13, color: colores.texto },
   acciones: { flexDirection: 'row', gap: 8, marginTop: 14 },
@@ -757,8 +497,6 @@ const s = StyleSheet.create({
   btnChicoTxt: { fontSize: 14, fontWeight: '800' },
   matricula: { fontSize: 13, color: colores.textoSecundario, marginTop: 10, fontWeight: '700' },
 
-  tituloFila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, marginBottom: 10 },
-  titulo: { fontSize: 18, fontWeight: '900', color: colores.texto },
   tituloExtra: { fontSize: 13, color: colores.textoSecundario, fontWeight: '700' },
   ayudaSeccion: { fontSize: 12, color: colores.textoSecundario, marginTop: -4, marginBottom: 10 },
   trabajo: { width: 130, height: 130, borderRadius: 16, backgroundColor: colores.blanco },
@@ -778,7 +516,6 @@ const s = StyleSheet.create({
   },
   buscadorInput: { flex: 1, fontSize: 15, color: colores.texto, paddingVertical: 12 },
   categorias: { gap: 8, paddingVertical: 12 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colores.blanco, borderRadius: 18,
     paddingHorizontal: 14, paddingVertical: 9,
@@ -794,12 +531,6 @@ const s = StyleSheet.create({
   productoSinFoto: { backgroundColor: '#FFF4DE', alignItems: 'center', justifyContent: 'center' },
   stock: { fontSize: 12, fontWeight: '800', color: colores.ambar, marginTop: 2 },
   agregar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colores.verde, alignItems: 'center', justifyContent: 'center' },
-  stepper: {
-    flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 20, borderWidth: 1.5, borderColor: colores.menta,
-    paddingHorizontal: 4, height: 40, backgroundColor: colores.blanco,
-  },
-  stepBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-  stepNum: { minWidth: 22, textAlign: 'center', fontSize: 15, fontWeight: '900', color: colores.texto },
 
   horario: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, paddingHorizontal: 6, borderRadius: 10 },
   horarioHoy: { backgroundColor: '#F2FCF6' },
@@ -818,30 +549,11 @@ const s = StyleSheet.create({
   carritoTotal: { fontSize: 16, fontWeight: '900', color: colores.texto, marginRight: 6 },
 
   // Hoja del pedido
-  linea: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colores.gris100 },
-  lineaNombre: { fontSize: 14, fontWeight: '700', color: colores.texto },
-  lineaPrecio: { fontSize: 12, color: colores.textoSecundario, marginTop: 2 },
-  label: { fontSize: 15, fontWeight: '800', color: colores.texto, marginTop: 22, marginBottom: 10 },
-  opcion: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colores.blanco, borderRadius: 18, padding: 14 },
-  opcionOn: { backgroundColor: colores.verde },
-  opcionTitulo: { fontSize: 15, fontWeight: '800', color: colores.texto },
-  opcionTxt: { fontSize: 12, color: colores.textoSecundario, marginTop: 2 },
-  inputFila: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colores.blanco, borderRadius: 16, paddingHorizontal: 14 },
-  inputFlex: { flex: 1, paddingVertical: 14, fontSize: 15, color: colores.texto },
-  input: { backgroundColor: colores.blanco, borderRadius: 16, padding: 14, fontSize: 15, color: colores.texto },
-  ayuda: { fontSize: 12, color: colores.textoSecundario, marginTop: 8 },
-  totalFila: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
-  totalTxt: { fontSize: 14, color: colores.textoSecundario, fontWeight: '600' },
-  totalFinal: { borderTopWidth: 1, borderTopColor: colores.gris100, marginTop: 6, paddingTop: 10 },
-  totalFinalTxt: { fontSize: 18, fontWeight: '900', color: colores.texto },
-  minimo: { fontSize: 13, color: colores.rojo, fontWeight: '700', marginTop: 8 },
-  error: { marginTop: 14, padding: 12, borderRadius: 12, backgroundColor: colores.rojoFondo, fontSize: 13, color: colores.rojo },
   btn: {
     marginTop: 20, height: 56, borderRadius: 30, backgroundColor: colores.amarillo, alignItems: 'center', justifyContent: 'center',
     shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 3,
   },
   btnTxt: { fontSize: 16, fontWeight: '800', color: colores.texto },
-  pie: { fontSize: 12, color: colores.textoSecundario, textAlign: 'center', marginTop: 10 },
   vacioTxt: { fontSize: 14, color: colores.textoSecundario, textAlign: 'center', lineHeight: 20 },
 
   visor: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center', padding: 20 },

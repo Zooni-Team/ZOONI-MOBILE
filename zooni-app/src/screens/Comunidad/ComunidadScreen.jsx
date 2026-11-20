@@ -24,6 +24,8 @@ import { getCurrentUserId } from '../../config/session';
 import { fetchPaseadoresParaMi } from '../../services/paseadorApi';
 import { buscarLugares, combinarServicios } from '../../services/lugaresApi';
 import { colores } from '../../theme';
+import Toast from '../../components/ui/Toast';
+import { useToast } from '../../hooks/useToast';
 
 const TABS    = ['Amigos', 'Servicios', 'Solicitudes', 'Buscar'];
 
@@ -198,8 +200,8 @@ export default function ComunidadScreen() {
   const [popPaseador, setPopPaseador] = useState(null);
   const [popCart,    setPopCart]    = useState(null);
   const [modalAmigo, setModalAmigo] = useState(false);
-  const [toast,      setToast]      = useState(null);
-  const [toastKey,   setToastKey]   = useState(0);
+  // Aviso flotante compartido (ui/Toast + useToast), no una copia propia
+  const { toast, mostrarToast } = useToast(3000);
   const [userPos,    setUserPos]    = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { usuario, mascotaActiva } = useUsuarioActivo();
@@ -330,12 +332,6 @@ export default function ComunidadScreen() {
   const cargarPaseadoresRef = useRef(cargarPaseadores);
   useEffect(() => { cargarPaseadoresRef.current = cargarPaseadores; }, [cargarPaseadores]);
 
-  const mostrarToast = useCallback((msg) => {
-    setToast(msg);
-    setToastKey((k) => k + 1);
-    setTimeout(() => setToast(null), 3000);
-  }, []);
-
   // Ubicación del usuario: se pide desde acá (React), no desde el iframe — un
   // iframe sandboxed sin allow-same-origin no hereda la Permissions-Policy de
   // geolocation del sitio (informe de seguridad #24). `centrar` true = lo
@@ -359,7 +355,7 @@ export default function ComunidadScreen() {
       },
       () => {
         if (!centrar) mapCall('setUserMarker', -34.6089, -58.4340);
-        else mostrarToast('No pudimos obtener tu ubicación.');
+        else mostrarToast('No pudimos obtener tu ubicación.', { color: colores.rojo, icono: 'location' });
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     );
@@ -462,12 +458,7 @@ export default function ComunidadScreen() {
           </Text>
         </Animated.View>
 
-        {/* Toast */}
-        {toast && (
-          <View key={toastKey} style={styles.toast}>
-            <Text style={styles.toastText}>{toast}</Text>
-          </View>
-        )}
+        <Toast {...toast} />
 
         {/* Botones flotantes */}
         <View style={styles.botonesFlotantes}>
@@ -502,7 +493,7 @@ export default function ComunidadScreen() {
             onClose={() => setPopCart(null)}
             onEliminado={(id) => {
               setMapaData(p => ({ ...p, carteles: p.carteles.filter(c => c.id !== id) }));
-              mostrarToast('🗑️ Cartel eliminado');
+              mostrarToast('Cartel eliminado', { icono: 'trash' });
             }}
           />
         )}
@@ -529,15 +520,15 @@ export default function ComunidadScreen() {
             <View style={styles.tabSep} />
             <View style={styles.tabBody}>
               {tab === 'Amigos'      && <TabAmigos onVerEnMapa={a => {
-                if (a.lat == null || a.lng == null) { mostrarToast('📍 Este amigo todavía no compartió su ubicación'); return; }
+                if (a.lat == null || a.lng == null) { mostrarToast('Este amigo todavía no compartió su ubicación', { icono: 'location' }); return; }
                 flyTo(a.lat, a.lng); setSheetH('half');
               }} />}
               {tab === 'Servicios'   && <TabServicios bbox={bbox} paseadores={mapaData.paseadores}
                 servicios={mapaData.servicios} cargando={cargandoLugares}
                 onSeleccionarPaseador={p => { setPopPaseador(p); setPopServ(null); flyTo(p.lat, p.lng); setSheetH('half'); }}
                 onSeleccionar={s => { setPopServ(s); setPopPaseador(null); flyTo(s.lat, s.lng); setSheetH('half'); }} />}
-              {tab === 'Solicitudes' && <TabSolicitudes onRespuesta={() => { mostrarToast('✅ ¡Ahora son amigos!'); cargarAmigos(); }} />}
-              {tab === 'Buscar'      && <BuscadorUsuarios onSolicitudEnviada={n => mostrarToast(`✅ Solicitud enviada a ${n}`)} />}
+              {tab === 'Solicitudes' && <TabSolicitudes onRespuesta={() => { mostrarToast('¡Ahora son amigos!'); cargarAmigos(); }} />}
+              {tab === 'Buscar'      && <BuscadorUsuarios onSolicitudEnviada={n => mostrarToast(`Solicitud enviada a ${n}`)} />}
             </View>
           </>
         )}
@@ -550,7 +541,7 @@ export default function ComunidadScreen() {
           onExito={(cartel) => {
             setFormulario(false); setMarkerTemp(null); setModoCartel(false);
             setMapaData(p => ({ ...p, carteles: [...p.carteles, cartel] }));
-            mostrarToast('✅ Cartel creado exitosamente');
+            mostrarToast('Cartel creado');
           }}
           onCancelar={() => { setFormulario(false); setMarkerTemp(null); setModoCartel(false); }}
         />
@@ -567,7 +558,7 @@ export default function ComunidadScreen() {
               </TouchableOpacity>
             </View>
             <BuscadorUsuarios onSolicitudEnviada={n => {
-              mostrarToast(`✅ Solicitud enviada a ${n}`);
+              mostrarToast(`Solicitud enviada a ${n}`);
               setModalAmigo(false);
             }} />
           </View>
@@ -607,12 +598,6 @@ const styles = StyleSheet.create({
     shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 6,
   },
   bannerText: { color: colores.blanco, textAlign: 'center', fontWeight: '600', fontSize: 13 },
-  toast: {
-    position: 'absolute', top: 58, alignSelf: 'center', zIndex: 200,
-    backgroundColor: colores.verde, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 10,
-    shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 8,
-  },
-  toastText: { color: colores.blanco, fontWeight: '700', fontSize: 14 },
 
   botonesFlotantes: { position: 'absolute', top: 60, right: 14, zIndex: 100, gap: 8 },
   pill: {

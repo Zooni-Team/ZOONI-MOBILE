@@ -49,8 +49,8 @@ Un módulo con JSX no se puede cargar en Node: la lógica que quieras probar va 
 PGHOST=localhost PGUSER=postgres node supabase/scripts/probar-esquema.mjs
 ```
 Base temporal `zooni_prueba` con `tests/shim_supabase.sql` (roles, `auth.uid()`,
-storage): corre la secuencia (`SUPABASE_PEGAR_TODO.sql` + `MIGRACION_064…068`)
-**dos veces** y `tests/pruebas_rls.sql` + `pruebas_064…068.sql`
+storage): corre la secuencia (`SUPABASE_PEGAR_TODO.sql` + `MIGRACION_064…071`)
+**dos veces** y `tests/pruebas_rls.sql` + `pruebas_064…071.sql`
 (dos usuarios con su JWT: ficha médica ajena, mail ajeno, pedidos con total
 inventado, último producto, turnos superpuestos, paseos, Match, cambio de mail,
 cuentas viejas). Una aserción que falla corta con error.

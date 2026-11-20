@@ -255,8 +255,8 @@ export async function setModo(modo) {
 
 // ¿Esta cuenta ya entró alguna vez a Zooni Paseadores en este dispositivo?
 // El menú del dueño lo usa para ofrecer "Cambiar a modo paseador" aunque la
-// base no devuelva el rol (ej. la app de paseador corriendo en modo demo, o
-// sin red): si pudo ir de paseador a dueño, tiene que poder volver. Se guarda
+// base no devuelva el rol (ej. sin red, o si la consulta de roles falló): si
+// pudo ir de paseador a dueño, tiene que poder volver. Se guarda
 // el id (no un sí/no) para que otra cuenta del mismo dispositivo no lo herede.
 const PASEADOR_KEY = 'zooni_paseador_id';
 let paseadorId = null;

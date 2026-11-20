@@ -26,7 +26,7 @@ zooni-app (Expo / React Native, web + móvil)
 Supabase ── Postgres con RLS (quién ve qué fila)
         ├── Auth (contraseñas con bcrypt, Google, Facebook)
         ├── Storage (fotos; cada usuario sólo escribe en su carpeta)
-        └── Edge Functions (lo que necesita un secreto: Groq, migrar cuentas)
+        └── Edge Functions (lo que necesita un secreto: Groq)
 ```
 
 No hay backend propio: la app habla directo con Supabase. Por eso **lo que
@@ -49,7 +49,7 @@ clave pública que viaja en el bundle no protege nada sola.
 | `zooni-app/scripts` | Verificaciones: `verify:pdf` (ficha médica en PDF), `verify:paseos` y `verify:colores`. | Desarrollo |
 | `zooni-app/wwwroot/img` | Ilustraciones de mascotas por especie/raza (las importa `src/constants`). | Sí |
 | `supabase/SUPABASE_PEGAR_TODO.sql` | **Esquema base** de la base (secciones 000 → 063). | Sí |
-| `supabase/MIGRACION_064…068_*.sql` | Lo que vino después, **en orden**. Base + estas = la base completa. | Sí |
+| `supabase/MIGRACION_064…071_*.sql` | Lo que vino después, **en orden** (064 → 068, 070, 071; no hay 069). Base + estas = la base completa. | Sí |
 | `supabase/scripts` | `probar-esquema.mjs` (reconstruye la base en un Postgres local y prueba la seguridad) y `limpiar-storage.mjs` (borra archivos huérfanos y muda imágenes clínicas viejas al bucket privado). | Desarrollo / mantenimiento |
 | `CLAUDE.md` · `docs/claude/` | Documentación para el equipo y para Claude. | Documentación |
 | `supabase/functions` | Edge Function `zoonivet-chat` (ZooniVet: Groq con la clave del lado del servidor). | Sí |
@@ -89,6 +89,11 @@ MySQL y SQL Server) se borró; queda en el historial de git.
    4. `supabase/MIGRACION_066_RLS_REAPLICAR.sql`
    5. `supabase/MIGRACION_067_CERRAR_FUNCIONES.sql`
    6. `supabase/MIGRACION_068_ARCHIVOS_HUERFANOS.sql`
+   7. `supabase/MIGRACION_070_ENDURECIMIENTO_SEGURIDAD.sql` (no hay 069).
+      **Obligatoria**: la app lee las mascotas ajenas por la vista
+      `mascota_publica` que crea esta migración; sin ella, Match y Comunidad
+      quedan vacíos.
+   8. `supabase/MIGRACION_071_INTEGRIDAD.sql`
 
    Cada uno corre en una transacción y verifica lo que hizo al final (si algo
    no queda bien, no cambia nada). Toda la secuencia es idempotente: se puede
@@ -108,6 +113,7 @@ MySQL y SQL Server) se borró; queda en el historial de git.
 supabase login
 supabase link --project-ref <ref-del-proyecto>
 supabase secrets set GROQ_API_KEY=gsk_...
+supabase secrets set ALLOWED_ORIGINS=https://tu-dominio.vercel.app   # sin esto, la web no puede llamarla
 supabase functions deploy zoonivet-chat
 ```
 
@@ -145,7 +151,7 @@ Esquema y seguridad (necesita un PostgreSQL local, no toca Supabase):
 PGHOST=localhost PGUSER=postgres node supabase/scripts/probar-esquema.mjs
 ```
 
-Corre la secuencia completa (base + `MIGRACION_064…068`) dos veces sobre una
+Corre la secuencia completa (base + `MIGRACION_064…071`) dos veces sobre una
 base vacía (desde cero e idempotencia) y después `supabase/tests/*.sql`: dos
 usuarios con su JWT comprueban, entre otras cosas, que uno no puede leer la ficha médica del
 otro, que un pedido con total inventado se recalcula, que el último producto
@@ -185,6 +191,12 @@ no se vende dos veces y que dos turnos no se superponen.
     borradas) quedan anotados para `supabase/scripts/limpiar-storage.mjs`, que
     además muda las imágenes clínicas viejas al bucket privado. Se borran las
     RPC del login viejo con hash.
+  - `070` — auditoría de seguridad: `"Mascota"` sólo devuelve las filas
+    propias (lo ajeno, por `mascota_publica`), notificaciones sólo por RPC,
+    anti-trampa del progreso de un paseo. Va después de la 066 a propósito.
+  - `071` — el anti-trampa del paseo con un margen que no se acumula, límite
+    de 10 mascotas activas, mascota principal en una transacción y fecha de
+    los mensajes puesta por la base.
 - **Mapa de Servicios**: los locales de OpenStreetMap pasan por la función de
   Vercel `api/lugares.js` (Overpass con User-Agent propio; si está saturado,
   Nominatim), cacheada un día en el CDN.

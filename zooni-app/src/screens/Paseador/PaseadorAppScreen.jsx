@@ -21,7 +21,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Animated, Modal, SafeAreaView, StatusBar, StyleSheet, Text, View,
+  ActivityIndicator, Modal, SafeAreaView, StatusBar, StyleSheet, Text, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -55,6 +55,8 @@ import GananciasTab from './tabs/GananciasTab';
 import PagosTab from './tabs/PagosTab';
 import PerfilTab from './tabs/PerfilTab';
 import { colores } from '../../theme';
+import Toast from '../../components/ui/Toast';
+import { useToast } from '../../hooks/useToast';
 
 const POLL_SOLICITUDES_MS = 20000;
 
@@ -73,12 +75,11 @@ export default function PaseadorAppScreen() {
   const [resumen, setResumen] = useState(null);
   // Id del paseo con una acción en marcha (deshabilita sus botones)
   const [ocupado, setOcupado] = useState(null);
-  const [toast, setToast] = useState(null);
+  const { toast, mostrarToast } = useToast(3000);
   const [avisoPermisos, setAvisoPermisos] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [chatsSinLeer, setChatsSinLeer] = useState(0);
   const [esDueno, setEsDueno] = useState(false);
-  const toastAnim = useRef(new Animated.Value(0)).current;
   const seguimiento = useSeguimientoPaseos(paseosActivos, setPaseosActivos);
 
   // Perfil recién guardado en el registro (llega por params). Si la base no
@@ -166,16 +167,11 @@ export default function PaseadorAppScreen() {
     if (route.params?.tab) setTab(route.params.tab);
   }, [route.params?.tab]);
 
-  // ── Toast ─────────────────────────────────────────────────────────────────
+  // Aviso flotante: el Toast compartido (ui/Toast + useToast), no una copia
+  // propia. Un ícono de alerta sale en rojo.
   const avisar = useCallback((texto, icono = 'checkmark-circle') => {
-    setToast({ texto, icono });
-    toastAnim.setValue(0);
-    Animated.sequence([
-      Animated.timing(toastAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
-      Animated.delay(2600),
-      Animated.timing(toastAnim, { toValue: 0, duration: 220, useNativeDriver: true }),
-    ]).start(() => setToast(null));
-  }, [toastAnim]);
+    mostrarToast(texto, { icono, color: icono === 'alert-circle' ? colores.rojo : colores.verde });
+  }, [mostrarToast]);
 
   // Dueños que pagan por semana / mes: si se cerró su período y deben, avisar
   // (la notificación queda en la campana y lleva a Pagos)
@@ -386,18 +382,7 @@ export default function PaseadorAppScreen() {
         {tab === 'pagos' && <PagosTab {...ctx} />}
         {tab === 'perfil' && <PerfilTab {...ctx} />}
 
-        {toast && (
-          <Animated.View
-            pointerEvents="none"
-            style={[s.toast, {
-              opacity: toastAnim,
-              transform: [{ translateY: toastAnim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
-            }]}
-          >
-            <Ionicons name={toast.icono} size={20} color={C.teal} />
-            <Text style={s.toastTxt}>{toast.texto}</Text>
-          </Animated.View>
-        )}
+        <Toast {...toast} posicion="abajo" />
       </View>
 
       <PaseadorDrawer
@@ -432,14 +417,6 @@ export default function PaseadorAppScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.fondo },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.fondo },
-  toast: {
-    position: 'absolute', left: 20, right: 20, bottom: 16,
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: C.card, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16,
-    borderWidth: 1.5, borderColor: C.menta,
-    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 6,
-  },
-  toastTxt: { flex: 1, fontSize: 14, fontWeight: '700', color: C.texto },
   aviso: {
     flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF6E5',
     paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F5DDB0',

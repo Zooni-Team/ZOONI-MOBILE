@@ -10,7 +10,7 @@ prop. Si creás uno que se va a usar en más de una pantalla, va a `components/u
 
 | Necesito… | Usá | Cómo |
 |---|---|---|
-| Un aviso breve flotante ("Guardado ✓") | `ui/Toast` + `hooks/useToast` | `const { toast, mostrarToast } = useToast(); mostrarToast('Listo'); <Toast {...toast} />` · color: `mostrarToast('Error', colores.rojo)` |
+| Un aviso breve flotante ("Guardado ✓") | `ui/Toast` + `hooks/useToast` | `const { toast, mostrarToast } = useToast(); mostrarToast('Listo'); <Toast {...toast} />` · color: `mostrarToast('Error', colores.rojo)` · con ícono, botón y duración: `mostrarToast('Archivada', { icono: 'archive', accion: { texto: 'Deshacer', onPress }, duracionMs: 6000 })` + `<Toast {...toast} onCerrar={ocultarToast} />` · abajo: `posicion="abajo"`. Es el ÚNICO aviso flotante: no hacer copias propias. |
 | Un aviso que ocupa lugar en el layout | patrón `AvisoInline` de `PerfilScreen` con el mismo `useToast` | |
 | Placeholder mientras carga | `ui/Skeleton` (`<Skeleton style={s.card}>…</Skeleton>`) o `SkeletonBloque` (`width`, `height`) | la animación ya está; vos das la forma |
 | Alerta / confirmación que funcione en web | `utils/dialogo` → `alerta(titulo, texto)`, `await confirmar(titulo, texto, { textoOk, destructivo })` | `Alert.alert` con botones no anda en web |
@@ -87,3 +87,9 @@ pieza que se puede nombrar va a su archivo en `components/<tema>/`. Ejemplos:
 `HomeScreen` (165 líneas) = `useHome` + `HeroMascota` + `BotonesHome`;
 `CalendarioScreen` = `useCalendario` + `components/calendario/*`. Las
 animaciones que sólo le importan a una pieza viven en esa pieza.
+
+Otros ya partidos: `ClosetScreen` = `useAvataresCloset` +
+`components/closet/PiezasCloset`; `MisMascotasScreen` =
+`components/mascotas/TarjetasMascota` (tarjetas, tokens de la pantalla);
+`NegocioPublicoScreen` = `components/negocio/HojaPedido` (carrito y pedido) +
+`components/negocio/FichaNegocioUI` (sellos, títulos, `sellosDeNegocio`).

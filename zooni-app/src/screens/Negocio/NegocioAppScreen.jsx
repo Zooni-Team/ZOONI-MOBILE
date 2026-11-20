@@ -16,11 +16,10 @@
  * Params: { tipo, tab?, bienvenida? }
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Animated, SafeAreaView, StatusBar, StyleSheet, Text, View,
+  ActivityIndicator, SafeAreaView, StatusBar, StyleSheet, View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 
 import PaseadorHeader from '../../components/paseador/PaseadorHeader';
@@ -47,6 +46,8 @@ import ClientesPetshopTab from './tabs/ClientesPetshopTab';
 import MensajesNegocioTab from './tabs/MensajesNegocioTab';
 import MiNegocioTab from './tabs/MiNegocioTab';
 import { colores } from '../../theme';
+import Toast from '../../components/ui/Toast';
+import { useToast } from '../../hooks/useToast';
 import { INTERVALO_LISTAS_MS } from '../../constants/intervalos';
 
 export default function NegocioAppScreen() {
@@ -62,18 +63,13 @@ export default function NegocioAppScreen() {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [badges, setBadges] = useState({});
   const [roles, setRoles] = useState(null);
-  const [toast, setToast] = useState(null);
-  const toastAnim = useRef(new Animated.Value(0)).current;
+  const { toast, mostrarToast } = useToast(3000);
 
+  // Aviso flotante: el Toast compartido (ui/Toast + useToast), no una copia
+  // propia. Un ícono de alerta sale en rojo.
   const avisar = useCallback((texto, icono = 'checkmark-circle') => {
-    setToast({ texto, icono });
-    toastAnim.setValue(0);
-    Animated.sequence([
-      Animated.timing(toastAnim, { toValue: 1, duration: 220, useNativeDriver: true }),
-      Animated.delay(2600),
-      Animated.timing(toastAnim, { toValue: 0, duration: 220, useNativeDriver: true }),
-    ]).start(() => setToast(null));
-  }, [toastAnim]);
+    mostrarToast(texto, { icono, color: icono === 'alert-circle' ? colores.rojo : colores.verde });
+  }, [mostrarToast]);
 
   const recargarNegocio = useCallback(async () => {
     try {
@@ -201,18 +197,7 @@ export default function NegocioAppScreen() {
         {seccion.key === 'mensajes' && <MensajesNegocioTab {...ctx} />}
         {seccion.key === 'perfil' && <MiNegocioTab {...ctx} />}
 
-        {toast && (
-          <Animated.View
-            pointerEvents="none"
-            style={[s.toast, {
-              opacity: toastAnim,
-              transform: [{ translateY: toastAnim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
-            }]}
-          >
-            <Ionicons name={toast.icono} size={20} color={C.teal} />
-            <Text style={s.toastTxt}>{toast.texto}</Text>
-          </Animated.View>
-        )}
+        <Toast {...toast} posicion="abajo" />
       </View>
 
       <PaseadorDrawer
@@ -235,12 +220,4 @@ export default function NegocioAppScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.fondo },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.fondo },
-  toast: {
-    position: 'absolute', left: 20, right: 20, bottom: 16,
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: C.card, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16,
-    borderWidth: 1.5, borderColor: C.menta,
-    shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 6,
-  },
-  toastTxt: { flex: 1, fontSize: 14, fontWeight: '700', color: C.texto },
 });

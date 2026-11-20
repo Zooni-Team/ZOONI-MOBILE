@@ -1,24 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Dimensions,
-  FlatList,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  ImageBackground,
-  StatusBar,
-  SafeAreaView,
-} from 'react-native';
+import { ActivityIndicator, Animated, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View, ImageBackground, StatusBar, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { resolveAvatarImage } from '../constants/avatarImages';
-import { fetchAvatares, aplicarAvatar } from '../services/api';
+
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import SelectorMascota from '../components/SelectorMascota';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
@@ -26,99 +12,14 @@ import { useUsuarioActivo } from '../hooks/useUsuarioActivo';
 import { colores } from '../theme';
 import Toast from '../components/ui/Toast';
 import { useToast } from '../hooks/useToast';
+import { useAvataresCloset } from '../hooks/useAvataresCloset';
+import { alerta } from '../utils/dialogo';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const THUMBNAIL_SIZE = (SCREEN_WIDTH - 48 - 24) / 3;
+import { SkeletonCloset, AvatarThumbnail } from '../components/closet/PiezasCloset';
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
 
-function SkeletonBox({ style }) {
-  const anim = useRef(new Animated.Value(0.4)).current;
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(anim, { toValue: 1, duration: 700, useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 0.4, duration: 700, useNativeDriver: true }),
-      ])
-    ).start();
-  }, [anim]);
-  return <Animated.View style={[{ backgroundColor: '#B8E8CA', opacity: anim }, style]} />;
-}
-
-function SkeletonCloset() {
-  return (
-    <View style={{ paddingHorizontal: 24, marginTop: 12 }}>
-      <SkeletonBox style={{ height: 220, borderRadius: 24, marginBottom: 28 }} />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-        {[...Array(6)].map((_, i) => (
-          <SkeletonBox
-            key={i}
-            style={{ width: THUMBNAIL_SIZE, height: THUMBNAIL_SIZE, borderRadius: 16 }}
-          />
-        ))}
-      </View>
-    </View>
-  );
-}
-
 // ─── Thumbnail ───────────────────────────────────────────────────────────────
-
-function AvatarThumbnail({ avatar, mascota, isSelected, isActual, onPress, entryDelay }) {
-  const scale = useRef(new Animated.Value(0.8)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
-  const pressScale = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(opacity, { toValue: 1, duration: 220, delay: entryDelay, useNativeDriver: true }),
-      Animated.spring(scale, { toValue: 1, delay: entryDelay, useNativeDriver: true, tension: 180, friction: 10 }),
-    ]).start();
-  }, [entryDelay, opacity, scale]);
-
-  const handlePressIn = () =>
-    Animated.timing(pressScale, { toValue: 0.92, duration: 90, useNativeDriver: true }).start();
-  const handlePressOut = () =>
-    Animated.timing(pressScale, { toValue: 1, duration: 130, useNativeDriver: true }).start();
-
-  const isHighlighted = isSelected;
-
-  return (
-    <Animated.View style={{ opacity, transform: [{ scale }] }}>
-      <TouchableOpacity
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        activeOpacity={1}
-      >
-        <Animated.View
-          style={[
-            styles.thumbnail,
-            isHighlighted && styles.thumbnailSelected,
-            { transform: [{ scale: pressScale }] },
-          ]}
-        >
-          <Animated.Image
-            source={resolveAvatarImage(avatar.asset_name, mascota?.especie, mascota?.raza)}
-            style={styles.thumbnailImage}
-            resizeMode="contain"
-          />
-          {/* Badge de avatar actual */}
-          {isActual && (
-            <View style={styles.badgeActual}>
-              <Ionicons name="checkmark" size={11} color={colores.blanco} />
-            </View>
-          )}
-          {/* Nombre del avatar */}
-          {avatar.nombre && (
-            <Text style={styles.thumbnailLabel} numberOfLines={1}>
-              {avatar.nombre}
-            </Text>
-          )}
-        </Animated.View>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-}
 
 // ─── Pantalla principal ───────────────────────────────────────────────────────
 
@@ -129,14 +30,12 @@ export default function ClosetScreen() {
   // sin salir del closet (el efecto de carga depende de petId y recarga solo).
   const [petId, setPetId] = useState(route.params?.petId || null);
 
-  const [mascota, setMascota] = useState(null);
-  const [avatares, setAvatares] = useState([]);
+  // La carga y el "aplicar" viven en el hook; acá sólo selección y animaciones.
+  const { mascota, avatares, cargando: loading, aplicando, aplicar } = useAvataresCloset(petId);
   const [avatarSeleccionado, setAvatarSeleccionado] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [aplicando, setAplicando] = useState(false);
   const { toast, mostrarToast } = useToast();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { usuario, mascotaActiva: mascotaActivaDemo } = useUsuarioActivo();
+  const { usuario, mascotaActiva } = useUsuarioActivo();
 
   const previewScale = useRef(new Animated.Value(1)).current;
   const previewRotate = useRef(new Animated.Value(0)).current;
@@ -146,28 +45,17 @@ export default function ClosetScreen() {
 
   // ── Carga inicial ──────────────────────────────────────────────────────────
 
-  const cargarDatos = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await fetchAvatares(petId);
-      setMascota(data.mascota);
-      setAvatares(data.avatares);
-      setAvatarSeleccionado(data.mascota.imagen_asset);
-    } catch {
-      Alert.alert('Error', 'No se pudieron cargar los avatares. Intentá de nuevo.');
-    } finally {
-      setLoading(false);
-    }
-  }, [petId]);
+  // Al cargar (o cambiar de mascota) queda seleccionado el avatar que tiene puesto
+  useEffect(() => {
+    if (mascota) setAvatarSeleccionado(mascota.imagen_asset);
+  }, [mascota?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!petId) {
-      Alert.alert('Error', 'No se recibió el ID de la mascota.');
+      alerta('Falta la mascota', 'No se recibió qué mascota vestir.');
       navigation.goBack();
-      return;
     }
-    cargarDatos();
-  }, [petId, cargarDatos, navigation]);
+  }, [petId, navigation]);
 
   // ── Animar preview al seleccionar ─────────────────────────────────────────
 
@@ -194,23 +82,12 @@ export default function ClosetScreen() {
 
   const handleAplicar = async () => {
     if (esAvatarActual || aplicando) return;
-    try {
-      setAplicando(true);
-      await aplicarAvatar(petId, avatarSeleccionado);
-      setMascota(prev => ({ ...prev, imagen_asset: avatarSeleccionado }));
+    const r = await aplicar(avatarSeleccionado);
+    if (r.ok) {
       Animated.timing(botonColor, { toValue: 0, duration: 200, useNativeDriver: false }).start();
       mostrarToast('¡Avatar aplicado! 🎉');
-    } catch (err) {
-      if (err?.response?.status === 403) {
-        Alert.alert('Sin permiso', 'No tenés permiso para modificar esta mascota.');
-        navigation.navigate('Home');
-      } else if (!err?.response) {
-        Alert.alert('Sin conexión', 'Sin conexión. Intentá de nuevo más tarde.');
-      } else {
-        Alert.alert('Error', 'No se pudo aplicar el avatar. Intentá de nuevo.');
-      }
-    } finally {
-      setAplicando(false);
+    } else if (r.error === 'sin_permiso') {
+      navigation.navigate('Home');
     }
   };
 
@@ -429,7 +306,7 @@ export default function ClosetScreen() {
         visible={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         usuario={usuario}
-        mascotaActiva={mascota ?? mascotaActivaDemo}
+        mascotaActiva={mascota ?? mascotaActiva}
         activeRoute="Closet"
       />
     </SafeAreaView>
@@ -613,62 +490,6 @@ const styles = StyleSheet.create({
   },
 
   // ── Thumbnail ──
-  thumbnail: {
-    width: THUMBNAIL_SIZE,
-    height: THUMBNAIL_SIZE + 22, // espacio extra para el label
-    backgroundColor: '#F9FFF9',
-    borderRadius: 16,
-    padding: 8,
-    paddingBottom: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: colores.gris200,
-    shadowColor: colores.negro,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-    overflow: 'hidden',
-  },
-  thumbnailSelected: {
-    borderWidth: 2.5,
-    borderColor: colores.verde,
-    backgroundColor: '#F0FDF5',
-    shadowColor: colores.verde,
-    shadowOpacity: 0.22,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  thumbnailImage: {
-    width: '80%',
-    height: THUMBNAIL_SIZE * 0.62,
-  },
-  thumbnailLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: colores.textoSecundario,
-    textAlign: 'center',
-    marginTop: 4,
-    width: '100%',
-  },
-  badgeActual: {
-    position: 'absolute',
-    top: 5,
-    right: 5,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colores.verde,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
-    shadowColor: colores.verde,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 3,
-    elevation: 3,
-  },
 
   // ── Empty state ──
   emptyState: {
