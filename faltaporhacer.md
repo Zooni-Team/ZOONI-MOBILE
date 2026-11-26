@@ -12,6 +12,12 @@ final.
 
 ## 2. Para terminar de poner en producción
 
+0. **Push del commit `0151218`** (072 en la app: baja de cuenta, fotos por
+   bytes, peso para paseador/negocio). Hasta el push, Vercel sirve la versión
+   anterior; la base ya tiene la 072 y la app vieja anda igual con ella.
+   Opcional: ver correr el cron (`cron.alter_job(1, schedule := '* * * * *')`,
+   mirar `cron.job_run_details`, y volverlo a `'30 3 * * *'`).
+
 1. ✔ **`MIGRACION_072` aplicada en producción** (26/11; verificado con
    `to_regprocedure('public.purgar_cuentas_eliminadas()')`).
 2. **Comprobar la consulta 6** (la única imagen que se mudó al bucket
