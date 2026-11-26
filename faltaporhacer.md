@@ -5,10 +5,9 @@ final.
 
 ## 1. Urgente
 
-1. **Borrar la secret key expuesta.** La secret key `default` quedó a la vista en capturas de pantalla. Supabase → Project Settings →
-   API Keys → Secret keys → **⋮ → borrar**. Ni la app ni ZooniVet la usan;
-   si un script necesita una, se crea otra con "New secret key". Borrar
-   también las capturas guardadas en Imágenes → Capturas de pantalla.
+Nada. (✔ 26/11: la secret key `default` expuesta en capturas se borró en
+Supabase, y las capturas también. Si un script necesita una, se crea otra
+con "New secret key".)
 
 ## 2. Para terminar de poner en producción
 
