@@ -3,18 +3,21 @@
  *
  * La fuente de verdad del plan son los webhooks de la tienda, nunca el
  * cliente. Acá se muestra el estado y se deriva a la tienda para administrar.
+ * Hoy no hay planes pagos ni cobros dentro de la app: todas las cuentas son
+ * Free y la pantalla va con el aviso de vista previa.
  */
 
 import React from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import {
-  SettingsAction, SettingsGroup, SettingsRow, SettingsScreen, T,
+  SettingsAction, SettingsGroup, SettingsRow, SettingsScreen, SettingsVistaPrevia, T,
 } from '../../components/settings/SettingsKit';
 import { colores } from '../../theme';
+import { alerta } from '../../utils/dialogo';
 
-const proximamente = () => Alert.alert('Próximamente', 'Esta opción va a estar disponible en una próxima versión.');
+const proximamente = () => alerta('Próximamente', 'Esta opción va a estar disponible en una próxima versión.');
 
 const BENEFICIOS_PLUS = [
   'Match ilimitado y filtros avanzados',
@@ -26,11 +29,14 @@ export default function SuscripcionesScreen() {
   return (
     <SettingsScreen title="Suscripciones y pagos">
 
+      <SettingsVistaPrevia texto="Zooni todavía no cobra: todas las cuentas tienen el plan Free y no hay pagos con tarjeta dentro de la app. Las opciones de abajo todavía no están disponibles." />
+
       {/* Card de plan actual (destacada, borde --cta) */}
       <View style={s.planCard}>
         <Text style={s.planNombre}>Plan Free</Text>
         <Text style={s.planEstado}>Activo</Text>
-        <View style={{ marginTop: 10, gap: 6 }}>
+        <Text style={s.plusTitulo}>Zooni Plus va a sumar:</Text>
+        <View style={{ marginTop: 8, gap: 6 }}>
           {BENEFICIOS_PLUS.map((b) => (
             <View key={b} style={s.beneficio}>
               <Ionicons name="checkmark-circle" size={18} color={T.brandText} />
@@ -45,7 +51,7 @@ export default function SuscripcionesScreen() {
       </View>
 
       <SettingsGroup label="Pagos">
-        <SettingsRow label="Métodos de pago" value="•••• 4242" onPress={proximamente} />
+        <SettingsRow label="Métodos de pago" onPress={proximamente} />
         <SettingsRow label="Historial de facturación" onPress={proximamente} />
         <SettingsAction label="Restaurar compras" onPress={proximamente} />
         <SettingsRow label="Códigos y cupones" onPress={proximamente} />
@@ -68,6 +74,7 @@ const s = StyleSheet.create({
   },
   planNombre: { fontSize: 20, fontWeight: '800', color: T.text },
   planEstado: { fontSize: 14, color: T.brandText, fontWeight: '700', marginTop: 2 },
+  plusTitulo:   { fontSize: 13, fontWeight: '700', color: T.textSoftMint, marginTop: 12 },
   beneficio:    { flexDirection: 'row', alignItems: 'center', gap: 8 },
   beneficioTxt: { fontSize: 14, color: T.textSoft, flex: 1 },
   planBtn: {

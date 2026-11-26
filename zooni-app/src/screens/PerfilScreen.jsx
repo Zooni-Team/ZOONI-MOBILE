@@ -151,7 +151,7 @@ export default function PerfilScreen() {
 
   // ── Cambiar foto ─────────────────────────────────────────────────────────
   async function elegirFotoPerfil(modo) {
-    const uri = await elegirImagen({ camara: modo !== 'galeria', calidad: 0.8 });
+    const uri = await elegirImagen({ camara: modo !== 'galeria' });
     if (!uri) return;
     await subirFoto(uri);
   }
@@ -178,7 +178,7 @@ export default function PerfilScreen() {
 
   // ── Publicar ─────────────────────────────────────────────────────────────
   async function elegirImagenPublicar(modo) {
-    const uri = await elegirImagen({ camara: modo !== 'galeria', calidad: 0.8 });
+    const uri = await elegirImagen({ camara: modo !== 'galeria' });
     if (!uri) return;
     setFImagen({ uri }); setImgErr(false);
   }

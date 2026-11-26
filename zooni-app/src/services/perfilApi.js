@@ -9,7 +9,7 @@
 
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
-import { subirImagenPublica } from './imagenStorage';
+import { borrarImagenPublica, subirImagenPublica } from './imagenStorage';
 import { sanitizarEmail, sanitizarDigitos, sanitizarTexto } from '../utils/sanitizar';
 import { perfilPorId } from './perfilesPublicos';
 import { distanciaKm } from '../utils/geo';
@@ -308,10 +308,27 @@ export async function cambiarMiContrasena(actual, nueva) {
 
 /** Sube y guarda una nueva foto de perfil. Devuelve la URL pública guardada. */
 export async function actualizarMiFotoPerfil(uri) {
+  const { data: antes } = await supabase.from('User').select('FotoPerfil')
+    .eq('Id_User', getCurrentUserId()).maybeSingle();
   const url = await subirImagenPublica(uri, 'perfiles');
   const { error } = await supabase.from('User').update({ FotoPerfil: url }).eq('Id_User', getCurrentUserId());
-  if (error) throw error;
+  if (error) {
+    await borrarImagenPublica(url);   // que la subida fallida no quede ocupando lugar
+    throw error;
+  }
+  // La foto anterior ya no la usa nadie. borrarImagenPublica ignora las que no
+  // son de nuestro Storage (la de Google / Facebook) y nunca tira.
+  if (antes?.FotoPerfil && antes.FotoPerfil !== url) await borrarImagenPublica(antes.FotoPerfil);
   return url;
+}
+
+/** Saca la foto de perfil (queda el círculo con las iniciales) y borra el archivo. */
+export async function quitarMiFotoPerfil() {
+  const { data: antes } = await supabase.from('User').select('FotoPerfil')
+    .eq('Id_User', getCurrentUserId()).maybeSingle();
+  const { error } = await supabase.from('User').update({ FotoPerfil: null }).eq('Id_User', getCurrentUserId());
+  if (error) throw error;
+  if (antes?.FotoPerfil) await borrarImagenPublica(antes.FotoPerfil);
 }
 
 /** Crea una publicación nueva en el perfil del usuario logueado. */

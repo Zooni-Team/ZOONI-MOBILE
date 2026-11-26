@@ -2,55 +2,43 @@
  * MediosCalidadScreen.jsx — Configuración › Medios y Calidad (§3.5.3)
  *
  * Todas preferencias de DISPOSITIVO (no sincronizan).
+ * La calidad de subida se aplica de verdad (utils/elegirImagen la lee al
+ * recomprimir cada foto). El resto se guarda pero todavía no cambia nada:
+ * va debajo del aviso de vista previa.
  */
 
 import React, { useState } from 'react';
-import { Alert } from 'react-native';
 
 import {
-  SettingsAction, SettingsGroup, SettingsInfo, SettingsScreen,
-  SettingsSelect, SettingsToggle,
+  SettingsGroup, SettingsScreen, SettingsSelect, SettingsToggle, SettingsVistaPrevia,
 } from '../../components/settings/SettingsKit';
 import { getSettings, patchSettings } from '../../services/settingsStore';
 
 export default function MediosCalidadScreen() {
   const [device, setDevice] = useState({ ...getSettings().device });
-  const [cacheMb, setCacheMb] = useState(248);
   const set = (patch) => {
     patchSettings('device', patch);
     setDevice({ ...getSettings().device });
   };
 
-  const vaciarCache = () => {
-    Alert.alert(
-      '¿Vaciar la caché?',
-      'Se van a borrar las imágenes guardadas temporalmente. No perdés nada de tu cuenta.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Vaciar',
-          onPress: () => {
-            const liberado = cacheMb;
-            setCacheMb(0);
-            Alert.alert(`Liberamos ${liberado} MB`);
-          },
-        },
-      ]
-    );
-  };
-
   return (
     <SettingsScreen title="Medios y Calidad">
 
-      <SettingsGroup label="Calidad">
+      <SettingsGroup label="Fotos que subís">
         <SettingsSelect label="Calidad de subida de fotos"
+          apoyo="Se aplica a las fotos de perfil, mascotas, carteles y consultas."
           options={[
-            { value: 'high',   label: 'Alta',  apoyo: '~4 MB por foto' },
-            { value: 'medium', label: 'Media', apoyo: '~1,5 MB por foto' },
-            { value: 'low',    label: 'Baja (ahorra datos)', apoyo: '~500 KB por foto' },
+            { value: 'high',   label: 'Alta',  apoyo: 'Más nítida, tarda más en subir' },
+            { value: 'medium', label: 'Media', apoyo: 'El equilibrio recomendado' },
+            { value: 'low',    label: 'Baja (ahorra datos)', apoyo: 'Más liviana, menos detalle' },
           ]}
           value={device.upload_quality}
           onChange={(v) => set({ upload_quality: v })} />
+      </SettingsGroup>
+
+      <SettingsVistaPrevia texto="Las opciones de abajo se guardan en este dispositivo, pero todavía no cambian cómo Zooni descarga o reproduce fotos y videos." />
+
+      <SettingsGroup label="Descarga y reproducción">
         <SettingsSelect label="Calidad de descarga"
           options={[
             { value: 'auto', label: 'Automática' },
@@ -59,18 +47,6 @@ export default function MediosCalidadScreen() {
           ]}
           value={device.download_quality}
           onChange={(v) => set({ download_quality: v })} />
-        <SettingsSelect label="Calidad del video en paseos en vivo"
-          apoyo="La calidad baja usa menos batería y datos durante el seguimiento del paseo."
-          options={[
-            { value: 'auto', label: 'Automática' },
-            { value: 'high', label: 'Alta (720p)' },
-            { value: 'low',  label: 'Baja (480p)' },
-          ]}
-          value={device.live_walk_quality}
-          onChange={(v) => set({ live_walk_quality: v })} />
-      </SettingsGroup>
-
-      <SettingsGroup label="Reproducción">
         <SettingsSelect label="Reproducir videos automáticamente"
           options={[
             { value: 'always', label: 'Siempre' },
@@ -84,7 +60,7 @@ export default function MediosCalidadScreen() {
           onChange={(v) => set({ mute_videos: v })} />
       </SettingsGroup>
 
-      <SettingsGroup label="Datos y almacenamiento">
+      <SettingsGroup label="Datos">
         <SettingsToggle label="Descargar contenido solo con Wi-Fi"
           value={device.wifi_only_downloads}
           onChange={(v) => set({ wifi_only_downloads: v })} />
@@ -95,9 +71,6 @@ export default function MediosCalidadScreen() {
         <SettingsToggle label="Guardar las fotos que saco en Zooni"
           value={device.save_photos}
           onChange={(v) => set({ save_photos: v })} />
-        <SettingsInfo label="Espacio usado" value={`${cacheMb} MB`}
-          apoyo={cacheMb > 0 ? 'Imágenes 180 MB · Videos 52 MB · Otros 16 MB' : 'Caché vacía'} />
-        <SettingsAction label="Vaciar caché" onPress={vaciarCache} disabled={cacheMb === 0} />
       </SettingsGroup>
 
     </SettingsScreen>

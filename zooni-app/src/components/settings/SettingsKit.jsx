@@ -113,7 +113,7 @@ export function SettingsGroup({ label, children }) {
 
 // ─── FILA DE NAVEGACIÓN (§3.3.D) ─────────────────────────────────────────────
 
-export function SettingsRow({ icon, tint, label, value, badge, disabled, onPress }) {
+export function SettingsRow({ icon, tint, label, value, etiqueta, badge, disabled, onPress }) {
   const [pressed, setPressed] = useState(false);
   const tinte = tint ? TINTS[tint] : null;
   return (
@@ -133,6 +133,11 @@ export function SettingsRow({ icon, tint, label, value, badge, disabled, onPress
         </View>
       )}
       <Text style={k.rowLabel} numberOfLines={1}>{label}</Text>
+      {etiqueta && (
+        <View style={k.etiqueta}>
+          <Text style={k.etiquetaTxt}>{etiqueta}</Text>
+        </View>
+      )}
       {value != null && <Text style={k.rowValue} numberOfLines={1}>{value}</Text>}
       {badge && <View style={k.rowBadge} />}
       {!disabled && <Ionicons name="chevron-forward" size={16} color={T.chevron} />}
@@ -291,6 +296,24 @@ export function SettingsBanner({ icon, text, color = T.amberText, bg = T.amberTi
   );
 }
 
+// ─── VISTA PREVIA: lo que se ve pero todavía no funciona ─────────────────────
+// Va arriba de una pantalla (o de un grupo) cuyos controles se guardan pero
+// todavía no cambian nada en la app. Sobrio a propósito: gris, sin alarma,
+// para que la pantalla se pueda mostrar igual sin que parezca que anda.
+
+export function SettingsVistaPrevia({ texto }) {
+  const tinte = TINTS.legal;
+  return (
+    <View style={[k.vistaPrevia, { backgroundColor: tinte.bg }]} accessibilityRole="text">
+      <Ionicons name="construct-outline" size={18} color={tinte.glifo} style={{ marginTop: 1 }} />
+      <View style={{ flex: 1 }}>
+        <Text style={[k.vistaPreviaTitulo, { color: tinte.glifo }]}>Vista previa</Text>
+        <Text style={[k.vistaPreviaTxt, { color: tinte.glifo }]}>{texto}</Text>
+      </View>
+    </View>
+  );
+}
+
 // ─── ESTILOS ─────────────────────────────────────────────────────────────────
 
 const k = StyleSheet.create({
@@ -356,4 +379,17 @@ const k = StyleSheet.create({
   },
   bannerTxt:    { flex: 1, fontSize: 13, lineHeight: 18 },
   bannerAction: { fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
+
+  vistaPrevia: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, marginTop: 16,
+  },
+  vistaPreviaTitulo: { fontSize: 13, fontWeight: '800', letterSpacing: 0.3, textTransform: 'uppercase' },
+  vistaPreviaTxt:    { fontSize: 13, lineHeight: 18, marginTop: 2 },
+
+  etiqueta: {
+    marginLeft: 'auto', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
+    backgroundColor: TINTS.legal.bg,
+  },
+  etiquetaTxt: { fontSize: 11, fontWeight: '700', color: TINTS.legal.glifo },
 });

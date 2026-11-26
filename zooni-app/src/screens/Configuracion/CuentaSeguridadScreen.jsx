@@ -26,6 +26,7 @@ import AppDialog from '../../components/AppDialog';
 import {
   actualizarBio, actualizarEmail, actualizarMiFotoPerfil, actualizarNombreApellido,
   actualizarNombreUsuario, actualizarTelefono, fechaProximoCambioUsuario, fetchMiCuenta,
+  quitarMiFotoPerfil,
 } from '../../services/perfilApi';
 import { clearToken } from '../../services/api';
 import { clearCurrentUserId, olvidarUltimoMail } from '../../config/session';
@@ -141,7 +142,8 @@ export default function CuentaSeguridadScreen() {
   // ── Foto de perfil: sube la imagen elegida (cámara o galería) ──
   const tomarFoto = async (desdeGaleria) => {
     try {
-      const uri = await elegirImagen({ camara: !desdeGaleria });
+      // Recorte cuadrado: la foto se muestra en un círculo.
+      const uri = await elegirImagen({ camara: !desdeGaleria, cuadrada: true });
       if (!uri) return;
       await actualizarMiFotoPerfil(uri);
       refrescar();
@@ -150,13 +152,23 @@ export default function CuentaSeguridadScreen() {
     }
   };
 
-  // Cartel Zooni con las opciones de origen de la foto
+  const quitarFoto = async () => {
+    try {
+      await quitarMiFotoPerfil();
+      refrescar();
+    } catch {
+      alerta('No pudimos quitar la foto', 'Revisá tu conexión y probá de nuevo.');
+    }
+  };
+
+  // Cartel Zooni con las opciones de origen de la foto (y quitarla, si hay)
   const cambiarFoto = () => setDialogo({
     titulo: 'Foto de perfil',
     mensaje: '¿De dónde querés tomar la foto?',
     botones: [
       { texto: 'Sacar una foto', estilo: 'primary', onPress: () => tomarFoto(false) },
       { texto: 'Elegir de la galería', estilo: 'secondary', onPress: () => tomarFoto(true) },
+      ...(cuenta?.fotoPerfil ? [{ texto: 'Quitar la foto', estilo: 'destructive', onPress: quitarFoto }] : []),
       { texto: 'Cancelar', estilo: 'ghost' },
     ],
   });
@@ -261,7 +273,8 @@ export default function CuentaSeguridadScreen() {
             });
           }} />
 
-        <SettingsAction label="Cambiar foto de perfil" onPress={cambiarFoto} />
+        <SettingsAction label={cuenta.fotoPerfil ? 'Cambiar foto de perfil' : 'Agregar foto de perfil'}
+          onPress={cambiarFoto} />
 
         <SettingsRow label="Biografía" value={cuenta.bio ? undefined : 'Agregar'}
           onPress={() => setModal({

@@ -51,7 +51,7 @@ export const DEFAULTS = {
     text_size: 'normal',
     reduce_motion: false,
     high_contrast: false,
-    upload_quality: 'high',
+    upload_quality: 'medium',
     download_quality: 'auto',
     live_walk_quality: 'auto',
     autoplay: 'wifi',

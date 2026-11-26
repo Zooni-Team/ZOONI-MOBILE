@@ -35,6 +35,7 @@ import { fetchMisMascotas } from '../../services/petsApi';
 import { formatoDuracion, segundosHoy } from '../../services/usoApp';
 import { mailDeLaSesion } from '../../services/authApi';
 import { colores } from '../../theme';
+import { alerta } from '../../utils/dialogo';
 import appJson from '../../../app.json';
 
 // La versión sale de app.json: una sola fuente para la tienda y para la app.
@@ -99,7 +100,7 @@ export default function ConfiguracionScreen() {
     if (Platform.OS === 'web' && navigator?.clipboard) {
       navigator.clipboard.writeText(info).catch(() => {});
     }
-    Alert.alert('Datos de diagnóstico copiados', info);
+    alerta('Datos de diagnóstico copiados', info);
   };
 
   const ir = (ruta) => () => navigation.navigate(ruta);
@@ -145,23 +146,21 @@ export default function ConfiguracionScreen() {
               : null}
             onPress={ir('ConfigMascotas')} />
           <SettingsRow icon="lock-closed-outline" tint="privacidad" label="Privacidad y visibilidad"
-            value={settings.privacy.private_profile ? 'Perfil privado' : 'Perfil público'}
             onPress={ir('ConfigPrivacidad')} />
           <SettingsRow icon="phone-portrait-outline" tint="permisos" label="Permisos de la app"
-            value="2 pendientes" badge onPress={ir('ConfigPermisos')} />
+            onPress={ir('ConfigPermisos')} />
           <SettingsRow icon="notifications-outline" tint="notificaciones" label="Notificaciones y alertas"
-            value={settings.notifications.push_enabled ? 'Activadas' : 'Silenciadas'}
-            onPress={ir('ConfigNotificaciones')} />
+            etiqueta="Vista previa" onPress={ir('ConfigNotificaciones')} />
         </SettingsGroup>
 
         {/* Grupo 3 — App y soporte */}
         <SettingsGroup label="App y soporte">
           <SettingsRow icon="card-outline" tint="pagos" label="Suscripciones y pagos"
-            value="Plan Free" onPress={ir('ConfigSuscripciones')} />
+            etiqueta="Vista previa" onPress={ir('ConfigSuscripciones')} />
           <SettingsRow icon="document-text-outline" tint="legal" label="Legal y Términos"
             onPress={ir('ConfigLegal')} />
           <SettingsRow icon="help-circle-outline" tint="ayuda" label="Ayuda y Soporte"
-            onPress={ir('ConfigAyuda')} />
+            etiqueta="Vista previa" onPress={ir('ConfigAyuda')} />
         </SettingsGroup>
 
         {/* Bloque destructivo (§3.3.E) */}

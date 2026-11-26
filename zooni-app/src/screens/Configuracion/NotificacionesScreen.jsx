@@ -4,12 +4,16 @@
  * El toggle maestro colapsa todos los grupos siguientes.
  * Excepción no configurable: las notificaciones críticas de seguridad de la
  * cuenta se listan como "Siempre activas".
+ *
+ * Todavía no hay notificaciones push (ni expo-notifications ni servidor que
+ * las mande): los avisos llegan a la campana de la app. Por eso toda la
+ * pantalla va con el aviso de vista previa.
  */
 
 import React, { useState } from 'react';
 
 import {
-  SettingsGroup, SettingsInfo, SettingsScreen, SettingsSelect, SettingsToggle,
+  SettingsGroup, SettingsInfo, SettingsScreen, SettingsSelect, SettingsToggle, SettingsVistaPrevia,
 } from '../../components/settings/SettingsKit';
 import { getSettings, patchSettings } from '../../services/settingsStore';
 
@@ -22,6 +26,8 @@ export default function NotificacionesScreen() {
 
   return (
     <SettingsScreen title="Notificaciones y alertas">
+
+      <SettingsVistaPrevia texto="Zooni todavía no manda notificaciones al teléfono: los avisos (mensajes, solicitudes, turnos, paseos) llegan a la campana dentro de la app. Lo que elijas acá queda guardado para cuando estén." />
 
       <SettingsGroup>
         <SettingsToggle label="Notificaciones push"

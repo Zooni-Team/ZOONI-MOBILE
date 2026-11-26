@@ -23,9 +23,18 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 
 import { alerta } from './dialogo';
+import { getSettings } from '../services/settingsStore';
 
-/** Calidad JPEG por defecto: buena para pantalla, liviana para subir. */
+/** Calidad JPEG "media": buena para pantalla, liviana para subir. */
 export const CALIDAD_FOTO = 0.7;
+
+// Configuración › Medios y Calidad › "Calidad de subida de fotos".
+const CALIDAD_POR_PREFERENCIA = { high: 0.85, medium: CALIDAD_FOTO, low: 0.5 };
+
+/** La calidad JPEG que eligió la persona para lo que sube (0..1). */
+export function calidadDeSubida() {
+  return CALIDAD_POR_PREFERENCIA[getSettings().device.upload_quality] ?? CALIDAD_FOTO;
+}
 
 async function pedirPermiso(camara) {
   const permiso = camara
@@ -60,8 +69,9 @@ async function limpiarExif(uri, calidad) {
  * Devuelve la uri local de la foto elegida (ya sin EXIF), o null si canceló o
  * no hay permiso.
  * opciones: { camara = false, cuadrada = false, frontal = false, calidad }
+ * Sin `calidad`, usa la que eligió la persona en Configuración (calidadDeSubida).
  */
-export async function elegirImagen({ camara = false, cuadrada = false, frontal = false, calidad = CALIDAD_FOTO } = {}) {
+export async function elegirImagen({ camara = false, cuadrada = false, frontal = false, calidad = calidadDeSubida() } = {}) {
   if (!(await pedirPermiso(camara))) return null;
 
   const opciones = {
@@ -93,7 +103,7 @@ export async function elegirMedios({ camara = false, limite = 1, videoMaxSegundo
   if (!(await pedirPermiso(camara))) return [];
   const opciones = {
     mediaTypes: ImagePicker.MediaTypeOptions.All,
-    quality: CALIDAD_FOTO,
+    quality: calidadDeSubida(),
     videoMaxDuration: videoMaxSegundos,
     allowsMultipleSelection: !camara,
     selectionLimit: limite,
@@ -108,6 +118,6 @@ export async function elegirMedios({ camara = false, limite = 1, videoMaxSegundo
       || a.mimeType?.startsWith('video/')
       || /\.(mp4|mov|m4v|webm|3gp)$/i.test(a.uri ?? '');
     if (esVideo || !a.uri) return a;
-    return { ...a, uri: await limpiarExif(a.uri, CALIDAD_FOTO) };
+    return { ...a, uri: await limpiarExif(a.uri, calidadDeSubida()) };
   }));
 }
