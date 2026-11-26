@@ -27,11 +27,16 @@ Ordenado por prioridad. Lo hecho en la última pasada está al final.
    las que reaplica la 066 (`42710: policy already exists`). Si en el futuro se
    mueve SQL de un archivo a otro, correr `probar-esquema.mjs` **antes** de
    pegarlo: eso lo agarra en segundos.
-1b. **Pegar la `MIGRACION_071_INTEGRIDAD.sql`** (después de la 070) — anti-trampa
+1b. ~~**Pegar la `MIGRACION_071_INTEGRIDAD.sql`**~~ — **hecho el 26/11/2026**
+   (con el arreglo de `ReanudadoEn`): anti-trampa
    del paseo con ancla fija, límite de mascotas en la base, mascota principal
-   atómica y fecha de mensajes del servidor. ⚠ **No se pudo probar contra un
-   Postgres**: antes de pegarla, correr `node supabase/scripts/probar-esquema.mjs`
-   (ya incluye `tests/pruebas_071.sql`). La app desplegada funciona sin ella.
+   atómica y fecha de mensajes del servidor. **Probada el 26/11/2026**: la
+   secuencia completa (base → 071, dos pasadas) y todas las `tests/pruebas_*.sql`
+   pasan (sobre PGlite, un Postgres embebido, porque no había `psql` ni Docker).
+   En esa prueba se le agregó que `ReanudadoEn` lo fije el reloj del servidor:
+   la app lo manda con la hora del teléfono y, con un reloj adelantado, la base
+   rechazaba la pausa de un paseo legítimo (y uno atrasado a propósito inflaba
+   el cobro). La app desplegada funciona sin ella.
 1c. **Redesplegar ZooniVet** (`supabase functions deploy zoonivet-chat`): ahora
    firma cada respuesta y descarta del historial los turnos de assistant sin
    firma válida (no se le pueden inventar respuestas previas), limpia todos
@@ -42,7 +47,7 @@ Ordenado por prioridad. Lo hecho en la última pasada está al final.
 2. **ZooniVet** — la función cambió (nombre leído de la base, cupo diario,
    tiempo máximo, CORS por lista de orígenes, errores sin detalles internos):
    ```bash
-   supabase secrets set ALLOWED_ORIGINS=https://tu-dominio.vercel.app
+   supabase secrets set ALLOWED_ORIGINS=https://zooni-mobile.vercel.app
    supabase functions deploy zoonivet-chat
    ```
    Sin `ALLOWED_ORIGINS` el navegador no deja que la app web la llame (en

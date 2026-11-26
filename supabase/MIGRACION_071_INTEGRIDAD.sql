@@ -122,6 +122,15 @@ BEGIN
       -- crecía con cada update, mandando muchos seguidos (o estando en pausa,
       -- con ReanudadoEn NULL) se podía inflar el tiempo y la distancia sin
       -- límite, y con eso el cobro proporcional.
+      --
+      -- Y el ancla la pone el reloj del SERVIDOR: la app manda ReanudadoEn con
+      -- la hora del teléfono. Con un reloj adelantado, al pausar el tramo que
+      -- calcula la base quedaba corto y se rechazaba un paseo legítimo; con
+      -- uno "atrasado a propósito" se inflaba el tramo. Lo que la app guarda
+      -- localmente sigue siendo su hora: sólo mide duraciones, que coinciden.
+      IF NEW."ReanudadoEn" IS NOT NULL AND NEW."ReanudadoEn" IS DISTINCT FROM OLD."ReanudadoEn" THEN
+        NEW."ReanudadoEn" := now();
+      END IF;
       v_tramo := CASE WHEN OLD."ReanudadoEn" IS NULL THEN 0
                       ELSE GREATEST(0, EXTRACT(EPOCH FROM (now() - OLD."ReanudadoEn"))::INTEGER) END;
 

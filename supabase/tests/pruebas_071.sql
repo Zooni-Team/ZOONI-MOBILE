@@ -40,11 +40,16 @@ BEGIN
   VALUES (duena, mascota, 'pendiente', 1000, 1000, 30)
   RETURNING "Id_Paseo" INTO paseo;
 
+  -- Asignado al paseador como superusuario (ver la misma nota en pruebas_070:
+  -- un UPDATE directo del paseador sobre un paseo abierto no toca filas).
+  UPDATE "Paseo" SET "Estado" = 'aceptado', "Id_Walker" = pas WHERE "Id_Paseo" = paseo;
+
   -- ── #1: el margen no se acumula ────────────────────────────────────────────
   PERFORM pg_temp.como(pas_auth);
-  UPDATE "Paseo" SET "Estado" = 'aceptado', "Id_Walker" = pas WHERE "Id_Paseo" = paseo;
   UPDATE "Paseo" SET "Estado" = 'en_curso', "HoraInicio" = now(), "ReanudadoEn" = now()
   WHERE "Id_Paseo" = paseo;
+  ASSERT (SELECT "Estado" FROM "Paseo" WHERE "Id_Paseo" = paseo) = 'en_curso',
+    'el paseador arranca su paseo (si no, lo de abajo no prueba nada)';
 
   -- Con el tramo abierto, los segundos no se pueden subir sin cerrarlo
   fallo := FALSE;
@@ -74,6 +79,18 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN fallo := TRUE;
   END;
   ASSERT fallo, 'en pausa no se pueden sumar segundos (#1)';
+
+  -- Reanudar con una hora del teléfono "vieja" no agranda el tramo: el ancla
+  -- es la hora del servidor, así que después no se pueden cobrar 2 horas.
+  UPDATE "Paseo" SET "ReanudadoEn" = now() - interval '2 hours' WHERE "Id_Paseo" = paseo;
+  ASSERT (SELECT "ReanudadoEn" FROM "Paseo" WHERE "Id_Paseo" = paseo) = now(),
+    'ReanudadoEn lo fija el reloj del servidor, no el del teléfono';
+  fallo := FALSE;
+  BEGIN
+    UPDATE "Paseo" SET "SegundosAcumulados" = 25 + 7200, "ReanudadoEn" = NULL WHERE "Id_Paseo" = paseo;
+  EXCEPTION WHEN OTHERS THEN fallo := TRUE;
+  END;
+  ASSERT fallo, 'no se puede pausar declarando un tramo que no pasó';
   PERFORM pg_temp.salir();
 
   -- ── #15: una sola principal ────────────────────────────────────────────────

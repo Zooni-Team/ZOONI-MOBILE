@@ -39,6 +39,9 @@ DECLARE
   sufijo TEXT := substr(md5(random()::TEXT), 1, 8);
   ana_auth UUID := gen_random_uuid();
   beto_auth UUID := gen_random_uuid();
+  -- La cuenta vieja tiene su propia sesión: reusar ana_auth dejaba a "Ana"
+  -- sin usuario en todo lo que viene después (amistades, mascota_publica…).
+  vieja_auth UUID;
   ana INTEGER; beto INTEGER;
   mascota_ana INTEGER; mascota_beto INTEGER;
   negocio INTEGER; item INTEGER; servicio_item INTEGER;
@@ -243,8 +246,8 @@ BEGIN
   RETURNING "Id_User" INTO n;
   INSERT INTO user_credentials (id_user, hash) VALUES (n, repeat('a', 64));
   INSERT INTO auth.users (id, email) VALUES (gen_random_uuid(), 'vieja.' || sufijo || '@prueba.test')
-  RETURNING id INTO ana_auth;
-  PERFORM pg_temp.como(ana_auth);
+  RETURNING id INTO vieja_auth;
+  PERFORM pg_temp.como(vieja_auth);
   fallo := FALSE;
   BEGIN
     PERFORM login_social();
@@ -302,8 +305,9 @@ BEGIN
 
   -- ── 070: un paseador no puede aceptar su propio pedido de paseo (#64) ─────
   PERFORM pg_temp.como(ana_auth);
-  INSERT INTO "Paseo" ("Id_Mascota", "Id_Dueno", "FechaProgramada", "DuracionMin", "Precio")
-  VALUES (mascota_ana, ana, now() + interval '2 days', 30, 1) RETURNING "Id_Paseo" INTO paseo_abierto;
+  INSERT INTO "Paseo" ("Id_Mascota", "Id_Dueno", "FechaProgramada", "DuracionMin", "Precio", "Direccion")
+  VALUES (mascota_ana, ana, now() + interval '2 days', 30, 1, 'Av. Corrientes 1234')
+  RETURNING "Id_Paseo" INTO paseo_abierto;
   fallo := FALSE;
   BEGIN
     PERFORM aceptar_solicitud_paseo(paseo_abierto, NULL);

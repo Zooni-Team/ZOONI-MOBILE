@@ -96,7 +96,10 @@ BEGIN
   fallo := FALSE;
   BEGIN
     INSERT INTO paseador_opiniones (id_walker, id_autor, rating) VALUES (pas, pas, 5);
-  EXCEPTION WHEN insufficient_privilege THEN fallo := TRUE;
+  -- Con la 066 sola lo frena la RLS; desde la 070, el trigger con su motivo.
+  EXCEPTION
+    WHEN insufficient_privilege THEN fallo := TRUE;
+    WHEN raise_exception THEN fallo := SQLERRM = 'no_podes_opinar_de_vos_mismo';
   END;
   ASSERT fallo, 'un paseador no opina de sí mismo';
   PERFORM pg_temp.salir();

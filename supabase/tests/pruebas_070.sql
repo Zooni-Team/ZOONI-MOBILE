@@ -137,11 +137,18 @@ BEGIN
   ASSERT fallo, 'nadie puede aceptar su propio paseo (#64)';
   PERFORM pg_temp.salir();
 
-  -- El paseador lo toma y lo arranca
-  PERFORM pg_temp.como(pas_auth);
+  -- Queda asignado al paseador (como superusuario: aceptar por la app es la
+  -- RPC aceptar_solicitud_paseo, que pide perfil de paseador; acá interesa
+  -- el progreso). Un UPDATE directo del paseador no lo toma: la RLS no le
+  -- deja ver un paseo abierto, y el UPDATE pasaba en silencio sin filas.
   UPDATE "Paseo" SET "Estado" = 'aceptado', "Id_Walker" = pas WHERE "Id_Paseo" = paseo;
+
+  -- El paseador lo arranca
+  PERFORM pg_temp.como(pas_auth);
   UPDATE "Paseo" SET "Estado" = 'en_curso', "HoraInicio" = now(), "ReanudadoEn" = now()
   WHERE "Id_Paseo" = paseo;
+  ASSERT (SELECT "Estado" FROM "Paseo" WHERE "Id_Paseo" = paseo) = 'en_curso',
+    'el paseador arranca su paseo (si no, lo de abajo no prueba nada)';
 
   -- #17: no puede reportar más segundos que los que pasaron de verdad
   fallo := FALSE;
