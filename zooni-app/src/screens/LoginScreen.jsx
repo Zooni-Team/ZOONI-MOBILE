@@ -35,6 +35,7 @@ import { MASCOTAS_BIENVENIDA } from '../constants/registroImages';
 import BotonesSociales from '../components/BotonesSociales';
 import { colores } from '../theme';
 import { EMAIL_REGEX } from '../utils/validacion';
+import { avisarSiSeCanceloLaBaja } from '../utils/dialogo';
 
 export default function LoginScreen() {
   const navigation = useNavigation();
@@ -98,6 +99,7 @@ export default function LoginScreen() {
       // "Cambiar contraseña" antes de entrar (informe de seguridad #90).
       if (usuario.debeCambiarContrasena) rutas.push({ name: 'ConfigCambiarContrasena', params: { forzado: true } });
       navigation.reset({ index: rutas.length - 1, routes: rutas });
+      avisarSiSeCanceloLaBaja(usuario);
     } catch (err) {
       if (err?.message === 'credenciales') {
         setErrorLogin('Email o contraseña incorrectos');

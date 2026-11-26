@@ -163,8 +163,10 @@ export async function activarPaseador({ email, perfil }) {
  * La RPC verifica en el servidor que el rol exista.
  */
 export async function completarPerfilPaseador(perfil) {
+  // p_id_user queda en la firma por compatibilidad: la base usa el de la
+  // sesión (usuario_actual) y lo ignora (070).
   const { error } = await supabase.rpc('completar_perfil_paseador', {
-    p_id_user: getCurrentUserId(), p_perfil: perfilParaRpc(perfil),
+    p_id_user: null, p_perfil: perfilParaRpc(perfil),
   });
   if (error) {
     if (String(error.message ?? '').includes('no_es_paseador')) throw new Error('no_es_paseador');

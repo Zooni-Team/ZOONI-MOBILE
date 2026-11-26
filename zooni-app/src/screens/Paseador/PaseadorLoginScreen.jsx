@@ -22,6 +22,7 @@ import BotonesSociales from '../../components/BotonesSociales';
 import { volverOLogin } from '../../utils/volverOLogin';
 import { colores } from '../../theme';
 import { EMAIL_REGEX } from '../../utils/validacion';
+import { avisarSiSeCanceloLaBaja } from '../../utils/dialogo';
 
 export default function PaseadorLoginScreen() {
   const navigation = useNavigation();
@@ -61,6 +62,7 @@ export default function PaseadorLoginScreen() {
       // "Cambiar contraseña" antes de entrar (informe de seguridad #90).
       if (res.usuario?.debeCambiarContrasena) rutas.push({ name: 'ConfigCambiarContrasena', params: { forzado: true } });
       navigation.reset({ index: rutas.length - 1, routes: rutas });
+      avisarSiSeCanceloLaBaja(res.usuario);
     } catch (err) {
       setError(err?.message === 'credenciales'
         ? 'Email o contraseña incorrectos'

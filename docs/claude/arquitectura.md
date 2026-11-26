@@ -50,7 +50,7 @@ utils/  ·  domain/  ·  constants/                    lógica pura → utilidad
 | Carpeta | Qué es |
 |---|---|
 | `zooni-app/` | La app. `src/` (código), `tests/`, `scripts/` (verificaciones), `wwwroot/img` (ilustraciones) |
-| `supabase/SUPABASE_PEGAR_TODO.sql` + `MIGRACION_064…071_*.sql` | La base completa: el primero y después las migraciones por número ([base-de-datos](base-de-datos.md)) |
+| `supabase/SUPABASE_PEGAR_TODO.sql` + `MIGRACION_064…072_*.sql` | La base completa: el primero y después las migraciones por número ([base-de-datos](base-de-datos.md)) |
 | `supabase/functions/` | Edge Function `zoonivet-chat` |
 | `supabase/scripts/` · `tests/` | `probar-esquema.mjs` (la secuencia en Postgres local + pruebas) y `limpiar-storage.mjs` (archivos huérfanos) |
 | `api/` | Función de Vercel `lugares.js` (mapa de Servicios) |

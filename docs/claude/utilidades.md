@@ -68,6 +68,9 @@ pasos (`ACCIONES_TURNO`, `siguienteEstadoPedido`, `unidadesDe`) y formatos
 - Subir archivos: `services/imagenStorage.js` (habla con Storage, por eso es un
   servicio) — `subirImagenPublica`, `subirArchivoPublico`, `subirImagenPrivada`,
   `urlsFirmadas`. Sube a `<auth uid>/<carpeta>/` (ver [seguridad](seguridad.md#storage)).
+  Sólo sube lo que `utils/tipoDeArchivo.tipoReal(bytes)` reconoce como imagen
+  (o video, en reseñas), con ese tipo, y con `nombreAlAzar(ext)` de nombre;
+  si no, tira `Error('archivo_invalido')`.
   Para borrar: `borrarImagenPublica(url)` / `borrarArchivoPrivado(ruta)`, que
   no tiran nunca, y `esUrlPropia(url)` para no mostrar links externos escritos
   por otra cuenta (#42).

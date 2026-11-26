@@ -73,6 +73,7 @@ import MisTurnosScreen          from './src/screens/MisTurnosScreen';
 import { fetchRolesCuenta }     from './src/services/paseadorApi';
 import { rutaSegunRoles }       from './src/utils/rutaSegunRoles';
 import { completarRetornoSocial, hayRetornoSocial } from './src/services/socialAuthApi';
+import { avisarSiSeCanceloLaBaja } from './src/utils/dialogo';
 import { colores } from './src/theme';
 
 const Stack = createNativeStackNavigator();
@@ -100,6 +101,7 @@ async function rutaTrasLoginSocial() {
   }
 
   // Cuenta existente: la sesión ya quedó iniciada
+  avisarSiSeCanceloLaBaja(res.usuario);
   const roles = await rolesCon4s(res.usuario.id);
   if (res.intencion === 'paseador') {
     if (roles?.esPaseador) {

@@ -12,6 +12,7 @@ import {
 } from '../src/utils/sanitizar.js';
 import { etiquetaDia, horaCorta, mismoDia, tiempoRelativo } from '../src/utils/tiempoRelativo.js';
 import { colores, COLOR_POR_HEX } from '../src/theme/colores.js';
+import { nombreAlAzar, tipoReal } from '../src/utils/tipoDeArchivo.js';
 
 const HOY = new Date(2026, 10, 6); // 6 de noviembre de 2026
 
@@ -222,5 +223,41 @@ describe('estadoVigente (paseos vencidos)', () => {
   test('finalizado o cancelado no cambian', async () => {
     const { estadoVigente } = await import('../src/domain/paseos.js');
     assert.equal(estadoVigente({ estado: 'finalizado', fecha: '2020-01-01T00:00:00Z' }, ahora), 'finalizado');
+  });
+});
+
+describe('tipoDeArchivo (#71, #135-#137)', () => {
+  const bytes = (...partes) => {
+    const out = [];
+    for (const p of partes) out.push(...(typeof p === 'string' ? [...p].map((c) => c.charCodeAt(0)) : p));
+    while (out.length < 16) out.push(0);
+    return new Uint8Array(out);
+  };
+
+  test('reconoce imágenes y videos por sus bytes', () => {
+    assert.deepEqual(tipoReal(bytes([0xff, 0xd8, 0xff, 0xe0])), { mime: 'image/jpeg', ext: 'jpg' });
+    assert.deepEqual(tipoReal(bytes([0x89], 'PNG', [0x0d, 0x0a, 0x1a, 0x0a])), { mime: 'image/png', ext: 'png' });
+    assert.deepEqual(tipoReal(bytes('GIF89a')), { mime: 'image/gif', ext: 'gif' });
+    assert.deepEqual(tipoReal(bytes('RIFF', [1, 2, 3, 4], 'WEBP')), { mime: 'image/webp', ext: 'webp' });
+    assert.deepEqual(tipoReal(bytes([0, 0, 0, 24], 'ftypheic')), { mime: 'image/heic', ext: 'heic' });
+    assert.deepEqual(tipoReal(bytes([0, 0, 0, 24], 'ftypisom')), { mime: 'video/mp4', ext: 'mp4' });
+    assert.deepEqual(tipoReal(bytes([0, 0, 0, 20], 'ftypqt  ')), { mime: 'video/quicktime', ext: 'mov' });
+    assert.deepEqual(tipoReal(bytes([0, 0, 0, 20], 'ftyp3gp4')), { mime: 'video/3gpp', ext: '3gp' });
+    assert.deepEqual(tipoReal(bytes([0x1a, 0x45, 0xdf, 0xa3])), { mime: 'video/webm', ext: 'webm' });
+  });
+
+  test('lo demás no pasa, diga lo que diga la extensión', () => {
+    assert.equal(tipoReal(bytes('<!DOCTYPE html><script>')), null);
+    assert.equal(tipoReal(bytes('%PDF-1.7')), null);
+    assert.equal(tipoReal(bytes([0, 0, 0, 24], 'ftypavif')), null);
+    assert.equal(tipoReal(new Uint8Array([0xff, 0xd8])), null);
+    assert.equal(tipoReal(null), null);
+    assert.equal(tipoReal(bytes([0xff, 0xd8, 0xff]).buffer).mime, 'image/jpeg');
+  });
+
+  test('nombreAlAzar: 128 bits en hex, distinto cada vez', () => {
+    const a = nombreAlAzar('jpg');
+    assert.match(a, /^[0-9a-f]{32}\.jpg$/);
+    assert.notEqual(nombreAlAzar('jpg'), a);
   });
 });

@@ -7,28 +7,31 @@ import { supabase } from '../../lib/supabase';
 import { resolveMascotaVisual } from '../../constants/petImages';
 import { perfilesPorId } from '../perfilesPublicos';
 import { mapNegocio } from './perfil';
+import { datosDeClientePorMascota } from '../mascotasDeClientes';
 
 export async function mascotasPorId(ids) {
   const lista = [...new Set(ids.filter(Boolean))];
   if (!lista.length) return {};
   // Son las mascotas de los CLIENTES, no del negocio: "Mascota" sólo devuelve
   // la fila propia (informe de seguridad #12), así que va por
-  // "mascota_publica". La vista no expone Peso ni FechaNacimiento (son datos
-  // de salud): trae "Tamano" —que es lo que el precio necesita— y "EdadAnios"
-  // ya calculada. Pendiente del lado de la base: una vista aparte para
-  // negocio-con-turno que sí incluya el peso, para la ficha del paciente.
-  const { data } = await supabase.from('mascota_publica')
-    .select('Id_Mascota, Id_User, Nombre, Especie, Raza, Tamano, Foto, ImagenAsset, MostrarFoto, EdadAnios')
-    .in('Id_Mascota', lista);
+  // "mascota_publica" (con "Tamano", que es lo que el precio necesita, y
+  // "EdadAnios" ya calculada). Peso y fecha de nacimiento son datos de salud:
+  // llegan aparte, sólo de las mascotas con un turno con este negocio.
+  const [{ data }, clientes] = await Promise.all([
+    supabase.from('mascota_publica')
+      .select('Id_Mascota, Id_User, Nombre, Especie, Raza, Tamano, Foto, ImagenAsset, MostrarFoto, EdadAnios')
+      .in('Id_Mascota', lista),
+    datosDeClientePorMascota(lista),
+  ]);
   return Object.fromEntries((data ?? []).map((m) => [m.Id_Mascota, {
     id: m.Id_Mascota,
     nombre: m.Nombre ?? 'Mascota',
     especie: m.Especie,
     raza: m.Raza,
     tamano: m.Tamano ?? null,
-    peso: null,
+    peso: clientes[m.Id_Mascota]?.peso ?? null,
     edadAnios: m.EdadAnios ?? null,
-    nacimiento: null,
+    nacimiento: clientes[m.Id_Mascota]?.nacimiento ?? null,
     visual: resolveMascotaVisual({
       fotoUrl: m.Foto, imagenAsset: m.ImagenAsset, especie: m.Especie, raza: m.Raza, mostrarFoto: m.MostrarFoto,
     }),

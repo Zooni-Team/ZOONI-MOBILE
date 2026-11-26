@@ -93,16 +93,14 @@ async function cuentaDeLaSesion() {
  * @returns {{ id, nombre, apellido, email, fotoPerfil, debeCambiarContrasena? }}
  * Lanza Error('credenciales') si mail o contraseña no coinciden (sin decir cuál).
  *
- * `debeCambiarContrasena` sale en true cuando la cuenta se acaba de migrar
- * (ver migrarCuentaVieja) y la contraseña que traía de antes no cumple la
- * regla de hoy: la 065 la pasa a bcrypt tal cual, así que una contraseña de
- * 4 caracteres de la época del SHA-256 seguiría sirviendo. Los tres logins
- * mandan a ConfigCambiarContrasena cuando viene en true.
- *
- * Límite conocido: se avisa UNA sola vez, en el login de la migración. La 065
- * borra el hash viejo, así que después no hay forma de distinguir esa cuenta
- * de cualquier otra; si la persona no cambia la contraseña ahí, nadie se lo
- * vuelve a pedir. Forzarlo de verdad (bloquear la navegación) queda pendiente.
+ * `debeCambiarContrasena` sale en true mientras la cuenta tenga una
+ * contraseña heredada que no cumple la regla de hoy: la 065 la pasa a bcrypt
+ * tal cual, así que una contraseña de 4 caracteres de la época del SHA-256
+ * seguiría sirviendo. La base lo anota al migrar ("User".DebeCambiarContrasena,
+ * 072) y login_social lo devuelve en CADA login hasta que se cambie
+ * (perfilApi.cambiarMiContrasena la baja). Los tres logins mandan a
+ * ConfigCambiarContrasena cuando viene en true. El `migrada && …` de abajo
+ * cubre una base sin la 072.
  */
 export async function iniciarSesionConPassword(email, password) {
   const mail = email.trim().toLowerCase();
@@ -122,9 +120,10 @@ export async function iniciarSesionConPassword(email, password) {
     throw error;
   }
   const cuenta = await cuentaDeLaSesion();
-  return migrada && !esPasswordValida(password)
-    ? { ...cuenta, debeCambiarContrasena: true }
-    : cuenta;
+  return {
+    ...cuenta,
+    debeCambiarContrasena: cuenta.debeCambiarContrasena === true || (migrada && !esPasswordValida(password)),
+  };
 }
 
 /**
@@ -197,6 +196,11 @@ export async function login(email, password) {
       apellido: usuario.apellido,
       email: usuario.email,
       fotoPerfil: usuario.fotoPerfil ?? null,
+      // Los dos avisos del login (ver iniciarSesionConPassword y login_social):
+      // antes este objeto se armaba sin ellos y LoginScreen nunca mandaba a
+      // cambiar la contraseña débil de una cuenta migrada.
+      debeCambiarContrasena: usuario.debeCambiarContrasena === true,
+      bajaCancelada: usuario.bajaCancelada === true,
     },
     mascotaActiva: mascotaActiva
       ? {
@@ -383,4 +387,53 @@ export async function registro(datos) {
     usuarioNoGuardado,
     usuario: { id: data.id, nombre: usuario.nombre.trim(), apellido: usuario.apellido.trim(), email: data.email ?? mail },
   };
+}
+
+// ─────────────────────────────────────────────
+// BAJA DE LA CUENTA (MIGRACION_072)
+// ─────────────────────────────────────────────
+
+/**
+ * ¿La cuenta de la sesión entra con mail y contraseña? Una cuenta que sólo
+ * usa Google / Facebook / Apple no tiene contraseña que pedirle.
+ */
+export async function cuentaTieneContrasena() {
+  const { data } = await supabase.auth.getSession();
+  const meta = data?.session?.user?.app_metadata ?? {};
+  const proveedores = meta.providers ?? (meta.provider ? [meta.provider] : []);
+  return proveedores.includes('email');
+}
+
+/**
+ * Pide la baja de la cuenta. No borra nada en el momento: la base anota el
+ * pedido, oculta el perfil y las mascotas, y a los 30 días la purga (que
+ * corre en pg_cron) borra lo personal. Volver a iniciar sesión antes la
+ * cancela (login_social devuelve `bajaCancelada`).
+ *
+ * Si la cuenta tiene contraseña, se comprueba volviendo a iniciar sesión con
+ * ella: la base no la conoce, Supabase Auth sí.
+ * @returns {Promise<Date>} cuándo se borra.
+ * Lanza Error('credenciales') si la contraseña no coincide.
+ */
+export async function solicitarBajaDeCuenta({ password, motivo, motivoTexto }) {
+  const { data: sesion } = await supabase.auth.getSession();
+  const mail = sesion?.session?.user?.email;
+  if (!mail) throw new Error('sin_sesion');
+
+  if (await cuentaTieneContrasena()) {
+    const { error } = await supabase.auth.signInWithPassword({ email: mail, password: password ?? '' });
+    if (error) {
+      if (/invalid login credentials|invalid_credentials/i.test(`${error.code} ${error.message}`)) {
+        throw new Error('credenciales');
+      }
+      throw error;
+    }
+  }
+
+  const { data, error } = await supabase.rpc('solicitar_eliminacion_cuenta', {
+    p_motivo: motivo ?? null,
+    p_motivo_texto: motivoTexto?.trim() || null,
+  });
+  if (error) throw errorBase(error);
+  return new Date(data);
 }

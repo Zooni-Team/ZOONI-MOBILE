@@ -12,7 +12,9 @@ final.
 
 ## 2. Para terminar de poner en producción
 
-1. **Comprobar la consulta 6** (la única imagen que se mudó al bucket
+1. ✔ **`MIGRACION_072` aplicada en producción** (26/11; verificado con
+   `to_regprocedure('public.purgar_cuentas_eliminadas()')`).
+2. **Comprobar la consulta 6** (la única imagen que se mudó al bucket
    privado). Sólo la ve su dueño. Para saber de quién es, en el SQL Editor:
    ```sql
    SELECT c.id AS consulta, m."Nombre" AS mascota, u."Mail" AS dueno
@@ -24,17 +26,19 @@ final.
    Entrar con esa cuenta → menú ☰ → Ficha Médica → "Consultas veterinarias"
    y ver que la imagen cargue. Si no, F12 → consola → copiar el error.
    (Opcional: el script ya verificó la subida antes de borrar la pública.)
-2. **Dashboard de Supabase** (no se puede hacer desde el SQL):
+3. **Dashboard de Supabase** (no se puede hacer desde el SQL):
    - Authentication → Providers → Email → **"Confirm email": activar** (#21:
      sin eso, un `signUp` con un mail ajeno puede quedarse con una cuenta
      vieja sin migrar).
    - Authentication → Policies → **contraseña mínima de 8** (#76).
-   - Database → Extensions → activar **`pg_cron`** y programar
-     `SELECT _purgar_datos_antiguos();` una vez por día (#74: purga
-     `PaseoTrack` y `sos_call_logs` viejos).
+   - ✔ **`pg_cron` activo** (26/11): job `zooni_purgas_diarias`, todos los
+     días 03:30 UTC → `SELECT public._purgar_datos_antiguos()` (`PaseoTrack` y
+     `sos_call_logs` viejos, mascotas y cuentas dadas de baja hace 30 días).
+     Ver que corra: `SELECT status, return_message, start_time FROM
+     cron.job_run_details ORDER BY start_time DESC LIMIT 5;`
    - Google Cloud Console: restringir por dominio la clave de Google Places
      (#150).
-3. **Probar en la app real** (https://zooni-mobile.vercel.app y en el
+4. **Probar en la app real** (https://zooni-mobile.vercel.app y en el
    celular). Primero:
    - **Paseo completo: iniciar → pausar → reanudar → finalizar.** Es lo que
      cambió la 071. Si aparece "progreso inválido" en un paseo normal, el
@@ -46,7 +50,16 @@ final.
      base, 071).
    - **ZooniVet** desde la web, con sesión iniciada (CORS ya verificado; falta
      ver una respuesta real, que confirma `GROQ_API_KEY`).
-   - Login con cuenta vieja (pide cambiar la contraseña si no llega a 8),
+   - **Eliminar mi cuenta** (072) con una cuenta de prueba: pide la
+     contraseña (no a una cuenta de Google), cierra sesión, otra cuenta ya no
+     la ve en Comunidad/Match; volver a entrar avisa "Recuperaste tu cuenta".
+   - **Subir fotos** desde el iPhone y desde Android (perfil, mascota,
+     cartel, consulta, reseña con video): ahora se mira el contenido real del
+     archivo. Si alguna falla con "archivo_invalido", anotar qué formato era.
+   - Paseador con un paseo aceptado y veterinaria con un turno: la tarjeta
+     del paseo y la ficha del paciente muestran el **peso** (072).
+   - Login con cuenta vieja (pide cambiar la contraseña si no llega a 8, y
+     lo sigue pidiendo en cada login hasta cambiarla),
      registro, pedido, turno, subir foto, consulta con imagen, chat en vivo
      con dos sesiones, Calendario, Eventos, Tiempo en la app.
    - **CSP** (`vercel.json`): si algo no carga en la web, F12 → consola →
@@ -56,6 +69,8 @@ final.
 
 ## 3. Decisiones de producto
 
+- **Piso de precio por minuto** en solicitudes abiertas de paseo (#119):
+  hace falta decidir la tarifa mínima; después es un CHECK en el trigger.
 - **Veterinarias reales** en `veterinary_clinics`: hoy el SOS muestra líneas
   de emergencia y la salida a Google Maps, sin lista propia.
 - **Verificación de paseadores**: nadie verifica. El dueño ve "Identidad sin
@@ -79,19 +94,21 @@ final.
 
 ## 5. Deuda del informe de seguridad
 
-No resuelto (detallado al final de la 070): límite de frecuencia en toda
-escritura (#38), verificar el contenido real de un archivo subido y no sólo
-el `contentType` (#71), nombres de archivo no predecibles (#135–#137), piso
-de precio por minuto en solicitudes abiertas de paseo (#119), `search_path`
-vacío en las funciones viejas de 000–063 (#100), `EliminarCuentaScreen` que
-no llama a ningún servicio (#22).
+No resuelto: **límite de frecuencia en toda escritura** (#38). Hoy está sólo
+donde el informe lo pedía (turnos, pedidos, login de cuentas viejas,
+ZooniVet). Hacerlo general necesita decidir topes por tabla, o un proxy
+delante de PostgREST.
 
 Límites conocidos de lo que sí se hizo:
-- Negocios y paseadores no ven el **peso** ni la fecha de nacimiento de
-  mascotas ajenas (no están en `mascota_publica`). Haría falta una vista para
-  negocio-con-turno y paseador-con-paseo.
-- El aviso de "cambiá la contraseña" tras migrar una cuenta vieja sale **una
-  sola vez** (la 065 borra el hash viejo). Forzarlo de verdad queda pendiente.
+- El tipo real de un archivo (#71) se comprueba **en la app**, por sus
+  bytes. Quien use la API de Storage directo con su token se lo saltea
+  (frena el bucket: tamaño y lista de tipos). Del lado del servidor haría
+  falta un webhook de Storage.
+- Las RPC de la 070–072 (`crear_notificacion`, `marcar_mascota_principal`,
+  `solicitar_eliminacion_cuenta`…) ahora están en la lista blanca de la 067:
+  volver a pegar sólo la 067 ya no las cierra.
+- Los archivos que ya estaban en Storage conservan su nombre viejo
+  (`<timestamp>-<n>`); sólo los nuevos son al azar.
 
 ## 6. Defensa oral
 
@@ -103,7 +120,7 @@ Repasar `docs/claude/flujos.md` y `docs/claude/base-de-datos.md`.
 
 **Orden de la base** (para una base nueva): `SUPABASE_PEGAR_TODO.sql` y
 después, cada uno entero, `MIGRACION_064…`, `065`, `066`, `067`, `068`,
-`070`, `071`. Cada uno verifica el anterior y es idempotente. La 070 va
+`070`, `071`, `072`. Cada uno verifica el anterior y es idempotente. La 070 va
 después de la 066 a propósito (la 066 reaplica políticas permisivas que la
 070 endurece). Si se mueve SQL de un archivo a otro, correr
 `node supabase/scripts/probar-esquema.mjs` **antes** de pegarlo.
@@ -128,7 +145,27 @@ Deploy.
 
 ---
 
-## Hecho el 26/11/2026
+## Hecho el 26/11/2026 (tarde)
+
+- **MIGRACION_072** (probada desde cero, dos pasadas + `pruebas_072.sql`; la
+  prueba se saboteó a propósito para confirmar que de verdad corre):
+  - **Eliminar mi cuenta** (#22): la pantalla ahora pide la baja de verdad
+    (antes no llamaba a nada y el `Alert` con botones no andaba en web).
+    30 días oculta, entrar la recupera, después se anonimiza.
+  - **Contraseña débil heredada** se pide en cada login hasta cambiarla.
+  - **Peso y nacimiento** para el paseador / negocio que atiende a la mascota
+    (vista `mascota_de_cliente`).
+  - **`search_path`** fijo en las 6 funciones que no lo tenían (#100).
+- **Storage**: tipo real por los bytes (#71) y nombres al azar de 128 bits
+  (#135–#137). La subida de reseñas ahora dice "muy pesado" cuando el archivo
+  se rechaza en la app (antes caía en el genérico).
+- **Bug**: `login()` perdía `debeCambiarContrasena`; el login de dueños nunca
+  mandaba a cambiar la contraseña débil (#90).
+- `completar_perfil_paseador` / `aceptar_solicitud_paseo` ya no reciben un id
+  armado en el cliente (la base lo ignoraba).
+- Lint 0, `npm test` 72/72.
+
+## Hecho el 26/11/2026 (mañana)
 
 - **Verificación completa**: lint 0 errores, `npm test` 62/62, build web
   (`expo export`) sin errores, cruce app ↔ base (las 47 tablas/vistas, 16 RPCs

@@ -18,6 +18,15 @@ export function alerta(titulo, mensaje = '') {
 }
 
 /**
+ * Después de cualquier login: si la cuenta tenía la baja pedida, entrar la
+ * canceló (login_social, MIGRACION_072). Se avisa para que no sea una sorpresa.
+ */
+export function avisarSiSeCanceloLaBaja(usuario) {
+  if (!usuario?.bajaCancelada) return;
+  alerta('Recuperaste tu cuenta', 'Cancelamos la baja que habías pedido: tu perfil y tus mascotas se ven de nuevo.');
+}
+
+/**
  * Confirmación Sí/No. Devuelve Promise<boolean>.
  * opciones: { textoOk = 'Aceptar', textoCancelar = 'Cancelar', destructivo = false }
  */

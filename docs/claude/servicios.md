@@ -33,7 +33,8 @@ export async function fetchMisTurnos() {
 |---|---|
 | `comun.js` | `errorApp`, `errorBase`, `esEsquemaFaltante`, `esFuncionInexistente`, `esSinPermiso`, `notificar`, `resumir` |
 | `perfilesPublicos.js` | Lectura de otras personas vía la vista `perfil_publico` |
-| `authApi.js` | Login (`iniciarSesionConPassword`, `login`; las cuentas viejas se migran con `migrar_cuenta_legada`, 065), registro (`crearCuentaConPassword`, `registro`), `mailDeLaSesion`, disponibilidad de mail/usuario, razas |
+| `mascotasDeClientes.js` | `datosDeClientePorMascota(ids)`: peso y nacimiento de las mascotas que atiende el paseador o negocio de la sesión (vista `mascota_de_cliente`, 072). No tira |
+| `authApi.js` | Login (`iniciarSesionConPassword`, `login`; las cuentas viejas se migran con `migrar_cuenta_legada`, 065), registro (`crearCuentaConPassword`, `registro`), `mailDeLaSesion`, disponibilidad de mail/usuario, razas, baja de la cuenta (`cuentaTieneContrasena`, `solicitarBajaDeCuenta`, 072) |
 | `socialAuthApi.js` | Google / Facebook (OAuth con PKCE) |
 | `api.js` | Home: usuario, mascota activa, notificaciones, configuración de botones |
 | `petsApi.js` | Mascotas: alta, edición, archivo, borrado lógico, fotos |

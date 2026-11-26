@@ -19,6 +19,7 @@
 
 import { supabase } from '../../lib/supabase';
 import { getCurrentUserId } from '../../config/session';
+import { datosDeClientePorMascota } from '../mascotasDeClientes';
 import { resolveMascotaVisual } from '../../constants/petImages';
 import { perfilesPorId } from '../perfilesPublicos';
 import { fechaHoraFija } from '../../utils/fechaLocal';
@@ -36,13 +37,16 @@ export async function enriquecer(rows) {
   if (!rows?.length) return [];
   const idsMascota = [...new Set(rows.map((r) => r.Id_Mascota))];
   // La mascota es del dueño, no del paseador: "Mascota" sólo devuelve la fila
-  // propia (informe de seguridad #12), así que va por "mascota_publica". La
-  // vista no expone Peso; trae "Tamano", que es lo que el paseador necesita
-  // saber (y lo que usa el precio por tamaño).
-  const { data: mascotas } = await supabase
-    .from('mascota_publica')
-    .select('Id_Mascota, Id_User, Nombre, Especie, Raza, Tamano, Foto, ImagenAsset, MostrarFoto')
-    .in('Id_Mascota', idsMascota);
+  // propia (informe de seguridad #12), así que va por "mascota_publica", que
+  // trae "Tamano" (lo que usa el precio por tamaño). El peso llega aparte y
+  // sólo de los paseos aceptados o en curso de este paseador (072).
+  const [{ data: mascotas }, clientes] = await Promise.all([
+    supabase
+      .from('mascota_publica')
+      .select('Id_Mascota, Id_User, Nombre, Especie, Raza, Tamano, Foto, ImagenAsset, MostrarFoto')
+      .in('Id_Mascota', idsMascota),
+    datosDeClientePorMascota(idsMascota),
+  ]);
   const porMascota = Object.fromEntries((mascotas ?? []).map((m) => [m.Id_Mascota, m]));
 
   const idsDueno = [...new Set(rows.map((r) => r.Id_Dueno ?? porMascota[r.Id_Mascota]?.Id_User).filter(Boolean))];
@@ -83,7 +87,7 @@ export async function enriquecer(rows) {
         especie: m.Especie,
         raza: m.Raza,
         tamano: m.Tamano ?? null,
-        peso: null,   // no está en mascota_publica (dato de salud, #12)
+        peso: clientes[r.Id_Mascota]?.peso ?? null,
         visual: resolveMascotaVisual({
           fotoUrl: m.Foto, imagenAsset: m.ImagenAsset, especie: m.Especie,
           raza: m.Raza, mostrarFoto: m.MostrarFoto,
@@ -172,8 +176,10 @@ async function updatePaseo(id, fila) {
 
 /** Devuelve false si otro paseador la tomó antes. */
 export async function aceptarSolicitud(paseo) {
+  // El paseador es el de la sesión (usuario_actual, 070): p_id_walker queda
+  // en la firma por compatibilidad y va en null.
   const { data, error } = await supabase.rpc('aceptar_solicitud_paseo', {
-    p_id_paseo: paseo.id, p_id_walker: getCurrentUserId(),
+    p_id_paseo: paseo.id, p_id_walker: null,
   });
   if (error) throw error;
   if (data) {

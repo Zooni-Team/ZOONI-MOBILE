@@ -65,14 +65,13 @@ async function subirMediaResena(media, carpeta) {
   const subidos = [];
   for (const m of media.slice(0, MEDIA_RESENA_MAX)) {
     try {
-       
-      subidos.push(await subirArchivoPublico(m.uri, carpeta, { bucket: 'resenas', mimeHint: m.mimeType }));
+      subidos.push(await subirArchivoPublico(m.uri, carpeta, { bucket: 'resenas' }));
     } catch (e) {
       const msg = String(e?.message ?? '');
       const estado = String(e?.statusCode ?? e?.status ?? '');
       const codigo = /bucket not found/i.test(msg) ? 'bucket_faltante'
-        : estado === '413' || /exceeded|too large|maximum allowed size/i.test(msg) ? 'archivo_pesado'
-        : estado === '415' || /mime type|not supported/i.test(msg) ? 'tipo_no_admitido'
+        : msg === 'archivo_muy_grande' || estado === '413' || /exceeded|too large|maximum allowed size/i.test(msg) ? 'archivo_pesado'
+        : msg === 'archivo_invalido' || estado === '415' || /mime type|not supported/i.test(msg) ? 'tipo_no_admitido'
         : 'error_subida';
       throw errorApp(codigo, e);
     }

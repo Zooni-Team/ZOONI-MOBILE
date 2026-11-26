@@ -4,13 +4,12 @@
  *
  * Cada archivo va a <id de Supabase Auth>/<uso>/<nombre>: las políticas de
  * sección 063 de SUPABASE_PEGAR_TODO.sql sólo dejan subir y borrar dentro de la carpeta propia, y el
- * bucket limita tamaño y tipo del lado del servidor. Lo que el cliente declara
- * como contentType NO es la validación: es sólo una pista para Storage.
+ * bucket limita tamaño y tipo del lado del servidor.
  *
- * En web, expo-image-picker devuelve un data URI ("data:image/png;base64,...")
- * en vez de una ruta con extensión, así que el tipo de imagen no se puede
- * sacar de la extensión del archivo — hay que leerlo del propio data URI.
- * En nativo (file://...) sí hay extensión, y no es un data URI.
+ * El tipo de archivo sale de sus BYTES (utils/tipoDeArchivo.tipoReal), no de
+ * la extensión, del data URI ni del mime que da el picker: esos los decide
+ * quien sube (informe #71). Lo que no sea una imagen —o un video, en
+ * "resenas"— no se sube. El nombre es al azar (nombreAlAzar, #135-#137).
  *
  * Borrar archivos (informe de seguridad #70) pasa por DOS caminos, a propósito:
  * los `borrar*` de acá los llama la app al borrar la fila dueña (el archivo se
@@ -21,6 +20,7 @@
  */
 
 import { supabase, SUPABASE_ORIGIN } from '../lib/supabase';
+import { nombreAlAzar, tipoReal } from '../utils/tipoDeArchivo';
 
 const BUCKET = 'public-images';
 
@@ -52,6 +52,38 @@ async function leerArchivo(uri, bucket) {
   return buffer;
 }
 
+// Los mismos tipos que acepta cada bucket (allowed_mime_types en el SQL base
+// y la 064): un GIF en "consultas-privadas" se rechaza acá y no en el servidor.
+const IMAGENES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+const TIPOS_POR_BUCKET = {
+  'public-images': [...IMAGENES, 'image/gif'],
+  'consultas-privadas': IMAGENES,
+  resenas: [...IMAGENES, 'video/mp4', 'video/quicktime', 'video/webm', 'video/3gpp', 'video/x-m4v'],
+};
+
+/**
+ * Lee el archivo y decide qué es por sus bytes. Devuelve { buffer, mime, ext }.
+ * Tira Error('archivo_invalido') si no es de un tipo que el bucket acepte,
+ * además de los errores de leerArchivo.
+ */
+async function leerYReconocer(uri, bucket) {
+  const buffer = await leerArchivo(uri, bucket);
+  const tipo = tipoReal(buffer);
+  if (!tipo || !(TIPOS_POR_BUCKET[bucket] ?? IMAGENES).includes(tipo.mime)) {
+    throw new Error('archivo_invalido');
+  }
+  return { buffer, ...tipo };
+}
+
+/** Sube a <carpeta propia>/<uso>/<nombre al azar> y devuelve la ruta. */
+async function subir(uri, uso, bucket) {
+  const { buffer, mime, ext } = await leerYReconocer(uri, bucket);
+  const path = `${await carpetaPropia(uso)}/${nombreAlAzar(ext)}`;
+  const { error } = await supabase.storage.from(bucket).upload(path, buffer, { contentType: mime });
+  if (error) throw error;
+  return { path, mime };
+}
+
 /**
  * ¿Esta URL apunta a nuestro propio Storage? Para mostrar contenido que viene
  * de una fila de la base (foto de perfil, media de una reseña…) escrita por
@@ -79,38 +111,12 @@ async function carpetaPropia(uso) {
   return `${uid}/${uso}`;
 }
 
-function nombreArchivo(ext) {
-  return `${Date.now()}-${Math.round(Math.random() * 1e6)}.${ext}`;
-}
-
-function tipoDeImagen(uri) {
-  const dataUri = /^data:(image\/[a-z0-9.+-]+);base64,/i.exec(uri);
-  if (dataUri) {
-    const mime = dataUri[1].toLowerCase();
-    return { mime, ext: mime === 'image/jpeg' ? 'jpg' : mime.split('/')[1] };
-  }
-  const candidato = (uri.split('.').pop() || '').split('?')[0].toLowerCase();
-  // Una uri sin extensión (content://…, blob:…) deja como "candidato" la uri
-  // entera, con barras y dos puntos: eso rompería la key de Storage (informe
-  // #125; subirArchivoPublico ya validaba esto por su lado).
-  const ext = /^[a-z0-9]{1,5}$/.test(candidato) ? candidato : 'jpg';
-  return { mime: `image/${ext === 'jpg' ? 'jpeg' : ext}`, ext };
-}
-
 /**
  * Sube una imagen (uri local o data URI) a Supabase Storage y devuelve su
  * URL pública. `carpeta` agrupa el uso (ej: 'carteles', 'perfiles').
  */
 export async function subirImagenPublica(uri, carpeta) {
-  const { mime, ext } = tipoDeImagen(uri);
-  const path = `${await carpetaPropia(carpeta)}/${nombreArchivo(ext)}`;
-  const arraybuffer = await leerArchivo(uri, BUCKET);
-
-  const { error } = await supabase.storage.from(BUCKET).upload(path, arraybuffer, {
-    contentType: mime,
-  });
-  if (error) throw error;
-
+  const { path } = await subir(uri, carpeta, BUCKET);
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
   return data.publicUrl;
 }
@@ -125,12 +131,7 @@ export const BUCKET_CONSULTAS = 'consultas-privadas';
  * subirImagenPublica.
  */
 export async function subirImagenPrivada(uri, carpeta, bucket = BUCKET_CONSULTAS) {
-  const { mime, ext } = tipoDeImagen(uri);
-  const path = `${await carpetaPropia(carpeta)}/${nombreArchivo(ext)}`;
-  const arraybuffer = await leerArchivo(uri, bucket);
-
-  const { error } = await supabase.storage.from(bucket).upload(path, arraybuffer, { contentType: mime });
-  if (error) throw error;
+  const { path } = await subir(uri, carpeta, bucket);
   return path;
 }
 
@@ -182,41 +183,13 @@ export async function borrarImagenesPublicas(urls) {
   await Promise.all((urls ?? []).map(borrarImagenPublica));
 }
 
-const EXT_VIDEO = { mp4: 'video/mp4', mov: 'video/quicktime', m4v: 'video/x-m4v', webm: 'video/webm', '3gp': 'video/3gpp' };
-
-/** Tipo de una imagen O un video: del data URI, del mime que da el picker o de la extensión. */
-function tipoDeArchivo(uri, mimeHint) {
-  const dataUri = /^data:((?:image|video)\/[a-z0-9.+-]+);base64,/i.exec(uri);
-  const mime = (dataUri?.[1] ?? mimeHint ?? '').toLowerCase();
-  if (mime.startsWith('video/')) {
-    const ext = Object.keys(EXT_VIDEO).find((k) => EXT_VIDEO[k] === mime) ?? mime.split('/')[1];
-    return { mime, ext };
-  }
-  if (mime.startsWith('image/')) return { mime, ext: mime === 'image/jpeg' ? 'jpg' : mime.split('/')[1] };
-  const ext = (uri.split('.').pop() || '').split('?')[0].toLowerCase();
-  if (EXT_VIDEO[ext]) return { mime: EXT_VIDEO[ext], ext };
-  return tipoDeImagen(uri);
-}
-
 /**
  * Como subirImagenPublica pero acepta también videos y otro bucket (las
- * reseñas usan "resenas", que admite video/*). `mimeHint` es el que da
- * expo-image-picker (asset.mimeType) cuando la uri no lo dice.
+ * reseñas usan "resenas", que admite video/*). Si es imagen o video lo dicen
+ * los bytes del archivo.
  */
-export async function subirArchivoPublico(uri, carpeta, { bucket = BUCKET, mimeHint } = {}) {
-  const tipo = tipoDeArchivo(uri, mimeHint);
-  // Una uri sin extensión (content://…, blob:…) deja como "ext" la uri entera,
-  // con barras y dos puntos: Storage rechaza esa key y ese contentType.
-  const extOk = /^[a-z0-9]{1,5}$/.test(tipo.ext);
-  const esVideo = tipo.mime.startsWith('video/');
-  const ext = extOk ? tipo.ext : esVideo ? 'mp4' : 'jpg';
-  const mime = extOk ? tipo.mime : esVideo ? 'video/mp4' : 'image/jpeg';
-  const path = `${await carpetaPropia(carpeta)}/${nombreArchivo(ext)}`;
-  const arraybuffer = await leerArchivo(uri, bucket);
-
-  const { error } = await supabase.storage.from(bucket).upload(path, arraybuffer, { contentType: mime });
-  if (error) throw error;
-
+export async function subirArchivoPublico(uri, carpeta, { bucket = BUCKET } = {}) {
+  const { path, mime } = await subir(uri, carpeta, bucket);
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return { url: data.publicUrl, tipo: mime.startsWith('video/') ? 'video' : 'imagen' };
 }

@@ -6,7 +6,9 @@ import assert from 'node:assert/strict';
 import { fake } from './dobles/supabase.mjs';
 import { errorApp, errorBase, esEsquemaFaltante, notificar, resumir } from '../src/services/comun.js';
 import { consultarPerfiles, perfilesPorId } from '../src/services/perfilesPublicos.js';
-import { crearCuentaConPassword, iniciarSesionConPassword, login, verificarDisponibilidad } from '../src/services/authApi.js';
+import {
+  crearCuentaConPassword, iniciarSesionConPassword, login, solicitarBajaDeCuenta, verificarDisponibilidad,
+} from '../src/services/authApi.js';
 import { postMatchLike, postMatchSkip } from '../src/services/matchApi.js';
 import { preguntarZooniVet } from '../src/services/zoonivetApi.js';
 import { cambiarEstadoPedido, crearPedido, crearTurno } from '../src/services/negocioApi.js';
@@ -86,6 +88,14 @@ describe('authApi (Supabase Auth)', () => {
     assert.equal(fake.de('funcion').length, 0);
   });
 
+  test('contraseña débil heredada: se pide en cada login mientras la base la marque (072, #90)', async () => {
+    fake.auth('signInWithPassword', { data: {}, error: null });
+    fake.rpc('login_social', { data: { ...cuenta, debeCambiarContrasena: true } });
+    assert.equal((await iniciarSesionConPassword('ana@x.com', '1234')).debeCambiarContrasena, true);
+    fake.rpc('login_social', { data: cuenta });
+    assert.equal((await iniciarSesionConPassword('ana@x.com', '1234')).debeCambiarContrasena, false);
+  });
+
   test('contraseña mala con 065: credenciales, sin login viejo', async () => {
     fake.auth('signInWithPassword', { error: { message: 'Invalid login credentials' } });
     fake.rpc('migrar_cuenta_legada', { data: false });
@@ -131,6 +141,58 @@ describe('authApi (Supabase Auth)', () => {
     const r = await login('ana@x.com', 'secreta1');
     assert.equal(getCurrentUserId(), 9);
     assert.equal(r.mascotaActiva.imagen_asset, 'perro_default');
+  });
+
+  test('login de dueños no pierde los avisos (contraseña débil migrada, baja cancelada)', async () => {
+    // Antes login() rearmaba el usuario sin debeCambiarContrasena: LoginScreen
+    // nunca mandaba a cambiar la contraseña de una cuenta migrada (#90).
+    let intentos = 0;
+    fake.auth('signInWithPassword', () => (intentos++ === 0
+      ? { error: { code: 'invalid_credentials', message: 'Invalid login credentials' } }
+      : { data: {}, error: null }));
+    fake.rpc('migrar_cuenta_legada', { data: true });
+    fake.rpc('login_social', { data: { ...cuenta, bajaCancelada: true } });
+    fake.responder(() => ({ data: [] }));
+    const { usuario } = await login('ana@x.com', '1234');
+    assert.equal(usuario.debeCambiarContrasena, true);
+    assert.equal(usuario.bajaCancelada, true);
+  });
+});
+
+describe('authApi: baja de la cuenta (072)', () => {
+  const sesion = (proveedores) => ({ user: { email: 'ana@x.com', app_metadata: { providers: proveedores } } });
+
+  test('con contraseña: la comprueba antes de pedir la baja', async () => {
+    fake.sesion(sesion(['email']));
+    fake.rpc('solicitar_eliminacion_cuenta', { data: '2026-12-26T12:00:00+00:00' });
+    const vence = await solicitarBajaDeCuenta({ password: 'secreta1', motivo: 'otro', motivoTexto: '  me mudo  ' });
+    assert.equal(vence.toISOString(), '2026-12-26T12:00:00.000Z');
+    assert.deepEqual(fake.de('auth').find((a) => a.metodo === 'signInWithPassword').args[0],
+      { email: 'ana@x.com', password: 'secreta1' });
+    assert.deepEqual(fake.de('rpc')[0].params, { p_motivo: 'otro', p_motivo_texto: 'me mudo' });
+  });
+
+  test('contraseña mala: credenciales, y la baja NO se pide', async () => {
+    fake.sesion(sesion(['email', 'google']));
+    fake.auth('signInWithPassword', { error: { message: 'Invalid login credentials' } });
+    await assert.rejects(solicitarBajaDeCuenta({ password: 'mala' }), /credenciales/);
+    assert.equal(fake.de('rpc').length, 0);
+  });
+
+  test('cuenta sólo de Google: no hay contraseña que pedir', async () => {
+    fake.sesion(sesion(['google']));
+    fake.rpc('solicitar_eliminacion_cuenta', { data: '2026-12-26T12:00:00+00:00' });
+    await solicitarBajaDeCuenta({});
+    assert.equal(fake.de('auth').some((a) => a.metodo === 'signInWithPassword'), false);
+  });
+
+  test('sin la 072 en la base: migracion_pendiente (no finge que funcionó)', async () => {
+    fake.sesion(sesion(['google']));
+    await assert.rejects(solicitarBajaDeCuenta({}), /migracion_pendiente/);
+  });
+
+  test('sin sesión: sin_sesion', async () => {
+    await assert.rejects(solicitarBajaDeCuenta({ password: 'x' }), /sin_sesion/);
   });
 });
 

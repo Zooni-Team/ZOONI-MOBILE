@@ -55,7 +55,11 @@ DECLARE
     'disponibilidad_registro', 'login_social', 'registrar_social_con_mascota',
     'registrar_paseador_social', 'activar_paseador_social', 'completar_perfil_paseador',
     'registrar_negocio_sesion', 'activar_negocio_sesion',
-    'aceptar_solicitud_paseo', 'votar_mascota', 'vencer_paseos'];
+    'aceptar_solicitud_paseo', 'votar_mascota', 'vencer_paseos',
+    -- Las que agregaron las migraciones siguientes: si se vuelve a pegar sólo
+    -- la 067, que no las cierre (070, 071, 072).
+    'esta_bloqueado', 'crear_notificacion', 'marcar_mascota_principal',
+    'solicitar_eliminacion_cuenta', 'cuenta_dada_de_baja'];
   f RECORD;
 BEGIN
   FOR f IN

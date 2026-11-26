@@ -59,10 +59,10 @@ for (const pasada of [1, 2]) {
 
 // pruebas_rls crea los helpers pg_temp.como / salir que usa pruebas_064: van
 // juntas en la misma sesión de psql.
-const pruebas = ['pruebas_rls.sql', 'pruebas_064.sql', 'pruebas_065.sql', 'pruebas_066.sql', 'pruebas_067.sql', 'pruebas_068.sql', 'pruebas_070.sql', 'pruebas_071.sql'].map((f) => path.join(DIR_SUPABASE, 'tests', f));
+const pruebas = ['pruebas_rls.sql', 'pruebas_064.sql', 'pruebas_065.sql', 'pruebas_066.sql', 'pruebas_067.sql', 'pruebas_068.sql', 'pruebas_070.sql', 'pruebas_071.sql', 'pruebas_072.sql'].map((f) => path.join(DIR_SUPABASE, 'tests', f));
 const r = psql(['-1', ...pruebas.flatMap((f) => ['-f', f])], { base: BASE });
 if (!r.ok) {
   console.error(`\n✗ pruebas\n${r.salida}`);
   process.exit(1);
 }
-console.log('✓ pruebas de RLS, reglas de negocio, 064 (purga, cupo, bucket privado) 065 (login de cuentas viejas) 066 (paseos vencidos, peso, opiniones) 067 (funciones cerradas) 068 (archivos huérfanos), 070 (mascota_publica, notificaciones, anti-trampa de paseos) y 071 (anti-trampa con ancla fija, límite de mascotas, principal atómica)');
+console.log('✓ pruebas de RLS, reglas de negocio, 064 (purga, cupo, bucket privado) 065 (login de cuentas viejas) 066 (paseos vencidos, peso, opiniones) 067 (funciones cerradas) 068 (archivos huérfanos), 070 (mascota_publica, notificaciones, anti-trampa de paseos), 071 (anti-trampa con ancla fija, límite de mascotas, principal atómica) y 072 (baja de cuenta, search_path)');

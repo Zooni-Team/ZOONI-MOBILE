@@ -49,7 +49,7 @@ clave pública que viaja en el bundle no protege nada sola.
 | `zooni-app/scripts` | Verificaciones: `verify:pdf` (ficha médica en PDF), `verify:paseos` y `verify:colores`. | Desarrollo |
 | `zooni-app/wwwroot/img` | Ilustraciones de mascotas por especie/raza (las importa `src/constants`). | Sí |
 | `supabase/SUPABASE_PEGAR_TODO.sql` | **Esquema base** de la base (secciones 000 → 063). | Sí |
-| `supabase/MIGRACION_064…071_*.sql` | Lo que vino después, **en orden** (064 → 068, 070, 071; no hay 069). Base + estas = la base completa. | Sí |
+| `supabase/MIGRACION_064…072_*.sql` | Lo que vino después, **en orden** (064 → 068, 070 → 072; no hay 069). Base + estas = la base completa. | Sí |
 | `supabase/scripts` | `probar-esquema.mjs` (reconstruye la base en un Postgres local y prueba la seguridad) y `limpiar-storage.mjs` (borra archivos huérfanos y muda imágenes clínicas viejas al bucket privado). | Desarrollo / mantenimiento |
 | `CLAUDE.md` · `docs/claude/` | Documentación para el equipo y para Claude. | Documentación |
 | `supabase/functions` | Edge Function `zoonivet-chat` (ZooniVet: Groq con la clave del lado del servidor). | Sí |
@@ -94,6 +94,7 @@ MySQL y SQL Server) se borró; queda en el historial de git.
       `mascota_publica` que crea esta migración; sin ella, Match y Comunidad
       quedan vacíos.
    8. `supabase/MIGRACION_071_INTEGRIDAD.sql`
+   9. `supabase/MIGRACION_072_BAJA_DE_CUENTA.sql`
 
    Cada uno corre en una transacción y verifica lo que hizo al final (si algo
    no queda bien, no cambia nada). Toda la secuencia es idempotente: se puede
@@ -151,7 +152,7 @@ Esquema y seguridad (necesita un PostgreSQL local, no toca Supabase):
 PGHOST=localhost PGUSER=postgres node supabase/scripts/probar-esquema.mjs
 ```
 
-Corre la secuencia completa (base + `MIGRACION_064…071`) dos veces sobre una
+Corre la secuencia completa (base + `MIGRACION_064…072`) dos veces sobre una
 base vacía (desde cero e idempotencia) y después `supabase/tests/*.sql`: dos
 usuarios con su JWT comprueban, entre otras cosas, que uno no puede leer la ficha médica del
 otro, que un pedido con total inventado se recalcula, que el último producto
@@ -197,6 +198,10 @@ no se vende dos veces y que dos turnos no se superponen.
   - `071` — el anti-trampa del paseo con un margen que no se acumula, límite
     de 10 mascotas activas, mascota principal en una transacción y fecha de
     los mensajes puesta por la base.
+  - `072` — eliminar la cuenta (30 días de gracia; después se borra lo
+    personal y la fila queda anonimizada), contraseña débil heredada pedida
+    en cada login hasta cambiarla, peso y nacimiento para el paseador o
+    negocio que atiende a la mascota, `search_path` en las funciones viejas.
 - **Mapa de Servicios**: los locales de OpenStreetMap pasan por la función de
   Vercel `api/lugares.js` (Overpass con User-Agent propio; si está saturado,
   Nominatim), cacheada un día en el CDN.

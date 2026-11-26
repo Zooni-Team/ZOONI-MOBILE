@@ -298,6 +298,11 @@ export async function cambiarMiContrasena(actual, nueva) {
   if (errActual) return false;
   const { error } = await supabase.auth.updateUser({ password: nueva });
   if (error) throw error;
+  // Si era una contraseña débil heredada (072, #90), deja de pedirse en cada
+  // login. Si esto falla, la contraseña ya cambió: sólo se vuelve a pedir.
+  await supabase.from('User').update({ DebeCambiarContrasena: false })
+    .eq('Id_User', getCurrentUserId()).eq('DebeCambiarContrasena', true)
+    .then(() => {}, () => {});
   return true;
 }
 

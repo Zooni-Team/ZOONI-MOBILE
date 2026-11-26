@@ -30,19 +30,40 @@
 
 ## Storage
 Buckets `public-images` (5 MB, imágenes) y `resenas` (50 MB, imágenes y
-video). Sólo con sesión y dentro de `<auth uid>/…` (`063`). El tipo y tamaño
-los valida el servidor.
+video). Sólo con sesión y dentro de `<auth uid>/…` (`063`). El tamaño y la
+lista de tipos los valida el bucket.
+
+Antes de subir, `services/imagenStorage` mira los **bytes** del archivo
+(`utils/tipoDeArchivo.tipoReal`): sólo sube JPEG/PNG/WebP/GIF/HEIC (y video
+en `resenas`), con el tipo que dicen los bytes, no la extensión ni el mime
+del picker (#71). El nombre son 128 bits al azar (`nombreAlAzar`, #135–#137).
+Límite: es un control de la app; quien use la API de Storage directo con su
+token se lo saltea (frena el bucket).
 
 `consultas-privadas` (064, 10 MB, imágenes) **no es público**: sólo el dueño de
 la carpeta lee, sube y borra. En la tabla se guarda la ruta (`imagen_path`) y
 la app pide una URL firmada de 1 hora para mostrarla.
+
+## Baja de la cuenta (072)
+`EliminarCuentaScreen` → `authApi.solicitarBajaDeCuenta`: comprueba la
+contraseña (si la cuenta tiene) y llama a `solicitar_eliminacion_cuenta`.
+`deletion_requests` no se escribe desde la app (con INSERT directo alguien se
+saltearía los 30 días). Durante el plazo `perfil_publico`, `mascota_publica` y
+`mascota_de_cliente` ocultan la cuenta; iniciar sesión la recupera
+(`login_social` → `bajaCancelada`). Vencido el plazo,
+`purgar_cuentas_eliminadas()` borra lo que es sólo de la persona, cierra su
+negocio, anonimiza la fila de `"User"` (no la borra: paseos, pagos, turnos y
+opiniones son también de la otra parte), borra su usuario de Auth y anota sus
+archivos para `limpiar-storage.mjs`.
 
 ## Cuentas viejas
 La primera vez que entra una cuenta de antes de 060, `authApi` llama a
 `migrar_cuenta_legada` (065): compara el sha256 viejo, crea el usuario de Auth
 con esa contraseña (bcrypt), vincula `"User".auth_id` y borra el hash. Responde
 lo mismo si el mail no existe o la contraseña es mala, y frena después de 5
-fallos en 15 minutos por mail (067).
+fallos en 15 minutos por mail (067). Si la contraseña heredada tiene menos de
+8 caracteres, queda `"User".DebeCambiarContrasena` (072) y cada login manda a
+"Cambiar contraseña" hasta que se cambie.
 
 Ya no hay otro camino: la Edge Function `migrar-cuenta` (sin verificar JWT y
 sin límite de intentos: un oráculo de contraseñas) y el login viejo de la app
@@ -87,6 +108,11 @@ pacientes de un negocio, mascotas de un paseo) se lee por la vista
 `FechaNacimiento` y `Peso`, expone `EdadAnios` ya calculada y `Tamano`. La
 vista además filtra `Estado = 'active'` y a quien te bloqueó.
 
+Peso y fecha de nacimiento, para quien atiende a la mascota: la vista
+**`mascota_de_cliente`** (072) los da sólo al paseador de un paseo aceptado o
+en curso y al negocio con un turno pendiente, confirmado o completado
+(`services/mascotasDeClientes`).
+
 Si una pantalla deja de traer mascotas ajenas, es casi siempre esto: está
 leyendo `"Mascota"` en vez de la vista.
 
@@ -101,15 +127,15 @@ flujo si no hay relación).
   `"User"` sí se redondean a 2 decimales (trigger de la 070 + `perfil_publico`).
 - `disponibilidad_registro` dice si un mail ya está registrado (lo necesita
   el registro).
-- Firma real del contenido de un archivo subido: hoy se confía en el
-  `contentType` que declara el cliente + lo que el bucket permite.
+- El tipo real de un archivo se comprueba en la app (ver Storage), no en el
+  servidor: haría falta un webhook de Storage que lea cada archivo.
 - Límite de frecuencia general en toda escritura (mensajes, votos, reportes…):
   hoy sólo está donde el informe lo pedía puntualmente (turnos, pedidos,
   intentos de `migrar_cuenta_legada`, cupo de ZooniVet).
-- Purga programada de `PaseoTrack`/`sos_call_logs`: la función
-  `_purgar_datos_antiguos()` existe; falta activar `pg_cron` y programarla.
-- El historial de la conversación de ZooniVet lo manda la app, así que alguien
-  con su sesión puede fabricar respuestas "previas" del asistente (#43).
+- Purgas programadas (`PaseoTrack`/`sos_call_logs` viejos, mascotas y
+  cuentas dadas de baja): `_purgar_datos_antiguos()` las hace todas; falta
+  activar `pg_cron` y programarla. Hasta entonces, una cuenta dada de baja
+  queda oculta pero sin purgar.
 
 Detalle completo de qué se corrigió en la auditoría de nov-2026 y qué quedó
 pendiente (y por qué): el final de

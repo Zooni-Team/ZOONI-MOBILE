@@ -21,6 +21,15 @@ La base completa (PostgreSQL / Supabase) es:
    `marcar_mascota_principal()` en una transacción y la fecha de cada mensaje
    puesta por la base. La app funciona con o sin ella (marcar principal cae
    al camino viejo si la RPC no existe).
+5. **`supabase/MIGRACION_072_BAJA_DE_CUENTA.sql`** — después de la 071:
+   "Eliminar mi cuenta" de verdad (`solicitar_eliminacion_cuenta`, la cuenta
+   se oculta 30 días, `login_social` la recupera, `purgar_cuentas_eliminadas`
+   anonimiza; corre dentro de `_purgar_datos_antiguos`), la contraseña débil
+   de una cuenta migrada marcada en `"User".DebeCambiarContrasena` hasta que
+   se cambie, la vista `mascota_de_cliente` (peso y nacimiento para el
+   paseador o negocio que atiende a la mascota) y `search_path` fijo en las
+   funciones viejas que no lo tenían. Sin ella, la baja de cuenta muestra
+   "falta la migración 072"; lo demás sigue andando.
 
 Cada archivo se pega **entero** en Supabase → SQL Editor → Run. Cada uno:
 - corre en una transacción (si algo falla, no se aplica nada);

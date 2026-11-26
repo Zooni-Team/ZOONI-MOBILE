@@ -1,19 +1,26 @@
 /**
  * EliminarCuentaScreen.jsx — Confirmación de eliminación de cuenta (§3.5.11)
  *
- * Pantalla dedicada, nunca un diálogo simple. Exige checkbox + contraseña.
- * Período de gracia de 30 días: la cuenta se marca pending_deletion y se
- * restaura sola si el usuario vuelve a iniciar sesión antes del vencimiento.
+ * Pantalla dedicada, nunca un diálogo simple. Exige checkbox + contraseña
+ * (si la cuenta tiene: las de Google / Facebook / Apple no). Período de
+ * gracia de 30 días: la base anota el pedido y oculta el perfil
+ * (solicitar_eliminacion_cuenta, MIGRACION_072); volver a iniciar sesión
+ * antes del vencimiento la recupera, y después la purga borra lo personal.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Alert, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import { SettingsScreen, SettingsSelect, SettingsGroup, T } from '../../components/settings/SettingsKit';
+import { cuentaTieneContrasena, solicitarBajaDeCuenta } from '../../services/authApi';
+import { clearToken } from '../../services/api';
+import { clearCurrentUserId } from '../../config/session';
+import { alerta } from '../../utils/dialogo';
+import { formatearFecha } from '../../utils/fechaLocal';
 
 const SE_PIERDE = [
   'Tu perfil',
@@ -24,24 +31,51 @@ const SE_PIERDE = [
   'Tu suscripción activa',
 ];
 
+const MENSAJES_ERROR = {
+  credenciales: 'La contraseña no es correcta.',
+  sin_sesion: 'Tu sesión venció. Volvé a iniciar sesión e intentá de nuevo.',
+  migracion_pendiente: 'A la base de datos le falta la migración 072 para poder dar de baja cuentas.',
+};
+
 export default function EliminarCuentaScreen() {
   const navigation = useNavigation();
   const [motivo, setMotivo] = useState(null);
   const [motivoTexto, setMotivoTexto] = useState('');
   const [password, setPassword] = useState('');
   const [entiendo, setEntiendo] = useState(false);
+  // null mientras se averigua: hasta saberlo, se pide la contraseña.
+  const [conContrasena, setConContrasena] = useState(null);
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState(null);
 
-  const puedeEliminar = entiendo && password.length >= 8;
+  useEffect(() => {
+    cuentaTieneContrasena().then(setConContrasena).catch(() => setConContrasena(true));
+  }, []);
 
-  const fechaLimite = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-    .toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+  const pidePassword = conContrasena !== false;
+  const puedeEliminar = entiendo && (!pidePassword || password.length > 0) && !enviando;
 
-  const confirmar = () => {
-    Alert.alert(
-      'Cuenta programada para eliminarse',
-      `Tenés 30 días para arrepentirte: si volvés a entrar antes del ${fechaLimite}, recuperás todo.`,
-      [{ text: 'Entendido', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }) }]
-    );
+  // Sólo para el texto de abajo: la fecha que vale es la que devuelve la base.
+  const fechaLimite = formatearFecha(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
+
+  const confirmar = async () => {
+    setError(null);
+    setEnviando(true);
+    try {
+      const vence = await solicitarBajaDeCuenta({ password, motivo, motivoTexto: motivo === 'otro' ? motivoTexto : null });
+      // Cerrar la sesión de este dispositivo: si quedara abierta, abrir la
+      // app de nuevo contaría como "volver a entrar" y cancelaría la baja.
+      await clearToken();
+      await clearCurrentUserId();
+      alerta(
+        'Cuenta programada para eliminarse',
+        `Tenés hasta el ${formatearFecha(vence)} para arrepentirte: si volvés a iniciar sesión antes, recuperás todo.`,
+      );
+      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+    } catch (e) {
+      setError(MENSAJES_ERROR[e?.message] ?? 'No se pudo pedir la baja. Revisá tu internet e intentá de nuevo.');
+      setEnviando(false);
+    }
   };
 
   return (
@@ -88,18 +122,20 @@ export default function EliminarCuentaScreen() {
       </SettingsGroup>
 
       <SettingsGroup label="Confirmación">
-        <View style={s.inputWrap}>
-          <TextInput
-            style={s.input}
-            placeholder="Tu contraseña"
-            placeholderTextColor={T.textSoft}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoComplete="current-password"
-            textContentType="password"
-          />
-        </View>
+        {pidePassword && (
+          <View style={s.inputWrap}>
+            <TextInput
+              style={s.input}
+              placeholder="Tu contraseña"
+              placeholderTextColor={T.textSoft}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoComplete="current-password"
+              textContentType="password"
+            />
+          </View>
+        )}
         <TouchableOpacity style={s.checkRow} onPress={() => setEntiendo((v) => !v)}
           accessibilityRole="checkbox" accessibilityState={{ checked: entiendo }}
           accessibilityLabel="Entiendo que esto no se puede deshacer">
@@ -112,19 +148,24 @@ export default function EliminarCuentaScreen() {
         </TouchableOpacity>
       </SettingsGroup>
 
+      {error && <Text style={s.error} accessibilityLiveRegion="polite">{error}</Text>}
+
       <TouchableOpacity
         style={[s.btnEliminar, !puedeEliminar && { opacity: 0.45 }]}
         disabled={!puedeEliminar}
         onPress={confirmar}
         accessibilityRole="button"
         accessibilityLabel="Eliminar mi cuenta"
-        accessibilityState={{ disabled: !puedeEliminar }}
+        accessibilityState={{ disabled: !puedeEliminar, busy: enviando }}
       >
-        <Text style={s.btnEliminarTxt}>Eliminar mi cuenta</Text>
+        {enviando
+          ? <ActivityIndicator color={T.sosRedText} />
+          : <Text style={s.btnEliminarTxt}>Eliminar mi cuenta</Text>}
       </TouchableOpacity>
 
       <Text style={s.gracia}>
-        Tenés 30 días para arrepentirte: si volvés a entrar antes del {fechaLimite}, recuperás todo.
+        Tenés 30 días para arrepentirte: si volvés a iniciar sesión antes del {fechaLimite}, recuperás todo.
+        Mientras tanto, nadie ve tu perfil ni tus mascotas.
       </Text>
 
     </SettingsScreen>
@@ -159,6 +200,8 @@ const s = StyleSheet.create({
     marginTop: 24,
   },
   btnEliminarTxt: { fontSize: 16, fontWeight: '700', color: T.sosRedText },
+
+  error: { fontSize: 14, color: T.sosRedText, textAlign: 'center', marginTop: 16, lineHeight: 20 },
 
   gracia: { fontSize: 13, color: T.textSoftMint, textAlign: 'center', marginTop: 16, lineHeight: 18 },
 });
