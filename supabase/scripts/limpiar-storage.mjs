@@ -12,7 +12,8 @@
 //     node supabase/scripts/limpiar-storage.mjs            # sólo muestra qué haría
 //   … node supabase/scripts/limpiar-storage.mjs --aplicar  # lo hace
 //
-// La clave service_role es SECRETA (Project Settings → API): se usa desde tu
+// La clave es SECRETA (Project Settings → API Keys: la "Secret key" sb_secret_…,
+// o la service_role de "Legacy API keys"): se usa desde tu
 // máquina y nunca va en la app ni en el repo. Se puede correr cuantas veces se
 // quiera: lo que ya se hizo no se repite.
 
@@ -25,7 +26,12 @@ const EXTENSIONES = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'we
 /** Cliente mínimo de PostgREST y Storage con la clave service_role. */
 export function crearCliente(url, clave, fetchImpl = fetch) {
   const base = url.replace(/\/+$/, '');
-  const cabeceras = { apikey: clave, Authorization: `Bearer ${clave}` };
+  // La service_role "legacy" es un JWT y va también como Bearer. Las claves
+  // secretas nuevas (sb_secret_…) no son JWT: van sólo en `apikey`, y Supabase
+  // arma el rol del lado del servidor (las legacy se retiran en 2027).
+  const cabeceras = clave.startsWith('eyJ')
+    ? { apikey: clave, Authorization: `Bearer ${clave}` }
+    : { apikey: clave };
 
   async function pedir(ruta, opciones = {}) {
     const res = await fetchImpl(`${base}${ruta}`, { ...opciones, headers: { ...cabeceras, ...opciones.headers } });

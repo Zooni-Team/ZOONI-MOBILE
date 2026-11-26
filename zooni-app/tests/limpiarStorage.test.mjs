@@ -28,7 +28,20 @@ describe('limpiar-storage', () => {
       ? { json: [{ id: 1, bucket: 'public-images', ruta: 'u/a.jpg' }] } : { json: [] }));
     assert.equal(await borrarHuerfanos(cliente, { aplicar: false, log: silencio }), 1);
     assert.deepEqual(pedidos.map((p) => p.metodo), ['POST']);
-    assert.equal(pedidos[0].cabeceras.Authorization, 'Bearer clave-secreta');
+    // 'clave-secreta' no es un JWT (como sb_secret_…): va sólo en apikey
+    assert.equal(pedidos[0].cabeceras.apikey, 'clave-secreta');
+    assert.equal(pedidos[0].cabeceras.Authorization, undefined);
+  });
+
+  test('la service_role legacy (JWT) va también como Bearer', async () => {
+    const pedidos = [];
+    const fetchFalso = async (url, op = {}) => {
+      pedidos.push(op.headers);
+      return { ok: true, status: 200, json: async () => [], text: async () => '' };
+    };
+    await crearCliente('https://p.supabase.co', 'eyJhbGciOi.x.y', fetchFalso).rpc('algo');
+    assert.equal(pedidos[0].apikey, 'eyJhbGciOi.x.y');
+    assert.equal(pedidos[0].Authorization, 'Bearer eyJhbGciOi.x.y');
   });
 
   test('borra por bucket y después marca como borrados', async () => {
