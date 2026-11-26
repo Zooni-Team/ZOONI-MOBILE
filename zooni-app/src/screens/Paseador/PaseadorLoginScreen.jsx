@@ -1,11 +1,3 @@
-/**
- * PaseadorLoginScreen.jsx — Ingreso a Zooni Paseadores
- *
- * Mismo backend que el login de dueños (RPC login_user). Si la cuenta existe
- * pero todavía no es paseador (un dueño que quiere trabajar paseando), en vez
- * de un error se le ofrece sumar el perfil de paseador a su misma cuenta.
- */
-
 import { useCallback, useEffect, useState } from 'react';
 import {
   Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView,
@@ -27,8 +19,6 @@ import { avisarSiSeCanceloLaBaja } from '../../utils/dialogo';
 export default function PaseadorLoginScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  // Mail de la cuenta que acaba de cerrar sesión, ya escrito. En web se lee
-  // sincrónico para que el navegador no rellene un usuario guardado viejo.
   const [email, setEmail] = useState(getUltimoMailWeb);
   useEffect(() => {
     getUltimoMail().then((m) => { if (m) setEmail((actual) => actual || m); });
@@ -36,9 +26,8 @@ export default function PaseadorLoginScreen() {
   const [password, setPassword] = useState('');
   const [verPassword, setVerPassword] = useState(false);
   const [cargando, setCargando] = useState(false);
-  // Si volvió de Google / Facebook / Apple con un error, se muestra acá
   const [error, setError] = useState(route.params?.errorSocial ?? null);
-  const [activar, setActivar] = useState(null); // { email, nombre }
+  const [activar, setActivar] = useState(null);
 
   const ingresar = useCallback(async () => {
     const mail = email.trim();
@@ -58,8 +47,6 @@ export default function PaseadorLoginScreen() {
         return;
       }
       const rutas = [{ name: 'PaseadorApp' }];
-      // Cuenta recién migrada con una contraseña vieja y débil: de paso por
-      // "Cambiar contraseña" antes de entrar (informe de seguridad #90).
       if (res.usuario?.debeCambiarContrasena) rutas.push({ name: 'ConfigCambiarContrasena', params: { forzado: true } });
       navigation.reset({ index: rutas.length - 1, routes: rutas });
       avisarSiSeCanceloLaBaja(res.usuario);
@@ -100,7 +87,6 @@ export default function PaseadorLoginScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
-            // El gestor de contraseñas guarda/rellena el MAIL como usuario
             autoComplete="username"
             textContentType="username"
             returnKeyType="next"

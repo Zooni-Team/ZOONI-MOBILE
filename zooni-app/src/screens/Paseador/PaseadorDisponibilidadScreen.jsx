@@ -1,14 +1,3 @@
-/**
- * PaseadorDisponibilidadScreen.jsx — Zona y horarios de trabajo
- *
- * Se abre desde Perfil y desde el menú. Define el radio que el paseador está
- * dispuesto a moverse, los barrios donde pasea y qué días y en qué horario
- * pasea. Los horarios son informativos: los dueños los ven en su ficha y al
- * pedir un paseo, pero cuándo le llegan solicitudes lo sigue decidiendo el
- * switch "Disponible" de la home. Se guarda todo junto con "Guardar" (no hay
- * autosave: son decisiones de trabajo y es mejor confirmarlas).
- */
-
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text,

@@ -53,7 +53,7 @@ export default function MatchFiltersScreen() {
       try {
         const saved = await fetchMatchFiltros();
         if (!cancelled) setFiltros({ ...DEFAULT_FILTROS, ...saved });
-      } catch { /* defaults ya visibles */ }
+      } catch {  }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -109,15 +109,12 @@ export default function MatchFiltersScreen() {
     });
   };
 
-  // Sólo los filtros. Antes además borraba TODOS los votos de la mascota
-  // (un atajo de cuando se probaba la app) y se perdían los "me gusta" reales.
   const handleReset = () => setFiltros({ ...DEFAULT_FILTROS });
 
   const handleApply = async () => {
     try {
       await putMatchFiltros(filtros);
     } catch {
-      // Se guardan en el dispositivo; si eso falla, valen igual para esta sesión.
     }
     markMatchReloadFromFilters();
     if (navigation.canGoBack()) {

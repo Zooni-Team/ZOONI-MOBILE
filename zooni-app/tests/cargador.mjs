@@ -1,13 +1,3 @@
-// cargador.mjs — Hooks de módulos para correr el código de la app con Node puro.
-//
-//   node --import ./tests/registrar.mjs --test tests/
-//
-// 1. Resuelve imports sin extensión como lo hace Metro ('../lib/supabase' →
-//    '../lib/supabase.js', '../theme' → '../theme/index.js').
-// 2. Reemplaza lo que sólo existe en el teléfono por dobles de prueba
-//    (tests/dobles/): React Native, SecureStore, el cliente de
-//    Supabase y las imágenes (require de .png).
-
 import { existsSync, statSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
@@ -20,7 +10,6 @@ const PAQUETES = {
   'expo-secure-store': doble('secure-store.mjs'),
   '@expo/vector-icons': doble('vacio.mjs'),
 };
-// Módulos de la app que se reemplazan enteros (por ruta, sin extensión)
 const MODULOS = {
   'src/lib/supabase': doble('supabase.mjs'),
   'src/constants/petImages': doble('pet-images.mjs'),

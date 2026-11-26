@@ -1,20 +1,3 @@
-/**
- * NavButton.jsx — Botón de navegación reutilizable de la Home
- *
- * Usado en HomeScreen para los botones amarillos y el S.O.S rojo.
- *
- * Props:
- *   label            → texto del botón (ej: "Comunidad")
- *   iconName         → nombre del ícono Ionicons (ej: "people-outline")
- *   onPress          → función que se ejecuta al tocar
- *   variant          → 'primary' (amarillo) | 'danger' (rojo S.O.S)
- *   editMode         → si true, muestra ícono de drag y botón eliminar
- *   onDelete         → función para eliminar el botón en modo edición
- *   accessibilityLabel → texto para lectores de pantalla
- *
- * Animación: leve escala al presionar (0.97) usando Animated.spring
- */
-
 import React, { useRef } from 'react';
 import { TouchableOpacity, Text, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,14 +13,11 @@ export default function NavButton({
   accessibilityLabel,
   style,
 }) {
-  // Valor animado para el efecto de escala al presionar
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  // Al presionar: achica levemente el botón
   const handlePressIn = () =>
     Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true }).start();
 
-  // Al soltar: vuelve al tamaño normal
   const handlePressOut = () =>
     Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
 
@@ -53,7 +33,6 @@ export default function NavButton({
         accessibilityLabel={accessibilityLabel ?? label}
         style={[styles.button, isPrimary ? styles.primary : styles.danger]}
       >
-        {/* En modo edición: ícono de drag (⠿) en vez del ícono normal */}
         {editMode ? (
           <Ionicons name="reorder-three-outline" size={22} color={colores.gris600} style={styles.icon} />
         ) : (
@@ -69,7 +48,6 @@ export default function NavButton({
           {label}
         </Text>
 
-        {/* Botón eliminar (✖) — solo visible en modo edición */}
         {editMode && (
           <TouchableOpacity
             onPress={onDelete}
@@ -85,10 +63,9 @@ export default function NavButton({
 }
 
 const styles = StyleSheet.create({
-  // Estilo base compartido por todos los botones
   button: {
     height: 54,
-    borderRadius: 30,           // Forma pill
+    borderRadius: 30,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
@@ -99,10 +76,8 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 4,
   },
-  primary: { backgroundColor: colores.amarillo },  // Amarillo dorado
+  primary: { backgroundColor: colores.amarillo },
   danger: {
-    // Instruction-SOS §2.1: #D62031 (no #E63946 — con texto blanco de 17px
-    // da 4.17:1 y no pasa AA). Sombra teñida de rojo, sin animación de pulso.
     backgroundColor: '#D62031',
     shadowColor: colores.rojo,
     shadowOpacity: 0.32,

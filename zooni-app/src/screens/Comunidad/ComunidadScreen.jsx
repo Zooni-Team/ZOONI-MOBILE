@@ -29,19 +29,8 @@ import { useToast } from '../../hooks/useToast';
 
 const TABS    = ['Amigos', 'Servicios', 'Solicitudes', 'Buscar'];
 
-/*
-  Lo último que se mostró, para que al volver a Comunidad el mapa aparezca ya
-  cargado (paseadores, locales, carteles) mientras se refresca por detrás, en
-  vez de arrancar vacío cada vez que se entra a la pantalla.
-*/
 let ultimoMapa = { servicios: [], carteles: [], amigos: [], paseadores: [] };
 
-// ─── HTML del mapa ──────────────────────────────────────────────────────────
-// Definido fuera del componente → nunca se regenera → iframe nunca se recarga.
-// Comunicación: postMessage en los dos sentidos (no contentWindow directo: el
-// iframe va con sandbox="allow-scripts", sin allow-same-origin, para que un
-// CDN comprometido (unpkg) no pueda leer el localStorage/sesión de la app —
-// informe de seguridad #24).
 const MAPA_HTML = `<!DOCTYPE html><html><head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
@@ -55,8 +44,6 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
 .pz{width:46px;height:46px;border-radius:50%;border:3px solid ${colores.verde};background:${colores.verde};
     position:relative;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.35);
     display:flex;align-items:center;justify-content:center}
-/* !important: leaflet.css pone width:auto a las img de los marcadores y la foto
-   quedaba angosta (medio círculo verde). Así llena el círculo, recortada al centro. */
 .pz img{position:absolute;top:0;left:0;width:100%!important;height:100%!important;
     max-width:none!important;max-height:none!important;object-fit:cover;object-position:center;
     border-radius:50%}
@@ -77,9 +64,6 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
   var map = L.map('map',{zoomControl:false,doubleClickZoom:false}).setView([-34.6089,-58.4340],16);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
 
-  // Paseador: su foto de perfil en un círculo (si no tiene o no carga, la huella).
-  // no-referrer: las fotos de Google/Facebook (login social) devuelven 403 si
-  // se piden con el Referer de otro sitio, y quedaba la huella.
   var PATA='<svg viewBox="0 0 24 24" width="20" height="20" fill="#fff"><circle cx="5" cy="9.5" r="2.2"/><circle cx="9" cy="5.5" r="2.2"/><circle cx="15" cy="5.5" r="2.2"/><circle cx="19" cy="9.5" r="2.2"/><path d="M12 10.5c-3 0-6.5 4.6-6.5 7.3 0 1.8 1.4 2.7 3 2.7 1.4 0 2.3-.8 3.5-.8s2.1.8 3.5.8c1.6 0 3-.9 3-2.7 0-2.7-3.5-7.3-6.5-7.3z"/></svg>';
   function iconPaseador(x){
     var foto=(typeof x.foto==='string'&&/^(https?:|data:image)/.test(x.foto))
@@ -96,7 +80,6 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
     amigo:mk('👤','${colores.verde}'),temporal:mk('📍','${colores.verde}')
   };
 
-  // Notifica al padre (React)
   function notify(obj){
     try{ window.parent.postMessage({tipo:'zooni-evento',payload:obj},'*'); }catch(e){}
   }
@@ -120,7 +103,6 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
               .on('click',function(){notify({type:'cartel',data:x})});
       dynLayers.push(m);
     });
-    // Paseadores de Zooni: su círculo de atención + su foto
     (d.paseadores||[]).forEach(function(x){
       var abrir=function(){notify({type:'paseador',data:x})};
       var c=L.circle([x.lat,x.lng],{radius:x.radioKm*1000,color:'${colores.verde}',weight:2,
@@ -139,17 +121,12 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
     }
   }
 
-  // API de control del mapa: React la llama por postMessage (ver abajo),
-  // no la expone directo en window porque el iframe es sandboxed.
   var zooniMap = {
     flyTo: function(lat,lng){ map.flyTo([lat,lng],16,{duration:0.7}); },
     zoomIn: function(){ map.zoomIn(); },
     zoomOut: function(){ map.zoomOut(); },
     setData: function(d){ renderData(d); },
     setModoCartel: function(v){ modoCartel=v; },
-    // La geolocalización la pide React (ver ComunidadScreen.jsx): un iframe
-    // sandboxed sin allow-same-origin es de otro origen para el navegador, y
-    // la Permissions-Policy del sitio (geolocation=(self)) no se la delega.
     setUserLocation: function(lat,lng,centrar){
       if(centrar) map.flyTo([lat,lng],16,{duration:0.7});
       else map.setView([lat,lng],15);
@@ -158,15 +135,12 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
     setUserMarker: function(lat,lng){ setUserMarker(lat,lng); }
   };
   window.addEventListener('message',function(e){
-    // Sólo órdenes de la app que contiene el mapa (no de otra ventana)
     if(e.source!==window.parent)return;
     var m=e.data;
     if(!m||m.tipo!=='zooni-cmd'||typeof zooniMap[m.metodo]!=='function')return;
     zooniMap[m.metodo].apply(null,m.args||[]);
   });
 
-  // En modo cartel alcanza con tocar una vez (en el celular no hay "doble
-  // click"); el doble toque se sigue aceptando.
   map.on('click dblclick',function(e){
     if(modoCartel) notify({type:'dblclick',lat:e.latlng.lat,lng:e.latlng.lng});
   });
@@ -177,18 +151,13 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%}
   map.on('moveend',notifyBounds);
 
   notify({type:'ready'});
-  // El área inicial se avisa ya: el primer moveend recién llega cuando el GPS
-  // centra el mapa (segundos), y si se niega el permiso no llega nunca.
   notifyBounds();
 })();
 </script>
 </body></html>`;
 
-// ─── Pantalla principal ──────────────────────────────────────────────────────
 export default function ComunidadScreen() {
   const [mapaData,   setMapaData]   = useState(ultimoMapa);
-  // Los locales de OpenStreetMap son lo único lento: la pestaña Servicios
-  // muestra el "Buscando…" solo mientras faltan esos.
   const [cargandoLugares, setCargandoLugares] = useState(false);
   const [bbox,       setBbox]       = useState(null);
   const [tab,        setTab]        = useState('Amigos');
@@ -200,7 +169,6 @@ export default function ComunidadScreen() {
   const [popPaseador, setPopPaseador] = useState(null);
   const [popCart,    setPopCart]    = useState(null);
   const [modalAmigo, setModalAmigo] = useState(false);
-  // Aviso flotante compartido (ui/Toast + useToast), no una copia propia
   const { toast, mostrarToast } = useToast(3000);
   const [userPos,    setUserPos]    = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -209,21 +177,13 @@ export default function ComunidadScreen() {
   const iframeRef   = useRef(null);
   const boundsTimer = useRef(null);
   const ultimoBboxRef = useRef(null);
-  // Los paseadores se muestran todos, no sólo los del área visible: tu
-  // ubicación (userPosRef) sólo los ordena del más cercano al más lejano.
   const userPosRef = useRef(null);
   const mapaReady   = useRef(false);
   const bannerAnim  = useRef(new Animated.Value(0)).current;
-  // Lo que hay que pintar, siempre al día: el mapa puede quedar listo después
-  // de que llegaron los datos, y el handler de 'ready' no ve el estado nuevo.
   const pintarRef = useRef({ mapaData, markerTemp });
   pintarRef.current = { mapaData, markerTemp };
-  // Cada carga de zona tiene un número: si el mapa se movió y llegó una
-  // respuesta de una zona anterior, se descarta.
   const pedidoZona = useRef(0);
 
-  // Llama un método del mapa por postMessage (el iframe es sandboxed, sin
-  // allow-same-origin: no se le puede llamar una función directo)
   const mapCall = useCallback((fn, ...args) => {
     try {
       iframeRef.current?.contentWindow?.postMessage(
@@ -232,7 +192,6 @@ export default function ComunidadScreen() {
     } catch (_) {}
   }, []);
 
-  // ── Escucha los eventos del mapa por postMessage ───────────────────────────
   useEffect(() => {
     if (Platform.OS !== 'web') return;
     const onMessage = (e) => {
@@ -251,8 +210,6 @@ export default function ComunidadScreen() {
           setBbox(b);
           ultimoBboxRef.current = b;
           clearTimeout(boundsTimer.current);
-          // La primera zona se carga en el acto; después se espera a que el
-          // usuario termine de arrastrar para no pedir cada paso intermedio.
           if (primera) cargarZonaRef.current(b);
           else boundsTimer.current = setTimeout(() => cargarZonaRef.current(b), 300);
           break;
@@ -276,24 +233,14 @@ export default function ComunidadScreen() {
     window.addEventListener('message', onMessage);
     return () => {
       window.removeEventListener('message', onMessage);
-      // Un movimiento recién hecho no tiene que cargar la zona ya desmontada
       clearTimeout(boundsTimer.current);
     };
-  }, []); // eslint-disable-line
+  }, []);
 
-  // ── Carga de datos ─────────────────────────────────────────────────────────
-  /*
-    Cada cosa se pinta apenas llega, sin esperar a las demás. Antes iba todo en
-    un solo Promise.all: los paseadores (Supabase, instantáneo) quedaban
-    esperando a las veterinarias de OpenStreetMap, que pueden tardar varios
-    segundos. Para contratar un paseo, el mapa tiene que estar ya.
-  */
   const actualizar = useCallback((parcial) => {
     setMapaData((p) => (ultimoMapa = { ...p, ...parcial }));
   }, []);
 
-  // Paseadores y amigos no dependen del área visible: se cargan al entrar, sin
-  // esperar a que el mapa avise qué zona muestra.
   const cargarPaseadores = useCallback(() => {
     fetchPaseadoresParaMi(userPosRef.current)
       .then((paseadores) => actualizar({ paseadores }))
@@ -312,9 +259,6 @@ export default function ComunidadScreen() {
       .then((carteles) => { if (vigente()) actualizar({ carteles }); })
       .catch(() => {});
 
-    // Mientras llegan los locales de la zona nueva quedan los anteriores en el
-    // mapa (no se vacía para volver a llenarse). Si la zona ya se consultó,
-    // buscarLugares responde del caché en el acto.
     setCargandoLugares(true);
     Promise.all([
       fetchServiciosPropios(b).catch(() => []),
@@ -332,10 +276,6 @@ export default function ComunidadScreen() {
   const cargarPaseadoresRef = useRef(cargarPaseadores);
   useEffect(() => { cargarPaseadoresRef.current = cargarPaseadores; }, [cargarPaseadores]);
 
-  // Ubicación del usuario: se pide desde acá (React), no desde el iframe — un
-  // iframe sandboxed sin allow-same-origin no hereda la Permissions-Policy de
-  // geolocation del sitio (informe de seguridad #24). `centrar` true = lo
-  // pidió el botón "mi ubicación" (flyTo); false = carga inicial (setView).
   const pedirUbicacion = useCallback((centrar) => {
     if (Platform.OS !== 'web' || !navigator.geolocation) {
       if (!centrar) mapCall('setUserMarker', -34.6089, -58.4340);
@@ -349,7 +289,6 @@ export default function ComunidadScreen() {
         userPosRef.current = { lat, lng };
         setUserPos(userPosRef.current);
         mapCall('setUserLocation', lat, lng, centrar);
-        // Primera ubicación (o te moviste bastante): reordenar los paseadores por cercanía
         const movido = !antes || Math.abs(antes.lat - lat) + Math.abs(antes.lng - lng) > 0.002;
         if (movido) cargarPaseadoresRef.current();
       },
@@ -368,13 +307,7 @@ export default function ComunidadScreen() {
     cargarAmigos();
   }, [cargarPaseadores, cargarAmigos]);
 
-  // ── Polling 30s, sólo con la pantalla a la vista ──────────────────────────
-  // El stack deja montada Comunidad al ir a otra pantalla: sin este corte el
-  // mapa seguía consultando (y reintentando OpenStreetMap) de fondo.
   const enFoco = useIsFocused();
-  // La zona y la posición se leen de refs: si fueran dependencias, cada
-  // movimiento del mapa reiniciaba los 30 s y, con el mapa en uso, nunca
-  // llegaba a refrescar.
   const bboxRef = useRef(bbox);
   bboxRef.current = bbox;
   const posRef = useRef(userPos);
@@ -391,19 +324,16 @@ export default function ComunidadScreen() {
     return () => clearInterval(iv);
   }, [enFoco, cargarZona, cargarPaseadores, cargarAmigos]);
 
-  // ── Sincroniza markers cuando cambian ─────────────────────────────────────
   useEffect(() => {
     if (!mapaReady.current) return;
     mapCall('setData', { ...mapaData, markerTemp });
   }, [mapaData, markerTemp, mapCall]);
 
-  // ── Sincroniza modoCartel ──────────────────────────────────────────────────
   useEffect(() => {
     if (!mapaReady.current) return;
     mapCall('setModoCartel', modoCartel);
   }, [modoCartel, mapCall]);
 
-  // ── Animación banner ──────────────────────────────────────────────────────
   useEffect(() => {
     Animated.timing(bannerAnim, {
       toValue: modoCartel ? 1 : 0,
@@ -422,7 +352,6 @@ export default function ComunidadScreen() {
   return (
     <View style={styles.container}>
 
-      {/* ── MAPA ──────────────────────────────────────────────────────────── */}
       <View style={styles.mapaWrapper}>
         {Platform.OS === 'web' ? (
           <iframe
@@ -439,7 +368,6 @@ export default function ComunidadScreen() {
           </View>
         )}
 
-        {/* Botón menú hamburguesa */}
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => setDrawerOpen(true)}
@@ -448,7 +376,6 @@ export default function ComunidadScreen() {
           <Ionicons name="menu" size={30} color={colores.negroSuave} />
         </TouchableOpacity>
 
-        {/* Banner modo cartel */}
         <Animated.View pointerEvents="none" style={[
           styles.bannerCartel,
           { opacity: bannerAnim, transform: [{ translateY: bannerAnim.interpolate({ inputRange:[0,1], outputRange:[-16,0] }) }] }
@@ -460,7 +387,6 @@ export default function ComunidadScreen() {
 
         <Toast {...toast} />
 
-        {/* Botones flotantes */}
         <View style={styles.botonesFlotantes}>
           <TouchableOpacity style={[styles.pill, styles.pillBlanco]} onPress={irAMiUbicacion}>
             <Text style={styles.pillText}>📍 Mi Ubicación</Text>
@@ -475,7 +401,6 @@ export default function ComunidadScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Controles zoom */}
         <View style={[styles.zoom, { bottom: sheetH === 'collapsed' ? 80 : 16 }]}>
           <TouchableOpacity style={styles.zoomBtn} onPress={zoomIn}>
             <Text style={styles.zoomText}>+</Text>
@@ -485,7 +410,6 @@ export default function ComunidadScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Popups */}
         {popServ && <PopupServicio servicio={popServ} onClose={() => setPopServ(null)} />}
         {popPaseador && <PopupPaseador paseador={popPaseador} onClose={() => setPopPaseador(null)} />}
         {popCart && (
@@ -499,7 +423,6 @@ export default function ComunidadScreen() {
         )}
       </View>
 
-      {/* ── BOTTOM SHEET ──────────────────────────────────────────────────── */}
       <View style={[styles.sheet, { height: sheetHeights[sheetH] }]}>
         <TouchableOpacity style={styles.handleRow}
           onPress={() => setSheetH(s => s === 'half' ? 'full' : s === 'full' ? 'collapsed' : 'half')}>
@@ -534,7 +457,6 @@ export default function ComunidadScreen() {
         )}
       </View>
 
-      {/* ── FORMULARIO CARTEL ─────────────────────────────────────────────── */}
       {formulario && (
         <FormularioCartel
           coordenadas={markerTemp}
@@ -547,7 +469,6 @@ export default function ComunidadScreen() {
         />
       )}
 
-      {/* ── MODAL AGREGAR AMIGO ───────────────────────────────────────────── */}
       <Modal visible={modalAmigo} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
@@ -565,7 +486,6 @@ export default function ComunidadScreen() {
         </View>
       </Modal>
 
-      {/* ── MENÚ HAMBURGUESA ──────────────────────────────────────────────── */}
       <HamburgerDrawer
         visible={drawerOpen}
         onClose={() => setDrawerOpen(false)}
@@ -589,8 +509,6 @@ const styles = StyleSheet.create({
     backgroundColor: colores.blanco, alignItems: 'center', justifyContent: 'center',
     shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 6,
   },
-  // Al lado del botón de menú y por encima de los botones flotantes (top 60):
-  // antes iba en top 68 y tapaba "Mi Ubicación".
   bannerCartel: {
     position: 'absolute', top: 14, left: 66, right: 14, zIndex: 100, minHeight: 42,
     justifyContent: 'center',

@@ -1,19 +1,3 @@
-/**
- * SosScreen.jsx — Pantalla "S.O.S Veterinario" (emergencias)
- *
- * Basada en el diseño de Figma (Imagenes-Figma/SOS/SOS.png):
- *   · Banner rojo de emergencia
- *   · Líneas de emergencia con botones que abren el marcador (tel:)
- *   · Buscador + lista de veterinarias con horario, distancia y ruta en Maps
- *
- * Los datos salen de Supabase (veterinary_clinics / emergency_lines, migración
- * 018) vía services/sosApi.js. Antes la pantalla tenía cuatro veterinarias
- * escritas a mano que ignoraban por completo lo que había en la base.
- * Si la base no responde o no tiene veterinarias cargadas, la pantalla lo dice
- * y ofrece Google Maps. Nunca muestra datos de ejemplo: alguien con una
- * urgencia real podría llamar a un número inventado.
- */
-
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -48,19 +32,15 @@ import { alerta } from '../utils/dialogo';
 import { colores } from '../theme';
 import { normalizarBusqueda } from '../utils/texto';
 
-// Ícono de cada tipo de línea de emergencia (emergency_lines.kind)
 const ICONO_LINEA = {
   intoxicaciones: 'warning',
   zoonosis: 'paw',
   national_emergency: 'medkit',
 };
 
-// Abre el marcador del teléfono con el número listo para llamar.
 function llamar(numero, { clinicId = null, lineId = null } = {}) {
-  logLlamadaSos({ telefono: numero, clinicId, lineId }); // fire-and-forget
+  logLlamadaSos({ telefono: numero, clinicId, lineId });
   const limpio = String(numero ?? '').replace(/[^0-9+]/g, '');
-  // Sin marcador (computadora, tablet sin línea) openURL falla: en una
-  // emergencia no puede fallar en silencio, se muestra el número para marcarlo.
   Linking.openURL(`tel:${limpio}`)
     .catch(() => alerta('Llamá a este número', `${numero}\n\nEste dispositivo no puede hacer llamadas: marcalo desde un teléfono.`));
 }
@@ -69,13 +49,9 @@ function abrirMaps(url) {
   Linking.openURL(url).catch(() => {});
 }
 
-// ─── CARD DE VETERINARIA ──────────────────────────────────────────────────────
-
 function VetCard({ vet }) {
   const [verHorarios, setVerHorarios] = useState(false);
 
-  // La hora se evalúa en cada render de la lista: alcanza para una pantalla
-  // que se abre puntualmente, sin un timer corriendo de fondo.
   const horario = textoHorario(vet);
   const semana  = horarioSemanal(vet);
   const distancia = formatearDistancia(vet.distanciaM);
@@ -97,7 +73,6 @@ function VetCard({ vet }) {
         )}
       </View>
 
-      {/* Estado horario — lo primero que se necesita saber en una urgencia */}
       <View style={st.vetEstadoFila}>
         <View style={[st.puntoEstado, { backgroundColor: colorEstado }]} />
         <Text style={[st.vetEstadoTxt, { color: colorEstado }]}>{horario.texto}</Text>
@@ -120,7 +95,6 @@ function VetCard({ vet }) {
         {vet.direccion}{vet.barrio ? `, ${vet.barrio}` : ''}
       </Text>
 
-      {/* Horario completo de la semana, plegado por defecto */}
       {semana.length > 0 && (
         <>
           <TouchableOpacity style={st.verHorariosBtn} onPress={() => setVerHorarios((v) => !v)}
@@ -149,7 +123,6 @@ function VetCard({ vet }) {
             <Text style={st.badge24Txt}>24 hs</Text>
           </View>
         )}
-        {/* "Urgencias" sólo si atiende ahora: una cerrada con ese cartel confunde */}
         {vet.urgencias && horario.abierta !== false && (
           <View style={st.badgeUrgencias}>
             <Ionicons name="pulse" size={13} color={colores.rojo} />
@@ -178,11 +151,6 @@ function VetCard({ vet }) {
   );
 }
 
-// ─── ORDEN Y FILTROS ──────────────────────────────────────────────────────────
-
-// "Recomendado" es el orden de urgencia de siempre (abiertas → cercanas →
-// mejor valoradas). El resto ordena por un solo criterio; tocarlo de nuevo
-// invierte el sentido.
 const ORDENES = [
   { key: 'recomendado', label: 'Recomendado', icono: 'sparkles-outline' },
   { key: 'cercania',    label: 'Cercanía',    icono: 'navigate-outline' },
@@ -204,9 +172,6 @@ const SERVICIO_LABEL = {
 };
 const etiquetaServicio = (k) => SERVICIO_LABEL[k] ?? (k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, ' '));
 
-// Comparadores en su sentido "natural": cercanía = más cerca primero,
-// rating/reseñas = más alto primero, nombre = A→Z. Las que no tienen el dato
-// (sin distancia, sin rating) van siempre al final.
 function alFinal(x, y) {
   if (x == null && y == null) return 0;
   if (x == null) return 1;
@@ -252,8 +217,6 @@ function ChipFiltro({ label, icono, activo, onPress }) {
   );
 }
 
-// ─── SCREEN ───────────────────────────────────────────────────────────────────
-
 export default function SosScreen() {
   const navigation = useNavigation();
   const [busqueda, setBusqueda] = useState('');
@@ -265,13 +228,10 @@ export default function SosScreen() {
   const [errorCarga, setErrorCarga] = useState(false);
   const [orden, setOrden]           = useState('recomendado');
   const [invertido, setInvertido]   = useState(false);
-  const [filtros, setFiltros]       = useState([]); // keys de FILTROS_FIJOS y 'srv:<servicio>'
+  const [filtros, setFiltros]       = useState([]);
   const [pidiendoUbicacion, setPidiendoUbicacion] = useState(false);
 
   const cargar = useCallback(async () => {
-    // La ubicación se pide en paralelo y NO se espera para mostrar la lista:
-    // si el permiso tarda o se rechaza, las veterinarias aparecen igual (sin
-    // distancias). En una emergencia no se puede quedar esperando un permiso.
     obtenerCoordenadas().then(setCoords);
 
     const [clinicas, lineasEmergencia] = await Promise.all([
@@ -292,7 +252,6 @@ export default function SosScreen() {
     setRefrescando(false);
   }, [cargar]);
 
-  // Servicios que existen en los datos (no se ofrece un filtro que siempre vacía la lista)
   const serviciosDisponibles = useMemo(() => {
     const set = new Set();
     vets.forEach((v) => (v.servicios ?? []).forEach((x) => set.add(x)));
@@ -309,7 +268,6 @@ export default function SosScreen() {
     const filtrados = conDistancia.filter((v) => {
       if (q && ![v.nombre, v.direccion, v.barrio, ...(v.especialidades ?? [])]
         .some((campo) => normalizarBusqueda(campo).includes(q))) return false;
-      // Los filtros se combinan: tiene que cumplir TODOS los activos
       return filtros.every((f) => {
         if (f.startsWith('srv:')) return (v.servicios ?? []).includes(f.slice(4));
         return FILTROS_FIJOS.find((x) => x.key === f)?.test(v) ?? true;
@@ -317,12 +275,9 @@ export default function SosScreen() {
     });
 
     const ordenados = [...filtrados].sort((a, b) => comparar(orden, a, b));
-    // "Recomendado" no se invierte: es un orden de urgencia, no un criterio
     return invertido && orden !== 'recomendado' ? ordenados.reverse() : ordenados;
   }, [busqueda, vets, coords, orden, invertido, filtros]);
 
-  // Ordenar o filtrar por cercanía sin ubicación: se pide en el momento (el
-  // permiso pudo haberse rechazado o demorado al abrir la pantalla)
   const pedirUbicacion = useCallback(async () => {
     setPidiendoUbicacion(true);
     const c = await obtenerCoordenadas();
@@ -334,7 +289,7 @@ export default function SosScreen() {
 
   const elegirOrden = async (key) => {
     if (key === orden) {
-      if (key !== 'recomendado') setInvertido((x) => !x); // tocar el activo invierte
+      if (key !== 'recomendado') setInvertido((x) => !x);
       return;
     }
     if (key === 'cercania' && !coords && !(await pedirUbicacion())) return;
@@ -368,7 +323,6 @@ export default function SosScreen() {
     <SafeAreaView style={st.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* Header — solo la flecha de volver */}
       <View style={st.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={st.headerBtn}
           accessibilityLabel="Volver" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -383,7 +337,6 @@ export default function SosScreen() {
             colors={[colores.rojo]} tintColor={colores.rojo} />
         }>
 
-        {/* Banner de emergencia */}
         <View style={st.bannerEmergencia}>
           <Text style={st.bannerTitulo}>Emergencia Veterinaria</Text>
           <Text style={st.bannerTexto}>
@@ -391,7 +344,6 @@ export default function SosScreen() {
           </Text>
         </View>
 
-        {/* Líneas de emergencia (emergency_lines, con fallback local) */}
         <View style={st.cardLineas}>
           <View style={st.lineasTituloFila}>
             <Ionicons name="call" size={18} color={colores.blanco} />
@@ -413,7 +365,6 @@ export default function SosScreen() {
           ))}
         </View>
 
-        {/* Buscador */}
         <View style={st.searchBox}>
           <Ionicons name="search" size={18} color={colores.textoDeshabilitado} />
           <TextInput
@@ -431,7 +382,6 @@ export default function SosScreen() {
           )}
         </View>
 
-        {/* Ordenar */}
         <Text style={st.filtrosLabel}>Ordenar por</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}
           contentContainerStyle={st.chipsFila} keyboardShouldPersistTaps="handled">
@@ -455,7 +405,6 @@ export default function SosScreen() {
           })}
         </ScrollView>
 
-        {/* Filtros (se combinan entre sí) */}
         <Text style={st.filtrosLabel}>Filtrar</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}
           contentContainerStyle={st.chipsFila} keyboardShouldPersistTaps="handled">
@@ -471,7 +420,6 @@ export default function SosScreen() {
           ))}
         </ScrollView>
 
-        {/* Lista de veterinarias */}
         <View style={st.seccionFila}>
           <Text style={st.seccionTitulo}>
             Veterinarias{!cargando ? <Text style={st.seccionCuenta}> ({vetsFiltrados.length})</Text> : null}
@@ -517,8 +465,6 @@ export default function SosScreen() {
           </View>
         )}
 
-        {/* Salida al mapa: la app lista las veterinarias cargadas en Zooni;
-            para el resto, Google Maps ya sabe cuáles hay alrededor. */}
         <TouchableOpacity style={st.buscarMapsBtn} onPress={() => abrirMaps(urlBuscarEnMaps(coords))}
           accessibilityRole="button" accessibilityLabel="Buscar más veterinarias en Google Maps">
           <Ionicons name="map" size={16} color={colores.texto} />
@@ -528,8 +474,6 @@ export default function SosScreen() {
     </SafeAreaView>
   );
 }
-
-// ─── ESTILOS ─────────────────────────────────────────────────────────────────
 
 const st = StyleSheet.create({
   lineasTituloFila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },

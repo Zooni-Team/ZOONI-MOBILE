@@ -1,15 +1,3 @@
-/**
- * consejosData.js — Consejos de cuidado por especie y por raza.
- *
- * Fuente de datos local (no depende del backend) para la pantalla de Consejos.
- * `generarConsejos({ especie, raza })` devuelve una lista combinada de:
- *   1. Consejos específicos de la raza (si se reconoce).
- *   2. Consejos generales de la especie.
- * Cada consejo tiene { id, categoria, contenido } — mismas categorías que
- * categoriasConsejos.js (general, salud, alimentacion, ejercicio, comportamiento, cuidado).
- */
-
-// Normaliza para comparar razas/especies: minúsculas y sin acentos.
 function norm(txt) {
   return String(txt ?? '')
     .toLowerCase()
@@ -17,8 +5,6 @@ function norm(txt) {
     .replace(/[̀-ͯ]/g, '')
     .trim();
 }
-
-// ─── CONSEJOS GENERALES POR ESPECIE ──────────────────────────────────────────
 
 const GENERALES_PERRO = [
   { categoria: 'alimentacion', contenido: 'Dale de comer a horarios fijos y con alimento adecuado a su edad y tamaño. Evitá las sobras de la mesa: muchas comidas nuestras (cebolla, ajo, chocolate, uvas) son tóxicas para los perros.' },
@@ -43,9 +29,6 @@ const GENERALES_OTRA = [
   { categoria: 'cuidado', contenido: 'Informate bien sobre el hábitat, la temperatura y la dieta específica de tu especie. Un ambiente mal armado es la causa más común de enfermedad en mascotas no convencionales.' },
   { categoria: 'alimentacion', contenido: 'Cada especie tiene una dieta particular: lo que es sano para una puede ser dañino para otra. Confirmá siempre con una fuente confiable antes de introducir un alimento nuevo.' },
 ];
-
-// ─── CONSEJOS ESPECÍFICOS POR RAZA ───────────────────────────────────────────
-// La clave se compara con la raza normalizada (incluida como substring).
 
 const RAZAS_PERRO = {
   labrador: [
@@ -212,8 +195,6 @@ const RAZAS_GATO = {
   ],
 };
 
-// ─── GENERADOR ───────────────────────────────────────────────────────────────
-
 function esGato(especieNorm) {
   return especieNorm.includes('gato') || especieNorm.includes('felino');
 }
@@ -221,7 +202,6 @@ function esPerro(especieNorm) {
   return especieNorm.includes('perro') || especieNorm.includes('canino');
 }
 
-/** Busca en el mapa de razas la primera clave contenida en la raza normalizada. */
 function consejosDeRaza(razaNorm, mapa) {
   if (!razaNorm || razaNorm.includes('sin raza') || razaNorm.includes('mestizo') || razaNorm.includes('comun') || razaNorm.includes('europeo')) {
     return [];
@@ -232,11 +212,6 @@ function consejosDeRaza(razaNorm, mapa) {
   return [];
 }
 
-/**
- * Devuelve una lista de consejos { id, categoria, contenido } combinando los de
- * la raza (si se reconoce) con los generales de la especie. Los de la raza van
- * primero por ser los más específicos.
- */
 export function generarConsejos({ especie, raza } = {}) {
   const e = norm(especie);
   const r = norm(raza);

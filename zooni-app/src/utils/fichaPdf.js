@@ -1,42 +1,12 @@
-/**
- * fichaPdf.js — Ficha médica veterinaria en PDF
- *
- * Vivía dentro de FichaMedicaScreen, donde no había forma de ejecutarlo sin
- * abrir la app: por eso se publicó un PDF que cortaba las secciones y nadie lo
- * notó. Acá está separado de la pantalla y recibe los datos por parámetro, así
- * que se puede renderizar y verificar de punta a punta sin abrir nada:
- *
- *     npm run verify:pdf        → scripts/verificar-ficha-pdf.mjs
- *
- * Ese script genera el documento con muchos registros y comprueba que TODOS
- * aparezcan en el texto realmente dibujado dentro del PDF. Correlo después de
- * tocar este archivo.
- *
- * Dos caminos, un mismo contenido:
- *   · web    → jsPDF, que baja un archivo de verdad (expo-print en el navegador
- *              ignora el HTML y hace window.print() de la pantalla).
- *   · nativo → HTML + expo-print.
- * Ambos se arman desde el mismo modelo (`construirSecciones`) para que no
- * vuelvan a divergir.
- *
- * El documento es informativo: lo llena el usuario, no un veterinario
- * matriculado, y así lo aclara el recuadro legal del final.
- */
-
 import { calcularEdad } from './calcularEdad.js';
 import { diasHasta, formatearFecha } from './fechaLocal.js';
 import { capitalizar } from './texto.js';
 import { colores } from '../theme/colores.js';
 
-// ─── FORMATO ──────────────────────────────────────────────────────────────────
-
-// Fechas, edades y texto salen de los módulos compartidos (con ".js": este
-// archivo también lo carga scripts/verificar-ficha-pdf.mjs con Node puro).
 const formatFecha = (iso) => formatearFecha(iso, 'numericaCeros');
 const formatFechaLarga = (iso) => formatearFecha(iso, 'larga');
 const calcularEdadTexto = (fecha) => calcularEdad(fecha, { vacio: 'No registrada' });
 
-/** Peso en kg, o en gramos si es menos de 1 kg (un canario pesa 35 g). */
 export function formatPesoPdf(peso) {
   if (peso == null) return 'No registrado';
   const n = Number(peso);
@@ -45,7 +15,6 @@ export function formatPesoPdf(peso) {
   return `${n.toLocaleString('es-AR', { maximumFractionDigits: 2 })} kg`;
 }
 
-/** "Vencida hace 12 días" / "Vence en 30 días" / "Vence hoy" */
 function estadoVencimiento(iso) {
   const dias = diasHasta(iso);
   if (dias == null) return null;
@@ -54,29 +23,12 @@ function estadoVencimiento(iso) {
   return `Vence en ${dias} ${dias === 1 ? 'día' : 'días'}`;
 }
 
-// ─── MODELO DEL DOCUMENTO ─────────────────────────────────────────────────────
-
 export const AVISO_LEGAL = [
   'Este documento es de carácter EXCLUSIVAMENTE INFORMATIVO. Fue generado de forma automática por la aplicación Zooni a partir de los datos que el propio usuario cargó en la ficha médica de su mascota.',
   'Zooni no verifica, audita ni valida la información contenida. Este documento NO constituye un certificado sanitario, una libreta de vacunación oficial ni un diagnóstico veterinario, y no reemplaza en ningún caso la consulta con un veterinario matriculado.',
   'Ante cualquier signo de enfermedad, urgencia o duda sobre la salud de su animal, consulte a un profesional. No suspenda ni modifique tratamientos basándose en este documento.',
 ];
 
-/**
- * Arma las secciones del documento a partir de los datos crudos.
- * Devolver una estructura (y no HTML/PDF directo) es lo que permite que los dos
- * generadores muestren exactamente lo mismo y que los tests lo comprueben.
- *
- * @param {object} datos
- * @param {object} datos.mascota      { nombre, especie, raza, peso, fecha_nacimiento }
- * @param {object} [datos.usuario]    { nombre, apellido } — titular responsable
- * @param {Array}  datos.vacunas      aplicadas (fetchVacunas().aplicadas)
- * @param {Array}  datos.tratamientos aplicados (fetchTratamientos().aplicados)
- * @param {Array}  datos.consultas    fetchConsultas()
- *
- * El plan de vacunación sugerido NO entra al documento: ver el comentario más
- * abajo, donde estaba esa sección.
- */
 export function construirSecciones({
   mascota = {},
   usuario = null,
@@ -86,7 +38,6 @@ export function construirSecciones({
 }) {
   const m = mascota ?? {};
 
-  // ── Ficha identificatoria ──────────────────────────────────────────────────
   const identificacion = [
     ['Nombre', m.nombre || 'Sin nombre'],
     ['Especie', capitalizar(m.especie) || 'No registrada'],
@@ -102,9 +53,6 @@ export function construirSecciones({
     ]
     : [];
 
-  // ── Secciones de registros ─────────────────────────────────────────────────
-  // `lineas` son pares [etiqueta, valor] para que salgan alineados y se lea
-  // como una ficha y no como un párrafo suelto.
   const secVacunas = {
     titulo: 'Vacunas aplicadas',
     vacio: 'No hay vacunas registradas para este animal.',
@@ -122,16 +70,6 @@ export function construirSecciones({
       ],
     })),
   };
-
-  /*
-    Acá iba una sección "Plan de vacunación sugerido" con el calendario
-    orientativo por especie y edad. Se sacó a pedido: no son datos del animal
-    —son una recomendación genérica que la app calcula— y en un documento que se
-    le muestra a un veterinario mezclaba lo que la mascota TIENE con lo que
-    todavía no. Ocupaba además la mayor parte del PDF.
-
-    El plan sigue estando en la pantalla de Vacunas, que es donde tiene sentido.
-  */
 
   const secTratamientos = {
     titulo: 'Tratamientos',
@@ -160,14 +98,11 @@ export function construirSecciones({
         ['Fecha', formatFecha(c.fecha) ?? 'No registrada'],
         ['Profesional', c.veterinario || 'No registrado'],
         ['Observaciones', c.notas || 'Sin observaciones'],
-        // La imagen no se incrusta (puede pesar megas y son varias), pero se
-        // deja constancia de que existe en la app.
         ['Estudio adjunto', c.imagen_url ? 'Sí (disponible en la app)' : 'No'],
       ],
     })),
   };
 
-  // ── Resumen ────────────────────────────────────────────────────────────────
   const pendientes = [
     ...vacunas.filter((v) => v.proximo_refuerzo && diasHasta(v.proximo_refuerzo) < 0)
       .map((v) => `${v.nombre}: refuerzo vencido el ${formatFecha(v.proximo_refuerzo)}`),
@@ -192,15 +127,12 @@ export function construirSecciones({
   };
 }
 
-/** Identificador legible del documento: ZOO-<mascota>-<AAAAMMDD>. */
 export function numeroDocumento(mascotaId, fecha = new Date()) {
   const y = fecha.getFullYear();
   const m = String(fecha.getMonth() + 1).padStart(2, '0');
   const d = String(fecha.getDate()).padStart(2, '0');
   return `ZOO-${String(mascotaId ?? '0').padStart(4, '0')}-${y}${m}${d}`;
 }
-
-// ─── GENERADOR PDF (web, jsPDF) ───────────────────────────────────────────────
 
 const VERDE = [45, 189, 114];
 const VERDE_OSC = [23, 112, 70];
@@ -209,16 +141,9 @@ const SUAVE = [107, 107, 107];
 const TENUE = [154, 154, 154];
 const LINEA = [228, 245, 235];
 
-/**
- * Huella de Zooni dibujada con vectores (una almohadilla y cuatro dedos).
- * Se dibuja en lugar de incrustar un PNG para que el pie de página no dependa
- * de ningún asset y no sume peso al archivo.
- */
 function huellaZooni(doc, cx, cy, escala = 1, color = TENUE) {
   doc.setFillColor(...color);
-  // Almohadilla central
   doc.ellipse(cx, cy + 0.9 * escala, 1.5 * escala, 1.25 * escala, 'F');
-  // Cuatro dedos en arco
   const dedos = [
     [-1.65, -1.15, 0.62, 0.8],
     [-0.6, -1.95, 0.62, 0.85],
@@ -230,11 +155,6 @@ function huellaZooni(doc, cx, cy, escala = 1, color = TENUE) {
   });
 }
 
-/**
- * Construye el documento con jsPDF.
- * @param {Function} JsPdfCtor  constructor de jsPDF (inyectado para poder testear en Node)
- * @returns el doc, ya listo para .save()
- */
 export function construirDocPdf(JsPdfCtor, datos, fotoDataUri = null) {
   const d = construirSecciones(datos);
   const doc = new JsPdfCtor({ unit: 'mm', format: 'a4' });
@@ -243,14 +163,13 @@ export function construirDocPdf(JsPdfCtor, datos, fotoDataUri = null) {
   const ALTO = doc.internal.pageSize.getHeight();
   const M = 16;
   const UTIL = ANCHO - M * 2;
-  const PIE = 16;              // alto reservado para el pie
+  const PIE = 16;
   const LIMITE = ALTO - PIE - 6;
   let y = 0;
 
   const m = d.mascota;
   const hoy = new Date();
 
-  // ── Encabezado ─────────────────────────────────────────────────────────────
   const ALTO_HEADER = 46;
   doc.setFillColor(...VERDE);
   doc.rect(0, 0, ANCHO, ALTO_HEADER, 'F');
@@ -263,34 +182,13 @@ export function construirDocPdf(JsPdfCtor, datos, fotoDataUri = null) {
     doc.setFillColor(255, 255, 255);
     doc.circle(cx, cy, D / 2 + 1.4, 'F');
 
-    /*
-      Recorte circular de la foto. El orden de estas tres llamadas NO es
-      opcional: es lo que hacía que el PDF saliera con la primera página EN
-      BLANCO y sin el título de "Vacunas aplicadas".
-
-      Antes era `doc.circle(cx, cy, D / 2).clip()`, que emite el trazo, lo
-      PINTA con el operador `S` —que además termina el trazo— y recién después
-      el operador de recorte `W`. Según el spec de PDF, `W` va entre la
-      construcción del trazo y el operador que lo pinta; puesto después queda
-      sin trazo al que aplicarse. El resultado es un recorte degenerado: los
-      visores se comportan distinto y varios ocultan TODO lo que se dibuja
-      después en esa página. De ahí la página 1 vacía, que encima parecía una
-      hoja de más.
-
-      La forma correcta: construir el trazo sin pintarlo (style `null`),
-      recortar con `clip()` y cerrar el trazo con `discardPath()` (operador
-      `n`, "terminar sin pintar"). El stream queda `... c  W  n  q`.
-    */
     doc.saveGraphicsState();
     doc.circle(cx, cy, D / 2, null);
     doc.clip();
     doc.discardPath();
-    // Una foto corrupta no puede tumbar la ficha entera: sin ella el documento
-    // sale igual, solo que sin la imagen de la mascota.
     try {
       doc.addImage(fotoDataUri, M, cy - D / 2, D, D, undefined, 'FAST');
     } catch {
-      /* se ignora a propósito: el resto del PDF vale igual */
     }
     doc.restoreGraphicsState();
     xTexto = M + D + 9;
@@ -310,7 +208,6 @@ export function construirDocPdf(JsPdfCtor, datos, fotoDataUri = null) {
   doc.setFontSize(7.5);
   doc.text('FICHA MÉDICA VETERINARIA  ·  DOCUMENTO INFORMATIVO', xTexto, 33.5);
 
-  // Franja de metadatos del documento
   doc.setFillColor(...VERDE_OSC);
   doc.rect(0, ALTO_HEADER - 8, ANCHO, 8, 'F');
   doc.setFontSize(7.5);
@@ -320,13 +217,10 @@ export function construirDocPdf(JsPdfCtor, datos, fotoDataUri = null) {
 
   y = ALTO_HEADER + 11;
 
-  // ── Utilidades de maquetado ────────────────────────────────────────────────
   const nuevaPagina = () => { doc.addPage(); y = 20; };
   const asegurarEspacio = (alto) => { if (y + alto > LIMITE) nuevaPagina(); };
 
   const tituloSeccion = (titulo, cantidad = null, nota = null) => {
-    // El título nunca puede quedar solo al pie: se reserva también el alto de
-    // la primera línea de contenido.
     asegurarEspacio(nota ? 22 : 17);
     doc.setFont(undefined, 'bold');
     doc.setFontSize(10);
@@ -348,7 +242,6 @@ export function construirDocPdf(JsPdfCtor, datos, fotoDataUri = null) {
     }
   };
 
-  /** Bloque de pares etiqueta/valor en dos columnas. */
   const bloqueDatos = (pares) => {
     const cols = 2;
     const anchoCol = UTIL / cols;
@@ -375,11 +268,7 @@ export function construirDocPdf(JsPdfCtor, datos, fotoDataUri = null) {
     y += 1;
   };
 
-  /** Un registro (una vacuna, un tratamiento, una consulta). */
   const itemRegistro = (item, indice) => {
-    // Se mide TODO el ítem antes de dibujar nada: así nunca queda partido entre
-    // dos páginas ni se dibuja fuera del área útil (el bug que se comía los
-    // registros del documento anterior).
     const anchoEtiqueta = 34;
     const anchoValor = UTIL - anchoEtiqueta - 7;
     const filas = item.lineas
@@ -417,7 +306,6 @@ export function construirDocPdf(JsPdfCtor, datos, fotoDataUri = null) {
       y += lineas.length * 4.1;
     });
 
-    // Barra verde a la izquierda, como las cards de la app
     doc.setDrawColor(...LINEA);
     doc.setLineWidth(1.3);
     doc.line(M + 1.5, yInicio - 3.2, M + 1.5, y - 1);
@@ -434,7 +322,6 @@ export function construirDocPdf(JsPdfCtor, datos, fotoDataUri = null) {
     y += 8;
   };
 
-  // ── Contenido ──────────────────────────────────────────────────────────────
   tituloSeccion('Identificación del animal');
   bloqueDatos(d.identificacion);
 
@@ -463,19 +350,8 @@ export function construirDocPdf(JsPdfCtor, datos, fotoDataUri = null) {
     sec.items.forEach((item, i) => itemRegistro(item, i + 1));
   });
 
-  // ── Aviso legal ────────────────────────────────────────────────────────────
-  /*
-    El alto se mide sobre las líneas REALES. Antes se metía un '' al final de
-    cada párrafo y esa línea vacía se contaba como una línea entera de alto:
-    el recuadro reservaba 44 mm cuando el texto ocupa 6 líneas. Con 32 mm
-    libres al pie, esos milímetros de más eran lo que empujaba el aviso —y por
-    lo tanto una hoja entera— a una página nueva casi vacía.
-
-    Ahora la separación entre párrafos es un espacio chico (GAP), no una línea
-    completa, y la caja se dimensiona con lo que de verdad se dibuja.
-  */
-  const LH = 3.1;   // interlínea
-  const GAP = 1.6;  // separación entre párrafos
+  const LH = 3.1;
+  const GAP = 1.6;
   doc.setFont(undefined, 'normal');
   doc.setFontSize(7);
   const parrafosAviso = AVISO_LEGAL.map((p) => doc.splitTextToSize(p, UTIL - 10));
@@ -486,7 +362,6 @@ export function construirDocPdf(JsPdfCtor, datos, fotoDataUri = null) {
   asegurarEspacio(altoCaja + 4);
   y += 4;
 
-  // El recuadro va primero (si no, el relleno tapa el texto) y el texto encima.
   const yCaja = y;
   doc.setDrawColor(...LINEA);
   doc.setLineWidth(0.6);
@@ -508,7 +383,6 @@ export function construirDocPdf(JsPdfCtor, datos, fotoDataUri = null) {
   });
   y = yCaja + altoCaja + 4;
 
-  // ── Pie con la huella, en todas las páginas ────────────────────────────────
   const paginas = doc.internal.getNumberOfPages();
   for (let p = 1; p <= paginas; p++) {
     doc.setPage(p);
@@ -533,13 +407,10 @@ export function construirDocPdf(JsPdfCtor, datos, fotoDataUri = null) {
   return doc;
 }
 
-// ─── GENERADOR HTML (nativo, expo-print) ──────────────────────────────────────
-
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => (
   { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
 ));
 
-/** Misma huella que el PDF, en SVG (el emoji 🐾 no siempre está en el dispositivo). */
 const HUELLA_SVG = `
 <svg viewBox="0 0 24 24" width="11" height="11" style="vertical-align:-1px">
   <g fill="${colores.verde}">
@@ -681,7 +552,6 @@ export function construirHtmlFicha(datos, fotoDataUri = null) {
 </body></html>`;
 }
 
-/** Nombre de archivo sin caracteres problemáticos. */
 export function nombreArchivo(mascotaNombre) {
   const limpio = String(mascotaNombre ?? 'mascota')
     .normalize('NFD').replace(/[̀-ͯ]/g, '')

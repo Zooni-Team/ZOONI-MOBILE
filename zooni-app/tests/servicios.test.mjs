@@ -1,5 +1,3 @@
-// Servicios (src/services) contra el doble de Supabase (tests/dobles/supabase.mjs).
-// Prueban QUÉ le piden a la base y cómo traducen sus respuestas y errores.
 import { beforeEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -38,9 +36,8 @@ describe('comun', () => {
     assert.equal(op.params.p_destino, 7);
     assert.equal(op.params.p_titulo, 'Hola');
     assert.deepEqual(op.params.p_data_extra, { destino: 'pedidos' });
-    await notificar(null, 'x', 'y'); // sin destinatario: no hace nada
+    await notificar(null, 'x', 'y');
     assert.equal(fake.de('rpc').length, 1);
-    // Sin relación (match/amistad/trato) la RPC devuelve error: no debe romper el flujo.
     fake.rpc('crear_notificacion', { data: null, error: { code: 'P0001', message: 'sin_relacion' } });
     await notificar(9, 'x', 'y');
     assert.equal(resumir('a'.repeat(100)).length, 81);
@@ -104,8 +101,6 @@ describe('authApi (Supabase Auth)', () => {
   });
 
   test('si la base no responde, el error NO es "credenciales"', async () => {
-    // Antes caía al login viejo (SHA-256 sin JWT), que con la 061 aplicada
-    // contestaba "contraseña incorrecta" a alguien que sólo estaba sin red.
     fake.auth('signInWithPassword', { error: { message: 'Invalid login credentials' } });
     fake.rpc('migrar_cuenta_legada', { error: { message: 'Failed to fetch' } });
     await assert.rejects(iniciarSesionConPassword('ana@x.com', 'secreta1'), (e) => e.message !== 'credenciales');
@@ -144,8 +139,6 @@ describe('authApi (Supabase Auth)', () => {
   });
 
   test('login de dueños no pierde los avisos (contraseña débil migrada, baja cancelada)', async () => {
-    // Antes login() rearmaba el usuario sin debeCambiarContrasena: LoginScreen
-    // nunca mandaba a cambiar la contraseña de una cuenta migrada (#90).
     let intentos = 0;
     fake.auth('signInWithPassword', () => (intentos++ === 0
       ? { error: { code: 'invalid_credentials', message: 'Invalid login credentials' } }

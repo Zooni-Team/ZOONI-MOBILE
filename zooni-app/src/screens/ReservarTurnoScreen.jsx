@@ -1,26 +1,3 @@
-/**
- * ReservarTurnoScreen.jsx — El dueño pide un turno en una veterinaria o peluquería
- *
- * Se llega desde la ficha del negocio (NegocioPublico) con el servicio ya
- * elegido, o desde "Volver a pedir" en Turnos y pedidos. Todo en una pantalla,
- * de arriba hacia abajo:
- *
- *   1. Servicio      los del negocio, con duración y precio
- *   2. Mascota       sus mascotas; en peluquería, el tamaño sale del peso (y se
- *                    puede corregir) y define el precio
- *   3. Día           las próximas 3 semanas; los días cerrados no se pueden elegir
- *   4. Horario       sólo los libres (turnosLibres: dentro del horario, sin
- *                    pisar otros turnos, con anticipación)
- *   5. Extras        veterinaria: urgencia (si atiende 24 h, abre todo el día)
- *                    y a domicilio · peluquería: busca y lleva (con su costo)
- *   6. Notas         lo que el negocio tiene que saber antes
- *
- * Abajo, el resumen y "Pedir turno · $X". El turno queda "Por confirmar" y al
- * negocio le llega la notificación; al confirmarlo, le llega al dueño.
- *
- * Params: { idNegocio, idItem?, idMascota?, urgente? }
- */
-
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StatusBar,
@@ -63,7 +40,6 @@ function proximosDias() {
   });
 }
 
-// Urgencias 24 h: ese día se puede pedir a cualquier hora
 const HORARIO_24H = Object.fromEntries(['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom']
   .map((k) => [k, { activo: true, desde: '00:00', hasta: '23:59' }]));
 
@@ -83,16 +59,14 @@ export default function ReservarTurnoScreen() {
   const [cargando, setCargando] = useState(true);
   const [itemId, setItemId] = useState(idItem ?? null);
   const [mascotaId, setMascotaId] = useState(idMascota ?? null);
-  const [tamano, setTamano] = useState(null); // corrección manual (peluquería)
+  const [tamano, setTamano] = useState(null);
   const [urgente, setUrgente] = useState(!!urgenteParam);
   const [dia, setDia] = useState(null);
-  const [hora, setHora] = useState(null); // Date
+  const [hora, setHora] = useState(null);
   const [libres, setLibres] = useState(null);
   const [cargandoLibres, setCargandoLibres] = useState(false);
   const [aDomicilio, setADomicilio] = useState(false);
   const [direccion, setDireccion] = useState('');
-  // Dónde queda esa dirección (GPS o buscada en el mapa): para el radio del
-  // busca y lleva. undefined = todavía no se buscó · null = no se encontró
   const [coords, setCoords] = useState(undefined);
   const [ubicando, setUbicando] = useState(false);
   const [notas, setNotas] = useState('');
@@ -127,8 +101,6 @@ export default function ReservarTurnoScreen() {
   const horarios = usa24h ? HORARIO_24H : negocio?.horarios;
   const ofreceDomicilio = (esVet && d.aDomicilio) || (esPelu && d.buscaYLleva);
   const precio = negocio && item ? precioTurno(negocio, item, tamanoMascota, aDomicilio) : 0;
-  // Radio del busca y lleva: sólo se controla si la peluquería lo cargó y
-  // tiene su local marcado en el mapa
   const radioKm = negocio?.lat != null ? radioBuscaYLlevaKm(negocio) : null;
   const distanciaKm = coords ? distanciaAlLocalKm(negocio, coords) : null;
   const fueraDeRadio = radioKm != null && distanciaKm != null && distanciaKm > radioKm;
@@ -136,13 +108,11 @@ export default function ReservarTurnoScreen() {
   const dias = useMemo(proximosDias, []);
   const diaAbierto = useCallback((x) => !!horarios && horarioDelDia(horarios, x).activo, [horarios]);
 
-  // Primer día abierto elegido de entrada (o hoy si es urgente)
   useEffect(() => {
     if (!negocio || dia) return;
     setDia(dias.find(diaAbierto) ?? null);
   }, [negocio, dia, dias, diaAbierto]);
 
-  // Horarios libres del día elegido, para la duración del servicio
   useEffect(() => {
     if (!negocio || !item || !dia) { setLibres(null); return undefined; }
     let vivo = true;
@@ -172,7 +142,6 @@ export default function ReservarTurnoScreen() {
     }, () => setUbicando(false), { enableHighAccuracy: true, timeout: 10000 });
   };
 
-  /** Busca en el mapa la dirección escrita (si no se ubicó ya). Devuelve { lat, lng } o null. */
   const ubicarDireccion = async () => {
     if (coords !== undefined) return coords;
     if (direccion.trim().length < 5) return null;
@@ -195,8 +164,6 @@ export default function ReservarTurnoScreen() {
     if (!hora) faltan.push('elegir un horario libre');
     if (aDomicilio && direccion.trim().length < 5) faltan.push('escribir la dirección de tu casa');
     else if (aDomicilio && radioKm != null) {
-      // El candado se toma antes de esperar al mapa: si no, dos toques
-      // rápidos pasan los dos la validación y piden dos turnos
       enviandoRef.current = true;
       const punto = await ubicarDireccion();
       enviandoRef.current = false;
@@ -226,7 +193,7 @@ export default function ReservarTurnoScreen() {
       const m = err?.message;
       if (m === 'horario_ocupado') {
         setErrorGeneral('Alguien acaba de tomar ese horario. Elegí otro, ya actualizamos los libres.');
-        setDia((x) => new Date(x)); // fuerza recargar los libres
+        setDia((x) => new Date(x));
       } else if (m === 'negocio_cerrado') {
         setErrorGeneral(`${negocio.nombre} dejó de tomar turnos hace un momento. Escribile por chat.`);
       } else {
@@ -251,7 +218,6 @@ export default function ReservarTurnoScreen() {
     );
   }
 
-  // Horarios agrupados en mañana / tarde / noche
   const grupos = libres ? [
     { titulo: 'Mañana', horas: libres.filter((h) => h.getHours() < 12) },
     { titulo: 'Tarde', horas: libres.filter((h) => h.getHours() >= 12 && h.getHours() < 19) },
@@ -271,7 +237,6 @@ export default function ReservarTurnoScreen() {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView ref={scrollRef} contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          {/* Negocio */}
           <View style={s.card}>
             <View style={s.fila}>
               {negocio.logo
@@ -286,7 +251,6 @@ export default function ReservarTurnoScreen() {
             </View>
           </View>
 
-          {/* 1. Servicio */}
           <Text style={s.label}>{esVet ? '¿Qué necesitás?' : '¿Qué servicio?'}</Text>
           <View style={{ gap: 8 }}>
             {negocio.items.map((it) => {
@@ -307,7 +271,6 @@ export default function ReservarTurnoScreen() {
             })}
           </View>
 
-          {/* 2. Mascota */}
           <Text style={s.label}>¿Para quién?</Text>
           {cargandoMascotas ? <ActivityIndicator color={colores.verde} /> : mascotas.length === 0 ? (
             <Text style={s.ayuda}>No tenés mascotas cargadas. Agregá una desde Mis Mascotas.</Text>
@@ -354,7 +317,6 @@ export default function ReservarTurnoScreen() {
             </>
           )}
 
-          {/* Urgencia (veterinaria) */}
           {esVet && (
             <TouchableOpacity style={[s.toggle, urgente && s.toggleUrgente]} onPress={() => { setUrgente((u) => !u); setDia(null); }}
               accessibilityRole="switch" accessibilityState={{ checked: urgente }}>
@@ -370,7 +332,6 @@ export default function ReservarTurnoScreen() {
             </TouchableOpacity>
           )}
 
-          {/* 3. Día */}
           <Text style={s.label}>¿Qué día?</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {dias.map((x, i) => {
@@ -388,7 +349,6 @@ export default function ReservarTurnoScreen() {
             })}
           </ScrollView>
 
-          {/* 4. Horario */}
           <Text style={s.label}>¿A qué hora?{dia ? <Text style={s.labelSub}> · {formatearFecha(dia, 'diaSemana')}</Text> : null}</Text>
           {!item ? <Text style={s.ayuda}>Elegí primero el servicio.</Text>
             : cargandoLibres || libres === null ? <ActivityIndicator color={colores.verde} />
@@ -414,7 +374,6 @@ export default function ReservarTurnoScreen() {
                 </View>
               ))}
 
-          {/* 5. A domicilio */}
           {ofreceDomicilio && (
             <>
               <TouchableOpacity style={[s.toggle, aDomicilio && s.toggleOn]} onPress={() => setADomicilio((x) => !x)}
@@ -434,7 +393,6 @@ export default function ReservarTurnoScreen() {
                   <View style={[s.inputFila, fueraDeRadio && { borderWidth: 1.5, borderColor: colores.rojo }]}>
                     <TextInput style={s.inputFlex} value={direccion}
                       onChangeText={(v) => { setDireccion(v.slice(0, 300)); setCoords(undefined); }}
-                      // Al terminar de escribir se ubica en el mapa, así ve enseguida si llegan
                       onBlur={radioKm != null ? ubicarDireccion : undefined}
                       onSubmitEditing={radioKm != null ? ubicarDireccion : undefined}
                       placeholder="Tu dirección (calle, número, piso)" placeholderTextColor={colores.textoTenue} />
@@ -463,7 +421,6 @@ export default function ReservarTurnoScreen() {
             </>
           )}
 
-          {/* 6. Notas */}
           <Text style={s.label}>{esVet ? 'Contales qué le pasa (opcional)' : 'Notas para la peluquería (opcional)'}</Text>
           <TextInput style={[s.input, { minHeight: 80, textAlignVertical: 'top' }]} value={notas} onChangeText={setNotas}
             multiline maxLength={500} placeholderTextColor={colores.textoTenue}
@@ -471,7 +428,6 @@ export default function ReservarTurnoScreen() {
               ? 'Ej: vomitó dos veces desde ayer, está decaído. Toma un antibiótico.'
               : 'Ej: tiene nudos en las patas, se pone nervioso con el secador.'} />
 
-          {/* Resumen */}
           {item && mascota && hora ? (
             <View style={[s.card, { marginTop: 22 }]}>
               <Text style={s.resumenTitulo}>Tu turno</Text>

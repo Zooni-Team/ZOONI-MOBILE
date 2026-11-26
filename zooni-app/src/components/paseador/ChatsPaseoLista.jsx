@@ -1,12 +1,3 @@
-/**
- * ChatsPaseoLista.jsx — Lista de conversaciones de paseos
- *
- * Una fila por paseo: foto, nombre del otro, mascota + estado, último mensaje
- * y no leídos. La usan los dos lados:
- *   rol 'paseador' → inbox de Zooni Paseadores (PaseadorChatsScreen)
- *   rol 'dueno'    → pestaña "Paseadores" de Mensajes (app de dueños)
- */
-
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View,
@@ -40,7 +31,6 @@ export default function ChatsPaseoLista({ rol = 'paseador', vacioTexto }) {
     }
   }, [rol]);
 
-  // Se refresca al volver de un chat (para bajar los no leídos)
   useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
 
   if (convs === null) return <ActivityIndicator color={C.teal} style={{ marginTop: 30 }} />;
@@ -68,8 +58,6 @@ export default function ChatsPaseoLista({ rol = 'paseador', vacioTexto }) {
         const est = ESTADO[p.estado] ?? { txt: p.estado, color: C.texto2 };
         return (
           <TouchableOpacity style={st.item} activeOpacity={0.8}
-            // idsPaseos: todos los paseos con esta persona, para que el chat
-            // muestre el historial completo y no solo el del paseo actual.
             onPress={() => navigation.navigate('PaseadorChat', { paseoId: p.id, idsPaseos: c.idsPaseos })}
             accessibilityLabel={`Chat con ${otro.nombre} por ${p.mascota.nombre}`}>
             {rol === 'dueno'

@@ -1,12 +1,3 @@
-/**
- * RegisterStep1Screen.jsx — Registro Paso 1: nombre + tipo de mascota
- * (Login2/Login3 de Figma)
- *
- * Con route.params.social ({ email, nombre, apellido, foto, proveedor }) viene
- * de "Continuar con Google / Facebook / Apple" y la cuenta todavía no existe:
- * se pasa por todos los pasos y el 3 ya no pide mail ni contraseña.
- */
-
 import { useRef, useState } from 'react';
 import {
   Animated,

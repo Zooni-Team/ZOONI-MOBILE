@@ -1,13 +1,3 @@
-/**
- * ConsultasScreen.jsx — Historial de consultas veterinarias de una mascota:
- * motivo, fecha, quién la atendió, notas y una imagen opcional (estudio,
- * receta, foto de la lesión).
- *
- * La imagen es información clínica: va al bucket PRIVADO consultas-privadas y
- * se muestra con una URL firmada de corta duración (services/fichaMedicaApi).
- * El armazón y las tarjetas son los mismos que en Vacunas y Tratamientos.
- */
-
 import { useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -51,7 +41,6 @@ export default function ConsultasScreen() {
     setErrores((e) => (e[campo] ? { ...e, [campo]: null } : e));
   };
 
-  // La fecha arranca en hoy, calculada al abrir.
   const abrir = () => {
     setForm({ ...FORM_VACIO, fecha: new Date() });
     setErrores({});
@@ -73,8 +62,6 @@ export default function ConsultasScreen() {
     setGuardando(true);
     setErrorGuardar(null);
     try {
-      // La imagen primero. Si no se puede subir, la consulta se guarda igual
-      // (no se pierde lo anotado) y se avisa.
       let imagenPath = null;
       let sinImagen = false;
       if (form.imagen) {
@@ -168,7 +155,6 @@ export default function ConsultasScreen() {
         )}
       </ModalFormulario>
 
-      {/* Una consulta que ya pasó: sin fechas futuras. */}
       <FechaPicker visible={eligiendoFecha} titulo="Fecha de la consulta" sinFuturo
         valor={form.fecha ?? new Date()}
         onConfirmar={(d) => { cambiar('fecha', d); setEligiendoFecha(false); }}

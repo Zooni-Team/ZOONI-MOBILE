@@ -1,14 +1,3 @@
-/**
- * ModalidadCobro.jsx — "¿Cuándo te paga?" de un dueño
- *
- * Tres opciones: cada paseo / fin de semana / fin de mes. Con las dos últimas
- * los paseos se acumulan en la cuenta corriente y, al cerrarse el período, si
- * el dueño debe plata, al paseador le llega un recordatorio.
- * Se usa en la cuenta corriente y en el resumen del paseo recién terminado.
- *
- * Props: modalidad · proximoCierre (Date | null) · onCambiar(key) · titulo
- */
-
 import { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';

@@ -1,14 +1,3 @@
-/**
- * NegocioLoginScreen.jsx — Ingreso a Zooni Negocios (veterinaria, peluquería, pet shop)
- *
- * Igual que el ingreso de paseadores: mismo backend que el login de dueños
- * (RPC login_user). Si la cuenta existe pero todavía no tiene un negocio de
- * este tipo (un dueño, un paseador o alguien con otro negocio), en vez de un
- * error se le ofrece sumarlo a su misma cuenta.
- *
- * Params: { tipo: 'veterinaria' | 'peluqueria' | 'petshop' }
- */
-
 import { useCallback, useEffect, useState } from 'react';
 import {
   Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView,
@@ -40,7 +29,7 @@ export default function NegocioLoginScreen() {
   const [verPassword, setVerPassword] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
-  const [activar, setActivar] = useState(null); // { email, nombre }
+  const [activar, setActivar] = useState(null);
 
   const ingresar = useCallback(async () => {
     const mail = email.trim();
@@ -56,8 +45,6 @@ export default function NegocioLoginScreen() {
         return;
       }
       const rutas = [{ name: 'NegocioApp', params: { tipo } }];
-      // Cuenta recién migrada con una contraseña vieja y débil: de paso por
-      // "Cambiar contraseña" antes de entrar (informe de seguridad #90).
       if (res.usuario?.debeCambiarContrasena) rutas.push({ name: 'ConfigCambiarContrasena', params: { forzado: true } });
       navigation.reset({ index: rutas.length - 1, routes: rutas });
       avisarSiSeCanceloLaBaja(res.usuario);

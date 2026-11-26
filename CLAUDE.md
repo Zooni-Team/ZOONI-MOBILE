@@ -13,7 +13,7 @@ los que dependen de él.
 | Si vas a… | Leé |
 |---|---|
 | Entender cómo encaja todo | [arquitectura.md](docs/claude/arquitectura.md) |
-| Escribir cualquier código (nombres, imports, errores, comentarios) | [convenciones.md](docs/claude/convenciones.md) |
+| Escribir cualquier código (nombres, imports, errores, sin comentarios) | [convenciones.md](docs/claude/convenciones.md) |
 | Usar un color, una sombra o el tamaño de texto | [estilos.md](docs/claude/estilos.md) |
 | Mostrar un aviso, un loading, elegir una fecha/hora/opción | [componentes.md](docs/claude/componentes.md) |
 | Formatear fechas, edades, buscar texto, validar, medir distancias | [utilidades.md](docs/claude/utilidades.md) |
@@ -53,8 +53,9 @@ los que dependen de él.
 7. **Ninguna clave secreta en la app.** Todo `EXPO_PUBLIC_*` es público.
 8. **Los errores no se tragan**: `if (error) throw errorApp('codigo', error)`
    (`services/comun.js`). Nada de datos inventados ("modo demo") cuando falla algo.
-9. **Comentarios que explican el porqué**, y que sigan siendo verdad. Si cambiás
-   el comportamiento, actualizá el comentario y el doc.
+9. **Sin comentarios en el código** (ni en JS/JSX/TS ni en SQL). El porqué de
+   cada decisión va en `docs/claude/` y en el mensaje del commit. Si cambiás el
+   comportamiento, actualizá el doc.
 10. **Antes de commitear:** `cd zooni-app && npm run lint && npm test`. Si tocaste
     la base: una `MIGRACION_0NN_*.sql` nueva + sus pruebas, y
     `node supabase/scripts/probar-esquema.mjs`.

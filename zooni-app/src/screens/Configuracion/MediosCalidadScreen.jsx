@@ -1,12 +1,3 @@
-/**
- * MediosCalidadScreen.jsx — Configuración › Medios y Calidad (§3.5.3)
- *
- * Todas preferencias de DISPOSITIVO (no sincronizan).
- * La calidad de subida se aplica de verdad (utils/elegirImagen la lee al
- * recomprimir cada foto). El resto se guarda pero todavía no cambia nada:
- * va debajo del aviso de vista previa.
- */
-
 import React, { useState } from 'react';
 
 import {

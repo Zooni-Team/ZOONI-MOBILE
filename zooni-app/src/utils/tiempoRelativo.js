@@ -1,18 +1,9 @@
 import { DIAS_SEMANA, MESES, parseFechaLocal } from './fechaLocal.js';
-/**
- * tiempoRelativo.js — "hace 5 minutos", "ayer 21:40", "en línea"
- *
- * Lo usan el chat, la lista de Mensajes y Comunidad (última conexión), que
- * antes tenían cada uno su propia versión con formatos distintos: en el inbox
- * decía "5 min" y en el chat solo la hora suelta, sin forma de saber si un
- * mensaje era de hoy o de la semana pasada.
- */
 
 const MIN = 60 * 1000;
 const HORA = 60 * MIN;
 const DIA = 24 * HORA;
 
-/** "21:40" — la ÚNICA función que arma una hora HH:MM (acepta Date, ISO o timestamp). */
 export function horaCorta(valor) {
   const d = parseFechaLocal(valor);
   if (!d) return '';
@@ -25,7 +16,6 @@ function esMismoDia(a, b) {
     && a.getDate() === b.getDate();
 }
 
-/** ¿Los dos valores caen el mismo día calendario? (para agrupar el chat) */
 export function mismoDia(a, b) {
   const da = parseFechaLocal(a);
   const db = parseFechaLocal(b);
@@ -33,17 +23,6 @@ export function mismoDia(a, b) {
   return esMismoDia(da, db);
 }
 
-/**
- * Etiqueta del separador de día del chat, como en WhatsApp:
- *   hoy              → "Hoy"
- *   ayer             → "Ayer"
- *   esta semana      → "martes"
- *   este año         → "12 de agosto"
- *   otro año         → "12 de agosto de 2025"
- *
- * La fecha vive en el separador y NO en cada burbuja: dentro de un mismo día
- * repetir el día en cada mensaje es ruido, y alcanza con la hora.
- */
 export function etiquetaDia(valor, ahora = new Date()) {
   const d = parseFechaLocal(valor);
   if (!d) return '';
@@ -54,8 +33,6 @@ export function etiquetaDia(valor, ahora = new Date()) {
   ayer.setDate(ayer.getDate() - 1);
   if (esMismoDia(d, ayer)) return 'Ayer';
 
-  // Días recientes por nombre; se compara por día calendario y no por
-  // milisegundos, para que a las 00:30 el de anteayer no diga "hace 1 día".
   const soloDia = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate());
   const diasAtras = Math.round((soloDia(ahora) - soloDia(d)) / DIA);
   if (diasAtras > 0 && diasAtras < 7) return DIAS_SEMANA[d.getDay()];
@@ -64,20 +41,12 @@ export function etiquetaDia(valor, ahora = new Date()) {
   return d.getFullYear() === ahora.getFullYear() ? base : `${base} de ${d.getFullYear()}`;
 }
 
-/**
- * Texto largo para el detalle de un mensaje.
- *   < 1 min  → "recién"
- *   < 1 h    → "hace 5 minutos"
- *   hoy      → "hace 3 horas"
- *   ayer     → "ayer 21:40"
- *   resto    → "12/8 · 21:40"
- */
 export function tiempoRelativo(valor, ahora = new Date()) {
   const d = parseFechaLocal(valor);
   if (!d) return '';
 
   const diff = ahora - d;
-  if (diff < 0) return horaCorta(d);          // relojes desfasados: no inventar
+  if (diff < 0) return horaCorta(d);
   if (diff < MIN) return 'recién';
 
   if (diff < HORA) {
@@ -102,9 +71,6 @@ export function tiempoRelativo(valor, ahora = new Date()) {
   return `${d.getDate()}/${d.getMonth() + 1} · ${horaCorta(d)}`;
 }
 
-/**
- * Versión corta para listas (inbox, Comunidad): "5 min", "3 h", "ayer", "12/8".
- */
 export function tiempoRelativoCorto(valor, ahora = new Date()) {
   const d = parseFechaLocal(valor);
   if (!d) return '';
@@ -122,11 +88,6 @@ export function tiempoRelativoCorto(valor, ahora = new Date()) {
   return `${d.getDate()}/${d.getMonth() + 1}`;
 }
 
-/**
- * Presencia de un usuario a partir de su última conexión.
- * Se considera EN LÍNEA hasta 5 minutos después del último latido — el mismo
- * umbral que ya usaba Comunidad para el punto verde de ubicación.
- */
 export const UMBRAL_EN_LINEA_MS = 5 * MIN;
 
 export function estadoPresencia(ultimaConexion, ahora = new Date()) {

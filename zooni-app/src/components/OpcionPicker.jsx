@@ -1,11 +1,3 @@
-/**
- * OpcionPicker.jsx — Dropdown propio (modal con lista de opciones)
- *
- * Usado por el registro (razas, sexo) y por Ficha Médica (raza). Cada opción
- * puede ser un string simple o un objeto { id, nombre } (como las razas que
- * vienen de la tabla `razas` de Supabase).
- */
-
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colores } from '../theme';

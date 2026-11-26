@@ -1,7 +1,3 @@
-/**
- * Vista ampliada del perfil al tocar la tarjeta Match.
- */
-
 import React from 'react';
 import {
   View,

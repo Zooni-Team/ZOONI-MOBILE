@@ -1,11 +1,3 @@
--- ⚠ NO PEGAR EN SUPABASE. Archivo de pruebas para un Postgres LOCAL (lo corre
---   supabase/scripts/probar-esquema.mjs). Crea usuarios de prueba.
--- pruebas_068.sql — correr DESPUÉS de pruebas_rls.sql (helpers pg_temp.como / salir).
---   · Borrar una foto anota su archivo; si la misma URL sigue en uso, no se ofrece.
---   · Borrar la mascota anota su foto principal, sus fotos y sus consultas.
---   · Una imagen vieja de consulta se muda al bucket privado y la pública queda anotada.
---   · Nada de esto se puede tocar desde la app.
-
 DO $$
 DECLARE
   sufijo TEXT := substr(md5(random()::TEXT), 1, 8);
@@ -23,7 +15,7 @@ BEGIN
 
   UPDATE "Mascota" SET "Foto" = base || 'mascotas/principal.jpg' WHERE "Id_Mascota" = mascota;
   INSERT INTO mascota_fotos (id_mascota, url) VALUES
-    (mascota, base || 'mascotas/principal.jpg'),   -- la misma que la principal
+    (mascota, base || 'mascotas/principal.jpg'),
     (mascota, base || 'mascotas/otra.jpg'),
     (mascota, 'https://lh3.googleusercontent.com/a/externa.jpg');
   INSERT INTO consultas_veterinarias (mascota_id, fecha, motivo, imagen_path)
@@ -31,7 +23,6 @@ BEGIN
   INSERT INTO consultas_veterinarias (mascota_id, fecha, motivo, imagen_url)
   VALUES (mascota, current_date, 'Receta vieja', base || 'consultas/receta.jpg') RETURNING id INTO consulta_vieja;
 
-  -- La app no ve la cola ni las funciones de limpieza
   fallo := FALSE;
   BEGIN PERFORM 1 FROM archivos_por_borrar; EXCEPTION WHEN insufficient_privilege THEN fallo := TRUE; END;
   ASSERT fallo, 'la cola de archivos no se lee desde la app';
@@ -39,7 +30,6 @@ BEGIN
   BEGIN PERFORM privatizar_imagen_consulta(consulta_vieja, 'x'); EXCEPTION WHEN insufficient_privilege THEN fallo := TRUE; END;
   ASSERT fallo, 'un usuario no muda imágenes de consultas';
 
-  -- Borrar fotos (como lo hace la app)
   DELETE FROM mascota_fotos WHERE id_mascota = mascota;
   PERFORM pg_temp.salir();
 
@@ -52,7 +42,6 @@ BEGIN
   ASSERT EXISTS (SELECT 1 FROM archivos_para_borrar() WHERE ruta = yo_auth || '/mascotas/otra.jpg'),
     'la que ya nadie usa sí se ofrece';
 
-  -- Mudanza de la imagen vieja al bucket privado
   ASSERT EXISTS (SELECT 1 FROM consultas_a_privatizar() c
                  WHERE c.id = consulta_vieja AND c.carpeta = yo_auth || '/consultas'),
     'la consulta vieja aparece para mudar, con la carpeta del dueño';
@@ -67,7 +56,6 @@ BEGIN
   ASSERT EXISTS (SELECT 1 FROM archivos_para_borrar() WHERE bucket = 'public-images' AND ruta = yo_auth || '/consultas/receta.jpg'),
     'la imagen pública vieja queda para borrar';
 
-  -- Borrar la mascota: su foto y las imágenes de sus consultas
   DELETE FROM "Mascota" WHERE "Id_Mascota" = mascota;
   ASSERT EXISTS (SELECT 1 FROM archivos_para_borrar() WHERE ruta = yo_auth || '/mascotas/principal.jpg'),
     'al borrar la mascota su foto principal queda para borrar';

@@ -1,16 +1,3 @@
-/**
- * ClientesPetshopTab.jsx — Clientes del pet shop
- *
- * Uno por dueño que alguna vez hizo un pedido (fetchClientesPetshop):
- * cuántas compras entregadas, cuánto gastó en total, cuándo fue el último
- * pedido y sus tres productos más comprados (para ofrecerle lo de siempre).
- *
- *   · Buscador por nombre o producto.
- *   · Filtros: Todos · Frecuentes (2 compras o más) · Con pedido en curso.
- *   · Tocar un cliente despliega sus pedidos; el globito abre el chat.
- *   · Arriba, el total de clientes y lo facturado entre todos.
- */
-
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View,
@@ -31,7 +18,7 @@ export default function ClientesPetshopTab({ negocio, avisar, abrirChat }) {
   const [clientes, setClientes] = useState(null);
   const [busqueda, setBusqueda] = useState('');
   const [filtro, setFiltro] = useState('todos');
-  const [abierto, setAbierto] = useState(null); // idDueno
+  const [abierto, setAbierto] = useState(null);
   const [refrescando, setRefrescando] = useState(false);
 
   const cargar = useCallback(async () => {

@@ -1,12 +1,3 @@
-/**
- * RegisterStep3Screen.jsx — Registro Paso 3: datos personales del dueño
- * (Login6 de Figma)
- *
- * Si viene de Google / Facebook / Apple (datosPrevios.social), el nombre y el
- * apellido llegan precargados y NO se piden mail ni contraseña: el mail es el
- * que verificó el proveedor y la cuenta entra siempre con él.
- */
-
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -46,18 +37,14 @@ export default function RegisterStep3Screen() {
   const [verPassword, setVerPassword] = useState(false);
   const [verConfirmar, setVerConfirmar] = useState(false);
   const [errores, setErrores] = useState({});
-  // Consultando si el mail / @usuario están libres, antes de pasar al paso 4
   const [verificando, setVerificando] = useState(false);
   const [focus, setFocus] = useState(null);
 
   const petImg = resolveMascotaBasicoImage(datosPrevios.especie, datosPrevios.razaNombre);
 
-  // Validaciones en vivo: se muestran mientras el campo tiene contenido inválido,
-  // y desaparecen apenas se corrige (no hace falta esperar a tocar "Continuar").
   const mailValido = EMAIL_REGEX.test(mail.trim());
   const mostrarErrorMail = mail.length > 0 && !mailValido;
 
-  // @usuario: 3–30 caracteres, letras, números, punto, guion y guion bajo
   const usuarioLimpio = usuario.trim().replace(/^@/, '');
   const usuarioValido = /^[a-zA-Z0-9._-]{3,30}$/.test(usuarioLimpio);
   const mostrarErrorUsuario = usuario.length > 0 && !usuarioValido;
@@ -75,15 +62,6 @@ export default function RegisterStep3Screen() {
     && (social || (mailValido && passwordValida && confirmarValido))
   ), [nombre, apellido, usuarioValido, mailValido, passwordValida, confirmarValido, social]);
 
-  /*
-    Antes de avanzar se comprueba que el mail y el @usuario estén libres.
-
-    El registro real ocurre en el paso 4 (después de país, provincia y
-    teléfono). Si el mail ya estaba en uso, el error saltaba recién ahí — y
-    encima con Alert.alert, que en web NO muestra nada: el botón dejaba de
-    cargar, no pasaba nada y no había forma de saber por qué. Ahora el aviso
-    aparece debajo del campo, en la pantalla donde se escribió.
-  */
   const handleContinuar = async () => {
     const errs = {};
     if (!nombre.trim()) errs.nombre = 'Ingresá tu nombre';
@@ -94,7 +72,6 @@ export default function RegisterStep3Screen() {
     setVerificando(true);
     try {
       const { mailTomado, usuarioTomado } = await verificarDisponibilidad({
-        // Con login social la cuenta es nueva por definición (lo confirmó el servidor)
         email: social ? undefined : mail.trim(),
         nombreUsuario: usuarioLimpio,
       });
@@ -106,8 +83,6 @@ export default function RegisterStep3Screen() {
         return;
       }
     } catch {
-      // Sin conexión no se bloquea el registro: el servidor tiene la última
-      // palabra con su índice único.
     } finally {
       setVerificando(false);
     }
@@ -166,7 +141,6 @@ export default function RegisterStep3Screen() {
               onFocus={() => setFocus('apellido')} onBlur={() => setFocus(null)} returnKeyType="next" />
             {errores.apellido && <Text style={s.errorTxt}>{errores.apellido}</Text>}
 
-            {/* @usuario — se pide en el registro; después se cambia desde Configuración */}
             <View style={[s.inputRow, focus === 'usuario' && s.inputFocus, mostrarErrorUsuario && s.inputError]}>
               <Text style={s.arroba}>@</Text>
               <TextInput style={s.inputPass} placeholder="nombre de usuario" placeholderTextColor={colores.textoTenue}
@@ -176,12 +150,10 @@ export default function RegisterStep3Screen() {
                   if (errores.usuario) setErrores((p) => ({ ...p, usuario: null }));
                 }}
                 autoCapitalize="none" autoCorrect={false} maxLength={31}
-                // El @usuario de Zooni NO es con lo que se inicia sesión (eso es el mail)
                 autoComplete="off"
                 onFocus={() => setFocus('usuario')} onBlur={() => setFocus(null)} returnKeyType="next" />
             </View>
             {mostrarErrorUsuario && <Text style={s.errorTxt}>Usá 3 a 30 letras, números, punto, guion o guion bajo</Text>}
-            {/* "Ya está tomado" viene del servidor, no del formato */}
             {!!errores.usuario && <Text style={s.errorTxt}>{errores.usuario}</Text>}
 
             {social ? (
@@ -196,8 +168,6 @@ export default function RegisterStep3Screen() {
               <TextInput style={[s.input, focus === 'mail' && s.inputFocus, mostrarErrorMail && s.inputError]}
                 placeholder="Mail" placeholderTextColor={colores.textoTenue}
                 value={mail}
-                // Al corregir el mail se borra el "ya existe una cuenta": si no,
-                // el cartel quedaba pegado aunque ya hubiera escrito otro.
                 onChangeText={(v) => { setMail(v); if (errores.mail) setErrores((p) => ({ ...p, mail: null })); }}
                 keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
                 autoComplete="username" textContentType="username"
@@ -245,8 +215,6 @@ export default function RegisterStep3Screen() {
           disabled={!puedeAvanzar || verificando}
           activeOpacity={0.85}
         >
-          {/* La comprobación va contra la base: sin indicador, el botón parecía
-              trabado durante ese momento. */}
           {verificando
             ? <ActivityIndicator size="small" color={colores.blanco} />
             : <Text style={s.btnContinuarTxt}>Continuar</Text>}

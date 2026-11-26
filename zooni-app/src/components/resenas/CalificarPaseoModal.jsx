@@ -1,19 +1,3 @@
-/**
- * CalificarPaseoModal.jsx — El dueño reseña un paseo terminado (estilo Google Maps)
- *
- *   1. Estrellas generales (obligatorias)
- *   2. Aspectos: puntualidad, trato con tu mascota, comunicación (opcionales)
- *   3. Preguntas de sí / no (opcionales)
- *   4. Texto (opcional)
- *   5. Fotos y videos del paseo (hasta MEDIA_RESENA_MAX)
- *
- * Al enviar, los archivos se suben a Storage y al paseador le llega una
- * notificación. Props: visible · paseo · onCerrar · onEnviado()
- *
- * Opinión general (sin paseo): `paseo` = { libre: true, idWalker, paseador }.
- * Mismo formulario, se guarda con opinarPaseador (048).
- */
-
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator, KeyboardAvoidingView, Modal, Platform, SafeAreaView, ScrollView, StyleSheet,
@@ -29,16 +13,15 @@ import { MiniaturaMedia, VisorMedia } from './MediaResena';
 import { colores } from '../../theme';
 import { EstrellasInput } from '../ui/Estrellas';
 
-const MAX_MB = 50; // file_size_limit del bucket "resenas" (042)
+const MAX_MB = 50;
 const ETIQUETAS = ['', 'Muy malo', 'Malo', 'Regular', 'Bueno', 'Excelente'];
-
 
 export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviado }) {
   const [rating, setRating] = useState(0);
   const [aspectos, setAspectos] = useState({});
   const [respuestas, setRespuestas] = useState({});
   const [texto, setTexto] = useState('');
-  const [media, setMedia] = useState([]); // [{ uri, mimeType, tipo }]
+  const [media, setMedia] = useState([]);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState(null);
   const [visor, setVisor] = useState(null);
@@ -108,14 +91,12 @@ export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviad
 
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
-            {/* 1. General */}
             <View style={{ alignItems: 'center' }}>
               <Text style={s.pregunta}>{paseo?.libre ? '¿Qué te parece este paseador?' : '¿Cómo estuvo el paseo?'}</Text>
               <View style={{ marginTop: 10 }}><EstrellasInput valor={rating} onCambio={(v) => { setRating(v); setError(null); }} size={40} /></View>
               <Text style={s.etiqueta}>{ETIQUETAS[rating] || 'Tocá las estrellas'}</Text>
             </View>
 
-            {/* 2. Aspectos */}
             <Text style={s.seccion}>Contanos un poco más (opcional)</Text>
             {ASPECTOS_RESENA.map((a) => (
               <View key={a.key} style={s.aspecto}>
@@ -129,7 +110,6 @@ export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviad
               </View>
             ))}
 
-            {/* 3. Preguntas */}
             {PREGUNTAS_RESENA.map((p) => (
               <View key={p.key} style={s.preguntaBox}>
                 <Text style={s.preguntaTxt}>{p.pregunta}</Text>
@@ -152,14 +132,12 @@ export default function CalificarPaseoModal({ visible, paseo, onCerrar, onEnviad
               </View>
             ))}
 
-            {/* 4. Texto */}
             <Text style={s.seccion}>Tu opinión (opcional)</Text>
             <TextInput style={s.input} value={texto} onChangeText={setTexto} multiline maxLength={1000}
               placeholder="Contá cómo te fue: puntualidad, cómo trató a tu mascota, si te mandó novedades…"
               placeholderTextColor={colores.textoTenue} />
             <Text style={s.contador}>{texto.length}/1000</Text>
 
-            {/* 5. Fotos y videos */}
             <Text style={s.seccion}>Fotos y videos (opcional · {media.length}/{MEDIA_RESENA_MAX})</Text>
             <View style={s.mediaFila}>
               {media.map((m, i) => (

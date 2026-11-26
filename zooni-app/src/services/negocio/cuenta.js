@@ -1,9 +1,3 @@
-/**
- * negocio/cuenta.js — Entrar y dar de alta un negocio. Una cuenta puede tener
- * un negocio de cada tipo. La contraseña la maneja Supabase Auth y las altas
- * pasan por RPC que toman la identidad de la sesión.
- */
-
 import { supabase } from '../../lib/supabase';
 import { setCurrentUserId, setModo, modoNegocio } from '../../config/session';
 import { crearCuentaConPassword, iniciarSesionConPassword } from '../authApi';
@@ -17,12 +11,6 @@ async function entrarComoNegocio(id, mail, tipo) {
   marcarPresencia(true);
 }
 
-/**
- * Login de un negocio. Si la cuenta existe pero todavía no tiene un negocio de
- * este tipo, NO entra: devuelve { necesitaActivar, email, nombre } para
- * ofrecer sumarlo a la misma cuenta (la sesión de Auth queda abierta para
- * activarNegocio). Error('credenciales') si no coinciden.
- */
 export async function loginNegocio(email, password, tipo) {
   const mail = email.trim().toLowerCase();
   const usuario = await iniciarSesionConPassword(mail, password);
@@ -61,9 +49,7 @@ function errorDeAlta(error) {
   return errorBase(error);
 }
 
-/** Cuenta nueva con su negocio. Entra directo a trabajar. */
 export async function registrarNegocio({ usuario, negocio }) {
-  // Sesión de Auth primero; la RPC toma el mail de la sesión (060).
   await crearCuentaConPassword(usuario.email, usuario.password);
   const { data, error } = await supabase.rpc('registrar_negocio_sesion', {
     p_usuario: {
@@ -78,10 +64,6 @@ export async function registrarNegocio({ usuario, negocio }) {
   return data;
 }
 
-/**
- * Cuenta que ya existe (dueño, paseador u otro negocio) y suma este negocio.
- * Usa la sesión que dejó abierta loginNegocio.
- */
 export async function activarNegocio({ email, negocio }) {
   const { data, error } = await supabase.rpc('activar_negocio_sesion', {
     p_negocio: negocioParaRpc(negocio),

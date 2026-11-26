@@ -1,12 +1,3 @@
-/**
- * ProveedorTipoScreen.jsx — "¿Qué servicio ofrecés?"
- *
- * Se llega desde el botón "Registrarse como Proveedor" del Login de dueños.
- * Paseador → Zooni Paseadores. Veterinaria, peluquería y pet shop → Zooni
- * Negocios (NegocioLogin con su tipo): cada uno con su app, mismas pantallas
- * y secciones distintas según el tipo (constants/negocios.js).
- */
-
 import {
   Image, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';

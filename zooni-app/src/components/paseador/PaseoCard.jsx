@@ -1,11 +1,3 @@
-/**
- * PaseoCard.jsx — Card de solicitud / paseo
- *
- * Siempre el mismo orden (spec de diseño): foto de la mascota → nombre →
- * horario → precio. Lo que cambia según el uso son los chips y las acciones
- * (que entran como children).
- */
-
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 

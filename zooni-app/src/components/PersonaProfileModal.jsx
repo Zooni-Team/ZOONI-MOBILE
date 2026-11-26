@@ -1,13 +1,3 @@
-/**
- * PersonaProfileModal.jsx — Ficha de perfil de cualquier usuario (Instagram-like)
- *
- * Genérico por usuarioId (a diferencia de MatchInfoModal, que es por match).
- * Se usa desde Comunidad (amigos, solicitudes, búsqueda). Muestra foto grande
- * tocable (visor a pantalla completa), @usuario, bio, mascota e intereses.
- *
- * Props: visible, usuarioId, onClose, onAbrirChat?(persona)
- */
-
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator, Image, Modal, Pressable, ScrollView,

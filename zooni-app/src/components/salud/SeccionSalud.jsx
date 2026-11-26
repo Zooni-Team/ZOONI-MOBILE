@@ -1,9 +1,3 @@
-/**
- * SeccionSalud.jsx — Una sección de la hoja de Vacunas / Tratamientos: título
- * (con ícono o con el botón "Añadir") y debajo la lista, que resuelve sola sus
- * tres estados: cargando (placeholders), vacía (mensaje) o con tarjetas.
- */
-
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -20,15 +14,6 @@ function TarjetaCargando() {
   );
 }
 
-/**
- * @param {string}    titulo
- * @param {string}    [icono]        Ionicons a la izquierda del título (secciones secundarias)
- * @param {function}  [onAnadir]     si viene, muestra el botón "Añadir" a la derecha
- * @param {boolean}   cargando
- * @param {Array}     items
- * @param {string}    vacio          mensaje cuando no hay items
- * @param {function}  renderItem     (item, index) => tarjeta
- */
 export default function SeccionSalud({
   titulo, icono, onAnadir, cargando, items, vacio, renderItem, placeholders = 2,
 }) {

@@ -1,8 +1,3 @@
--- ⚠ NO PEGAR EN SUPABASE. Archivo de pruebas para un Postgres LOCAL (lo corre
---   supabase/scripts/probar-esquema.mjs). Crea usuarios de prueba.
--- pruebas_065.sql — Migración de una cuenta vieja a Supabase Auth desde la base.
--- Correr después de pruebas_rls.sql (usa pg_temp.como_anonimo / salir).
-
 DO $$
 DECLARE
   sufijo TEXT := substr(md5(random()::TEXT), 1, 8);
@@ -12,12 +7,10 @@ DECLARE
   v_intruso UUID := gen_random_uuid();
   ok BOOLEAN;
 BEGIN
-  -- Una cuenta de antes de 060: hash sha256 en user_credentials, sin auth_id
   INSERT INTO "User" ("Nombre", "Apellido", "Mail") VALUES ('Vieja', 'Cuenta', v_mail)
   RETURNING "Id_User" INTO v_user;
   INSERT INTO user_credentials (id_user, hash)
   VALUES (v_user, encode(sha256(convert_to('clave-vieja', 'UTF8')), 'hex'));
-  -- Alguien hizo signUp con ese mail antes de que la dueña entrara
   INSERT INTO auth.users (id, email) VALUES (v_intruso, v_mail);
 
   PERFORM pg_temp.como_anonimo();

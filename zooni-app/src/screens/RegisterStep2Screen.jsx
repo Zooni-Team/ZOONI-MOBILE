@@ -1,14 +1,3 @@
-/**
- * RegisterStep2Screen.jsx — Registro Paso 2: sexo, raza, peso, nacimiento, foto
- * (Login4/Login5 de Figma)
- *
- * Las razas se cargan de la tabla `razas` de Supabase según la especie
- * elegida en el Paso 1 (services/authApi.js → fetchRazas).
- *
- * Se pide la FECHA DE NACIMIENTO y no la edad: guardar "8 meses" congela un
- * dato que envejece: al año siguiente la mascota seguiría teniendo 8 meses.
- */
-
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -28,8 +17,6 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { elegirImagen } from '../utils/elegirImagen';
 
 import { fetchRazas } from '../services/authApi';
-// alerta() y no Alert.alert: en react-native-web Alert.alert es un NO-OP y
-// estos avisos no se veían (mismo problema que trababa el registro sin explicar).
 import { alerta } from '../utils/dialogo';
 import { resolveCajaImage } from '../constants/registroImages';
 import { calcularEdad } from '../utils/calcularEdad';
@@ -50,16 +37,11 @@ export default function RegisterStep2Screen() {
   const { nombre, especie, social } = route.params ?? {};
 
   const [sexo, setSexo] = useState(null);
-  const [raza, setRaza] = useState(null);           // { id, nombre }
+  const [raza, setRaza] = useState(null);
   const [razas, setRazas] = useState([]);
   const [cargandoRazas, setCargandoRazas] = useState(true);
-  // El rango del peso depende de la especie: un hámster no puede pesar 50 kg y
-  // un canario no entra en un slider que avanza de a medio kilo.
   const rango = rangoPeso(especie);
-  const [peso, setPeso] = useState(rango.inicial);   // kg
-  // Guardamos la FECHA DE NACIMIENTO, no la edad: una edad fija en meses queda
-  // vieja al día siguiente. Con la fecha, la edad se recalcula sola en toda la
-  // app (calcularEdad) y sigue siendo correcta con el paso del tiempo.
+  const [peso, setPeso] = useState(rango.inicial);
   const [fechaNacimiento, setFechaNacimiento] = useState(null);
   const [showFecha, setShowFecha] = useState(false);
   const [fotoUri, setFotoUri] = useState(null);
@@ -143,14 +125,12 @@ export default function RegisterStep2Screen() {
             accessibilityLabel={`${capitalizar(especie)} en caja`} />
 
           <View style={s.card}>
-            {/* Sexo */}
             <TouchableOpacity style={[s.dropdown, errores.sexo && s.inputError]} onPress={() => setShowSexo(true)}>
               <Text style={[s.dropdownTxt, !sexo && s.placeholder]}>{sexo ?? 'Sexo'}</Text>
               <Ionicons name="chevron-down" size={16} color={colores.textoSecundario} />
             </TouchableOpacity>
             {errores.sexo && <Text style={s.errorTxt}>{errores.sexo}</Text>}
 
-            {/* Raza */}
             <TouchableOpacity
               style={[s.dropdown, raza && s.dropdownSeleccionado, errores.raza && s.inputError]}
               onPress={() => setShowRaza(true)}
@@ -162,7 +142,6 @@ export default function RegisterStep2Screen() {
             </TouchableOpacity>
             {errores.raza && <Text style={s.errorTxt}>{errores.raza}</Text>}
 
-            {/* Peso */}
             <Text style={s.sliderLabel}>Peso</Text>
             <SliderAmarillo
               value={peso} min={rango.min} max={rango.max} step={rango.step}
@@ -173,7 +152,6 @@ export default function RegisterStep2Screen() {
             <Text style={s.sliderAyuda}>Habitual en {especie}s: {textoRangoPeso(especie)}</Text>
             {errores.peso && <Text style={[s.errorTxt, { textAlign: 'center' }]}>{errores.peso}</Text>}
 
-            {/* Fecha de nacimiento (en vez de una edad fija, que se desactualiza) */}
             <Text style={s.sliderLabel}>¿Cuándo nació?</Text>
             <TouchableOpacity
               style={[s.dropdown, fechaNacimiento && s.dropdownSeleccionado, errores.fechaNacimiento && s.inputError]}
@@ -187,7 +165,6 @@ export default function RegisterStep2Screen() {
             {errores.fechaNacimiento && <Text style={[s.errorTxt, { textAlign: 'center' }]}>{errores.fechaNacimiento}</Text>}
             {fechaNacimiento && <Text style={s.sliderValor}>{calcularEdad(fechaNacimiento)}</Text>}
 
-            {/* Foto REAL (opcional): si está, es la que se ve en Match */}
             <Text style={s.fotoLabel}>📷 Agregá una foto real de tu mascota (opcional)</Text>
             {fotoUri && (
               <View style={s.previewWrap}>
@@ -214,7 +191,6 @@ export default function RegisterStep2Screen() {
         </TouchableOpacity>
       </KeyboardAvoidingView>
 
-      {/* Hasta 30 años atrás cubre cualquier especie de la app (tortugas, loros…) */}
       <FechaPicker
         visible={showFecha}
         titulo="¿Cuándo nació?"

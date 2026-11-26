@@ -1,20 +1,3 @@
-/**
- * ResenasPaseadorModal.jsx — Opiniones de un paseador (estilo Google Maps)
- *
- * Lo abre el dueño desde la ficha del paseador en Comunidad ("Ver opiniones"),
- * y el paseador desde su Perfil ("Ver todas"). Arriba, el resumen: promedio,
- * barras de 5 a 1 estrella, promedio por aspecto, % de "sí" de cada pregunta
- * y todas las fotos/videos. Abajo, cada reseña con su texto, respuestas y
- * adjuntos. Filtro rápido: todas / con fotos o videos / por estrellas.
- *
- * "Escribir una opinión" está para cualquiera MENOS el propio paseador (nadie
- * opina de sí mismo; la base también lo rechaza, 066), las veces que quiera:
- * si tengo un paseo con él sin calificar, la opinión va a ese paseo; si no,
- * es una opinión general (048).
- *
- * Props: visible · idPaseador · nombre · onCerrar
- */
-
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, FlatList, Image, Modal, SafeAreaView, ScrollView, StyleSheet, Text,
@@ -32,7 +15,6 @@ import { colores } from '../../theme';
 import { Estrellas } from '../ui/Estrellas';
 
 const fmt1 = (n) => n.toFixed(1).replace('.', ',');
-
 
 function Resumen({ datos, onVerMedia }) {
   const max = Math.max(...datos.distribucion.map((d) => d.cantidad), 1);
@@ -157,7 +139,6 @@ export default function ResenasPaseadorModal({ visible, idPaseador, nombre, onCe
   const [error, setError] = useState(false);
   const [filtro, setFiltro] = useState('todas');
   const [visor, setVisor] = useState({ items: [], indice: null });
-  // { sinCalificar, total } de mis paseos con este paseador (null = cargando)
   const [paraOpinar, setParaOpinar] = useState(null);
   const [calificando, setCalificando] = useState(null);
   const [gracias, setGracias] = useState(null);
@@ -187,7 +168,6 @@ export default function ResenasPaseadorModal({ visible, idPaseador, nombre, onCe
     return () => { vivo = false; };
   }, [visible, idPaseador, esElMismo, recarga]);
 
-  // Al cerrar, la próxima apertura arranca de cero
   useEffect(() => { if (!visible) setRecarga(0); }, [visible]);
 
   const opinionEnviada = () => {
@@ -207,7 +187,6 @@ export default function ResenasPaseadorModal({ visible, idPaseador, nombre, onCe
   const verMedia = (items, indice) => setVisor({ items, indice });
 
   const pendiente = paraOpinar?.sinCalificar?.[0] ?? null;
-  // Sin paseo para calificar: opinión general sobre el paseador
   const opinionLibre = { libre: true, idWalker: idPaseador, paseador: { nombre: esElMismo ? 'Vos como paseador' : nombre } };
   const escribir = !paraOpinar || esElMismo ? null : (
     <View style={s.escribir}>
@@ -286,7 +265,6 @@ export default function ResenasPaseadorModal({ visible, idPaseador, nombre, onCe
           />
         )}
         <VisorMedia items={visor.items} indice={visor.indice} onCerrar={() => setVisor({ items: [], indice: null })} />
-        {/* Adentro de este Modal: en iOS no se abre un Modal hermano encima */}
         <CalificarPaseoModal
           visible={!!calificando}
           paseo={calificando}

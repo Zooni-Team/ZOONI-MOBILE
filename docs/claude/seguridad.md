@@ -133,11 +133,10 @@ flujo si no hay relación).
   hoy sólo está donde el informe lo pedía puntualmente (turnos, pedidos,
   intentos de `migrar_cuenta_legada`, cupo de ZooniVet).
 - Purgas programadas (`PaseoTrack`/`sos_call_logs` viejos, mascotas y
-  cuentas dadas de baja): `_purgar_datos_antiguos()` las hace todas; falta
-  activar `pg_cron` y programarla. Hasta entonces, una cuenta dada de baja
-  queda oculta pero sin purgar.
+  cuentas dadas de baja): `_purgar_datos_antiguos()` las hace todas y corre
+  todos los días con `pg_cron` (job `zooni_purgas_diarias`, 03:30 UTC).
 
-Detalle completo de qué se corrigió en la auditoría de nov-2026 y qué quedó
-pendiente (y por qué): el final de
-`supabase/MIGRACION_070_ENDURECIMIENTO_SEGURIDAD.sql` y
-[faltaporhacer.md](../../faltaporhacer.md).
+Qué queda pendiente: [faltaporhacer.md](../../faltaporhacer.md). El código ya
+no tiene comentarios; la explicación línea por línea de cada migración (por
+ejemplo, la lista de hallazgos al final de la 070) sigue en el historial de
+git: `git show 9da681e:supabase/MIGRACION_070_ENDURECIMIENTO_SEGURIDAD.sql`.

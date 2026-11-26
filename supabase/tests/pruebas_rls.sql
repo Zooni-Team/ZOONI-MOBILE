@@ -1,21 +1,3 @@
--- ⚠ NO PEGAR EN SUPABASE. Archivo de pruebas para un Postgres LOCAL (lo corre
---   supabase/scripts/probar-esquema.mjs). Crea usuarios de prueba.
--- pruebas_rls.sql — Pruebas de seguridad y reglas de negocio del esquema.
---
--- Las corre `node supabase/scripts/probar-esquema.mjs` contra un Postgres
--- LOCAL (nunca contra Supabase). Simula dos personas, Ana y Beto, cada una
--- con su JWT, y comprueba lo que la devolución preguntaba:
---   · ¿Puede Beto leer la ficha médica de la mascota de Ana?        → no
---   · ¿Ve Beto el mail o la ubicación exacta de Ana?                → no
---   · ¿Puede un anónimo leer mascotas?                               → no
---   · ¿Se puede mandar un pedido con un total inventado?             → se recalcula
---   · ¿Dos pedidos por el último producto?                           → uno falla
---   · ¿Dos turnos en el mismo horario?                               → uno falla
---   · ¿Un paseo con precio inventado o finalizado por el dueño?      → no
---   · ¿Dos "me gusta" cruzados?                                      → un solo Match
--- Cualquier ASSERT que falle corta la ejecución con error.
-
--- Helpers: "entrar" como alguien (lo que hace PostgREST con cada pedido)
 CREATE OR REPLACE FUNCTION pg_temp.como(p_sub UUID) RETURNS VOID LANGUAGE plpgsql AS $$
 BEGIN
   PERFORM set_config('request.jwt.claims', json_build_object('sub', p_sub, 'role', 'authenticated')::TEXT, TRUE);
@@ -39,8 +21,6 @@ DECLARE
   sufijo TEXT := substr(md5(random()::TEXT), 1, 8);
   ana_auth UUID := gen_random_uuid();
   beto_auth UUID := gen_random_uuid();
-  -- La cuenta vieja tiene su propia sesión: reusar ana_auth dejaba a "Ana"
-  -- sin usuario en todo lo que viene después (amistades, mascota_publica…).
   vieja_auth UUID;
   ana INTEGER; beto INTEGER;
   mascota_ana INTEGER; mascota_beto INTEGER;
@@ -49,7 +29,6 @@ DECLARE
   n INTEGER; v NUMERIC; r JSONB; t TEXT;
   fallo BOOLEAN;
 BEGIN
-  -- ── Cuentas (como las crea la app: sesión de Auth + RPC de alta) ──────────
   INSERT INTO auth.users (id, email) VALUES
     (ana_auth, 'ana.' || sufijo || '@prueba.test'),
     (beto_auth, 'beto.' || sufijo || '@prueba.test');
@@ -74,7 +53,6 @@ BEGIN
   UPDATE "User" SET "Lat" = -34.6037123, "Lng" = -58.3815456, "FechaNacimiento" = '1990-05-01' WHERE "Id_User" = ana;
   INSERT INTO "MascotaVacuna" ("Id_Mascota", "NombreLibre", "FechaAplicacion") VALUES (mascota_ana, 'Antirrábica', current_date);
 
-  -- ── Identidad y ficha médica ──────────────────────────────────────────────
   PERFORM pg_temp.como(beto_auth);
   SELECT count(*) INTO n FROM "MascotaVacuna" WHERE "Id_Mascota" = mascota_ana;
   ASSERT n = 0, 'Beto NO puede leer las vacunas de la mascota de Ana';
@@ -107,7 +85,6 @@ BEGIN
   ASSERT fallo, 'un Match no se puede crear a mano desde el cliente';
   PERFORM pg_temp.salir();
 
-  -- ── Anónimo (sólo la clave pública del bundle) ────────────────────────────
   PERFORM pg_temp.como_anonimo();
   fallo := FALSE;
   BEGIN
@@ -115,12 +92,11 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN fallo := TRUE;
   END;
   ASSERT fallo, 'anon NO puede leer mascotas';
-  PERFORM 1 FROM razas LIMIT 1;  -- catálogo: sí
+  PERFORM 1 FROM razas LIMIT 1;
   r := disponibilidad_registro('ana.' || sufijo || '@prueba.test', NULL);
   ASSERT (r->>'mailTomado')::BOOLEAN, 'disponibilidad_registro avisa que el mail está tomado';
   PERFORM pg_temp.salir();
 
-  -- ── Match: dos "me gusta" cruzados, un solo Match ─────────────────────────
   PERFORM pg_temp.como(ana_auth);
   r := votar_mascota(mascota_ana, mascota_beto, TRUE);
   ASSERT NOT (r->>'match')::BOOLEAN, 'primer like: todavía no hay match';
@@ -135,7 +111,6 @@ BEGIN
     AND greatest("idMascotaUno", "idMascotaDos") = greatest(mascota_ana, mascota_beto);
   ASSERT n = 1, 'votar dos veces no duplica el Match';
 
-  -- ── Pedidos: total y stock los decide la base ─────────────────────────────
   PERFORM pg_temp.como(ana_auth);
   r := activar_negocio_sesion(jsonb_build_object(
     'tipo', 'petshop', 'nombre', 'Pet ' || sufijo, 'direccion', 'Calle 123',
@@ -174,7 +149,6 @@ BEGIN
   SELECT stock INTO n FROM negocio_items WHERE id = item;
   ASSERT n = 1, 'al cancelar, el stock reservado vuelve';
 
-  -- ── Turnos: sin superposición, precio del catálogo ────────────────────────
   PERFORM pg_temp.como(ana_auth);
   r := activar_negocio_sesion(jsonb_build_object(
     'tipo', 'veterinaria', 'nombre', 'Vet ' || sufijo, 'direccion', 'Calle 456',
@@ -204,7 +178,6 @@ BEGIN
   ASSERT fallo, 'dos turnos superpuestos: el segundo se rechaza';
   PERFORM pg_temp.salir();
 
-  -- ── Paseos: precio del perfil y transiciones por rol ──────────────────────
   INSERT INTO paseador_perfil (id_user, servicios)
   VALUES (ana, '[{"minutos": 30, "precio": 5000}]'::JSONB)
   ON CONFLICT (id_user) DO UPDATE SET servicios = EXCLUDED.servicios;
@@ -235,13 +208,11 @@ BEGIN
   ASSERT v = 5000, 'finalizar dos veces no recalcula nada';
   PERFORM pg_temp.salir();
 
-  -- Con un paseo en común, ahora Beto sí ve el teléfono de Ana
   PERFORM pg_temp.como(beto_auth);
   SELECT "Telefono" INTO t FROM perfil_publico WHERE "Id_User" = ana;
   ASSERT t = '1111', 'con un paseo en común se ve el teléfono';
   PERFORM pg_temp.salir();
 
-  -- ── Cuenta vieja: un signUp con su mail NO se queda con ella ──────────────
   INSERT INTO "User" ("Nombre", "Mail") VALUES ('Vieja', 'vieja.' || sufijo || '@prueba.test')
   RETURNING "Id_User" INTO n;
   INSERT INTO user_credentials (id_user, hash) VALUES (n, repeat('a', 64));
@@ -256,12 +227,10 @@ BEGIN
   ASSERT fallo, 'una sesión de contraseña no se vincula a una cuenta vieja sin migrar';
   PERFORM pg_temp.salir();
 
-  -- ── Cambio de mail: lo confirma Auth y se copia a "User" ───────────────────
   UPDATE auth.users SET email = 'beto.nuevo.' || sufijo || '@prueba.test' WHERE id = beto_auth;
   SELECT "Mail" INTO t FROM "User" WHERE "Id_User" = beto;
   ASSERT t = 'beto.nuevo.' || sufijo || '@prueba.test', 'el mail confirmado en Auth se copia a "User"';
 
-  -- ── 070_endurecimiento_seguridad: amistades (#2, #112) ────────────────────
   PERFORM pg_temp.como(ana_auth);
   INSERT INTO amistades (usuario_a_id, usuario_b_id) VALUES (ana, beto) RETURNING id INTO amistad;
   fallo := FALSE;
@@ -284,7 +253,6 @@ BEGIN
   ASSERT fallo, 'una amistad ya aceptada no se puede "reabrir" con un UPDATE';
   PERFORM pg_temp.salir();
 
-  -- ── 070: "Mascota" de otros sólo por mascota_publica, sin datos de salud (#12) ──
   PERFORM pg_temp.como(beto_auth);
   SELECT count(*) INTO n FROM "Mascota" WHERE "Id_Mascota" = mascota_ana;
   ASSERT n = 0, '"Mascota" directa no devuelve mascotas ajenas';
@@ -296,14 +264,12 @@ BEGIN
          'mascota_publica no expone columnas de salud/identificación';
   PERFORM pg_temp.salir();
 
-  -- ── 070: paseador_perfil.verificado no se autoasigna (#9) ─────────────────
   PERFORM pg_temp.como(ana_auth);
   UPDATE paseador_perfil SET verificado = TRUE WHERE id_user = ana;
   SELECT verificado INTO fallo FROM paseador_perfil WHERE id_user = ana;
   ASSERT NOT fallo, 'un paseador no puede marcarse "verificado" a sí mismo';
   PERFORM pg_temp.salir();
 
-  -- ── 070: un paseador no puede aceptar su propio pedido de paseo (#64) ─────
   PERFORM pg_temp.como(ana_auth);
   INSERT INTO "Paseo" ("Id_Mascota", "Id_Dueno", "FechaProgramada", "DuracionMin", "Precio", "Direccion")
   VALUES (mascota_ana, ana, now() + interval '2 days', 30, 1, 'Av. Corrientes 1234')
@@ -316,7 +282,6 @@ BEGIN
   ASSERT fallo, 'Ana (dueña Y paseadora) no puede aceptar su propio pedido';
   PERFORM pg_temp.salir();
 
-  -- ── 070: funciones internas, inalcanzables desde el cliente (#1, #3, #7) ──
   ASSERT NOT has_function_privilege('anon', 'completar_perfil_paseador(integer,jsonb)', 'EXECUTE'),
     'completar_perfil_paseador ya no es ejecutable por anon';
   ASSERT NOT has_function_privilege('authenticated', '_upsert_paseador_perfil(integer,jsonb)', 'EXECUTE'),

@@ -1,22 +1,3 @@
-/**
- * ZonaMapaPicker.jsx — Zona de atención del paseador: un círculo en el mapa
- *
- * El paseador arrastra el círculo (o toca el mapa) hasta donde trabaja y
- * escribe el radio en km (entre RADIO_MIN y RADIO_MAX, no hay uno elegido de
- * entrada). Hasta que no haya un radio válido sólo se ve el centro, sin círculo. El punto de partida es una "ubicación base": la que se pase
- * por props (ej. la guardada en su perfil), si no su GPS, y si no Caballito.
- * Al soltar el círculo se busca el nombre del barrio (Nominatim / OSM) para
- * completar la zona sola.
- *
- * Mismo Leaflet + OpenStreetMap en iframe que Comunidad y MapaPaseo (sólo
- * web). En nativo queda un buscador de barrio + radio, sin mapa.
- *
- * Props: valor { lat, lng, radioKm, zona } · onCambio(valor) — radioKm es null
- *        mientras el radio escrito no sea válido
- *        conRadio (default true) — false para marcar sólo un punto (el local
- *        de un negocio): no se pide radio ni se dibuja el círculo
- */
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View,
@@ -27,19 +8,16 @@ import { C } from './PaseadorUI';
 import { barrioDe, buscarLugar } from '../../services/geocodificacion';
 import { colores } from '../../theme';
 
-const BASE_DEFAULT = { lat: -34.6189, lng: -58.4380 }; // Caballito
-// Mismos límites que el CHECK paseador_radio_ok (035): NUMERIC(4,1) entre 0.5 y 30
+const BASE_DEFAULT = { lat: -34.6189, lng: -58.4380 };
 export const RADIO_MIN = 0.5;
 export const RADIO_MAX = 30;
 
-/** "2,5" → 2.5 · null si está vacío o fuera de rango */
 export function radioValido(texto) {
   const n = Number(String(texto ?? '').replace(',', '.'));
   if (!String(texto ?? '').trim() || !Number.isFinite(n)) return null;
   return n >= RADIO_MIN && n <= RADIO_MAX ? Math.round(n * 10) / 10 : null;
 }
 
-/** Deja sólo dígitos y un separador decimal con un decimal como máximo */
 function sanitizarKm(v) {
   const limpio = v.replace(/[^0-9.,]/g, '').replace(',', '.');
   const [ent, ...resto] = limpio.split('.');
@@ -84,10 +62,8 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%;background:${colores.me
     if(!circulo){
       circulo=L.circle([lat,lng],{radius:radio,color:'${colores.verde}',weight:3,fillColor:'${colores.verde}',fillOpacity:.18}).addTo(map);
       centro=L.marker([lat,lng],{icon:icon,draggable:true,zIndexOffset:1000}).addTo(map);
-      // Mientras se arrastra, el círculo sigue al centro
       centro.on('drag',function(e){circulo.setLatLng(e.target.getLatLng())});
       centro.on('dragend',avisar);
-      // Arrastrar el círculo mismo (no sólo el centro)
       var arrastrando=false;
       circulo.on('mousedown touchstart',function(){arrastrando=true;map.dragging.disable()});
       map.on('mousemove',function(e){if(arrastrando){circulo.setLatLng(e.latlng);centro.setLatLng(e.latlng)}});
@@ -96,12 +72,10 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%;background:${colores.me
       circulo.setLatLng([lat,lng]);centro.setLatLng([lat,lng]);
     }
   }
-  // Tocar el mapa mueve la zona ahí
   map.on('click',function(e){dibujar(e.latlng.lat,e.latlng.lng);avisar()});
 
   var api={
     set:function(d,mover){
-      // Sin radio válido: sólo el centro, el círculo queda invisible
       radio=d.radioKm>0?d.radioKm*1000:0;
       dibujar(d.lat,d.lng);
       circulo.setRadius(radio||1);
@@ -110,7 +84,6 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%;background:${colores.me
     }
   };
   window.addEventListener('message',function(e){
-    // Sólo órdenes de la app que contiene el mapa (no de otra ventana)
     if(e.source!==window.parent)return;
     var m=e.data;
     if(!m||m.tipo!=='zooni-cmd'||typeof api[m.metodo]!=='function')return;
@@ -146,10 +119,8 @@ export default function ZonaMapaPicker({ valor, onCambio, baseTexto, conRadio = 
   const [error, setError] = useState(null);
   const [radioTexto, setRadioTexto] = useState(formatoKm(valor?.radioKm));
 
-  // Si el radio cambia desde afuera (ej. llega el perfil guardado), mostrarlo
   useEffect(() => {
     if (radioValido(radioTexto) !== (valor?.radioKm ?? null)) setRadioTexto(formatoKm(valor?.radioKm));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [valor?.radioKm]);
 
   const cambiarRadio = (texto) => {
@@ -170,7 +141,6 @@ export default function ZonaMapaPicker({ valor, onCambio, baseTexto, conRadio = 
     );
   }, []);
 
-  // Mover el centro → actualizar coordenadas y nombre del barrio
   const moverA = useCallback(async ({ lat, lng }, { mover = false, zona } = {}) => {
     const nuevo = { ...valorRef.current, lat, lng, ...(zona ? { zona } : {}) };
     valorRef.current = nuevo;
@@ -180,7 +150,6 @@ export default function ZonaMapaPicker({ valor, onCambio, baseTexto, conRadio = 
     setNombrando(true);
     const barrio = await barrioDe(lat, lng);
     setNombrando(false);
-    // Si mientras tanto lo movieron de nuevo, este nombre ya no corresponde
     const sigue = valorRef.current?.lat === lat && valorRef.current?.lng === lng;
     if (barrio && sigue) {
       valorRef.current = { ...valorRef.current, zona: barrio };
@@ -188,8 +157,6 @@ export default function ZonaMapaPicker({ valor, onCambio, baseTexto, conRadio = 
     }
   }, [enviarAlMapa]);
 
-  // El iframe avisa cuando sueltan el círculo (postMessage: el iframe va
-  // sandboxed sin allow-same-origin, no se le puede exponer una función directa)
   useEffect(() => {
     if (Platform.OS !== 'web') return undefined;
     const onMessage = (e) => {
@@ -200,7 +167,6 @@ export default function ZonaMapaPicker({ valor, onCambio, baseTexto, conRadio = 
     return () => window.removeEventListener('message', onMessage);
   }, [moverA]);
 
-  // Ubicación base: la que ya traía el valor → si no, texto base (ciudad) → GPS → Caballito
   useEffect(() => {
     if (valorRef.current?.lat != null) return;
     let vivo = true;
@@ -211,10 +177,8 @@ export default function ZonaMapaPicker({ valor, onCambio, baseTexto, conRadio = 
       moverA(base ?? BASE_DEFAULT, { mover: true });
     })();
     return () => { vivo = false; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Cambió el radio → redibujar y encuadrar
   useEffect(() => { enviarAlMapa(true); }, [valor?.radioKm, enviarAlMapa]);
 
   const buscar = async () => {

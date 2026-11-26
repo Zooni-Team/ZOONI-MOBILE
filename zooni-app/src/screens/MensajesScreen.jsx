@@ -1,21 +1,3 @@
-/**
- * MensajesScreen.jsx — Inbox de conversaciones
- *
- * Tres pestañas sobre UNA sola lista:
- *   - Todos (la que abre por defecto): mis conversaciones, lo más reciente
- *     arriba. Un servicio entra acá recién cuando hay mensajes con él.
- *   - Amigos: los chats de Match (services/chatStore.js → tabla Mensaje/idMatch).
- *   - Servicios: sólo los servicios que contraté o a los que les escribí:
- *     paseadores (tabla paseo_mensajes), veterinarias / peluquerías a las que
- *     les pedí un turno, pet shops a los que les hice un pedido y cualquier
- *     servicio de Comunidad con el que ya tengo una conversación. El catálogo
- *     de Comunidad (servicios cargados de antemano, lugares externos) NO
- *     aparece: se busca en Comunidad.
- *
- * Los paseadores eran una pestaña propia; son un servicio más de los que
- * ofrecemos, así que viven adentro de Servicios.
- */
-
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -44,9 +26,6 @@ import { colores } from '../theme';
 const ICONOS_SERVICIO = { veterinaria: 'medkit-outline', paseador: 'walk-outline', petshop: 'bag-outline', peluqueria: 'cut-outline' };
 const COLORES_SERVICIO = { veterinaria: colores.rojo, paseador: colores.ambar, petshop: colores.amarillo, peluqueria: colores.violeta };
 
-// El formato de tiempo vive en utils/tiempoRelativo.js — el mismo que usa el
-// chat, así que el inbox y la conversación ya no dicen cosas distintas.
-
 export default function MensajesScreen() {
   const navigation = useNavigation();
   const { usuario, mascotaActiva } = useUsuarioActivo();
@@ -56,7 +35,7 @@ export default function MensajesScreen() {
   const [servicios, setServicios] = useState([]);
   const [paseadores, setPaseadores] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [infoMatch, setInfoMatch] = useState(null); // conversación cuya ficha se abre
+  const [infoMatch, setInfoMatch] = useState(null);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -65,14 +44,10 @@ export default function MensajesScreen() {
         fetchMisConversacionesMatch(),
         fetchMisUltimosMensajesServicios().catch(() => new Map()),
         fetchServiciosContratados().catch(() => []),
-        // Los paseadores dejaron de ser una pestaña propia: son un servicio más.
         fetchConversacionesPaseo('dueno').catch(() => []),
       ]);
       setConversaciones(convs);
       setPaseadores(convsPaseo);
-      // Sólo MIS servicios (contratados o con mensajes), pedidos por id: antes
-      // salían del catálogo entero de Comunidad y aparecían los cargados de
-      // antemano con "Tocá para escribirle"
       const idsContratados = new Set(contratados.map((s) => s.id));
       const conMensajes = await fetchServiciosPorId(
         [...ultimosPorServicio.keys()].filter((id) => !idsContratados.has(id)),
@@ -97,16 +72,6 @@ export default function MensajesScreen() {
     });
   };
 
-  /*
-    Una sola lista para las tres pestañas.
-
-    Antes cada pestaña tenía su propia lista y su propio formato, y los
-    paseadores eran una pestaña aparte aunque sean un servicio más de los que
-    ofrecemos. Ahora "Todos" muestra todo junto —que es lo que uno quiere al
-    entrar: la conversación más reciente, sea con quien sea— y las otras dos
-    filtran. Cada ítem lleva su `tipo` y se dibuja distinto, pero el orden por
-    fecha es común.
-  */
   const items = useMemo(() => {
     const dePersonas = conversaciones.map((c) => ({
       clave: `persona-${c.chatId}`, tipo: 'persona', fecha: c.fecha, datos: c,
@@ -118,8 +83,6 @@ export default function MensajesScreen() {
       clave: `servicio-${s.id}`, tipo: 'servicio', fecha: s.fecha ?? null, datos: s,
     }));
 
-    // En Todos van mis chats: un servicio aparece recién cuando le escribí
-    // (o me escribió). Los contratados sin mensajes quedan sólo en Servicios.
     const grupo = tab === 'Amigos' ? dePersonas
       : tab === 'Servicios' ? [...dePaseadores, ...deServicios]
         : [
@@ -128,7 +91,6 @@ export default function MensajesScreen() {
           ...deServicios.filter((x) => x.datos.ultimoMensaje),
         ];
 
-    // Lo más reciente arriba (un paseo contratado sin mensajes todavía va al final)
     return grupo.sort((a, b) => {
       if (a.fecha && !b.fecha) return -1;
       if (!a.fecha && b.fecha) return 1;
@@ -147,17 +109,12 @@ export default function MensajesScreen() {
     <SafeAreaView style={st.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={colores.blanco} />
 
-      {/* Menú lateral en vez de la flecha de volver: Mensajes es una sección
-          propia a la que se llega desde el drawer, no un paso dentro de otro
-          flujo. Con la flecha, entrar desde el menú y volver te dejaba en
-          cualquier pantalla, según de dónde vinieras. */}
       <View style={st.header}>
         <TouchableOpacity onPress={() => setDrawerOpen(true)} accessibilityLabel="Abrir menú"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="menu" size={28} color={colores.negroSuave} />
         </TouchableOpacity>
         <Text style={st.titulo}>Mensajes</Text>
-        {/* Mantiene el título centrado compensando el ancho del ícono. */}
         <View style={{ width: 28 }} />
       </View>
 
@@ -183,13 +140,10 @@ export default function MensajesScreen() {
             </View>
           }
           renderItem={({ item }) => {
-            // ── Match: persona con la que matcheaste ──
             if (item.tipo === 'persona') {
               const c = item.datos;
               return (
                 <TouchableOpacity style={st.item} onPress={() => abrirChatPersona(c)}>
-                  {/* Tocar solo la foto abre la ficha de perfil (como Instagram);
-                      tocar el resto de la fila abre el chat. */}
                   <TouchableOpacity onPress={() => setInfoMatch(c)} activeOpacity={0.7}
                     accessibilityRole="button" accessibilityLabel={`Ver perfil de ${c.nombre}`}>
                     {c.fotoPerfilUrl ? (
@@ -218,7 +172,6 @@ export default function MensajesScreen() {
               );
             }
 
-            // ── Paseador: un hilo por paseo contratado ──
             if (item.tipo === 'paseador') {
               const c = item.datos;
               const p = c.paseo;
@@ -243,7 +196,6 @@ export default function MensajesScreen() {
               );
             }
 
-            // ── Servicio de Comunidad (veterinaria, pet shop, peluquería) ──
             const s = item.datos;
             return (
               <TouchableOpacity style={st.item} onPress={() => abrirChatServicio(s)}>

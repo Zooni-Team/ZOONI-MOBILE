@@ -18,8 +18,6 @@ import MatchProfileDetailModal from '../components/match/MatchProfileDetailModal
 import MatchProfileSetup from '../components/match/MatchProfileSetup';
 import MiTarjetaMatchModal from '../components/match/MiTarjetaMatchModal';
 import PetMatchOnboarding from '../components/match/PetMatchOnboarding';
-// El mismo editor que usa la pantalla Perfil: editar desde acá y desde allá
-// escribe en el mismo lugar, así no hay dos versiones de los mismos datos.
 import EditarPerfilModal from '../components/perfil/EditarPerfilModal';
 import {
   fetchMatchPerfiles, postMatchLike, postMatchSkip,
@@ -27,9 +25,6 @@ import {
   fetchMisMascotasMatch,
 } from '../services/matchApi';
 import { setFotoPrincipalMascota } from '../services/petsApi';
-// Cambiar de mascota en Match SÍ persiste: el backend resuelve quién swipea
-// desde Mascota.EsActiva (a diferencia del resto de las pantallas, donde el
-// cambio es local).
 import { activarMascota } from '../services/api';
 import { resolveMascotaVisual } from '../constants/petImages';
 import { alerta } from '../utils/dialogo';
@@ -54,15 +49,13 @@ export default function MatchScreen() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [matchOverlay, setMatchOverlay] = useState(null);
   const [detailPerfil, setDetailPerfil] = useState(null);
-  // null = verificando si falta algo, false = falta completar, true = listo
   const [perfilListo, setPerfilListo] = useState(null);
-  const [perfilMatch, setPerfilMatch] = useState(null); // datos ya cargados (foto, fecha…)
-  const [miTarjetaVisible, setMiTarjetaVisible] = useState(false); // "Así te ven"
+  const [perfilMatch, setPerfilMatch] = useState(null);
+  const [miTarjetaVisible, setMiTarjetaVisible] = useState(false);
   const [editarPerfilVisible, setEditarPerfilVisible] = useState(false);
 
-  // Perfil de Match POR MASCOTA: detecta cuáles activas no lo tienen todavía
   const [misMascotas, setMisMascotas] = useState([]);
-  const [setupMascota, setSetupMascota] = useState(null); // mascota del modal
+  const [setupMascota, setSetupMascota] = useState(null);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
   const activaIdRef = useRef(null);
 
@@ -85,7 +78,7 @@ export default function MatchScreen() {
         const perfil = await fetchMiPerfilMatch();
         if (!cancelado) { setPerfilMatch(perfil); setPerfilListo(perfilMatchCompleto(perfil)); }
       } catch {
-        if (!cancelado) setPerfilListo(true); // si falla la consulta no bloqueamos el acceso
+        if (!cancelado) setPerfilListo(true);
       }
     })();
     return () => { cancelado = true; };
@@ -95,23 +88,15 @@ export default function MatchScreen() {
     if (perfilListo) loadPerfiles(true);
   }, [perfilListo, loadPerfiles]);
 
-  // El registro no pide ubicación: sin esto, User.Lat/Lng quedan null para
-  // siempre y ningún perfil nuevo calcula distancia contra otro (por eso
-  // dos cuentas recién creadas no se veían entre sí en el swipe).
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => { actualizarMiUbicacionMatch(pos.coords.latitude, pos.coords.longitude).catch(() => {}); },
-      () => {}, // sin permiso: seguimos sin distancia, no bloquea el uso de Match
+      () => {},
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     );
   }, []);
 
-  /**
-   * Relee mis mascotas y el estado de sus perfiles de Match. Si la mascota
-   * activa cambió (alternada con las flechas del Home), recarga el swipe:
-   * los likes/vistos son por mascota.
-   */
   const loadMisMascotas = useCallback(async () => {
     try {
       const lista = await fetchMisMascotasMatch();
@@ -121,7 +106,7 @@ export default function MatchScreen() {
         loadPerfiles(true);
       }
       activaIdRef.current = activa?.id ?? null;
-    } catch { /* sin conexión: no bloquea */ }
+    } catch {  }
   }, [loadPerfiles]);
 
   useEffect(() => {
@@ -137,7 +122,6 @@ export default function MatchScreen() {
     }, [loadPerfiles, loadMisMascotas])
   );
 
-  /** Avanza al siguiente perfil al instante; like/skip al servidor en segundo plano. */
   const commitSwipe = useCallback((action) => {
     if (processingRef.current) return;
 
@@ -165,11 +149,10 @@ export default function MatchScreen() {
         } else {
           try {
             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          } catch { /* web */ }
+          } catch {  }
           await postMatchSkip(mascotaId);
         }
       } catch {
-        /* sin conexión */
       }
     })();
   }, [perfiles, index]);
@@ -205,29 +188,15 @@ export default function MatchScreen() {
   const current = perfiles[index];
   const isEmpty = !loading && !current;
 
-  // Mascota activa sin perfil de Match → prompt en lugar del swipe (los
-  // votos se emiten como ella). Otras sin perfil → banner ofreciendo crearlo.
   const mascotaActivaMatch = misMascotas.find((m) => m.esActiva) ?? null;
   const activaSinPerfil = mascotaActivaMatch && !mascotaActivaMatch.perfilCreado;
-  // Foto REAL obligatoria: si la mascota activa no tiene, no puede aparecer en
-  // Match hasta subir una (aplica también a los perfiles ya existentes).
   const activaSinFoto = mascotaActivaMatch && !activaSinPerfil && !mascotaActivaMatch.fotoUrl;
 
-  /*
-    Cambio de mascota en Match.
-
-    Acá NO alcanza con un cambio local como en el resto de las pantallas: quién
-    swipea lo resuelve el backend a partir de Mascota.EsActiva (ver matchApi),
-    y los likes y los perfiles ya vistos se guardan por mascota. Así que el
-    cambio se persiste y recién después se recargan los perfiles — si no, se
-    seguiría votando como la mascota anterior.
-  */
   const [cambiandoMascota, setCambiandoMascota] = useState(false);
 
   const elegirMascota = async (id) => {
     if (id === mascotaActivaMatch?.id || cambiandoMascota) return;
     setCambiandoMascota(true);
-    // Optimista: la tira marca la nueva enseguida y no espera a la red.
     setMisMascotas((prev) => prev.map((m) => ({ ...m, esActiva: m.id === id })));
     try {
       await activarMascota(id);
@@ -236,7 +205,7 @@ export default function MatchScreen() {
       await loadMisMascotas();
     } catch {
       alerta('No se pudo cambiar', 'Intentá de nuevo en un momento.');
-      await loadMisMascotas();   // vuelve al estado real
+      await loadMisMascotas();
     } finally {
       setCambiandoMascota(false);
     }
@@ -271,33 +240,22 @@ export default function MatchScreen() {
     );
   }
 
-  // Onboarding del usuario: sin perfil completo no hay swipe. Las preguntas
-  // solo aparecen acá, creando el perfil — no colgadas de "Mi perfil".
   if (perfilListo === false) {
     return (
       <MatchProfileSetup
         perfilActual={perfilMatch}
-        /*
-          Sin esto la flecha del primer paso se dibujaba invisible y Match
-          quedaba sin salida: el setup reemplaza a la pantalla entera, así que
-          el que entraba y no quería completarlo tenía que cerrar la app.
-          En el paso 1 vuelve a la pantalla anterior; en los demás, al paso
-          previo (eso ya lo maneja el propio setup).
-        */
         onCancelar={() => {
           if (navigation.canGoBack()) navigation.goBack();
           else navigation.navigate('Home');
         }}
         onListo={async () => {
           setPerfilListo(true);
-          try { setPerfilMatch(await fetchMiPerfilMatch()); } catch { /* no bloquea */ }
+          try { setPerfilMatch(await fetchMiPerfilMatch()); } catch {  }
         }}
       />
     );
   }
 
-  // Onboarding de la mascota: se entra tocando "Crear perfil de X". Ocupa la
-  // pantalla entera (antes era una hoja inferior con todo junto).
   if (setupMascota) {
     return (
       <PetMatchOnboarding
@@ -305,8 +263,6 @@ export default function MatchScreen() {
         onCancelar={() => setSetupMascota(null)}
         onListo={(id) => {
           marcarPerfilCreado(id);
-          // La mascota ya tiene perfil y foto: se recarga el pool para que
-          // entre al swipe sin salir y volver a la pantalla.
           loadMisMascotas();
           loadPerfiles(true);
         }}
@@ -333,9 +289,6 @@ export default function MatchScreen() {
             <Ionicons name="menu" size={30} color={colores.negroSuave} />
           </TouchableOpacity>
 
-          {/* Acceso al propio perfil, arriba a la izquierda como en las apps de
-              citas: se toca la foto y se ve la tarjeta tal cual la ve la gente.
-              Antes no había forma de mirarse: se completaba el setup a ciegas. */}
           <TouchableOpacity
             style={styles.miPerfilBtn}
             onPress={() => setMiTarjetaVisible(true)}
@@ -364,9 +317,6 @@ export default function MatchScreen() {
         </View>
         <View style={styles.headerDivider} />
 
-        {/* Con más de una mascota se puede elegir cuál swipea. Los likes y los
-            perfiles ya vistos son por mascota, así que cambiar acá recarga la
-            pila de perfiles (ver elegirMascota). */}
         <SelectorMascota
           mascotas={misMascotas}
           valor={mascotaActivaMatch?.id}
@@ -377,7 +327,6 @@ export default function MatchScreen() {
 
         <View style={styles.body}>
           {activaSinPerfil ? (
-            /* La mascota activa no tiene perfil: setup antes de poder swipear */
             <View style={styles.empty}>
               <View style={styles.setupAvatarWrap}>
                 <ImageBackground
@@ -400,7 +349,6 @@ export default function MatchScreen() {
               </TouchableOpacity>
             </View>
           ) : activaSinFoto ? (
-            /* Perfil listo pero la mascota activa no tiene foto real: la pedimos */
             <View style={styles.empty}>
               <View style={styles.setupAvatarWrap}>
                 <ImageBackground
@@ -479,9 +427,6 @@ export default function MatchScreen() {
         onClose={() => setDetailPerfil(null)}
       />
 
-      {/* El perfil de la mascota ya no se crea en una hoja inferior: ahora es
-          el onboarding a pantalla completa de más arriba (PetMatchOnboarding). */}
-
       <MatchCelebrationOverlay
         visible={!!matchOverlay}
         matchUser={matchOverlay}
@@ -498,12 +443,6 @@ export default function MatchScreen() {
         onKeepExploring={() => setMatchOverlay(null)}
       />
 
-      {/*
-        Los dos modales se turnan en vez de superponerse: en iOS abrir uno
-        arriba del otro deja el de abajo sin poder cerrarse, y en web quedan
-        dos scrims apilados. Al guardar (o cancelar) se vuelve a la tarjeta,
-        que se recarga sola al abrirse y muestra el cambio recién hecho.
-      */}
       <MiTarjetaMatchModal
         visible={miTarjetaVisible}
         onClose={() => setMiTarjetaVisible(false)}
@@ -514,7 +453,6 @@ export default function MatchScreen() {
         visible={editarPerfilVisible}
         onCerrar={(motivo) => {
           setEditarPerfilVisible(false);
-          // Si se fue a Configuración no reabrimos nada: taparía esa pantalla.
           if (motivo !== 'navegacion') setMiTarjetaVisible(true);
         }}
         onGuardado={(_, motivo) => {
@@ -552,7 +490,6 @@ const styles = StyleSheet.create({
   filtersText: { fontSize: 14, fontWeight: '700', color: colores.texto },
   headerDivider: { height: 1, backgroundColor: 'rgba(0,0,0,0.06)', marginHorizontal: 20 },
 
-  // Acceso al propio perfil, pegado al menú (arriba a la izquierda)
   miPerfilBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 12,
     paddingRight: 10, paddingVertical: 4, borderRadius: 18,

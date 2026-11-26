@@ -1,27 +1,3 @@
-/**
- * HamburgerDrawer.jsx — Menú lateral deslizable (drawer)
- *
- * Se abre al tocar el ícono ☰ del header de la Home.
- * Se desliza desde la izquierda cubriendo el 80% de la pantalla.
- * El resto queda oscurecido con un overlay semitransparente.
- * Tocar el overlay cierra el menú.
- *
- * Props:
- *   visible      → boolean que controla si el drawer está abierto
- *   onClose      → función para cerrar el drawer
- *   usuario      → objeto { nombre, apellido, fotoPerfil } del usuario logueado
- *   mascotaActiva→ objeto { nombre, raza } de la mascota activa
- *   activeRoute  → nombre de la ruta actual (para resaltar el ítem activo)
- *
- * Si la cuenta también es de paseador, aparece "Cambiar a modo paseador"
- * (la contraparte del "Cambiar a modo dueño" del menú del paseador), y por
- * cada negocio que tenga (veterinaria, peluquería, pet shop) un "Ir a …".
- *
- * Animaciones:
- *   - translateX: el drawer se desliza desde -DRAWER_WIDTH hasta 0
- *   - overlayOpacity: el fondo oscuro aparece/desaparece con fade
- */
-
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
@@ -40,12 +16,8 @@ import AppDialog from './AppDialog';
 import { colores } from '../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-// El drawer ocupa el 80% del ancho, con un máximo de 320px
 const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.8, 320);
 
-// Lista de ítems del menú lateral
-// isDivider: true → renderiza una línea separadora
-// isLogout: true  → muestra en rojo y ejecuta el flujo de cierre de sesión
 const MENU_ITEMS = [
   { key: 'inicio',        label: 'Inicio',                    icono: 'home-outline',               ruta: 'Home' },
   { key: 'comunidad',     label: 'Comunidad',                 icono: 'people-outline',              ruta: 'Comunidad' },
@@ -56,9 +28,6 @@ const MENU_ITEMS = [
   { key: 'ficha_medica',  label: 'Ficha Médica',              icono: 'medkit-outline',              ruta: 'FichaMedica' },
   { key: 'calendario',    label: 'Calendario',                icono: 'today-outline',               ruta: 'Calendario' },
   { key: 'eventos',       label: 'Eventos',                   icono: 'sparkles-outline',            ruta: 'Eventos' },
-  // La pantalla se llama ZooniVet en todos lados (título, saludo, pie): decirle
-  // "ChatBot" acá era el único lugar donde aparecía con otro nombre. La `ruta`
-  // sigue siendo 'ChatBot' porque así está registrada en App.jsx.
   { key: 'chatbot',       label: 'ZooniVet',                  icono: 'chatbubble-ellipses-outline', ruta: 'ChatBot' },
   { key: 'closet',        label: 'Closet',                    icono: 'shirt-outline',               ruta: 'Closet' },
   { key: 'perfil',        label: 'Perfil',                    icono: 'person-outline',              ruta: 'Perfil' },
@@ -68,29 +37,19 @@ const MENU_ITEMS = [
   { key: 'logout',        label: 'Cerrar sesión',             icono: 'log-out-outline',             isLogout: true },
 ];
 
-// Último resultado de los roles, compartido entre los drawers de todas las
-// pantallas: así "Cambiar a modo paseador" aparece apenas se abre el menú en
-// vez de esperar la consulta cada vez.
 let rolesCache = { userId: null, roles: null, usoPaseador: false };
 
 export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActiva, activeRoute }) {
   const navigation = useNavigation();
   const [mensajesNoLeidos, setMensajesNoLeidos] = useState(0);
   const [logoutDialog, setLogoutDialog] = useState(false);
-  // Roles de la cuenta (null = todavía no se sabe): si es paseador se ofrece
-  // pasar al modo paseador
   const cache = rolesCache.userId === getCurrentUserId() ? rolesCache : null;
   const [roles, setRoles] = useState(cache?.roles ?? null);
-  // Ya entró a Zooni Paseadores desde este dispositivo (ver usoModoPaseador)
   const [usoPaseador, setUsoPaseador] = useState(cache?.usoPaseador ?? false);
 
-  // Posición horizontal del drawer (empieza fuera de pantalla a la izquierda)
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
-  // Opacidad del overlay oscuro
   const overlayOpacity = useRef(new Animated.Value(0)).current;
 
-  // Cuenta los mensajes sin leer cada vez que se abre el drawer (para el
-  // circulito rojo del ítem "Mensajes").
   useEffect(() => {
     if (!visible) return;
     contarMensajesNoLeidos().then(setMensajesNoLeidos).catch(() => {});
@@ -108,16 +67,13 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
 
   const puedeSerPaseador = !!roles?.esPaseador || usoPaseador;
 
-  // Anima la apertura/cierre del drawer cuando cambia `visible`
   useEffect(() => {
     if (visible) {
-      // Abrir: deslizar hacia adentro + oscurecer fondo
       Animated.parallel([
         Animated.timing(translateX, { toValue: 0, duration: 250, useNativeDriver: true }),
         Animated.timing(overlayOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
       ]).start();
     } else {
-      // Cerrar: deslizar hacia afuera + aclarar fondo
       Animated.parallel([
         Animated.timing(translateX, { toValue: -DRAWER_WIDTH, duration: 200, useNativeDriver: true }),
         Animated.timing(overlayOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
@@ -125,10 +81,6 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
     }
   }, [overlayOpacity, translateX, visible]);
 
-  /**
-   * handleNavigate — Cierra el drawer y navega a la pantalla del ítem tocado.
-   * Caso especial: FichaMedica recibe el ID de la mascota activa como parámetro.
-   */
   const handleNavigate = (item) => {
     onClose();
     if (item.ruta === 'FichaMedica' && mascotaActiva) {
@@ -140,12 +92,6 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
     }
   };
 
-  /**
-   * modoPaseador — Igual que en ElegirModo: si tiene el rol pero le falta el
-   * perfil, primero lo completa; si no, entra directo a Zooni Paseadores.
-   * Si ya usó la app de paseador entra directo: si de verdad le falta el
-   * perfil, PaseadorApp lo manda a completarlo.
-   */
   const modoPaseador = async () => {
     onClose();
     if (roles?.tienePerfil === false && !usoPaseador) {
@@ -156,30 +102,22 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
     navigation.reset({ index: 0, routes: [{ name: 'PaseadorApp' }] });
   };
 
-  /** Entra a la app de uno de sus negocios (mismo flujo que ElegirModo). */
   const irANegocio = async (tipo) => {
     onClose();
     await setModo(modoNegocio(tipo));
     navigation.reset({ index: 0, routes: [{ name: 'NegocioApp', params: { tipo } }] });
   };
 
-  /**
-   * handleLogout — Abre el cartel de confirmación (estilo Zooni) antes de salir.
-   */
   const handleLogout = () => setLogoutDialog(true);
 
   const salir = async () => {
     setLogoutDialog(false);
     onClose();
-    await clearToken();          // Token legacy (si quedó alguno guardado)
-    await clearCurrentUserId();  // Sesión actual (config/session.js)
+    await clearToken();
+    await clearCurrentUserId();
     navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 
-  /**
-   * getInitials — Genera las iniciales del usuario para el avatar fallback.
-   * Ejemplo: "Sofía García" → "SG"
-   */
   const getInitials = (nombre, apellido) => {
     return ((nombre?.[0] ?? '') + (apellido?.[0] ?? '')).toUpperCase() || '?';
   };
@@ -194,21 +132,16 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
     >
     <View style={styles.modalRoot} pointerEvents="box-none">
 
-      {/* Overlay oscuro — tocar cierra el drawer */}
       <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]}>
         <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
       </Animated.View>
 
-      {/* Panel del drawer */}
       <Animated.View style={[styles.drawer, { transform: [{ translateX }] }]}>
 
-        {/* Encabezado: avatar + nombre usuario + mascota activa */}
         <View style={styles.drawerHeader}>
           {usuario?.fotoPerfil ? (
-            // Si tiene foto de perfil, mostrarla
             <Image source={{ uri: usuario.fotoPerfil }} style={styles.avatar} />
           ) : (
-            // Si no tiene foto, mostrar iniciales sobre fondo verde
             <View style={styles.avatarFallback}>
               <Text style={styles.avatarInitials}>
                 {getInitials(usuario?.nombre, usuario?.apellido)}
@@ -219,7 +152,6 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
             <Text style={styles.headerNombre} numberOfLines={1}>
               {usuario?.nombre ?? 'Usuario'}
             </Text>
-            {/* Muestra nombre y raza de la mascota activa si existe */}
             {mascotaActiva && (
               <Text style={styles.headerMascota} numberOfLines={1}>
                 {mascotaActiva.nombre} · {mascotaActiva.raza}
@@ -228,15 +160,11 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
           </View>
         </View>
 
-        {/* Línea separadora entre header y lista de ítems */}
         <View style={styles.dividerLine} />
 
-        {/* Lista scrolleable de ítems del menú */}
         <ScrollView showsVerticalScrollIndicator={false}>
           {MENU_ITEMS.map((item) => {
-            // Renderiza separador visual
             if (item.isDivider) return <View key={item.key} style={styles.dividerLine} />;
-            // Antes de "Cerrar sesión": sus negocios, si tiene
             if (item.isLogout && roles?.negocios?.length) {
               return [
                 ...roles.negocios.map((n) => {
@@ -257,7 +185,6 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
             }
             if (item.soloPaseador && !puedeSerPaseador) return null;
 
-            // Resalta el ítem de la pantalla actual
             const isActive = activeRoute === item.ruta;
             const badge = item.key === 'mensajes' ? mensajesNoLeidos : 0;
             return (
@@ -270,7 +197,6 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
                 <Ionicons
                   name={item.icono}
                   size={22}
-                  // Rojo para logout, verde para activo, gris oscuro para el resto
                   color={item.isLogout ? colores.rojo : isActive ? colores.verde : colores.texto}
                   style={styles.menuIcon}
                 />
@@ -309,7 +235,6 @@ export default function HamburgerDrawer({ visible, onClose, usuario, mascotaActi
 
 const styles = StyleSheet.create({
   modalRoot: { flex: 1 },
-  // Fondo oscuro semitransparente detrás del drawer
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
   drawer: {
     position: 'absolute', top: 0, left: 0, bottom: 0,
@@ -317,7 +242,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20, borderBottomRightRadius: 20,
     shadowColor: colores.negro, shadowOffset: { width: 4, height: 0 },
     shadowOpacity: 0.15, shadowRadius: 20, elevation: 10,
-    paddingTop: 50, // Espacio para la status bar
+    paddingTop: 50,
   },
   drawerHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16 },
   avatar: { width: 48, height: 48, borderRadius: 24, borderWidth: 2, borderColor: colores.verde, marginRight: 12 },
@@ -331,7 +256,7 @@ const styles = StyleSheet.create({
   headerMascota: { fontSize: 13, color: colores.textoSecundario, marginTop: 2 },
   dividerLine: { height: 1, backgroundColor: colores.gris300, marginVertical: 4 },
   menuItem: { flexDirection: 'row', alignItems: 'center', height: 52, paddingHorizontal: 20 },
-  menuItemActive: { backgroundColor: 'rgba(45, 189, 114, 0.12)' }, // Verde suave para ítem activo
+  menuItemActive: { backgroundColor: 'rgba(45, 189, 114, 0.12)' },
   menuIcon: { marginRight: 14 },
   menuLabel: { flex: 1, fontSize: 15, color: colores.texto },
   menuLabelActive: { color: colores.verde, fontWeight: '700' },
@@ -339,8 +264,6 @@ const styles = StyleSheet.create({
     minWidth: 20, height: 20, borderRadius: 10, backgroundColor: colores.rojo,
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5, marginLeft: 8,
   },
-  // lineHeight igual al alto del círculo: es lo que realmente centra el
-  // número verticalmente (alignItems/justifyContent solos no alcanzan acá).
   badgeTxt: { fontSize: 11, fontWeight: '700', color: colores.blanco, textAlign: 'center', lineHeight: 20 },
-  menuLabelLogout: { color: colores.rojo }, // Rojo para cerrar sesión
+  menuLabelLogout: { color: colores.rojo },
 });

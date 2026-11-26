@@ -1,24 +1,3 @@
-/**
- * CamposNegocio.jsx — Piezas de formulario de Zooni Negocios
- *
- * Lo usan el registro (NegocioRegistroScreen) y "Mi negocio" (MiNegocioTab),
- * así los dos piden exactamente lo mismo:
- *
- *   Campo · Multi · Toggle · CampoMonto   piezas sueltas con el diseño de Zooni
- *   DatosTipoNegocio                       la card con lo propio de cada tipo
- *   datosInicialesNegocio(tipo, datos?)    estado del formulario (números como texto)
- *   validarDatosNegocio(tipo, datos)       { campo: mensaje } de lo que falta
- *   datosNegocioParaGuardar(tipo, datos)   lo que va a negocio_perfil.datos
- *
- * Lo propio de cada tipo:
- *   · Veterinaria: matrícula (obligatoria), especialidades, especies que
- *     atiende, urgencias 24 h (con teléfono de guardia) y atención a domicilio.
- *   · Peluquería: especies y tamaños que atiende, busca y lleva (con su costo
- *     y hasta cuántos km del local) y si usa productos hipoalergénicos.
- *   · Pet shop: envíos (costo, gratis desde, radio y demora), pedido mínimo y
- *     medios de pago.
- */
-
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,8 +15,6 @@ export const ESPECIES_NEGOCIO = [
 
 export const DEMORAS_ENVIO = ['En el día', '24 h', '48 h', 'A coordinar'];
 
-// ─── Piezas sueltas ─────────────────────────────────────────────────────────
-
 export function Campo({ label, error, ayuda, children, style }) {
   return (
     <View style={[{ marginBottom: 14 }, style]}>
@@ -49,7 +26,6 @@ export function Campo({ label, error, ayuda, children, style }) {
   );
 }
 
-/** Chips de selección múltiple. `opciones`: strings u objetos { key, label, icono }. */
 export function Multi({ opciones, valor, onCambio, error }) {
   return (
     <View style={f.chips}>
@@ -69,7 +45,6 @@ export function Multi({ opciones, valor, onCambio, error }) {
   );
 }
 
-/** Chips de selección única. */
 export function Unico({ opciones, valor, onCambio }) {
   return (
     <View style={f.chips}>
@@ -101,7 +76,6 @@ export function Toggle({ valor, onCambio, titulo, texto }) {
   );
 }
 
-/** Input de plata ("$ 1200") o de una cantidad con unidad ("3 km"). */
 export function CampoMonto({ valor, onCambio, placeholder = '0', error, unidad, signo = '$', maxDigitos = 8 }) {
   return (
     <View style={[f.input, f.monto, error && f.inputError]}>
@@ -120,12 +94,9 @@ export function InputTexto({ error, style, ...props }) {
   );
 }
 
-// ─── Estado, validación y guardado de lo propio de cada tipo ────────────────
-
 const aTexto = (n) => (n === null || n === undefined || n === '' ? '' : String(n));
 const aNumero = (t) => Number(t) || 0;
 
-/** Estado del formulario. Con `datos` (los guardados) arranca con esos valores. */
 export function datosInicialesNegocio(tipo, datos = {}) {
   const d = datos ?? {};
   if (tipo === 'veterinaria') {
@@ -211,12 +182,6 @@ export function datosNegocioParaGuardar(tipo, d) {
   };
 }
 
-// ─── La card con lo propio de cada tipo ─────────────────────────────────────
-
-/**
- * Props: tipo · datos (de datosInicialesNegocio) · onCambio(campo, valor) ·
- *        errores ({ campo: mensaje }) · style
- */
 export function DatosTipoNegocio({ tipo, datos, onCambio, errores = {}, style }) {
   const cfg = configNegocio(tipo);
 
@@ -321,7 +286,6 @@ export function DatosTipoNegocio({ tipo, datos, onCambio, errores = {}, style })
   );
 }
 
-/** Hook chico para el estado de DatosTipoNegocio con su limpieza de errores. */
 export function useDatosNegocio(tipo, guardados) {
   const [datos, setDatos] = useState(() => datosInicialesNegocio(tipo, guardados));
   const [errores, setErrores] = useState({});

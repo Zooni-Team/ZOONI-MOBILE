@@ -1,11 +1,3 @@
-/**
- * paseador/resenas.js — Reseñas de paseadores (estilo Google Maps): estrellas,
- * aspectos, preguntas de sí/no y fotos o videos.
- *
- * Hay dos orígenes: la calificación de un paseo terminado (columnas Resena* de
- * "Paseo") y las opiniones sin paseo (tabla paseador_opiniones).
- */
-
 import { supabase } from '../../lib/supabase';
 import { getCurrentUserId } from '../../config/session';
 import { resolveMascotaVisual } from '../../constants/petImages';
@@ -16,7 +8,6 @@ import { errorApp, esEsquemaFaltante } from '../comun';
 import { notificarPaseo } from './avisos';
 import { fetchMisPaseos } from './paseos';
 
-/** Mis reseñas como paseador, con el promedio y cuándo fue mi primer paseo. */
 export async function fetchResenas() {
   const yo = getCurrentUserId();
   const [lista, opiniones] = await Promise.all([fetchMisPaseos(['finalizado']), leerOpiniones(yo)]);
@@ -24,7 +15,6 @@ export async function fetchResenas() {
   const autores = [...new Set(opiniones.map((o) => o.id_autor))];
   const usuarios = await perfilesPorId(autores);
   const porUser = Object.fromEntries((usuarios ?? []).map((u) => [u.Id_User, u]));
-  // Opiniones sin paseo (048), con la misma forma que un paseo calificado
   const libres = opiniones.map((o) => {
     const u = porUser[o.id_autor] ?? {};
     return {
@@ -40,7 +30,6 @@ export async function fetchResenas() {
     promedio,
     cantidad: conRating.length,
     totalPaseos: lista.length,
-    // Desde acá corre la experiencia (experienciaEnZooni)
     primerPaseo: fechas.length ? new Date(Math.min(...fechas)).toISOString() : null,
     resenas: conRating
       .filter((p) => p.resena)
@@ -48,19 +37,13 @@ export async function fetchResenas() {
   };
 }
 
-/** Código de app para un error de Postgres al guardar una reseña (ver CalificarPaseoModal). */
 function codigoErrorResena(error) {
   if (esEsquemaFaltante(error)) return 'migracion_pendiente';
   if (error?.code === '42501' || /row-level security|permission denied/i.test(error?.message ?? '')) return 'sin_permiso';
-  if (error?.code === '23502' || error?.code === '23503') return 'sin_sesion'; // id_autor nulo o inexistente
+  if (error?.code === '23502' || error?.code === '23503') return 'sin_sesion';
   return 'error_base';
 }
 
-/**
- * Sube las fotos/videos de una reseña al bucket "resenas" (042). Si falla,
- * tira un Error con código para que el formulario diga el motivo real:
- *   bucket_faltante · archivo_pesado · tipo_no_admitido · error_subida
- */
 async function subirMediaResena(media, carpeta) {
   const subidos = [];
   for (const m of media.slice(0, MEDIA_RESENA_MAX)) {
@@ -79,11 +62,6 @@ async function subirMediaResena(media, carpeta) {
   return subidos;
 }
 
-/**
- * Calificación del dueño al terminar. `media` son los archivos elegidos con
- * el picker ([{ uri, mimeType }]): se suben al bucket "resenas" y se guardan
- * sus URLs. Al paseador le llega una notificación que lo lleva a su Perfil.
- */
 export async function calificarPaseo(paseo, {
   rating, resena, aspectos = {}, respuestas = {}, media = [],
 }) {
@@ -115,11 +93,6 @@ export async function calificarPaseo(paseo, {
   );
 }
 
-/**
- * Opiniones sobre un paseador SIN paseo de por medio (048): cualquiera puede
- * opinar cuando quiera y las veces que quiera, también el propio paseador.
- * Sin la 048 devuelve [] y todo sigue con las reseñas de los paseos.
- */
 export async function leerOpiniones(idsWalker) {
   const ids = (Array.isArray(idsWalker) ? idsWalker : [idsWalker]).filter((x) => x != null);
   if (!ids.length) return [];
@@ -127,7 +100,6 @@ export async function leerOpiniones(idsWalker) {
   return error ? [] : (data ?? []);
 }
 
-/** Guarda una opinión sobre un paseador (no hace falta un paseo). */
 export async function opinarPaseador(idWalker, {
   rating, resena, aspectos = {}, respuestas = {}, media = [],
 }) {
@@ -152,11 +124,6 @@ export async function opinarPaseador(idWalker, {
 
 const COLUMNAS_RESENA ='"Id_Paseo","Id_Mascota","Id_Dueno","FechaProgramada","DuracionMin","Rating","Resena","ResenaAspectos","ResenaRespuestas","ResenaMedia","ResenaFecha"';
 
-/**
- * Todas las reseñas de un paseador, con el resumen que se muestra arriba
- * (promedio, cuántas de cada estrella, promedio por aspecto, % de "sí" por
- * pregunta y todas las fotos/videos juntos).
- */
 export async function fetchResenasPaseador(idWalker) {
   const { data, error } = await supabase.from('Paseo').select(COLUMNAS_RESENA)
     .eq('Id_Walker', idWalker).eq('Estado', 'finalizado').not('Rating', 'is', null);
@@ -169,8 +136,6 @@ export async function fetchResenasPaseador(idWalker) {
   const [duenos, { data: mascotas }] = await Promise.all([
     perfilesPorId(idsDuenos),
     idsMascotas.length
-      // Mascotas de los dueños que dejaron la reseña: por "mascota_publica",
-      // porque "Mascota" ya sólo devuelve la fila propia (#12).
       ? supabase.from('mascota_publica').select('Id_Mascota, Nombre, Especie, Raza, Foto, ImagenAsset, MostrarFoto').in('Id_Mascota', idsMascotas)
       : { data: [] },
   ]);
@@ -189,7 +154,7 @@ export async function fetchResenasPaseador(idWalker) {
       respuestas: o.respuestas ?? {},
       media: Array.isArray(o.media) ? o.media : [],
       dueno: { nombre: nombreCorto(u), foto: u.FotoPerfil ?? null },
-      mascota: null, // opinión general, sin paseo
+      mascota: null,
     };
   });
 

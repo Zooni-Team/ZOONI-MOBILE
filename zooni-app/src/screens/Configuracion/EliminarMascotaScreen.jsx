@@ -1,10 +1,4 @@
-﻿/**
- * EliminarMascotaScreen.jsx — Eliminar una mascota (Instruction-MisMascotas §4.4)
- *
- * Nunca un diálogo simple: pantalla dedicada con confirmación escrita
- * (insensible a mayúsculas y tildes), checkbox, alternativa de archivado
- * antes de la confirmación, y 30 días de gracia vía soporte (sin Deshacer).
- */
+﻿
 
 import React, { useMemo, useState } from 'react';
 import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -85,7 +79,6 @@ export default function EliminarMascotaScreen() {
         <Image source={img} style={s.avatar} resizeMode="cover" />
       </View>
 
-      {/* Qué se borra */}
       <View style={s.bloqueRojo}>
         <Text style={s.bloqueRojoTitulo}>Qué se borra</Text>
         {SE_BORRA.map((item) => (
@@ -96,7 +89,6 @@ export default function EliminarMascotaScreen() {
         ))}
       </View>
 
-      {/* Alternativa: archivar — va ANTES de la confirmación (§4.4) */}
       <View style={s.alternativa}>
         <Text style={s.alternativaTitulo}>¿Preferís archivarla?</Text>
         <Text style={s.alternativaTxt}>
@@ -109,7 +101,6 @@ export default function EliminarMascotaScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Confirmación escrita */}
       <Text style={s.confirmLabel}>Escribí "{mascota.nombre}" para confirmar</Text>
       <TextInput
         style={[

@@ -1,8 +1,3 @@
-/**
- * negocio/catalogo.js — Lo que ofrece un negocio (tabla negocio_items):
- * servicios con precio y duración, o productos con stock.
- */
-
 import { supabase } from '../../lib/supabase';
 import { subirImagenPublica, borrarImagenPublica } from '../imagenStorage';
 import { TAMANOS, configNegocio } from '../../constants/negocios';
@@ -60,7 +55,6 @@ function filaItem(idNegocio, item, tipo) {
   };
 }
 
-/** Crea (sin id) o actualiza un item. La foto (uri local) se sube primero. */
 export async function guardarItem(negocio, item) {
   const err = validarItem(item, negocio.tipo);
   if (err) throw new Error(err);
@@ -75,16 +69,11 @@ export async function guardarItem(negocio, item) {
 }
 
 export async function borrarItem(negocio, id) {
-  // La foto se lee ANTES de borrar la fila: después ya no hay de dónde sacar
-  // la URL. A diferencia de mascotas y consultas, negocio_items no tiene
-  // trigger en la 068, así que este es el único lugar que la limpia (#70).
   const { data: fila } = await supabase.from('negocio_items').select('foto')
     .eq('id', id).eq('id_negocio', negocio.id).maybeSingle();
 
   const { error } = await supabase.from('negocio_items').delete().eq('id', id).eq('id_negocio', negocio.id);
   if (error) {
-    // Con turnos que lo referencian igual se puede (ON DELETE SET NULL); si
-    // falla por otra cosa, se desactiva para que no se ofrezca más
     const { error: e2 } = await supabase.from('negocio_items').update({ activo: false })
       .eq('id', id).eq('id_negocio', negocio.id);
     if (e2) throw errorBase(error);
@@ -105,7 +94,6 @@ export async function ajustarStock(negocio, item, delta) {
   return stock;
 }
 
-/** Carga de una los servicios sugeridos que eligió (los que todavía no tiene). */
 export async function agregarSugeridos(negocio, sugeridos, existentes = []) {
   const tiene = new Set(existentes.map((i) => i.nombre.trim().toLowerCase()));
   const filas = sugeridos

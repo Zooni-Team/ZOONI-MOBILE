@@ -1,13 +1,3 @@
-/**
- * RegisterStep4Screen.jsx — Registro Paso 4: ubicación + registro final
- * (Login7/Login8 de Figma)
- *
- * Al confirmar, llama a services/authApi.js → registro() (usuario + mascota
- * en Supabase) y vuelve al Login con el banner de éxito.
- * Si vino de Google / Facebook / Apple (datos.social) no hay contraseña que
- * escribir en el Login: entra directo a la app.
- */
-
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -59,22 +49,15 @@ function PaisPicker({ visible, valor, onSeleccionar, onCerrar }) {
   );
 }
 
-/**
- * El teléfono se guarda en una columna de 30 caracteres y se usa para
- * contactar: solo dígitos y separadores comunes. Antes entraba cualquier cosa
- * (letras incluidas) y llegaba así a la base.
- */
 function limpiarTelefono(v) {
   return (v ?? '').replace(/[^\d\s-]/g, '');
 }
 
-/** El código de país es "+" y hasta 4 dígitos (+54, +598, +1…) */
 function limpiarCodigo(v) {
   const soloDigitos = (v ?? '').replace(/\D/g, '').slice(0, 4);
   return soloDigitos ? `+${soloDigitos}` : '';
 }
 
-/** Cuántos dígitos tiene el teléfono, ignorando espacios y guiones */
 function digitos(v) {
   return (v ?? '').replace(/\D/g, '').length;
 }
@@ -118,7 +101,6 @@ export default function RegisterStep4Screen() {
 
   const handleContinuar = async () => {
     if (!pais) { setErrPais(true); return; }
-    // El teléfono es opcional, pero si lo cargan tiene que ser usable
     if (telefono.trim() && (digitos(telefono) < 6 || digitos(telefono) > 15)) {
       setErrTelefono('Ingresá un teléfono válido o dejalo vacío');
       return;
@@ -147,7 +129,6 @@ export default function RegisterStep4Screen() {
           paisCodigo: pais.codigo,
           provincia: provincia || null,
           ciudad: ciudad || null,
-          // Sin teléfono no se guarda el código suelto: no sirve de nada
           codigoTelefono: telefono.trim() ? (codigo || null) : null,
           telefono: telefono.trim() || null,
         },
@@ -166,17 +147,6 @@ export default function RegisterStep4Screen() {
         routes: [{ name: 'Login', params: { registroExitoso: true } }],
       });
     } catch (err) {
-      /*
-        `alerta()` y no Alert.alert: en react-native-web Alert.alert es un
-        NO-OP. Este bloque existía y estaba bien pensado, pero en el navegador
-        no mostraba absolutamente nada: el botón dejaba de cargar y el registro
-        se quedaba trabado sin decir por qué. Era exactamente el síntoma del
-        mail repetido.
-
-        El mail y el @usuario ya se verifican en el paso 3; esto queda como red
-        de seguridad para la carrera (que alguien registre ese mail entre un
-        paso y el otro) y para el resto de los errores.
-      */
       if (err?.message === 'email_existente') {
         alerta('Ese mail ya está en uso', 'Ya existe una cuenta con ese mail. Volvé atrás y usá otro, o iniciá sesión.');
       } else if (err?.message === 'usuario_existente') {
@@ -223,7 +193,6 @@ export default function RegisterStep4Screen() {
 
             <Text style={s.subtitulo}>¡Ya falta poco!</Text>
 
-            {/* País */}
             <TouchableOpacity
               style={[s.input, s.inputPais, pais && s.inputPaisOn, errPais && s.inputError]}
               onPress={() => setShowPais(true)}
@@ -248,13 +217,6 @@ export default function RegisterStep4Screen() {
               onFocus={() => setFocus('ciudad')} onBlur={() => setFocus(null)} returnKeyType="next"
             />
 
-            {/*
-              Teléfono: el código de área va PEGADO al número, a la izquierda,
-              como en cualquier app — antes era un campo aparte arriba y quedaba
-              suelto, sin que se entendiera que eran una sola cosa.
-              El código se autocompleta al elegir el país pero se puede corregir
-              a mano; el conjunto es opcional y se puede dejar vacío.
-            */}
             <View style={[
               s.telefonoRow,
               (focus === 'codigo' || focus === 'telefono') && s.inputFocus,
@@ -331,7 +293,6 @@ const s = StyleSheet.create({
   placeholder: { color: colores.textoTenue },
   inputCodigoAuto: { color: colores.verde, fontWeight: '700' },
 
-  // Código + número en una sola caja: se ve como un campo de teléfono entero
   telefonoRow: {
     flexDirection: 'row', alignItems: 'center',
     borderWidth: 1, borderColor: colores.gris300, borderRadius: 10,

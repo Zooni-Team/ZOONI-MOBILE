@@ -1,13 +1,3 @@
-/**
- * LoginScreen.jsx — Puerta de entrada de Zooni (Login1/9/10 de Figma)
- *
- * Fondo blanco y título "Zooni" marrón (#5C3D1E): paleta propia de este
- * flujo, distinta del verde menta del resto de la app.
- * Autentica contra Supabase (services/authApi.js) y guarda la sesión en
- * config/session.js. Social login es placeholder; "Registrarse como Proveedor"
- * lleva a Zooni Paseadores (screens/Paseador/).
- */
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -41,8 +31,6 @@ export default function LoginScreen() {
   const navigation = useNavigation();
   const route = useRoute();
 
-  // Mail de la cuenta que acaba de cerrar sesión, ya escrito. En web se lee
-  // sincrónico para que el navegador no rellene un usuario guardado viejo.
   const [email, setEmail] = useState(getUltimoMailWeb);
   useEffect(() => {
     getUltimoMail().then((m) => { if (m) setEmail((actual) => actual || m); });
@@ -50,14 +38,12 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [verPassword, setVerPassword] = useState(false);
   const [cargando, setCargando] = useState(false);
-  // Si volvió de Google / Facebook / Apple con un error, se muestra acá
   const [errorLogin, setErrorLogin] = useState(route.params?.errorSocial ?? null);
   const [focusEmail, setFocusEmail] = useState(false);
   const [focusPass, setFocusPass] = useState(false);
   const [errEmail, setErrEmail] = useState(false);
   const [errPass, setErrPass] = useState(false);
 
-  // ── Banner de registro exitoso ─────────────────────────────────────────────
   const [bannerVisible, setBannerVisible] = useState(false);
   const bannerOpacity = useRef(new Animated.Value(0)).current;
   const bannerY = useRef(new Animated.Value(-8)).current;
@@ -75,9 +61,8 @@ export default function LoginScreen() {
         .start(() => setBannerVisible(false));
     }, 4000);
     return () => clearTimeout(timer);
-  }, [route.params?.registroExitoso]); // eslint-disable-line
+  }, [route.params?.registroExitoso]);
 
-  // ── Ingresar ───────────────────────────────────────────────────────────────
   const handleIngresar = useCallback(async () => {
     const mail = email.trim();
     const emailOk = EMAIL_REGEX.test(mail);
@@ -90,13 +75,9 @@ export default function LoginScreen() {
     setCargando(true);
     try {
       const { usuario } = await login(mail, password);
-      // Si la cuenta también es de paseador o tiene un negocio, que elija con
-      // qué app entrar (o entra directo si tiene una sola)
       const roles = await fetchRolesCuenta(usuario.id).catch(() => null);
       const [ruta, params] = await rutaSegunRoles(roles ?? { esDueno: true, esPaseador: false, negocios: [] });
       const rutas = [{ name: ruta, params }];
-      // Cuenta recién migrada con una contraseña vieja y débil: de paso por
-      // "Cambiar contraseña" antes de entrar (informe de seguridad #90).
       if (usuario.debeCambiarContrasena) rutas.push({ name: 'ConfigCambiarContrasena', params: { forzado: true } });
       navigation.reset({ index: rutas.length - 1, routes: rutas });
       avisarSiSeCanceloLaBaja(usuario);
@@ -145,7 +126,6 @@ export default function LoginScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
-            // El gestor de contraseñas guarda/rellena el MAIL como usuario
             autoComplete="username"
             textContentType="username"
             onFocus={() => setFocusEmail(true)}

@@ -1,37 +1,13 @@
-/**
- * elegirImagen.js — Pedir permiso y elegir una foto (galería o cámara).
- *
- * Antes cada pantalla repetía lo mismo (permiso → aviso si no lo dan →
- * launchImageLibrary/launchCamera → leer assets[0].uri), con pequeñas
- * diferencias que nadie había elegido a propósito. Ahora:
- *
- *   const uri = await elegirImagen();                       // galería
- *   const uri = await elegirImagen({ camara: true });       // cámara
- *   const uri = await elegirImagen({ cuadrada: true });     // recorte 1:1 (logos, avatares)
- *   if (!uri) return;                                       // canceló o sin permiso
- *
- * Sin permiso avisa con alerta() (que también anda en web) y devuelve null.
- * Para varias fotos y videos a la vez (reseñas) está elegirMedios.
- *
- * Toda foto que sale de acá pasa por limpiarExif(): se recomprime con
- * expo-image-manipulator, lo que descarta sus metadatos EXIF (incluida la
- * ubicación GPS de quien la sacó) — informe de seguridad #69: ninguna foto
- * que termine en un bucket público debe llevar esos datos.
- */
-
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 
 import { alerta } from './dialogo';
 import { getSettings } from '../services/settingsStore';
 
-/** Calidad JPEG "media": buena para pantalla, liviana para subir. */
 export const CALIDAD_FOTO = 0.7;
 
-// Configuración › Medios y Calidad › "Calidad de subida de fotos".
 const CALIDAD_POR_PREFERENCIA = { high: 0.85, medium: CALIDAD_FOTO, low: 0.5 };
 
-/** La calidad JPEG que eligió la persona para lo que sube (0..1). */
 export function calidadDeSubida() {
   return CALIDAD_POR_PREFERENCIA[getSettings().device.upload_quality] ?? CALIDAD_FOTO;
 }
@@ -48,11 +24,6 @@ async function pedirPermiso(camara) {
   return false;
 }
 
-/**
- * Recomprime la foto para que el archivo resultante no tenga EXIF (#69). Si el
- * manipulador no soporta el formato, se devuelve la original: perder la foto
- * sería peor que subirla con metadatos.
- */
 async function limpiarExif(uri, calidad) {
   try {
     const res = await ImageManipulator.manipulateAsync(uri, [], {
@@ -65,12 +36,6 @@ async function limpiarExif(uri, calidad) {
   }
 }
 
-/**
- * Devuelve la uri local de la foto elegida (ya sin EXIF), o null si canceló o
- * no hay permiso.
- * opciones: { camara = false, cuadrada = false, frontal = false, calidad }
- * Sin `calidad`, usa la que eligió la persona en Configuración (calidadDeSubida).
- */
 export async function elegirImagen({ camara = false, cuadrada = false, frontal = false, calidad = calidadDeSubida() } = {}) {
   if (!(await pedirPermiso(camara))) return null;
 
@@ -91,14 +56,6 @@ export async function elegirImagen({ camara = false, cuadrada = false, frontal =
   return uri ? limpiarExif(uri, calidad) : null;
 }
 
-/**
- * Varias fotos y videos (galería) o uno (cámara). Devuelve los assets de
- * expo-image-picker tal cual ([] si canceló o no hay permiso), porque quien
- * llama necesita mimeType, duración y tamaño para filtrar — sólo se reemplaza
- * la `uri` de las imágenes por la versión sin EXIF (los videos van tal cual:
- * el manipulador no los toca).
- * opciones: { camara = false, limite = 1, videoMaxSegundos = 60 }
- */
 export async function elegirMedios({ camara = false, limite = 1, videoMaxSegundos = 60 } = {}) {
   if (!(await pedirPermiso(camara))) return [];
   const opciones = {

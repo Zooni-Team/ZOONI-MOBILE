@@ -1,17 +1,7 @@
-/**
- * RuedaSeleccion.jsx — Columna tipo rueda y estilos compartidos de los pickers
- *
- * La usan FechaPicker (día / mes / año) y HoraPicker (hora / minuto). Cada
- * columna se abre CENTRADA en el valor elegido, así los valores de al lado
- * quedan a la vista y moverse de a uno es un toque.
- */
-
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colores } from '../theme';
 
-// Alto fijo de cada opción: es lo que permite calcular a qué posición hay que
-// saltar para dejar la seleccionada en el medio.
 export const ITEM_H = 40;
 
 export function Columna({ label, opciones, valor, onSelect, centrarToken, flex = 1 }) {
@@ -19,23 +9,17 @@ export function Columna({ label, opciones, valor, onSelect, centrarToken, flex =
   const [alto, setAlto] = useState(0);
 
   const indice = opciones.findIndex((o) => o.valor === valor);
-  // El índice se lee de un ref dentro del efecto: si estuviera en las
-  // dependencias, la lista saltaría sola cada vez que tocás una opción.
   const indiceRef = useRef(indice);
   indiceRef.current = indice;
 
   useEffect(() => {
     if (alto <= 0 || indiceRef.current < 0) return;
-    // Un frame de espera: el ScrollView tiene que tener aplicado el padding de
-    // centrado antes de poder saltar, si no el scroll queda corto.
     const id = requestAnimationFrame(() => {
       ref.current?.scrollTo({ y: indiceRef.current * ITEM_H, animated: false });
     });
     return () => cancelAnimationFrame(id);
   }, [centrarToken, alto]);
 
-  // Relleno arriba y abajo para que la PRIMERA y la ÚLTIMA opción también
-  // puedan quedar en el centro (sin esto, el 01 nunca llega al medio).
   const relleno = Math.max(0, (alto - ITEM_H) / 2);
 
   return (
@@ -63,8 +47,6 @@ export function Columna({ label, opciones, valor, onSelect, centrarToken, flex =
             </TouchableOpacity>
           ))}
         </ScrollView>
-        {/* Guía del centro: marca dónde queda la opción elegida. No recibe
-            toques para no tapar los ítems de abajo. */}
         <View style={[rs.bandaCentro, { top: relleno }]} pointerEvents="none" />
       </View>
     </View>
@@ -75,7 +57,6 @@ export const rs = StyleSheet.create({
   overlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   container:    { backgroundColor: colores.blanco, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 36 },
   titulo:       { fontSize: 16, fontWeight: '700', color: colores.texto, textAlign: 'center', marginBottom: 16 },
-  // 5 opciones a la vista: la elegida al medio, con dos arriba y dos abajo
   row:          { flexDirection: 'row', gap: 8, height: 5 * ITEM_H + 26 },
   col:          { flex: 1 },
   colLabel:     { fontSize: 12, fontWeight: '600', color: colores.textoSecundario, textAlign: 'center', marginBottom: 6 },

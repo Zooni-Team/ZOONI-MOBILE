@@ -1,12 +1,3 @@
-/**
- * SuscripcionesScreen.jsx — Configuración › Suscripciones y pagos (§3.5.9)
- *
- * La fuente de verdad del plan son los webhooks de la tienda, nunca el
- * cliente. Acá se muestra el estado y se deriva a la tienda para administrar.
- * Hoy no hay planes pagos ni cobros dentro de la app: todas las cuentas son
- * Free y la pantalla va con el aviso de vista previa.
- */
-
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,7 +22,6 @@ export default function SuscripcionesScreen() {
 
       <SettingsVistaPrevia texto="Zooni todavía no cobra: todas las cuentas tienen el plan Free y no hay pagos con tarjeta dentro de la app. Las opciones de abajo todavía no están disponibles." />
 
-      {/* Card de plan actual (destacada, borde --cta) */}
       <View style={s.planCard}>
         <Text style={s.planNombre}>Plan Free</Text>
         <Text style={s.planEstado}>Activo</Text>

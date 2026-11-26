@@ -1,11 +1,3 @@
-/**
- * EditarMascotaScreen.jsx — Edición de mascota (Instruction-MisMascotas §5.6)
- *
- * Una sola pantalla con secciones colapsables (editar es buscar un campo
- * puntual, no un recorrido). Tiene botón Guardar explícito — excepción a la
- * regla de autoguardado: son datos con validación cruzada.
- */
-
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, Alert, Image, Modal, Platform, Pressable, SafeAreaView,
@@ -43,7 +35,6 @@ function Chip({ label, activo, onPress }) {
   );
 }
 
-/** Una de las dos opciones de "¿qué mostramos en la app?": foto o avatar. */
 function OpcionVisual({ activo, onPress, titulo, fuente, icono, deshabilitado }) {
   return (
     <TouchableOpacity
@@ -101,19 +92,15 @@ export default function EditarMascotaScreen() {
   const [microchip, setMicrochip] = useState(original?.microchip ?? '');
   const [descripcion, setDescripcion] = useState(original?.descripcion ?? '');
   const [visibleEnMatch, setVisibleEnMatch] = useState(original?.visibleEnMatch ?? true);
-  // Foto real vs avatar del Closet en el resto de la app (migración 032)
   const [mostrarFoto, setMostrarFoto] = useState(original?.mostrarFoto ?? true);
   const [fechaNacimiento, setFechaNacimiento] = useState(parseFechaLocal(original?.fechaNacimiento));
   const [showFecha, setShowFecha] = useState(false);
 
-  // El avatar tal cual lo resolvería la app si la preferencia fuera "avatar":
-  // se fuerza mostrarFoto:false para que no devuelva la foto.
   const avatarSource = useMemo(
     () => resolveMascotaVisual({ ...(original ?? {}), mostrarFoto: false }),
     [original],
   );
 
-  // Galería de fotos (portada + adicionales) para Match
   const [fotos, setFotos] = useState([]);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
 
@@ -139,7 +126,7 @@ export default function EditarMascotaScreen() {
   const quitarFoto = async (foto) => {
     if (foto.esPortada) { alerta('No se puede quitar la portada', 'Es la foto principal de tu mascota.'); return; }
     setFotos((prev) => prev.filter((f) => f.id !== foto.id));
-    try { await eliminarFotoMascota(foto.id); } catch { /* si falla, recarga al reabrir */ }
+    try { await eliminarFotoMascota(foto.id); } catch {  }
   };
 
   const hayCambios = useMemo(() => {
@@ -156,14 +143,11 @@ export default function EditarMascotaScreen() {
       descripcion !== (original.descripcion ?? '') ||
       visibleEnMatch !== (original.visibleEnMatch ?? true) ||
       mostrarFoto !== (original.mostrarFoto ?? true) ||
-      // Se comparan las fechas en ISO y no por identidad de Date: parseFechaLocal
-      // devuelve un objeto nuevo y siempre daría "cambió".
       (fechaNacimiento ? toISODateLocal(fechaNacimiento) : null) !== (original.fechaNacimiento ?? null)
     );
   }, [original, nombre, raza, sexo, peso, tamano, senas, castrado, microchip, descripcion,
     visibleEnMatch, mostrarFoto, fechaNacimiento]);
 
-  // Catálogo de razas de Supabase filtrado por la especie de la mascota
   useEffect(() => {
     const key = (original?.especie ?? '').toLowerCase();
     fetchRazas(key).then((r) => setRazas(r.razas)).catch(() => setRazas([]));
@@ -171,8 +155,6 @@ export default function EditarMascotaScreen() {
 
   const nombreValido = nombre.trim().length >= 2 && nombre.trim().length <= 30;
   const microchipValido = microchip === '' || /^[0-9]{15}$/.test(microchip);
-  // Peso: obligatorio y dentro del rango de SU especie. El mínimo fijo de
-  // 0,1 kg dejaba afuera a hámsters, aves y ratones, que pesan bastante menos.
   const pesoNum = Number(peso.replace(',', '.'));
   const pesoOk = peso !== '' && !Number.isNaN(pesoNum) && esPesoValido(pesoNum, original?.especie);
   const puedeGuardar = hayCambios && nombreValido && microchipValido && pesoOk && !guardando;
@@ -248,7 +230,6 @@ export default function EditarMascotaScreen() {
 
           <Text style={e.label}>Raza</Text>
           {razas.length > 0 ? (
-            // Menú desplegable con el catálogo real, como en el registro
             <TouchableOpacity style={[e.input, e.selectFila]} onPress={() => setRazaSheet(true)}
               accessibilityRole="button" accessibilityLabel={`Raza: ${raza || 'sin elegir'}`}>
               <Text style={[e.selectTxt, !raza && { color: P.textSoft }]} numberOfLines={1}>
@@ -257,7 +238,6 @@ export default function EditarMascotaScreen() {
               <Ionicons name="chevron-down" size={18} color={P.textSoft} />
             </TouchableOpacity>
           ) : (
-            // Especies sin catálogo (Otro): campo libre
             <TextInput style={e.input} value={raza} onChangeText={setRaza} maxLength={100} />
           )}
 
@@ -269,9 +249,6 @@ export default function EditarMascotaScreen() {
         </Seccion>
 
         <Seccion titulo="Fechas y datos" abierta={abierta === 1} onToggle={() => setAbierta(abierta === 1 ? -1 : 1)}>
-          {/* La sección se llamaba "Fechas y datos" pero no tenía ninguna
-              fecha: la de nacimiento solo se podía cambiar entrando a la Ficha
-              Médica, que es un rodeo para algo que se edita desde acá. */}
           <Text style={e.label}>¿Cuándo nació?</Text>
           <TouchableOpacity style={e.select} onPress={() => setShowFecha(true)}
             accessibilityRole="button" accessibilityLabel="Elegir fecha de nacimiento">
@@ -347,16 +324,6 @@ export default function EditarMascotaScreen() {
             )}
           </View>
 
-          {/*
-            Elegir qué se ve en el resto de la app.
-
-            Hasta ahora la foto ganaba siempre: apenas cargabas una, el avatar
-            que armaste en el Closet desaparecía del Home, la Ficha Médica y
-            Mis Mascotas. Y la foto no se puede sacar, porque Match la exige —
-            así que cargarla para Match apagaba el Closet en todos lados.
-
-            Esto NO afecta a Match: ahí siempre se muestra la foto real.
-          */}
           <View style={e.divisorSeccion} />
           <Text style={e.label}>¿Qué mostramos en la app?</Text>
           <Text style={e.fotosApoyo}>
@@ -398,8 +365,6 @@ export default function EditarMascotaScreen() {
           </TouchableOpacity>
         </Seccion>
 
-        {/* sinFuturo: una fecha de nacimiento posterior a hoy daría una edad
-            negativa (el "-1 años y 9 meses" que aparecía en el alta). */}
         <FechaPicker
           visible={showFecha}
           titulo="¿Cuándo nació?"
@@ -410,7 +375,6 @@ export default function EditarMascotaScreen() {
           onCancelar={() => setShowFecha(false)}
         />
 
-        {/* Bottom sheet de razas */}
         <Modal visible={razaSheet} transparent animationType="slide" onRequestClose={() => setRazaSheet(false)}>
           <Pressable style={e.scrim} onPress={() => setRazaSheet(false)}>
             <Pressable style={e.sheet} onPress={() => {}}>
@@ -430,7 +394,6 @@ export default function EditarMascotaScreen() {
           </Pressable>
         </Modal>
 
-        {/* Acciones al pie, fuera de las secciones (§5.6) */}
         <TouchableOpacity style={e.pieAccion}
           onPress={() => navigation.replace('EliminarMascota', { mascota: original })}
           accessibilityRole="button" accessibilityLabel={`Eliminar a ${original.nombre}`}>
@@ -490,7 +453,6 @@ const e = StyleSheet.create({
 
   fotosApoyo: { fontSize: 13, color: P.textSoft, marginBottom: 12, lineHeight: 18 },
 
-  // Elección foto real / avatar del Closet
   divisorSeccion: { height: 1, backgroundColor: P.divider, marginVertical: 16 },
   visualRow: { flexDirection: 'row', gap: 12 },
   visualOpcion: {

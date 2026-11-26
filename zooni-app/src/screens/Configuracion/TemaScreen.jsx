@@ -1,11 +1,3 @@
-/**
- * TemaScreen.jsx — Configuración › Tema de la aplicación (§3.5.2)
- *
- * El tema es preferencia de DISPOSITIVO: no sincroniza entre dispositivos.
- * Modo oscuro todavía no implementado → la opción se muestra deshabilitada
- * con "Próximamente", no se oculta (§3.5.2 ⚠️).
- */
-
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -33,7 +25,6 @@ export default function TemaScreen() {
   return (
     <SettingsScreen title="Tema de la aplicación">
 
-      {/* Vista previa en vivo (§3.5.2) */}
       <View style={s.preview}>
         <View style={s.previewHeader} />
         <View style={s.previewCard}>
@@ -63,8 +54,6 @@ export default function TemaScreen() {
           value={device.text_size}
           onChange={(v) => set({ text_size: v })}
         />
-        {/* Línea de ejemplo: escala en vivo con el escalado global de la app
-            (no lleva fontSize propio para no escalar doble) */}
         <View style={s.ejemploWrap}>
           <Text style={s.ejemplo}>
             Titán tiene turno con la veterinaria el jueves.

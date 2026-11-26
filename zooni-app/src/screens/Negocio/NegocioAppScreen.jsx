@@ -1,21 +1,3 @@
-/**
- * NegocioAppScreen.jsx — Contenedor de Zooni Negocios
- *
- * Una sola pantalla para veterinarias, peluquerías y pet shops con el diseño
- * de Zooni Paseadores (PaseadorHeader + PaseadorDrawer + cards). Lo que
- * cambia es qué secciones tiene cada tipo (constants/negocios.js):
- *
- *   Veterinaria  Inicio · Turnos · Pacientes · Servicios y precios · Mensajes · Mi negocio
- *   Peluquería   Inicio · Turnos · Servicios y precios · Trabajos · Clientes · Mensajes · Mi negocio
- *   Pet shop     Inicio · Pedidos · Catálogo · Clientes · Mensajes · Mi negocio
- *
- * Acá vive lo que comparten las secciones: el negocio y los contadores del
- * menú (turnos por confirmar, pedidos nuevos, mensajes sin leer), que se
- * refrescan solos cada INTERVALO_LISTAS_MS.
- *
- * Params: { tipo, tab?, bienvenida? }
- */
-
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator, SafeAreaView, StatusBar, StyleSheet, View,
@@ -65,8 +47,6 @@ export default function NegocioAppScreen() {
   const [roles, setRoles] = useState(null);
   const { toast, mostrarToast } = useToast(3000);
 
-  // Aviso flotante: el Toast compartido (ui/Toast + useToast), no una copia
-  // propia. Un ícono de alerta sale en rojo.
   const avisar = useCallback((texto, icono = 'checkmark-circle') => {
     mostrarToast(texto, { icono, color: icono === 'alert-circle' ? colores.rojo : colores.verde });
   }, [mostrarToast]);
@@ -85,7 +65,6 @@ export default function NegocioAppScreen() {
     }
   }, [tipo]);
 
-  // Contadores del menú
   const refrescarBadges = useCallback(async (n = negocio) => {
     if (!n) return;
     try {
@@ -97,13 +76,12 @@ export default function NegocioAppScreen() {
       ]);
       setBadges({ mensajes, [cfg.usaPedidos ? 'pedidos' : 'turnos']: pendientes });
     } catch {
-      // sin red: quedan los anteriores
     }
   }, [negocio, cfg.usaPedidos]);
 
   useFocusEffect(useCallback(() => {
     recargarNegocio().then((n) => refrescarBadges(n));
-  }, [recargarNegocio])); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [recargarNegocio]));
 
   useEffect(() => {
     const t = setInterval(() => refrescarBadges(), INTERVALO_LISTAS_MS);
@@ -133,7 +111,6 @@ export default function NegocioAppScreen() {
     navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 
-  // ── Estados de carga / error ─────────────────────────────────────────────
   if (cargando) {
     return <View style={s.centro}><ActivityIndicator size="large" color={C.teal} /></View>;
   }

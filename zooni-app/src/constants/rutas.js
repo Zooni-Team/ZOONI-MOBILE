@@ -1,18 +1,3 @@
-/**
- * rutas.js — Título de pestaña y URL de cada pantalla (web).
- *
- * Antes la pestaña del navegador mostraba el nombre interno de la pantalla
- * ("MisPaseos", "PaseadorChats", "ElegirModo") y la URL nunca cambiaba: al
- * recargar se volvía siempre a "Elegir modo" y el botón atrás del navegador
- * no navegaba dentro de la app.
- *
- * TITULOS → lo que se lee en la pestaña ("Mis paseos · Zooni").
- * LINKING → la URL de cada pantalla. Sólo están las que se pueden abrir
- *   directo desde una URL (sin parámetros, o con ids simples). Las que
- *   necesitan un objeto (un chat, un paseo, un negocio) no se restauran
- *   desde la URL: al recargar ahí, la app arranca como siempre.
- */
-
 import { getStateFromPath as estadoDesdeRutaBase } from '@react-navigation/native';
 
 export const TITULOS = {
@@ -74,7 +59,6 @@ export const TITULOS = {
   MisPaseos: 'Mis paseos',
 };
 
-/** Título de la pestaña del navegador. */
 export const tituloDePestana = (nombreRuta) =>
   (TITULOS[nombreRuta] ? `${TITULOS[nombreRuta]} · Zooni` : 'Zooni');
 
@@ -83,8 +67,6 @@ const id = (v) => {
   return Number.isFinite(n) ? n : undefined;
 };
 const conMascota = (path) => ({ path, parse: { petId: id } });
-// Avisos de una sola vez ("¡Listo! Le enviamos…"): no van en la URL, si no
-// reaparecen en cada recarga.
 const sinAviso = { aviso: () => undefined, enviada: () => undefined };
 
 const PANTALLAS = {
@@ -123,7 +105,6 @@ const PANTALLAS = {
   ElegirModo: 'elegir-modo',
   PaseadorApp: {
     path: 'paseador/:tab?',
-    // perfilLocal / desdeRegistro sólo sirven al venir del registro
     stringify: { perfilLocal: () => undefined, desdeRegistro: () => undefined },
   },
   PaseadorChats: 'paseador/chats',
@@ -133,18 +114,11 @@ const PANTALLAS = {
   MisPaseos: { path: 'mis-paseos', stringify: sinAviso },
 };
 
-/**
- * Config de `linking` para el NavigationContainer. `conSesion` = false → no
- * se lee la URL (sin sesión, una URL de adentro no puede abrir nada).
- * `rutaInicial` queda debajo de la pantalla de la URL, así "atrás" vuelve ahí.
- */
 export function crearLinking(conSesion, rutaInicial) {
   return {
     prefixes: [],
     enabled: true,
     config: { screens: PANTALLAS },
-    // Una URL que no es de una pantalla abrible (o sin sesión): se arranca
-    // por la pantalla inicial de siempre.
     getStateFromPath(path, opciones) {
       if (!conSesion) return undefined;
       const estado = estadoDesdeRutaBase(path, opciones);

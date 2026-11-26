@@ -1,26 +1,3 @@
-/**
- * api.js — Capa de acceso a datos de Zooni sobre Supabase
- *
- * Reemplaza al backend Express que nunca llegó a desplegarse (BASE_URL
- * apuntaba a localhost:5165, que no existe). Ahora todas estas funciones
- * consultan directo la base Postgres de Supabase con el cliente de
- * src/lib/supabase.js.
- *
- * Todavía no hay login: getCurrentUserId() (src/config/session.js) hace de
- * "usuario logueado" fijo. Cuando se implemente Supabase Auth, reemplazar
- * ese import por la sesión real — las funciones de acá no deberían necesitar
- * cambios más allá de eso.
- *
- * Funciones exportadas:
- *   Token:         clearToken (limpieza de un token legado, no hay backend propio)
- *   Home:          fetchHome, fetchHomeConfig, saveHomeConfig
- *   Mascotas:      activarMascota
- *   Avatares:      fetchAvatares, aplicarAvatar
- *   Notificaciones: fetchNotificaciones, marcarNotificacionLeida, marcarTodasLeidas
- *   Eventos:       fetchEventos, agregarEventoAlCalendario
- *   Consejos:      fetchConsejos
- */
-
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
@@ -30,12 +7,6 @@ import { calcularEdadMeses } from '../utils/calcularEdad';
 import { aplicaParaMascota } from '../utils/filtrarPorMascota';
 import { calcularEdadPartes } from '../utils/calcularEdad';
 
-// ─────────────────────────────────────────────
-// TOKEN JWT — clearToken se mantiene sólo para borrar, al cerrar sesión,
-// cualquier token legado que haya quedado guardado de antes de Supabase
-// Auth. No hay backend propio emitiendo JWT, así que nada lo vuelve a crear.
-// ─────────────────────────────────────────────
-
 export async function clearToken() {
   if (Platform.OS === 'web') {
     if (typeof localStorage !== 'undefined') localStorage.removeItem('jwt_token');
@@ -43,10 +14,6 @@ export async function clearToken() {
   }
   await SecureStore.deleteItemAsync('jwt_token');
 }
-
-// ─────────────────────────────────────────────
-// HELPERS INTERNOS
-// ─────────────────────────────────────────────
 
 function mapMascota(m) {
   if (!m) return null;
@@ -58,8 +25,6 @@ function mapMascota(m) {
     raza: m.Raza,
     fotoUrl: m.Foto ?? null,
     imagen_asset: m.ImagenAsset ?? 'perro_default',
-    // Preferencia foto vs avatar del Closet (migración 032). Sin la columna
-    // se asume true: la foto manda, igual que antes.
     mostrarFoto: m.MostrarFoto ?? true,
     peso: m.Peso != null ? Number(m.Peso) : null,
     fechaNacimiento: m.FechaNacimiento,
@@ -78,18 +43,10 @@ function mapUsuario(u) {
   };
 }
 
-// ─────────────────────────────────────────────
-// HOME
-// ─────────────────────────────────────────────
-
-/**
- * Trae en una sola llamada: usuario, mascota activa y badge de notificaciones.
- */
 export async function fetchHome() {
   const [{ data: usuario, error: errUsuario }, { data: mascotas, error: errMascotas }, { data: noLeidas }] = await Promise.all([
     supabase.from('User').select('*').eq('Id_User', getCurrentUserId()).single(),
     supabase.from('Mascota').select('*').eq('Id_User', getCurrentUserId()).order('EsActiva', { ascending: false }),
-    // Sin leer del modo dueño: las del modo paseador no suman al badge
     supabase.from('Notificacion').select('Tipo, Titulo, DataExtra')
       .eq('Id_User', getCurrentUserId()).eq('Leido', false).limit(200),
   ]);
@@ -98,27 +55,17 @@ export async function fetchHome() {
   if (errUsuario) throw errUsuario;
   if (errMascotas) throw errMascotas;
 
-  // Solo las mascotas en estado 'active' (las archivadas/eliminadas del
-  // ciclo de vida de Mis Mascotas no aparecen en Home). El ?? 'active'
-  // banca bases donde la migración 020 todavía no corrió.
   const activas = (mascotas ?? []).filter((m) => (m.Estado ?? 'active') === 'active');
   const mascotaActiva = activas.find((m) => m.EsActiva) ?? activas[0] ?? null;
 
   return {
     usuario: mapUsuario(usuario),
     mascotaActiva: mapMascota(mascotaActiva),
-    // Todas las activas, para el selector con flechas del Home
     mascotas: activas.map(mapMascota),
     notificacionesNoLeidas: notificacionesNoLeidas ?? 0,
   };
 }
 
-/**
- * Configuración de botones personalizados del usuario. Todavía no hay una
- * tabla para esto (es config de UI, no dato de negocio) — se guarda en
- * SecureStore/localStorage por dispositivo hasta que se necesite sincronizar
- * entre dispositivos.
- */
 const HOME_CONFIG_KEY = 'zooni_home_config';
 const DEFAULT_HOME_CONFIG = {
   botones: [
@@ -148,11 +95,6 @@ export async function saveHomeConfig(config) {
   await SecureStore.setItemAsync(HOME_CONFIG_KEY, raw);
 }
 
-// ─────────────────────────────────────────────
-// MASCOTAS
-// ─────────────────────────────────────────────
-
-/** Marca `mascotaId` como la mascota activa del usuario (y desmarca las demás). */
 export async function activarMascota(mascotaId) {
   await supabase.from('Mascota').update({ EsActiva: false }).eq('Id_User', getCurrentUserId());
   const { error } = await supabase
@@ -163,11 +105,6 @@ export async function activarMascota(mascotaId) {
   if (error) throw error;
 }
 
-// ─────────────────────────────────────────────
-// CLOSET DE AVATARES
-// ─────────────────────────────────────────────
-
-/** Trae la mascota y el catálogo de avatares disponibles para su especie. */
 export async function fetchAvatares(petId) {
   const [{ data: mascota, error: errMascota }, { data: avatares, error: errAvatares }] = await Promise.all([
     supabase.from('Mascota').select('*').eq('Id_Mascota', petId).single(),
@@ -181,19 +118,11 @@ export async function fetchAvatares(petId) {
     mascota: mapMascota(mascota),
     avatares: (avatares ?? [])
       .filter((a) => a.especie === especie && a.activo)
-      // Si el look tiene razas cargadas, solo se ofrece a esa raza (ej: los 3
-      // looks de Mestizo); si no tiene, es genérico para toda la especie.
       .filter((a) => aplicaParaMascota({ razas: a.razas }, { raza: mascota?.Raza ?? null }))
-      // OJO: acá antes se devolvía "assetName" (camelCase) pero ClosetScreen.jsx
-      // usa "asset_name" (snake_case) en 5 lugares — con el nombre desalineado,
-      // item.asset_name daba siempre undefined, así que tocar cualquier avatar
-      // seleccionaba a undefined y por eso TODOS los ítems se veían "elegidos"
-      // a la vez (undefined === undefined). Se corrige devolviendo asset_name.
       .map((a) => ({ asset_name: a.asset_name, nombre: a.nombre })),
   };
 }
 
-/** Actualiza el avatar (imagen ilustrada) de la mascota. */
 export async function aplicarAvatar(petId, imagenAsset) {
   const { data, error } = await supabase
     .from('Mascota')
@@ -204,10 +133,6 @@ export async function aplicarAvatar(petId, imagenAsset) {
   if (error) throw error;
   return mapMascota(data);
 }
-
-// ─────────────────────────────────────────────
-// NOTIFICACIONES
-// ─────────────────────────────────────────────
 
 const RUTA_POR_TIPO_NOTIFICACION = { mensaje: 'Mensajes', amistad: 'Comunidad', match: 'Match' };
 
@@ -222,7 +147,6 @@ function mapNotificacion(n, mascotasPorId) {
     createdAt: n.Fecha,
     redirigea: RUTA_POR_TIPO_NOTIFICACION[n.Tipo] ?? null,
     dataExtra: n.DataExtra ?? null,
-    // A qué mascota del usuario pertenece (para la mini imagen del panel)
     mascota: m
       ? {
           id: m.Id_Mascota,
@@ -237,7 +161,6 @@ function mapNotificacion(n, mascotasPorId) {
   };
 }
 
-/** Trae la lista paginada de notificaciones del usuario, con su mascota. */
 export async function fetchNotificaciones(page = 1, limit = 20, soloNoLeidas = false) {
   let query = supabase
     .from('Notificacion')
@@ -248,8 +171,6 @@ export async function fetchNotificaciones(page = 1, limit = 20, soloNoLeidas = f
 
   if (soloNoLeidas) query = query.eq('Leido', false);
 
-  // Las mascotas del usuario en paralelo, para resolver Id_Mascota → datos
-  // sin depender de un FK declarado en la base
   const [{ data, error }, { data: mascotas }] = await Promise.all([
     query,
     supabase.from('Mascota').select('*').eq('Id_User', getCurrentUserId()),
@@ -257,20 +178,17 @@ export async function fetchNotificaciones(page = 1, limit = 20, soloNoLeidas = f
   if (error) throw error;
 
   const mascotasPorId = new Map((mascotas ?? []).map((m) => [m.Id_Mascota, m]));
-  // Las del modo paseador ("Tenés una solicitud nueva") no van en el modo dueño
   return {
     notificaciones: (data ?? []).filter((n) => !esNotificacionDePaseador(n))
       .map((n) => mapNotificacion(n, mascotasPorId)),
   };
 }
 
-/** Marca una notificación individual como leída. */
 export async function marcarNotificacionLeida(id) {
   const { error } = await supabase.from('Notificacion').update({ Leido: true }).eq('Id', id);
   if (error) throw error;
 }
 
-/** Marca todas las notificaciones del usuario como leídas. */
 export async function marcarTodasLeidas() {
   const { error } = await supabase
     .from('Notificacion')
@@ -279,10 +197,6 @@ export async function marcarTodasLeidas() {
     .eq('Leido', false);
   if (error) throw error;
 }
-
-// ─────────────────────────────────────────────
-// EVENTOS PÚBLICOS
-// ─────────────────────────────────────────────
 
 function mapEvento(e, organizadoresPorId, calendarioOrigenIds) {
   const organizador = organizadoresPorId?.get(e.organizador_id);
@@ -303,19 +217,11 @@ function mapEvento(e, organizadoresPorId, calendarioOrigenIds) {
   };
 }
 
-/**
- * Trae los eventos activos y vigentes filtrados por ciudad.
- * @param {string|null} ciudad
- * @param {number} page
- * @param {number} limit
- */
 export async function fetchEventos(ciudad = null, page = 1, limit = 10) {
   let query = supabase
     .from('eventos')
     .select('*')
     .eq('activo', true)
-    // Sólo los que todavía no pasaron (se mostraba una jornada de vacunación
-    // de julio en noviembre)
     .gte('fecha_hora', new Date().toISOString())
     .order('fecha_hora', { ascending: true })
     .range((page - 1) * limit, page * limit - 1);
@@ -340,12 +246,6 @@ export async function fetchEventos(ciudad = null, page = 1, limit = 10) {
   return { eventos: (eventos ?? []).map((e) => mapEvento(e, organizadoresPorId, calendarioOrigenIds)) };
 }
 
-/**
- * Agrega un evento al calendario de cuidados de una mascota (usado por
- * EventosScreen para eventos externos, tipo "Evento").
- * @param {number} petId
- * @param {object} body - { titulo, descripcion, fecha_hora, tipo, origenEventoId }
- */
 export async function agregarEventoAlCalendario(petId, body) {
   const { data, error } = await supabase
     .from('eventos_calendario')
@@ -364,11 +264,6 @@ export async function agregarEventoAlCalendario(petId, body) {
   return data;
 }
 
-// ─────────────────────────────────────────────
-// CONSEJOS
-// ─────────────────────────────────────────────
-
-/** Trae la mascota y los consejos del catálogo filtrados por su especie. */
 export async function fetchConsejos(petId) {
   const { data: mascota, error: errMascota } = await supabase
     .from('Mascota')

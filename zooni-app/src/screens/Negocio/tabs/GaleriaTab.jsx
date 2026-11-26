@@ -1,17 +1,3 @@
-/**
- * GaleriaTab.jsx — "Trabajos" de la peluquería
- *
- * Las fotos de cómo quedaron las mascotas: es lo que más convence a un dueño
- * de elegir una peluquería. Se ven en la ficha pública (NegocioPublico).
- *
- *   · Grilla de 3 columnas, la más nueva primero (hasta GALERIA_MAX).
- *   · "Subir foto": galería o cámara, con una nota opcional ("Corte de raza ·
- *     Caniche").
- *   · Tocar una la abre en grande, con su nota, fecha y "Borrar".
- *   · También se suman solas al terminar un turno si se marca "Sumar a
- *     Trabajos" en el informe (InformeModal).
- */
-
 import { useState } from 'react';
 import {
   ActivityIndicator, Dimensions, FlatList, Image, KeyboardAvoidingView, Modal, Platform, Pressable,
@@ -32,10 +18,10 @@ const LADO = Math.floor((Math.min(Dimensions.get('window').width, 520) - PADDING
 
 export default function GaleriaTab({ negocio, setNegocio, avisar }) {
   const fotos = negocio.datos?.galeria ?? [];
-  const [nueva, setNueva] = useState(null); // uri elegida, antes de subirla
+  const [nueva, setNueva] = useState(null);
   const [nota, setNota] = useState('');
   const [subiendo, setSubiendo] = useState(false);
-  const [abierta, setAbierta] = useState(null); // foto
+  const [abierta, setAbierta] = useState(null);
   const [borrando, setBorrando] = useState(false);
 
   const elegir = async (camara) => {
@@ -115,7 +101,6 @@ export default function GaleriaTab({ negocio, setNegocio, avisar }) {
         )}
       />
 
-      {/* Antes de subir: la foto y una nota */}
       <Modal visible={!!nueva} transparent animationType="fade" onRequestClose={() => !subiendo && setNueva(null)}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Pressable style={s.overlay} onPress={() => !subiendo && setNueva(null)}>
@@ -135,7 +120,6 @@ export default function GaleriaTab({ negocio, setNegocio, avisar }) {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Una foto en grande */}
       <Modal visible={!!abierta} transparent animationType="fade" onRequestClose={() => setAbierta(null)}>
         <View style={s.visor}>
           <TouchableOpacity style={s.visorCerrar} onPress={() => setAbierta(null)} accessibilityLabel="Cerrar">

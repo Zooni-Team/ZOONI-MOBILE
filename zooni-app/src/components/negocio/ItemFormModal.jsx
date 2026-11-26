@@ -1,16 +1,3 @@
-/**
- * ItemFormModal.jsx — Cargar o editar lo que ofrece un negocio
- *
- * El mismo formulario cambia según el tipo:
- *   · Veterinaria → servicio: nombre, categoría, precio, duración del turno
- *   · Peluquería  → servicio: nombre, categoría, precio por tamaño
- *                   (chico / mediano / grande) y duración
- *   · Pet shop    → producto: nombre, categoría, precio, stock y foto
- * Todos: descripción opcional y "Visible para los clientes".
- *
- * Props: visible · tipo · item (null = nuevo) · onGuardar(item) · onBorrar() · onCerrar
- */
-
 import { useEffect, useState } from 'react';
 import {
   Image, KeyboardAvoidingView, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput,
@@ -53,7 +40,7 @@ export default function ItemFormModal({ visible, tipo, item, onGuardar, onBorrar
     });
     setConStock(item ? item.stock != null : true);
     setError(null);
-  }, [visible, item]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [visible, item]);
 
   const set = (k, v) => { setF((x) => ({ ...x, [k]: v })); setError(null); };
 

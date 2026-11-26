@@ -1,10 +1,3 @@
-/**
- * negocio/pedidos.js — Pedidos del pet shop (tabla negocio_pedidos):
- *
- *   nuevo → preparando → listo (retiro) / en_camino (envío) → entregado
- *         ↘ rechazado / cancelado
- */
-
 import { supabase } from '../../lib/supabase';
 import { getCurrentUserId } from '../../config/session';
 import { aCentavos, formatoPlata } from '../../domain/paseos';
@@ -42,12 +35,6 @@ export async function fetchPedidosNegocio(idNegocio) {
   return (data ?? []).map((r) => mapPedido(r, usuarios));
 }
 
-/**
- * El pet shop avanza (o rechaza) un pedido y le avisa al dueño.
- * El stock ya se reservó al crear el pedido (trigger de 062); si se rechaza o
- * cancela, la base lo devuelve sola. El chequeo de transición de acá es para
- * dar un buen mensaje: la base vuelve a validarla.
- */
 export async function cambiarEstadoPedido(negocio, pedido, estado, { motivo } = {}) {
   const permitido = estado === 'rechazado' ? pedido.estado === 'nuevo'
     : estado === 'cancelado' ? ['preparando', 'listo'].includes(pedido.estado)
@@ -76,16 +63,6 @@ export async function cambiarEstadoPedido(negocio, pedido, estado, { motivo } = 
   return { ...pedido, estado };
 }
 
-/**
- * El dueño hace un pedido. `carrito` = [{ item, cantidad }].
- *
- * Quién decide qué: la app revisa stock y mínimo para avisar rápido, pero
- * los números que valen los pone la BASE (trigger _pedido_al_crear, 062):
- * relee los precios del catálogo, recalcula subtotal, envío y total, y
- * reserva el stock en la misma transacción. Si dos personas piden el último
- * producto a la vez, una recibe 'sin_stock'. Lo que mande la app en
- * subtotal/envio/total se ignora.
- */
 export async function crearPedido({ negocio, carrito, entrega, direccion, medioPago, notas }) {
   if (!negocio.abierto) throw new Error('negocio_cerrado');
   const lineas = carrito.filter((x) => x.cantidad > 0);
@@ -154,7 +131,6 @@ export async function fetchMisPedidos() {
   return (data ?? []).map((r) => mapPedido(r, {}, negocios));
 }
 
-/** El dueño cancela un pedido que el pet shop todavía no aceptó. */
 export async function cancelarPedidoDueno(pedido) {
   const { data, error } = await supabase.from('negocio_pedidos')
     .update({ estado: 'cancelado', actualizado_en: new Date().toISOString() })
@@ -166,7 +142,6 @@ export async function cancelarPedidoDueno(pedido) {
     { destino: 'pedidos' });
 }
 
-/** Clientes del pet shop: uno por dueño, con sus pedidos y cuánto compró. */
 export async function fetchClientesPetshop(idNegocio) {
   const pedidos = await fetchPedidosNegocio(idNegocio);
   const porDueno = new Map();

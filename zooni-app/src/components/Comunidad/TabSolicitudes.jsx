@@ -12,8 +12,6 @@ export default function TabSolicitudes({ onRespuesta }) {
   const [perfilId, setPerfilId] = useState(null);
   const [errorCarga, setErrorCarga] = useState(false);
 
-  // Antes los dos errores se tragaban: si fallaba la carga se veía "No tenés
-  // solicitudes" y si fallaba aceptar, no pasaba nada.
   const cargar = () => {
     setLoading(true);
     setErrorCarga(false);

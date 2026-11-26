@@ -1,19 +1,3 @@
-/**
- * NegocioChatScreen.jsx — El negocio chatea con un cliente
- *
- * Mismas burbujas que el chat de paseadores: verde menta para el negocio
- * (derecha), blancas para el dueño (izquierda). Abajo del header, lo que hay
- * que saber del cliente mientras se le contesta:
- *   · veterinaria / peluquería → su próximo turno (o "sin turnos") y cuántas
- *     veces vino, con sus mascotas.
- *   · pet shop → el pedido que tiene en curso (o cuántas compras hizo).
- * Respuestas rápidas del tipo de negocio (constants/negocios.js): la que ya se
- * mandó en esta conversación desaparece y entra la siguiente.
- * Polling liviano mientras está en foco, como el resto de los chats.
- *
- * Params: { tipo, idDueno, nombre }
- */
-
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet,
@@ -64,7 +48,6 @@ export default function NegocioChatScreen() {
   const cargar = useCallback(async () => {
     if (!negocio) return;
     if (!negocio.idServicio) {
-      // Sin pin en Comunidad no hay hilo posible (ver MensajesNegocioTab)
       setMensajes([]);
       setError('Tu negocio no tiene su pin en Comunidad: revisá la ubicación en «Mi negocio».');
       return;
@@ -77,7 +60,6 @@ export default function NegocioChatScreen() {
     }
   }, [negocio, idDueno]);
 
-  // Mensajes nuevos del cliente por Supabase Realtime (respaldo cada 30 s)
   useRecargaEnVivo(cargar, {
     tabla: 'Mensaje',
     filtro: `idServicio=eq.${negocio?.idServicio}`,
@@ -94,7 +76,7 @@ export default function NegocioChatScreen() {
       await enviarMensajeNegocio(negocio, idDueno, limpio);
       await cargar();
     } catch {
-      setTexto(limpio); // que no se pierda lo escrito
+      setTexto(limpio);
       setError('No se pudo enviar. Probá de nuevo.');
     } finally {
       setEnviando(false);
@@ -105,7 +87,6 @@ export default function NegocioChatScreen() {
   const yaMandadas = new Set((mensajes ?? []).filter((m) => m.autor === 'yo').map((m) => String(m.texto ?? '').trim()));
   const rapidas = cfg.rapidas.filter((r) => !yaMandadas.has(r)).slice(0, RAPIDAS_VISIBLES);
 
-  // Una línea con lo que importa de este cliente
   let franja = null;
   if (contexto) {
     if (cfg.usaPedidos) {
@@ -192,7 +173,6 @@ export default function NegocioChatScreen() {
 
         {error ? <Text style={s.error}>{error}</Text> : null}
         {rapidas.length > 0 && (
-          // En web un ScrollView horizontal sin alto fijo se estira: va dentro de una franja de alto fijo.
           <View style={s.rapidasFranja}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.rapidasScroll}
               contentContainerStyle={s.rapidas} keyboardShouldPersistTaps="handled">

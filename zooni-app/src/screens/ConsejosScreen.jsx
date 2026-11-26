@@ -1,10 +1,3 @@
-/**
- * ConsejosScreen.jsx — Pantalla "Curiosidades y Consejos" de Zooni
- *
- * Pantalla de SOLO LECTURA. Navega desde FichaMedicaScreen con { petId }.
- * Si el backend no responde o no hay petId, muestra consejos demo.
- */
-
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -28,8 +21,6 @@ import { colores } from '../theme';
 import Skeleton from '../components/ui/Skeleton';
 import { MASCOTA_VACIA } from '../constants/mascotaVacia';
 
-// ─── SKELETON ─────────────────────────────────────────────────────────────────
-
 function SkeletonCard() {
   return (
     <Skeleton style={st.skeletonCard}>
@@ -42,8 +33,6 @@ function SkeletonCard() {
     </Skeleton>
   );
 }
-
-// ─── CARD DE CONSEJO ──────────────────────────────────────────────────────────
 
 function hexToRgba(hex, alpha) {
   const c = hex.replace('#', '');
@@ -71,9 +60,7 @@ function ConsejoCard({ consejo, index }) {
     <Animated.View style={[st.card, { transform: [{ translateY }, { scale }], opacity }]}>
       <TouchableOpacity activeOpacity={1} onPressIn={pressIn} onPressOut={pressOut}
         accessible accessibilityLabel={`${info.nombre}: ${consejo.contenido}`} accessibilityRole="text">
-        {/* Borde izquierdo */}
         <View style={[st.cardBorder, { backgroundColor: info.acento }]} />
-        {/* Encabezado */}
         <View style={[st.cardHead, { backgroundColor: info.fondo }]}>
           <View style={[st.iconoCircle, { backgroundColor: hexToRgba(info.acento, 0.15) }]}>
             <Ionicons name={info.icono} size={18} color={info.acento} />
@@ -88,8 +75,6 @@ function ConsejoCard({ consejo, index }) {
     </Animated.View>
   );
 }
-
-// ─── CHIP DE FILTRO ───────────────────────────────────────────────────────────
 
 function Chip({ label, activo, onPress, acento, fondo, isAll }) {
   const sc = useRef(new Animated.Value(1)).current;
@@ -114,13 +99,9 @@ function Chip({ label, activo, onPress, acento, fondo, isAll }) {
   );
 }
 
-// ─── SCREEN ───────────────────────────────────────────────────────────────────
-
 export default function ConsejosScreen() {
   const navigation = useNavigation();
   const route      = useRoute();
-  // Estado y no constante: el selector de arriba cambia de mascota sin salir
-  // de la pantalla (el efecto de carga depende de petId y recarga solo).
   const [petId, setPetId] = useState(route.params?.petId || null);
 
   const [mascota,         setMascota]         = useState(null);
@@ -141,8 +122,6 @@ export default function ConsejosScreen() {
   const cargar = useCallback(async () => {
     setLoading(true);
     try {
-      // Traemos la mascota real (especie + raza) para armar consejos a medida.
-      // Si no hay petId o falla, caemos a la mascota de respaldo.
       let m = null;
       if (petId && petId !== 0) {
         m = await fetchMascota(petId).catch(() => null);
@@ -173,7 +152,6 @@ export default function ConsejosScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       <View style={st.screenBackground}>
-        {/* Header */}
         <View style={st.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={st.headerBtn}
             accessibilityLabel="Volver" hitSlop={{ top:10, bottom:10, left:10, right:10 }}>
@@ -186,14 +164,11 @@ export default function ConsejosScreen() {
         <ScrollView style={st.scroll} contentContainerStyle={st.scrollContent}
           showsVerticalScrollIndicator={false}>
 
-          {/* Hero — el mismo de Vacunas, Tratamientos y Consultas */}
           <PetHero mascota={mascota} titulo="Curiosidades"
             anim={{ scale: heroScale, opacity: heroOpacity }} />
 
-          {/* Card blanco */}
           <View style={st.whiteCard}>
 
-            {/* Chips */}
             {!loading && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false}
                 contentContainerStyle={st.chipsRow}>
@@ -211,14 +186,12 @@ export default function ConsejosScreen() {
               </ScrollView>
             )}
 
-            {/* Loading */}
             {loading && (
               <View style={st.list}>
                 <SkeletonCard /><SkeletonCard /><SkeletonCard />
               </View>
             )}
 
-            {/* Consejos */}
             {!loading && (
               <View style={st.list}>
                 {consejosFiltrados.map((c, i) => (
@@ -234,8 +207,6 @@ export default function ConsejosScreen() {
   );
 }
 
-// ─── ESTILOS ─────────────────────────────────────────────────────────────────
-
 const st = StyleSheet.create({
   safeArea:             { flex: 1, backgroundColor: colores.menta },
   screenBackground:     { flex: 1, width: '100%', backgroundColor: colores.menta },
@@ -245,9 +216,6 @@ const st = StyleSheet.create({
   header:      { height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, backgroundColor: 'transparent' },
   headerBtn:   { width: 40, alignItems: 'center', justifyContent: 'center' },
 
-  // Hero → components/PetHero.jsx (compartido con Vacunas, Tratamientos y Consultas)
-
-  // Mismo bottom sheet que Vacunas, Tratamientos y Consultas
   whiteCard: { backgroundColor: colores.blanco, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 22, paddingBottom: 40, minHeight: 400 },
 
   demoBanner:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFF8E1', borderRadius: 10, padding: 10, marginBottom: 12 },

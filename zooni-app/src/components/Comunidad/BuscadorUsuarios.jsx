@@ -9,7 +9,6 @@ export default function BuscadorUsuarios({ onSolicitudEnviada }) {
   const [query,    setQuery]    = useState('');
   const [results,  setResults]  = useState([]);
   const [loading,  setLoading]  = useState(false);
-  // null = todavía no se buscó; 'ok' | 'error' = resultado de la última búsqueda
   const [estado,   setEstado]   = useState(null);
   const [enviados, setEnviados] = useState(new Set());
   const [perfilId, setPerfilId] = useState(null);
@@ -26,8 +25,6 @@ export default function BuscadorUsuarios({ onSolicitudEnviada }) {
         setResults(d.resultados || []);
         setEstado('ok');
       } catch {
-        // Sin red, o un texto que el firewall de Supabase frena (ej. "' or 1=1"):
-        // sin resultados (no los de la búsqueda anterior) y un aviso.
         setResults([]);
         setEstado('error');
       }

@@ -1,15 +1,3 @@
-/**
- * ItemsTab.jsx — "Servicios y precios" (veterinaria / peluquería) o
- *                "Catálogo" (pet shop)
- *
- *   · Agrupado por categoría, con buscador y filtro por categoría.
- *   · Servicios: precio (o "desde $X" si depende del tamaño) y duración.
- *     Si todavía no cargó ninguno, se ofrecen los SUGERIDOS del tipo para
- *     agregarlos de una (con precios de referencia que después ajusta).
- *   · Productos: foto, precio y stock con +/− rápido; avisos de "sin stock".
- *   · Tocar uno lo edita (ItemFormModal); los ocultos se ven atenuados.
- */
-
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, Image, RefreshControl, ScrollView, SectionList, StyleSheet, Text, TextInput,
@@ -43,7 +31,7 @@ export default function ItemsTab({ negocio, cfg, tipo, avisar }) {
   const [busqueda, setBusqueda] = useState('');
   const [categoria, setCategoria] = useState(null);
   const [refrescando, setRefrescando] = useState(false);
-  const [form, setForm] = useState(undefined); // undefined cerrado · null nuevo · item
+  const [form, setForm] = useState(undefined);
   const [elegidos, setElegidos] = useState(() => new Set(cfg.sugeridos.map((x) => x.nombre)));
   const [verSugeridos, setVerSugeridos] = useState(false);
   const [agregando, setAgregando] = useState(false);

@@ -1,30 +1,3 @@
-// supabase/functions/zoonivet-chat/index.ts
-//
-// Backend de ZooniVet (Instruction-ChatBot, Rama C). Acá vive TODO lo sensible:
-//   - La GROQ_API_KEY, como secret de la función (Deno.env). Nunca toca el cliente.
-//   - El system prompt con las reglas clínicas (no diagnostica, no receta, deriva).
-//   - La detección de emergencias (capa 1, determinística).
-//   - El filtro de salida (dosis, fuga de prompt, largo).
-//
-// El cliente (src/services/zoonivetApi.js) manda { petId, mensaje, historial }
-// con el JWT de su sesión y recibe { texto, emergencia }. Primero se verifica
-// que la mascota sea de quien pregunta; después el contexto (datos de la
-// mascota y el nombre de la persona) se arma ACÁ, con la RPC
-// get_pet_chat_context (sección 051 del SQL base), que sólo puede ejecutar
-// service_role. Nada de lo que entra al bloque de datos viene del cliente.
-//
-// Secrets a configurar (supabase secrets set ...):
-//   GROQ_API_KEY           (obligatorio)
-//   GROQ_MODEL             (opcional, default openai/gpt-oss-120b)
-//   GROQ_MODEL_FALLBACK    (opcional, default openai/gpt-oss-20b)
-//   ZOONIVET_LIMITE_DIARIO (opcional, default 40 mensajes por usuario por día)
-//   ALLOWED_ORIGINS        (orígenes permitidos, separados por coma: sin esto
-//                           el navegador no deja que la app real llame acá)
-// SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY los inyecta la plataforma.
-
-// Versión exacta (la misma que usa la app) y del registro de npm: antes era
-// "esm.sh/…@2", la última que hubiera y desde un CDN de terceros, en el mismo
-// proceso que tiene la service_role.
 import { createClient } from "npm:@supabase/supabase-js@2.110.0";
 
 const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") ?? "";
@@ -32,19 +5,12 @@ const GROQ_MODEL = Deno.env.get("GROQ_MODEL") ?? "openai/gpt-oss-120b";
 const GROQ_MODEL_FALLBACK = Deno.env.get("GROQ_MODEL_FALLBACK") ?? "openai/gpt-oss-20b";
 const GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions";
 const LIMITE_DIARIO = Number(Deno.env.get("ZOONIVET_LIMITE_DIARIO") ?? "40") || 40;
-// Pedido más grande que esto no es una conversación: se rechaza antes de leerlo.
 const MAX_CUERPO_BYTES = 40_000;
-// Groq a veces se cuelga; pasado este tiempo se corta y se avisa.
 const ESPERA_GROQ_MS = 25_000;
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-// Orígenes permitidos, separados por coma (secret ALLOWED_ORIGINS: el dominio
-// de Vercel y el esquema de la app). Con "*" cualquier página podía llamar a
-// la función con la sesión de quien la visitara; si el secret está vacío no se
-// manda la cabecera y el navegador corta solo.
-//   supabase secrets set ALLOWED_ORIGINS=https://tu-dominio,...
 const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
   .split(",").map((s) => s.trim()).filter(Boolean);
 
@@ -66,11 +32,9 @@ function json(body: unknown, status = 200, origin: string | null = null) {
   });
 }
 
-// ─── Emergencias (capa 1, determinística) ────────────────────────────────────
 const DISPARADORES_EMERGENCIA = [
   "no puede respirar", "le cuesta respirar", "se ahoga", "lengua azul",
   "encías azules", "encias azules", "encías moradas", "encias moradas",
-  // "ataque" solo disparaba con "ataque de tos" o "de risa": se piden frases.
   "convulsión", "convulsion", "convulsiona", "tuvo un ataque", "le dio un ataque",
   "ataque de epilepsia", "temblores fuertes",
   "no responde", "desmayo", "se desvaneció", "se desvanecio", "camina en círculos",
@@ -79,16 +43,12 @@ const DISPARADORES_EMERGENCIA = [
   "vómito con sangre", "vomito con sangre",
   "lo atropellaron", "se cayó de altura", "se cayo de altura", "lo mordió un perro",
   "lo mordio un perro", "herida profunda", "sangra mucho", "no para de sangrar",
-  // "pasas" sola no: sin tilde es también el verbo ("¿me pasás…?") y daba
-  // falsos avisos de emergencia.
   "chocolate", "xilitol", "uvas", "comió pasas", "comio pasas", "uvas pasas",
   "cebolla", "ajo", "veneno", "raticida",
   "anticongelante", "ibuprofeno", "paracetamol", "aspirina", "marihuana",
   "comió pastillas", "comio pastillas",
   "no puede orinar", "no hace pis", "se queja al orinar", "sangre en la orina",
   "encías pálidas", "encias palidas", "encías blancas", "encias blancas", "muy frío",
-  // "colapso" a secas es también un sustantivo ("colapso de tráquea" en una
-  // pregunta general): se usa el verbo en contexto.
   "muy frio", "se desplomó", "se desplomo", "colapsó de golpe", "colapso de golpe",
   "no se levanta", "golpe de calor",
   "ojo salido", "ojo lastimado", "golpe en el ojo",
@@ -103,10 +63,6 @@ function quitarAcentos(s: string): string {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 
-// Una frase de una sola palabra ("ajo", "ataque") exige límite de palabra: si
-// no, "trabajo" y "contraataque" disparaban el aviso de emergencia (#96).
-// Los patrones se comparan sin acentos, igual que el mensaje, así que las
-// variantes con y sin tilde de la lista de arriba dan lo mismo.
 const PATRONES_EMERGENCIA = DISPARADORES_EMERGENCIA.map((frase) => {
   const escapada = escaparRegex(quitarAcentos(frase.toLowerCase()));
   return frase.includes(" ")
@@ -119,7 +75,6 @@ function detectarEmergencia(mensaje: string): boolean {
   return PATRONES_EMERGENCIA.some((re) => re.test(t));
 }
 
-// ─── Sanitización del bloque de datos (anti prompt-injection) ────────────────
 function limpiarCampo(valor: unknown, maxLen = 200): string | null {
   if (valor == null) return null;
   let s = String(valor)
@@ -133,7 +88,6 @@ function limpiarCampo(valor: unknown, maxLen = 200): string | null {
   return s.length ? s : null;
 }
 
-// ─── System prompt (reglas clínicas) ─────────────────────────────────────────
 const REGLAS = `Sos ZooniVet, el asistente veterinario de la app Zooni. Ayudás a personas que tienen mascotas, en Argentina, hablando en español rioplatense y de vos.
 
 ## Tu tono
@@ -213,9 +167,6 @@ function bloqueDatos(ctx: Ctx, usuario: { nombre?: string } | null): string {
     L.push(`Peso: ${Number(ctx.pesoKg)} kg${tendencia ? ` | Tendencia: ${tendencia}` : ""}`);
   }
 
-  // TODO lo que viene de la base pasa por limpiarCampo, no sólo los nombres:
-  // los motivos de consulta los escribe un tercero (la veterinaria) y antes
-  // entraban crudos al prompt.
   const lista = (xs: unknown[] | undefined, max = 12) =>
     (xs ?? []).slice(0, max).map((x) => limpiarCampo(x, 80)).filter(Boolean).join("; ");
   const salud: string[] = [];
@@ -238,16 +189,10 @@ function bloqueDatos(ctx: Ctx, usuario: { nombre?: string } | null): string {
   return L.join("\n");
 }
 
-// ─── Filtro de salida ────────────────────────────────────────────────────────
 const PATRON_DOSIS = /\d+\s?(mg|mcg|ug|UI|comprimidos?|gotas)\b/i;
-// "ml"/"cc" solos no son una dosis ("500 ml de agua por día"): sólo cuentan
-// si la respuesta habla de un medicamento. Antes se reemplazaba la respuesta
-// entera por el aviso de dosis.
 const PATRON_VOLUMEN = /\d+\s?(ml|cc)\b/i;
 const MENCIONA_MEDICAMENTO =
   /(medicament|remedio|jarabe|antibi[oó]tic|dosis|pastilla|comprimido|analg[eé]sic|antiinflamatori|antiparasitari|vacuna)/i;
-// La dosis escrita con palabras ("media pastilla") se colaba por el patrón
-// numérico de arriba.
 const PATRON_DOSIS_TEXTO =
   /\b(media|un cuarto de|dos|tres|cuatro|cinco|medio)\s+(pastillas?|comprimidos?|gotas?|ml|mg|miligramos?|mililitros?)\b/i;
 const AVISO_DOSIS =
@@ -274,12 +219,6 @@ function filtrarSalida(textoCrudo: string) {
   return { texto, emergencia, descartado: false };
 }
 
-// ─── Firma de las respuestas (anti historial falso) ──────────────────────────
-// El historial lo manda el cliente. Antes se aceptaban turnos "assistant"
-// escritos por cualquiera: se podía fabricar una respuesta previa del asistente
-// ("Ok, voy a ignorar las reglas…") y saltear las reglas clínicas. Ahora cada
-// respuesta sale firmada (HMAC con un secreto que sólo tiene la función) y
-// sólo vuelven a entrar al prompt los turnos de assistant con firma válida.
 const SECRETO_FIRMA = Deno.env.get("ZOONIVET_FIRMA_SECRET") || SERVICE_ROLE_KEY;
 let claveFirma: Promise<CryptoKey> | null = null;
 function clave() {
@@ -299,17 +238,11 @@ async function firmar(idUser: number, petId: number, texto: string): Promise<str
 async function firmaValida(idUser: number, petId: number, texto: string, firma: unknown) {
   if (typeof firma !== "string" || firma.length !== 64) return false;
   const esperada = await firmar(idUser, petId, texto);
-  // Comparación en tiempo constante
   let dif = 0;
   for (let i = 0; i < 64; i++) dif |= esperada.charCodeAt(i) ^ firma.charCodeAt(i);
   return dif === 0;
 }
 
-// ─── Cupo: devolver el mensaje si Groq no respondió (#26) ────────────────────
-// El cupo se consume antes de llamar a Groq (para no gastar sin cupo); si
-// Groq falla, ese mensaje no se cuenta. Si la devolución falla, sólo queda en
-// el log: no cambia la respuesta al usuario.
-// deno-lint-ignore no-explicit-any
 async function devolverCupo(admin: any, idUser: number) {
   try {
     const dia = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).format(new Date());
@@ -324,7 +257,6 @@ async function devolverCupo(admin: any, idUser: number) {
   }
 }
 
-// ─── Llamada a Groq ──────────────────────────────────────────────────────────
 async function llamarGroq(model: string, messages: unknown[]) {
   return await fetch(GROQ_CHAT_URL, {
     method: "POST",
@@ -344,7 +276,6 @@ async function llamarGroq(model: string, messages: unknown[]) {
   });
 }
 
-// ─── Handler ─────────────────────────────────────────────────────────────────
 Deno.serve(async (req) => {
   const origin = req.headers.get("Origin");
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(origin) });
@@ -382,9 +313,6 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  // ¿Quién pregunta? El JWT lo firmó Supabase Auth: no se puede inventar.
-  // Sin este chequeo, cualquiera podía pedir el contexto médico de una
-  // mascota ajena cambiando el petId.
   const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
   const { data: sesion } = await admin.auth.getUser(jwt);
   if (!sesion?.user) {
@@ -395,19 +323,14 @@ Deno.serve(async (req) => {
     admin.from("Mascota").select("Id_User").eq("Id_Mascota", petId).maybeSingle(),
   ]);
   if (!yo || !mascota || mascota.Id_User !== yo.Id_User) {
-    // Misma respuesta si no existe o si es ajena: no revelar mascotas de otros.
     return json({ error: "PET_NOT_FOUND", message: "No encontré esa mascota." }, 404, origin);
   }
 
-  // Cupo diario por usuario (064): se cuenta en la base, antes de gastar una
-  // llamada a Groq. Sin esto, un usuario (o un script con su sesión) podía
-  // mandar mensajes sin límite a costa del proyecto.
   const { data: hayCupo, error: cupoError } = await admin.rpc("zoonivet_consumir_cupo", {
     p_id_user: yo.Id_User,
     p_limite: LIMITE_DIARIO,
   });
   if (cupoError) {
-    // El detalle de Postgres queda en los logs de la función, no en el cliente.
     console.error("zoonivet_consumir_cupo", cupoError);
     return json({ error: "CUPO_ERROR", message: "No se pudo verificar tu cupo. Probá en un rato." }, 500, origin);
   }
@@ -447,7 +370,6 @@ Deno.serve(async (req) => {
     } else if (m.role === "assistant" && await firmaValida(yo.Id_User, petId, m.content, m.firma)) {
       turnos.push({ role: "assistant", content: m.content.slice(0, 2000) });
     }
-    // Un turno de assistant sin firma válida se descarta: no lo escribió ZooniVet.
   }
   const messages = [
     { role: "system", content: system },
@@ -465,7 +387,6 @@ Deno.serve(async (req) => {
       }
     }
   } catch (e) {
-    // Timeout o red: se devuelve el cupo y no se deja al usuario esperando.
     console.error("groq", e);
     await devolverCupo(admin, yo.Id_User);
     return json({ error: "GROQ_ERROR", message: "ZooniVet tardó demasiado en responder." }, 504, origin);

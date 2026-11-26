@@ -1,16 +1,3 @@
-/**
- * FichaPacienteModal.jsx — Historia de una mascota en el negocio
- *
- *   · Veterinaria: historia clínica → cada consulta con motivo, diagnóstico,
- *     tratamiento, peso y temperatura; próximo control; evolución del peso.
- *   · Peluquería: cada visita con el trabajo hecho y sus fotos.
- * Arriba: dueño (con chat), cuántas visitas, cuánto se facturó, ausencias y
- * el próximo turno. Tocar "Editar" en una visita corrige su informe.
- *
- * Props: visible · tipo · ficha (de fetchPacientes) · onChat() ·
- *        onEditarInforme(turno) · onCerrar · children (InformeModal adentro)
- */
-
 import {
   FlatList, Image, Modal, SafeAreaView, StyleSheet, Text, TouchableOpacity, View,
 } from 'react-native';

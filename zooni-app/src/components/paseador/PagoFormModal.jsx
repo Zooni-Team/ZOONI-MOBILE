@@ -1,15 +1,3 @@
-/**
- * PagoFormModal.jsx — Anotar (o corregir) un pago de un dueño
- *
- * Monto con atajos ("Todo lo que debe" / la mitad), medio de pago, fecha y
- * una nota opcional. Acepta centavos (los paseos se cobran por tiempo). Si se abre con `pago`, es para editarlo y además se puede
- * borrar. El medio arranca en el que eligió el dueño al pedir los paseos.
- *
- * Props: visible · dueno · saldo · medioSugerido · pago (opcional) ·
- *        montoInicial (opcional: ej. lo que salió el paseo recién terminado) ·
- *        onGuardar({ monto, medio, fecha, nota }) · onBorrar() · onCerrar
- */
-
 import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View,
@@ -24,7 +12,6 @@ import { confirmar } from '../../utils/dialogo';
 import { colores } from '../../theme';
 import { formatearFecha } from '../../utils/fechaLocal';
 
-/** 20000 → "20000" · 166.66 → "166,66" (lo que se ve en el input) */
 const aTexto = (n) => {
   const v = aCentavos(n);
   return Number.isInteger(v) ? String(v) : v.toFixed(2).replace('.', ',');
@@ -41,8 +28,6 @@ export default function PagoFormModal({
   const [error, setError] = useState(null);
   const [guardando, setGuardando] = useState(false);
 
-  // Se inicializa sólo al ABRIR el modal: si la cuenta se recarga con el modal
-  // abierto (cambia `saldo`), no se pisa lo que la persona estaba escribiendo.
   const estabaVisible = useRef(false);
   useEffect(() => {
     const recienAbierto = visible && !estabaVisible.current;

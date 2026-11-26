@@ -1,11 +1,3 @@
-/**
- * Copia las imágenes de Home al proyecto.
- * Ejecutar desde zooni-app/:  npm run setup:home-assets
- *
- * Destino (carpeta final en el repo):
- *   zooni-app/assets/home_background.png  ← fondo hero (bosque)
- *   zooni-app/assets/perro_basico.png     ← mascota (sin fondo negro)
- */
 const fs = require('fs');
 const path = require('path');
 

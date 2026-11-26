@@ -1,15 +1,3 @@
-/**
- * PaseadorChatsScreen.jsx — Inbox de chats de Zooni Paseadores
- *
- * Todas las conversaciones con dueños: solicitudes que te llegaron, paseos
- * agendados, en curso y terminados con mensajes. Se entra desde el menú
- * lateral (el ícono del header se sacó para no duplicar accesos).
- *
- * Lleva el mismo menú que el resto de la app: antes tenía solo una flecha de
- * volver, así que para ir a cualquier otra sección había que retroceder
- * primero. Es una sección más, no un paso dentro de otro flujo.
- */
-
 import { useState } from 'react';
 import { SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,7 +13,6 @@ export default function PaseadorChatsScreen() {
   const navigation = useNavigation();
   const [menuAbierto, setMenuAbierto] = useState(false);
 
-  // Las secciones son pestañas de PaseadorApp: se navega ahí pidiendo el tab.
   const irASeccion = (key) => {
     setMenuAbierto(false);
     navigation.navigate('PaseadorApp', { tab: key });
@@ -62,9 +49,8 @@ export default function PaseadorChatsScreen() {
       <PaseadorDrawer
         visible={menuAbierto}
         onClose={() => setMenuAbierto(false)}
-        // `activo` queda sin sección marcada: Chats no es una de las pestañas.
         onElegir={irASeccion}
-        onChats={() => setMenuAbierto(false)}   // ya estás acá
+        onChats={() => setMenuAbierto(false)}
         onZona={() => { setMenuAbierto(false); navigation.navigate('PaseadorDisponibilidad'); }}
         onModoDueno={cambiarAModoDueno}
         onSalir={salir}

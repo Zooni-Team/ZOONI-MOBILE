@@ -1,14 +1,3 @@
-/**
- * BotonesSociales.jsx — "Continuar con Google / Facebook"
- *
- * Los mismos botones en el login de dueños, el de paseadores y el
- * registro de paseador. `intencion` ('dueno' | 'paseador') decide a qué
- * registro se sigue si la cuenta es nueva (ver services/socialAuthApi.js).
- * Al tocar uno, la página se va al proveedor y vuelve sola a la app.
- *
- * Props: intencion · titulo (texto arriba de los botones, opcional)
- */
-
 import { useState } from 'react';
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -20,7 +9,7 @@ import { colores } from '../theme';
 const ICONOS = { google: GOOGLE_ICON, facebook: FACEBOOK_ICON };
 
 export default function BotonesSociales({ intencion = 'dueno', titulo }) {
-  const [yendo, setYendo] = useState(null); // proveedor al que se está redirigiendo
+  const [yendo, setYendo] = useState(null);
   const [error, setError] = useState(null);
 
   const entrar = async (proveedor) => {
@@ -33,7 +22,6 @@ export default function BotonesSociales({ intencion = 'dueno', titulo }) {
     setYendo(proveedor);
     try {
       await iniciarConProveedor(proveedor, intencion);
-      // Si todo va bien, el navegador ya se está yendo al proveedor
     } catch (err) {
       if (__DEV__) console.error('[Login social]', err?.message ?? err);
       setYendo(null);

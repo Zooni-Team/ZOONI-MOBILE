@@ -1,4 +1,3 @@
-// Utilidades puras: fechas, edades, texto, validación, distancias, paleta.
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -14,7 +13,7 @@ import { etiquetaDia, horaCorta, mismoDia, tiempoRelativo } from '../src/utils/t
 import { colores, COLOR_POR_HEX } from '../src/theme/colores.js';
 import { nombreAlAzar, tipoReal } from '../src/utils/tipoDeArchivo.js';
 
-const HOY = new Date(2026, 10, 6); // 6 de noviembre de 2026
+const HOY = new Date(2026, 10, 6);
 
 test('parseFechaLocal: "YYYY-MM-DD" es ese día en hora local (no el anterior por UTC)', () => {
   const d = parseFechaLocal('2026-08-14');
@@ -44,7 +43,6 @@ test('cuentaRegresiva: vencido, hoy, pronto y lejos', () => {
   assert.equal(de(null), null);
   assert.deepEqual(de('2026-11-01'), { texto: 'Venció hace 5 días', tono: 'vencido' });
   assert.deepEqual(de('2026-11-05'), { texto: 'Venció hace 1 día', tono: 'vencido' });
-  // "Vence hoy" es un aviso, no un vencido (antes salía en rojo como si ya hubiera pasado)
   assert.deepEqual(de('2026-11-06'), { texto: 'Vence hoy', tono: 'pronto' });
   assert.deepEqual(de('2026-11-07'), { texto: 'Falta 1 día', tono: 'pronto' });
   assert.deepEqual(de('2026-11-16'), { texto: 'Faltan 10 días', tono: 'lejos' });

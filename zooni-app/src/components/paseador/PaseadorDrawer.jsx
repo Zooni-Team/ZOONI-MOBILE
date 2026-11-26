@@ -1,17 +1,3 @@
-/**
- * PaseadorDrawer.jsx — Menú hamburguesa de Zooni Paseadores
- *
- * Mismo diseño que el menú lateral de la app de dueños (HamburgerDrawer):
- * panel blanco desde la izquierda, avatar con borde verde, ítem activo
- * resaltado en verde suave, "Cerrar sesión" en rojo al final.
- * Reemplaza al bottom nav: las secciones (Inicio, Solicitudes, Paseo,
- * Ganancias, Perfil) se eligen desde acá.
- *
- * Zooni Negocios usa el mismo menú con sus propias secciones: `secciones`,
- * `badges` ({ seccion: cantidad }), `subtitulo`, `extras` (ítems de abajo en
- * lugar de Chats / Zona) y `textoSalir`. Sin esas props es el del paseador.
- */
-
 import { useEffect, useRef, useState } from 'react';
 import {
   Animated, Dimensions, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View,
@@ -51,7 +37,7 @@ export default function PaseadorDrawer({
       Animated.timing(translateX, { toValue: visible ? 0 : -DRAWER_WIDTH, duration: visible ? 250 : 200, useNativeDriver: true }),
       Animated.timing(overlayOpacity, { toValue: visible ? 1 : 0, duration: visible ? 250 : 200, useNativeDriver: true }),
     ]).start();
-  }, [visible]); // eslint-disable-line
+  }, [visible]);
 
   const elegir = (accion) => { onClose(); accion?.(); };
 

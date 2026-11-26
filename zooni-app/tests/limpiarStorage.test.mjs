@@ -1,5 +1,3 @@
-// limpiarStorage.test.mjs — supabase/scripts/limpiar-storage.mjs contra un
-// servidor de Supabase simulado (fetch falso): qué pide y en qué orden.
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -28,7 +26,6 @@ describe('limpiar-storage', () => {
       ? { json: [{ id: 1, bucket: 'public-images', ruta: 'u/a.jpg' }] } : { json: [] }));
     assert.equal(await borrarHuerfanos(cliente, { aplicar: false, log: silencio }), 1);
     assert.deepEqual(pedidos.map((p) => p.metodo), ['POST']);
-    // 'clave-secreta' no es un JWT (como sb_secret_…): va sólo en apikey
     assert.equal(pedidos[0].cabeceras.apikey, 'clave-secreta');
     assert.equal(pedidos[0].cabeceras.Authorization, undefined);
   });

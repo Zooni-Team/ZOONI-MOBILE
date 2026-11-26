@@ -1,12 +1,3 @@
-/**
- * EventoPublicoCard.jsx — Tarjeta de un evento público (jornada de vacunación,
- * feria, encuentro): foto, cuándo, dónde, quién lo organiza y el botón para
- * sumarlo al calendario de la mascota.
- *
- * No confundir con components/calendario/RecordatorioCard: aquella es un
- * recordatorio del calendario propio; ésta, un evento de la agenda de Zooni.
- */
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, Animated, Image, Linking, StyleSheet, Text, TouchableOpacity, View,
@@ -20,7 +11,6 @@ import { formatearFecha } from '../../utils/fechaLocal';
 import { capitalizar } from '../../utils/texto';
 import { horaCorta } from '../../utils/tiempoRelativo';
 
-
 export default function EventoPublicoCard({
   evento,
   yaAgregado,
@@ -29,19 +19,15 @@ export default function EventoPublicoCard({
   onAgregarAlCalendario,
   procesando,
 }) {
-  // Animación del botón Agregar → Agregado
   const btnColorAnim = useRef(new Animated.Value(yaAgregado ? 1 : 0)).current;
-  // Escala del botón al presionar
   const btnScale = useRef(new Animated.Value(1)).current;
-  // Estado de imagen rota
   const [imgError, setImgError] = useState(false);
 
-  // Actualizar color del botón cuando cambia yaAgregado
   useEffect(() => {
     Animated.timing(btnColorAnim, {
       toValue: yaAgregado ? 1 : 0,
       duration: 200,
-      useNativeDriver: false, // backgroundColor no admite nativeDriver
+      useNativeDriver: false,
     }).start();
   }, [btnColorAnim, yaAgregado]);
 
@@ -53,7 +39,6 @@ export default function EventoPublicoCard({
   const fechaFormateada = capitalizar(formatearFecha(evento.fecha_hora, 'diaSemanaCorto') ?? '');
   const horaFormateada = `${horaCorta(evento.fecha_hora)} hs`;
 
-  // ── Handler de ubicación → abre Google Maps ────────────────
   const handleAbrirMapa = useCallback(() => {
     let url;
     if (evento.lat && evento.lng) {
@@ -66,7 +51,6 @@ export default function EventoPublicoCard({
     Linking.openURL(url).catch(() => alerta('No se pudo abrir Google Maps'));
   }, [evento.lat, evento.lng, evento.ubicacion_nombre]);
 
-  // ── Handler del botón Agregar ─────────────────────────────
   const handlePressBtnIn = () => {
     Animated.timing(btnScale, {
       toValue: 0.97,
@@ -82,12 +66,10 @@ export default function EventoPublicoCard({
     }).start();
   };
 
-  // ── Descripción: truncar a 4 líneas con "Ver más" ─────────
   const DESCRIPCION_MAX_LINES = 4;
 
   return (
     <View style={styles.card}>
-      {/* ── FOTO DEL EVENTO ── */}
       <View style={styles.fotoContainer}>
         {!imgError && evento.imagen_url ? (
           <Image
@@ -102,7 +84,6 @@ export default function EventoPublicoCard({
           </View>
         )}
 
-        {/* Pill de categoría (solo si existe) */}
         {evento.categoria_tag ? (
           <View style={styles.pillCategoria}>
             <Text style={styles.pillCategoriaTexto}>
@@ -112,12 +93,9 @@ export default function EventoPublicoCard({
         ) : null}
       </View>
 
-      {/* ── CONTENIDO ── */}
       <View style={styles.cardContenido}>
-        {/* Título */}
         <Text style={styles.eventoTitulo}>{evento.titulo}</Text>
 
-        {/* Fila fecha + hora */}
         <View style={styles.filaFechaHora}>
           <View style={styles.chip}>
             <Ionicons name="calendar-outline" size={13} color={colores.verde} />
@@ -129,7 +107,6 @@ export default function EventoPublicoCard({
           </View>
         </View>
 
-        {/* Pill de ubicación */}
         <TouchableOpacity
           style={styles.pillUbicacion}
           onPress={handleAbrirMapa}
@@ -143,7 +120,6 @@ export default function EventoPublicoCard({
           </Text>
         </TouchableOpacity>
 
-        {/* Descripción con "Ver más / Ver menos" */}
         {evento.descripcion ? (
           <View style={styles.descripcionContainer}>
             <Text
@@ -162,7 +138,6 @@ export default function EventoPublicoCard({
           </View>
         ) : null}
 
-        {/* Organizador: todos son perfiles verificados por Zooni */}
         {evento.organizador_nombre ? (
           <View style={styles.pillOrganizador}>
             <Ionicons name="business-outline" size={15} color={colores.textoSecundario} />
@@ -173,7 +148,6 @@ export default function EventoPublicoCard({
           </View>
         ) : null}
 
-        {/* Botón Agregar al calendario */}
         <Animated.View style={{ transform: [{ scale: btnScale }] }}>
           <TouchableOpacity
             disabled={yaAgregado || procesando}
@@ -218,7 +192,6 @@ export default function EventoPublicoCard({
   );
 }
 
-/** Placeholder con la forma de la tarjeta, mientras carga la lista. */
 export function EventoPublicoCargando() {
   return (
     <Skeleton style={styles.skeletonCard} min={0.5}>
@@ -231,7 +204,6 @@ export function EventoPublicoCargando() {
 }
 
 const styles = StyleSheet.create({
-  // ── Card de evento ────────────────────────────────────────
   card: {
     backgroundColor: colores.blanco,
     borderRadius: 18,
@@ -242,9 +214,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 10,
     elevation: 4,
-    overflow: 'hidden', // CRÍTICO: hace que la foto respete el borderRadius
+    overflow: 'hidden',
   },
-  // ── Foto ──────────────────────────────────────────────────
   fotoContainer: {
     position: 'relative',
   },
@@ -260,7 +231,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Pill de categoría sobre la foto
   pillCategoria: {
     position: 'absolute',
     top: 12,
@@ -281,20 +251,17 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
-  // ── Contenido del card ────────────────────────────────────
   cardContenido: {
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 16,
   },
-  // Título del evento
   eventoTitulo: {
     fontSize: 18,
     fontWeight: '700',
     color: colores.texto,
     marginBottom: 12,
   },
-  // Fila fecha + hora
   filaFechaHora: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -317,7 +284,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colores.texto,
   },
-  // Pill de ubicación
   pillUbicacion: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -334,7 +300,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colores.verde,
   },
-  // Descripción
   descripcionContainer: {
     marginBottom: 16,
   },
@@ -350,7 +315,6 @@ const styles = StyleSheet.create({
     color: colores.verde,
     marginTop: 4,
   },
-  // Pill del organizador
   pillOrganizador: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -368,7 +332,6 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: colores.textoSecundario,
   },
-  // Botón Agregar al calendario
   btnAgregar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -391,7 +354,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colores.blanco,
   },
-  // ── Skeleton ──────────────────────────────────────────────
   skeletonCard: {
     backgroundColor: 'rgba(255,255,255,0.7)',
     borderRadius: 18,

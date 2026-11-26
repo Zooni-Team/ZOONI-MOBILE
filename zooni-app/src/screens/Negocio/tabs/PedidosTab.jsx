@@ -1,17 +1,3 @@
-/**
- * PedidosTab.jsx — Pedidos del pet shop
- *
- *   Nuevos      Aceptar (pasa a "En preparación" y descuenta el stock) ·
- *               Rechazar (con motivo opcional)
- *   En curso    el paso siguiente según la entrega:
- *                 retiro → "Listo para retirar" → "Entregado"
- *                 envío  → "Salió el envío"     → "Entregado"
- *               y Cancelar mientras no se entregó
- *   Historial   entregados, cancelados y rechazados, con lo vendido
- *
- * Cada paso le llega al dueño como notificación (negocioApi).
- */
-
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View,
@@ -35,7 +21,7 @@ export default function PedidosTab({ negocio, avisar, abrirChat, refrescarBadges
   const [vista, setVista] = useState('nuevos');
   const [refrescando, setRefrescando] = useState(false);
   const [ocupado, setOcupado] = useState(null);
-  const [motivo, setMotivo] = useState(null); // { pedido, estado }
+  const [motivo, setMotivo] = useState(null);
 
   const cargar = useCallback(async () => {
     try {

@@ -1,17 +1,3 @@
-/**
- * VirtualVetScreen.jsx — ZooniVet, el asistente veterinario con IA (Instruction-ChatBot)
- *
- * Chat sobre una mascota concreta del usuario. La pantalla manda sólo el id de
- * la mascota, el mensaje y lo último de la conversación; los datos reales
- * (edad, peso, vacunas, consultas) los lee la Edge Function de la base,
- * después de comprobar que la mascota es de quien pregunta.
- * El modelo orienta pero nunca diagnostica ni receta, y ante lo concreto de
- * salud siempre deriva al veterinario. Ante una emergencia, corta y manda a SOS.
- *
- * La llamada a Groq NO se hace desde acá: va a la Edge Function `zoonivet-chat`,
- * que guarda la API key como secret. Ver src/services/zoonivetApi.js.
- */
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -48,7 +34,6 @@ import { colores } from '../theme';
 import { horaCorta } from '../utils/tiempoRelativo';
 import { alerta } from '../utils/dialogo';
 
-// ─── Tokens de estilo (sección 3.1) ─────────────────────────────────────────
 const C = {
   bgTop: '#E4F9EA',
   bgBottom: '#A8E6BC',
@@ -73,8 +58,6 @@ const C = {
 let idSeq = 0;
 const nuevoId = () => `m${Date.now()}_${idSeq++}`;
 
-
-// ─── Indicador de "escribiendo" (tres puntos) ───────────────────────────────
 function TypingDots() {
   const dots = useRef([0, 1, 2].map(() => new Animated.Value(0))).current;
   useEffect(() => {
@@ -100,7 +83,6 @@ function TypingDots() {
   );
 }
 
-// ─── Card de derivación a SOS (C4) ──────────────────────────────────────────
 function SosCard({ onVerVets }) {
   return (
     <View style={styles.sosCard}>
@@ -111,8 +93,6 @@ function SosCard({ onVerVets }) {
       <Text style={styles.sosBody}>
         No pierdas tiempo: llevalo a una veterinaria con guardia ahora mismo.
       </Text>
-      {/* Lo primero en una urgencia es una veterinaria con guardia. Zooni no
-          tiene línea telefónica propia (el 0800 que había acá era de relleno). */}
       <TouchableOpacity style={styles.sosBtn} onPress={onVerVets}>
         <Text style={styles.sosBtnText}>Ver veterinarias abiertas</Text>
       </TouchableOpacity>
@@ -124,7 +104,6 @@ function SosCard({ onVerVets }) {
   );
 }
 
-// ─── Burbuja de mensaje ─────────────────────────────────────────────────────
 function Burbuja({ msg, onVerVets }) {
   if (msg.role === 'system') {
     return (
@@ -180,7 +159,6 @@ export default function VirtualVetScreen() {
 
   const mascotaSel = mascotas.find((m) => m.id === petId) ?? null;
 
-  // Carga inicial de mascotas activas.
   useEffect(() => {
     let cancelado = false;
     (async () => {
@@ -188,7 +166,6 @@ export default function VirtualVetScreen() {
         const activas = await fetchMascotasParaChat();
         if (cancelado) return;
         setMascotas(activas);
-        // Preselección: param de ruta, o la primera activa.
         setPetId((prev) => prev ?? activas[0]?.id ?? null);
       } catch {
         if (!cancelado) setMascotas([]);
@@ -199,10 +176,6 @@ export default function VirtualVetScreen() {
     return () => { cancelado = true; };
   }, []);
 
-  // Al elegir/cambiar mascota: traer su contexto y arrancar conversación nueva.
-  // El contexto es "best-effort": sirve para los chips personalizados, pero el
-  // chat funciona igual sin él (la Edge Function reconstruye el contexto con el
-  // petId). Por eso, si la RPC falla, igual dejamos la conversación arrancada.
   useEffect(() => {
     if (petId == null) { setCtx(null); setMensajes([]); return; }
     let cancelado = false;
@@ -222,9 +195,6 @@ export default function VirtualVetScreen() {
       }
     })();
     return () => { cancelado = true; };
-    // Solo dependemos de petId: 'mascotas' se lee para el nombre de respaldo, pero
-    // no queremos reiniciar la conversación si la lista termina de cargar después.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [petId]);
 
   const scrollAlFondo = useCallback(() => {
@@ -236,7 +206,6 @@ export default function VirtualVetScreen() {
     if (!limpio || enviando || !ctx) return;
 
     const userMsg = { id: nuevoId(), role: 'user', content: limpio, status: 'sent', ts: Date.now() };
-    // Historial que ve el modelo: solo turnos reales (user/assistant), sin la card de SOS.
     const historial = mensajes
       .filter((m) => m.role === 'user' || m.role === 'assistant')
       .map((m) => ({ role: m.role, content: m.content, firma: m.firma }));
@@ -277,22 +246,15 @@ export default function VirtualVetScreen() {
     setPetId(id);
   }, [petId]);
 
-  // Los chips ya mandados (o escritos igual a mano) no se repiten: aparecen otros.
   const preguntadas = mensajes.filter((m) => m.role === 'user').map((m) => m.content);
   const chips = ctx ? sugerenciasIniciales(ctx, preguntadas) : [];
   const mostrarChips = ctx && !enviando && chips.length > 0;
 
-  // ── Render ────────────────────────────────────────────────────────────────
   const sinMascotas = !cargandoMascotas && mascotas.length === 0;
 
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={C.bgTop} />
-      {/* Header */}
-      {/* Menú lateral en vez de la flecha de volver: ZooniVet es una sección
-          propia a la que se entra desde el drawer, no un paso dentro de otro
-          flujo. Con la flecha, entrar desde el menú y volver te dejaba en
-          cualquier pantalla, según de dónde vinieras. */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerBtn} onPress={() => setDrawerOpen(true)}
           accessibilityLabel="Abrir menú" hitSlop={12}>
@@ -307,7 +269,6 @@ export default function VirtualVetScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={8}
       >
-        {/* Card de contexto de la mascota / selector */}
         {sinMascotas ? (
           <View style={styles.emptyCard}>
             <Ionicons name="paw" size={64} color={C.brand} />
@@ -342,7 +303,6 @@ export default function VirtualVetScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Lista de mensajes */}
         <View style={styles.listWrap}>
           {cargandoCtx ? (
             <View style={styles.center}>
@@ -364,7 +324,6 @@ export default function VirtualVetScreen() {
           )}
         </View>
 
-        {/* Chips de sugerencia */}
         {mostrarChips && (
           <ScrollView
             horizontal
@@ -381,7 +340,6 @@ export default function VirtualVetScreen() {
           </ScrollView>
         )}
 
-        {/* Input + enviar */}
         {!sinMascotas && (
           <View style={styles.inputRow}>
             <View style={styles.inputBox}>
@@ -412,11 +370,9 @@ export default function VirtualVetScreen() {
           </View>
         )}
 
-        {/* Disclaimer permanente */}
         <Text style={styles.disclaimer}>ZooniVet te orienta, no reemplaza a tu veterinaria.</Text>
       </KeyboardAvoidingView>
 
-      {/* Bottom sheet: selector de mascota */}
       <Modal visible={selectorAbierto} transparent animationType="fade" onRequestClose={() => setSelectorAbierto(false)}>
         <Pressable style={styles.sheetBackdrop} onPress={() => setSelectorAbierto(false)}>
           <Pressable style={styles.sheet}>
@@ -437,8 +393,6 @@ export default function VirtualVetScreen() {
         </Pressable>
       </Modal>
 
-      {/* activeRoute 'ChatBot' — es la `ruta` con la que el drawer registra a
-          ZooniVet (ver HamburgerDrawer), así que el ítem queda resaltado. */}
       <HamburgerDrawer
         visible={drawerOpen}
         onClose={() => setDrawerOpen(false)}
@@ -450,7 +404,6 @@ export default function VirtualVetScreen() {
   );
 }
 
-// ─── Mensajes de sistema/bienvenida/error ───────────────────────────────────
 function mensajeBienvenida(ctx) {
   const nombre = ctx?.nombre ?? 'tu mascota';
   return {
@@ -469,7 +422,6 @@ function mensajeError(e) {
   } else if (e?.code === 'API_KEY_INVALIDA' || e?.code === 'GROQ_ERROR') {
     content = 'El servicio que me hace pensar no respondió. Probá de nuevo en un rato.';
   } else if (e?.code === 'CUPO_AGOTADO') {
-    // El texto lo arma la Edge Function: dice cuál es el límite configurado
     content = e.message || 'Llegaste al límite de mensajes de hoy. Mañana podés seguir.';
   } else if (e?.code === 'RATE_LIMIT') {
     content = 'Llegaste al límite de mensajes por ahora. Probá de nuevo en un rato.';
@@ -479,7 +431,6 @@ function mensajeError(e) {
   return { id: nuevoId(), role: 'assistant', content, status: 'error', ts: Date.now() };
 }
 
-// ─── Estilos ────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bgTop },
   flex: { flex: 1 },

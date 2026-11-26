@@ -1,7 +1,3 @@
-/**
- * negocio/resumen.js — Los números del Inicio del negocio (hoy y este mes).
- */
-
 import { configNegocio } from '../../constants/negocios';
 import { aCentavos } from '../../domain/paseos';
 import { fetchItems } from './catalogo';

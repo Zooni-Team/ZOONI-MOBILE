@@ -1,21 +1,3 @@
-/**
- * CuentaCorrienteModal.jsx — La cuenta corriente con UN dueño
- *
- * Arriba el saldo (cuánto te debe, al día o a favor), "Registrar pago" y
- * cuándo te paga (cada paseo / fin de semana / fin de mes: al cerrarse el
- * período, si debe, te llega un recordatorio).
- * Abajo todos los movimientos, del más nuevo al más viejo, como un extracto:
- *   · Paseo  → suma a lo que debe; dice si quedó pagado, parcial o pendiente
- *   · Pago   → resta; tocarlo permite corregirlo o borrarlo
- * con el saldo que quedaba después de cada movimiento.
- *
- * Props: visible · cuenta (de fetchCuentasCorrientes) · onCerrar ·
- *        onRegistrar(pago) · onEditar(pago) — ambos abren PagoFormModal ·
- *        onModalidad(key) — cambia cada cuánto paga
- *        children — el formulario de pago va adentro de este Modal (en iOS no
- *        se puede abrir un Modal hermano mientras otro está abierto)
- */
-
 import { useMemo } from 'react';
 import {
   FlatList, Modal, SafeAreaView, StyleSheet, Text, TouchableOpacity, View,
@@ -28,7 +10,6 @@ import { formatoTiempoPaseado, formatoPlata, medioDePago } from '../../domain/pa
 import { colores } from '../../theme';
 import { formatearFecha } from '../../utils/fechaLocal';
 
-/** "45 min" o, si se cortó antes, "31 s de 120 min" (se cobró por tiempo) */
 function minutosDePaseo(p) {
   return p.segundosAcumulados > 0 && p.segundosAcumulados < p.duracionMin * 60
     ? `${formatoTiempoPaseado(p.segundosAcumulados)} de ${p.duracionMin} min`
@@ -58,7 +39,6 @@ export function EtiquetaSaldo({ saldo, grande = false }) {
 export default function CuentaCorrienteModal({
   visible, cuenta, onCerrar, onRegistrar, onEditar, onModalidad, children,
 }) {
-  // Extracto: paseos (+) y pagos (-) mezclados por fecha, con saldo acumulado
   const movimientos = useMemo(() => {
     if (!cuenta) return [];
     const todos = [

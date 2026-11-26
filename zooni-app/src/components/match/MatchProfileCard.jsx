@@ -1,7 +1,3 @@
-/**
- * Tarjeta de perfil para la pantalla Match (vertical, sin scroll).
- */
-
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, Image, Pressable, TouchableOpacity,
@@ -14,17 +10,9 @@ import { colores } from '../../theme';
 export default function MatchProfileCard({ perfil, cardHeight, cardWidth, onPress }) {
   const { nombre, edad, barrio, ciudad, foto_perfil_url, mascota, intereses } = perfil;
 
-  /*
-    La raza salía como un chip más, mezclada con los intereses, y el nombre de
-    la mascota no aparecía en ningún lado: la tarjeta mostraba la foto de un
-    perro sin decir cómo se llama. Ahora van juntos en su propia fila (igual que
-    el bloque "Mascota" del detalle) y los chips quedan solo para los intereses.
-  */
   const visibleTags = intereses.slice(0, 3);
   const extraCount = intereses.length - visibleTags.length;
 
-  // Carrusel: todas las fotos reales (portada + galería). Si una mascota vieja
-  // no tiene ninguna, cae en su ilustración por especie/raza — nunca ajena.
   const fotos = (mascota.fotos?.length ? mascota.fotos : null);
   const [fotoIdx, setFotoIdx] = useState(0);
   const idx = fotos ? Math.min(fotoIdx, fotos.length - 1) : 0;
@@ -35,7 +23,6 @@ export default function MatchProfileCard({ perfil, cardHeight, cardWidth, onPres
     <>
       <Image source={petPhotoSource} style={styles.petPhoto} />
 
-      {/* Zonas táctiles izquierda/derecha para pasar fotos (como Tinder) */}
       {totalFotos > 1 && (
         <>
           <TouchableOpacity style={styles.navIzq} activeOpacity={1}
@@ -58,10 +45,6 @@ export default function MatchProfileCard({ perfil, cardHeight, cardWidth, onPres
             <Text style={styles.ownerInitial}>{nombre[0]}</Text>
           </View>
         )}
-        {/* Acá iba un círculo chico con la ilustración de la mascota, pegado
-            abajo del avatar del dueño. Se sacó: la foto grande de la tarjeta ya
-            es la mascota, así que repetía lo mismo y encima tapaba parte de la
-            foto de perfil. */}
       </View>
 
       <View style={styles.infoOverlay}>
@@ -69,10 +52,6 @@ export default function MatchProfileCard({ perfil, cardHeight, cardWidth, onPres
           <Text style={styles.nameText} numberOfLines={1}>
             {nombre}, {edad}
           </Text>
-          {/* La mascota va pegada al nombre del dueño, antes de la ubicación:
-              son los dos datos de quién es este perfil.
-              !! y no un `&&` pelado: con los dos vacíos quedaría un string
-              suelto fuera de un <Text> y React Native tira error. */}
           {!!(mascota.nombre || mascota.raza) && (
             <View style={styles.petRow}>
               <View style={styles.petIconWrap}>
@@ -189,11 +168,7 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   nameText: { fontSize: 20, fontWeight: '800', color: colores.blanco },
-  // 6 y no 2: ya no va pegada al nombre sino debajo de la pastilla de la
-  // mascota, que necesita aire propio.
   locationText: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 6 },
-  // Nombre + raza de la mascota, sobre la foto: pastilla clara para que se lea
-  // igual con fotos oscuras o claras detrás.
   petRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     alignSelf: 'flex-start', maxWidth: '100%',

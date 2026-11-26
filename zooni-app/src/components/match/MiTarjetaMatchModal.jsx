@@ -1,22 +1,3 @@
-/**
- * MiTarjetaMatchModal.jsx — "Así te ven" en Match
- *
- * Se abre desde el botón de perfil del header de Match. Muestra la MISMA
- * tarjeta que ve el resto de la gente al hacer swipe, sin adivinar: los datos
- * salen de `fetchMiTarjetaMatch`, que pasa por el mismo mapeo que arma los
- * perfiles del pool.
- *
- * Antes no había forma de ver el propio perfil: se completaba el setup a ciegas
- * y no se sabía qué foto ni qué intereses estaba mostrando la app.
- *
- * Desde acá se puede editar el perfil con `onEditarPerfil`: abre el MISMO
- * editor que el botón "Editar perfil" de la pantalla Perfil
- * (components/perfil/EditarPerfilModal), así que lo que se cambia acá es lo
- * que se ve allá y al revés. Lo que NO se toca desde acá es el cuestionario de
- * Match (fecha, género, intereses): esas preguntas viven en la creación del
- * perfil (MatchProfileSetup y PetMatchOnboarding).
- */
-
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,20 +24,10 @@ export default function MiTarjetaMatchModal({ visible, onClose, onEditarPerfil }
     }
   }, []);
 
-  /*
-    Se recarga cada vez que se abre: si el usuario acaba de cambiar la foto o el
-    look de la mascota, la vista previa tiene que reflejarlo.
-
-    Con un efecto sobre `visible` y no con el onShow del Modal: en
-    react-native-web ese callback no dispara de forma confiable y la tarjeta se
-    quedaba con los datos de la primera apertura.
-  */
   useEffect(() => {
     if (visible) cargar();
   }, [visible, cargar]);
 
-  // La tarjeta del swipe ocupa la pantalla entera; acá va más chica para que
-  // se lea como una vista previa y entren los botones de abajo.
   const cardWidth = Math.min(width - 48, 320);
   const cardHeight = Math.min(cardWidth * 1.5, height * 0.55);
 
@@ -98,13 +69,9 @@ export default function MiTarjetaMatchModal({ visible, onClose, onEditarPerfil }
                 </Text>
 
                 <View style={{ width: cardWidth, height: cardHeight }}>
-                  {/* Sin onPress: acá la tarjeta es para mirar, no para abrir
-                      el detalle de otra persona. */}
                   <MatchProfileCard perfil={tarjeta} cardWidth={cardWidth} cardHeight={cardHeight} />
                 </View>
 
-                {/* Qué se está mostrando y de dónde sale cada cosa: es la duda
-                    típica ("¿por qué aparece esta foto?"). */}
                 <View style={s.detalle}>
                   <Fila icono="person-outline" label="Vos"
                     valor={[tarjeta.nombre, tarjeta.edad ? `${tarjeta.edad} años` : null]
@@ -124,11 +91,6 @@ export default function MiTarjetaMatchModal({ visible, onClose, onEditarPerfil }
             )}
           </ScrollView>
 
-          {/*
-            "Editar perfil" abre el editor de la pantalla Perfil, no el
-            cuestionario de Match: acá se corrigen nombre, bio y zona, que es
-            justo lo que se ve en la tarjeta de arriba.
-          */}
           <View style={s.pie}>
             {onEditarPerfil ? (
               <TouchableOpacity style={s.btnEditar} onPress={onEditarPerfil}

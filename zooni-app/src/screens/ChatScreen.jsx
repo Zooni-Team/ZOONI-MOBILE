@@ -1,17 +1,3 @@
-/**
- * ChatScreen.jsx — Conversación 1 a 1 (Match) o con un servicio
- *
- * Dos formas de llegar acá:
- *   - Desde MatchCelebrationOverlay o Mensajes: { chatId, nombre, fotoPerfilUrl }
- *   - Desde Comunidad o Mensajes (servicios): { servicioId, nombre, tipoServicio }
- *     Si el servicio es un negocio de Zooni (046), el negocio contesta por acá
- *     y el header lleva a su ficha; si es uno cargado a mano, queda el aviso
- *     de que no puede responder.
- * Los mensajes viven en Supabase (services/chatStore.js). Mientras la
- * pantalla está en foco, hace polling liviano para traer mensajes nuevos
- * del otro lado sin depender de una suscripción en tiempo real.
- */
-
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Image,
@@ -39,13 +25,6 @@ import { INTERVALO_RELOJ_CHAT_MS } from '../constants/intervalos';
 import { useRecargaEnVivo } from '../hooks/useRecargaEnVivo';
 import { alerta } from '../utils/dialogo';
 
-/**
- * Tildes de estado, solo en MIS mensajes (como WhatsApp):
- *   ✓   gris  → enviado, el otro todavía no lo abrió
- *   ✓✓  azul  → leído
- * En un chat de servicio no hay nadie del otro lado que pueda leer, así que
- * el mensaje se queda en "enviado" y no se muestra un doble tilde mentiroso.
- */
 function TildesEstado({ leido }) {
   return (
     <View style={s.tildes} accessibilityLabel={leido ? 'Leído' : 'Enviado'}>
@@ -65,10 +44,7 @@ export default function ChatScreen() {
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [infoAbierta, setInfoAbierta] = useState(false);
-  // Negocio de Zooni detrás del servicio (undefined = todavía no se sabe)
   const [idNegocio, setIdNegocio] = useState(undefined);
-  // Reloj propio: sin esto "hace 2 minutos" se congelaba hasta que llegara
-  // otro mensaje. Se refresca al mismo ritmo que el polling.
   const [ahora, setAhora] = useState(() => new Date());
   const scrollRef = useRef(null);
 
@@ -77,8 +53,6 @@ export default function ChatScreen() {
     try {
       guardados = await getMensajes({ matchId: chatId, servicioId });
     } catch {
-      // Sin red o la base no respondió: se conserva lo que ya se ve en
-      // pantalla (antes el chat quedaba vacío) y el próximo aviso reintenta.
       return;
     }
     setMensajes(guardados);
@@ -90,15 +64,12 @@ export default function ChatScreen() {
     if (servicioId) negocioDeServicio(servicioId).then(setIdNegocio).catch(() => setIdNegocio(null));
   }, [servicioId]);
 
-  // Lo que escribe el otro lado llega por Supabase Realtime mientras la
-  // pantalla está en foco (con una consulta de respaldo cada 30 s).
   useRecargaEnVivo(cargar, {
     tabla: 'Mensaje',
     filtro: chatId ? `idMatch=eq.${chatId}` : `idServicio=eq.${servicioId}`,
     activo: !!(chatId || servicioId),
   });
 
-  // El reloj de los separadores (Hoy / Ayer) avanza aunque no lleguen mensajes
   useFocusEffect(
     useCallback(() => {
       const reloj = setInterval(() => setAhora(new Date()), INTERVALO_RELOJ_CHAT_MS);
@@ -121,7 +92,6 @@ export default function ChatScreen() {
       if (actualizados) setMensajes(actualizados);
       else cargar();
     } catch {
-      // No se guardó: se devuelve el texto al campo para no perderlo.
       setTexto((actual) => actual || contenido);
       alerta('No se pudo enviar el mensaje', 'Revisá tu conexión y probá de nuevo.');
     } finally {
@@ -139,7 +109,6 @@ export default function ChatScreen() {
           <Ionicons name="arrow-back" size={24} color={colores.texto} />
         </TouchableOpacity>
 
-        {/* Tocar foto+nombre abre la ficha de perfil del match (no en servicios) */}
         <TouchableOpacity
           style={s.headerPerfil}
           activeOpacity={esServicio && !idNegocio ? 1 : 0.6}
@@ -198,14 +167,6 @@ export default function ChatScreen() {
               </Text>
             </View>
           ) : (
-            /*
-              Formato WhatsApp: la fecha vive en un separador entre días y cada
-              burbuja lleva SOLO la hora.
-
-              Antes cada mensaje mostraba tiempo relativo ("hace 3 horas",
-              "11/8 · 13:29"), así que dos mensajes seguidos podían decir cosas
-              con formatos distintos y no se entendía a qué hora se dijo nada.
-            */
             mensajes.map((m, i) => {
               const anterior = i > 0 ? mensajes[i - 1] : null;
               const abreDia = !anterior || !mismoDia(anterior.fecha, m.fecha);
@@ -307,7 +268,6 @@ const s = StyleSheet.create({
   metaFila: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3, marginHorizontal: 4 },
   hora:     { fontSize: 10, color: colores.textoSecundario },
 
-  // Separador de día, centrado entre los mensajes (Hoy / Ayer / martes / 12 de agosto)
   separadorDia: {
     alignSelf: 'center', marginVertical: 14,
     paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12,

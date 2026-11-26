@@ -1,15 +1,3 @@
-/**
- * HorariosEditor.jsx — Días y horarios de atención de un negocio
- *
- * Una fila por día: abierto / cerrado y de qué hora a qué hora (con la misma
- * rueda de HoraPicker que el resto de la app). Con estos horarios se arman
- * los turnos libres que ve el dueño y el "Abierto ahora" de la ficha.
- *
- * Props: valor { lun: { activo, desde, hasta }, … } · onCambio(valor) · error
- * Opcionales (los usa el paseador): base (horarios por defecto) · inactivo
- * (texto de un día sin horario) · etiquetas { desde, hasta } del selector.
- */
-
 import { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,7 +16,6 @@ const aFecha = (hhmm) => {
   return d;
 };
 
-/** Devuelve el primer problema de los horarios o null. */
 export function validarHorarios(horarios) {
   const dias = DIAS_SEMANA.map((d) => ({ ...d, h: horarios?.[d.key] })).filter((d) => d.h?.activo);
   if (!dias.length) return 'Es necesario abrir al menos un día';
@@ -40,7 +27,7 @@ export default function HorariosEditor({
   valor, onCambio, error, base, inactivo = 'Cerrado', etiquetas = { desde: 'abre', hasta: 'cierra' },
 }) {
   const horarios = { ...(base ?? HORARIOS_NEGOCIO_DEFAULT()), ...(valor ?? {}) };
-  const [picker, setPicker] = useState(null); // { dia, campo }
+  const [picker, setPicker] = useState(null);
 
   const cambiar = (dia, cambios) => onCambio({ ...horarios, [dia]: { ...horarios[dia], ...cambios } });
 

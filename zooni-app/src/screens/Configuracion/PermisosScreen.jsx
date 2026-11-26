@@ -1,13 +1,3 @@
-/**
- * PermisosScreen.jsx — Configuración › Permisos de la app (§3.5.7)
- *
- * Esta pantalla NO cambia permisos: los otorga el SO. Cada fila muestra el
- * estado real (utils/permisos) y el toque abre los ajustes del sistema
- * (Linking.openSettings()). Nunca se re-pide un permiso denegado desde el
- * prompt nativo (en iOS el segundo pedido no muestra nada y el usuario queda
- * atascado). Sólo se listan los permisos que Zooni usa de verdad.
- */
-
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,7 +36,6 @@ function abrirAjustes() {
 export default function PermisosScreen() {
   const [estados, setEstados] = useState(null);
 
-  // Al volver de los ajustes del sistema, el estado puede haber cambiado.
   useFocusEffect(useCallback(() => {
     let vigente = true;
     estadoDePermisos().then((e) => { if (vigente) setEstados(e); });

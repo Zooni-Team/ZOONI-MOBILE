@@ -1,20 +1,5 @@
-/**
- * comun.js — Piezas que comparten todos los servicios (src/services/*).
- *
- *   errorApp('sin_stock', errorDeSupabase)  → Error con código para la pantalla
- *                                             y el detalle real en e.detalle
- *   errorBase(error)                        → idem, eligiendo el código solo
- *   notificar(idUser, titulo, mensaje, { tipo, destino, extra })
- *                                           → aviso en la tabla Notificacion
- *
- * Antes cada servicio tenía su copia (negocioApi y paseadorApi idénticas,
- * chatStore y Comunidad insertaban la notificación a mano).
- * Guía: docs/claude/servicios.md
- */
-
 import { supabase } from '../lib/supabase';
 
-/** La tabla, columna o función no existe: falta correr una migración. */
 export function esEsquemaFaltante(error) {
   if (!error) return false;
   const code = error.code ?? '';
@@ -23,17 +8,14 @@ export function esEsquemaFaltante(error) {
     || /does not exist|schema cache|sin configurar/i.test(msg);
 }
 
-/** PGRST202: la función RPC no existe. */
 export function esFuncionInexistente(error) {
   return error?.code === 'PGRST202' || /function .* does not exist/i.test(error?.message ?? '');
 }
 
-/** RLS o un GRANT no dejan hacer la operación (42501). */
 export function esSinPermiso(error) {
   return error?.code === '42501' || /row-level security|permission denied/i.test(String(error?.message ?? ''));
 }
 
-/** Error con código para la pantalla + el mensaje real de Supabase en `detalle`. */
 export function errorApp(codigo, original) {
   const e = new Error(codigo);
   e.detalle = original
@@ -43,26 +25,11 @@ export function errorApp(codigo, original) {
   return e;
 }
 
-/** errorApp con el código genérico que corresponda. */
 export const errorBase = (error) =>
   errorApp(esEsquemaFaltante(error) ? 'migracion_pendiente' : 'error_base', error);
 
-/** Recorta un texto para el cuerpo de una notificación. */
 export const resumir = (texto, max = 80) => (texto.length > max ? `${texto.slice(0, max)}…` : texto);
 
-/**
- * Avisa a alguien. Ya no es un INSERT directo en "Notificacion" — esa tabla
- * no acepta más INSERT del cliente (informe de seguridad #5): las crea un
- * trigger/RPC interno, o esta RPC `crear_notificacion`, que sólo deja avisar
- * a alguien con quien hay match, amistad o trato (si no, "sin_relacion").
- * Nunca rompe el flujo que la llama: el cambio principal ya quedó guardado.
- */
-/**
- * ¿Esta notificación es para el modo paseador? Una misma cuenta puede ser
- * dueña y paseadora: "Tenés una solicitud nueva" no tiene que aparecer en el
- * modo dueño (ni al revés). Las nuevas lo dicen en DataExtra.modo; para las
- * viejas se mira el destino y el título.
- */
 const DESTINOS_PASEADOR = ['solicitudes', 'chats', 'pagos', 'perfil'];
 const TITULOS_PASEADOR = /^(tenés una solicitud|paseo cancelado por el dueño|mensaje del dueño|nueva reseña|recordatorio de cobro)/i;
 export function esNotificacionDePaseador(n) {
@@ -88,6 +55,5 @@ export async function notificar(idUser, titulo, mensaje, { tipo = 'general', des
     });
     if (error && __DEV__) console.warn('[notificar]', error.message);
   } catch {
-    // La notificación es un extra.
   }
 }

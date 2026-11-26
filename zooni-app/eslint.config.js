@@ -1,5 +1,3 @@
-// eslint.config.js — Reglas de calidad del código de la app (npm run lint).
-// Ver docs/claude/convenciones.md para el porqué de cada regla.
 const js = require('@eslint/js');
 const react = require('eslint-plugin-react');
 const reactHooks = require('eslint-plugin-react-hooks');

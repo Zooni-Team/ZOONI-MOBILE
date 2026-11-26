@@ -1,14 +1,3 @@
-/**
- * HistorialPerroModal.jsx — Todos los paseos de UN perro con este paseador
- *
- * Se abre al tocar un perro en el Historial (Ganancias). Muestra la historia
- * completa con vos, no sólo la del período elegido arriba: cuántas veces lo
- * paseaste, cuánto cobraste y cada paseo con fecha, duración, distancia,
- * precio y la calificación del dueño.
- *
- * Props: visible · mascota { id, nombre, raza, visual } · dueno { nombre } · onCerrar
- */
-
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator, FlatList, Modal, SafeAreaView, StyleSheet, Text, TouchableOpacity, View,

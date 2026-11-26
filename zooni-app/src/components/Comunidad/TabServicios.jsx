@@ -13,8 +13,6 @@ const FILTROS = [
 const ICONOS  = { veterinaria: 'medkit-outline', paseador: 'walk-outline', petshop: 'bag-outline', peluqueria: 'cut-outline' };
 const COLORES = { veterinaria: colores.rojo, paseador: colores.ambar, petshop: colores.amarillo, peluqueria: colores.violeta };
 
-// La foto de perfil del paseador (la misma del marcador del mapa); la huella
-// queda sólo si no tiene o no carga.
 function AvatarPaseador({ foto }) {
   const [fallo, setFallo] = useState(false);
   if (foto && !fallo) {
@@ -30,12 +28,6 @@ function AvatarPaseador({ foto }) {
   );
 }
 
-/*
-  La lista sale de lo mismo que ya cargó el mapa (ComunidadScreen) y el filtro
-  se aplica acá: antes la pestaña volvía a consultar todo por su cuenta, con
-  otra espera de 800 ms y otra búsqueda en OpenStreetMap, y cada cambio de
-  filtro era otra vuelta. Ahora cambiar de filtro es instantáneo.
-*/
 export default function TabServicios({
   bbox, servicios = [], cargando = false, onSeleccionar, paseadores = [], onSeleccionarPaseador,
 }) {
@@ -45,10 +37,7 @@ export default function TabServicios({
     [servicios, filtro],
   );
 
-  // Con el mapa muy alejado no se consulta al proveedor gratuito (barrería medio
-  // país). Conviene decirlo en vez de mostrar "no hay servicios", que es falso.
   const demasiadoLejos = bbox && !areaBuscable(bbox);
-  // Con paseadores de Zooni arriba, "No hay servicios en esta área" sobra
   const hayPaseadoresZooni = (filtro === 'todos' || filtro === 'paseador') && paseadores.length > 0;
 
   return (
@@ -60,9 +49,6 @@ export default function TabServicios({
           </TouchableOpacity>
         ))}
       </ScrollView>
-      {/* Paseadores registrados en Zooni (se contratan desde la app). Van como
-          cabecera de la lista para que scrolleen con ella: fuera de la lista
-          empujaban y aplastaban la fila de filtros. */}
       <FlatList
         style={{ flex: 1 }}
         ListHeaderComponent={hayPaseadoresZooni ? (
@@ -95,7 +81,6 @@ export default function TabServicios({
             <View style={styles.info}>
               <Text style={styles.nombre} numberOfLines={1}>{s.nombre}</Text>
               <Text style={styles.dir} numberOfLines={1}>{s.direccion}</Text>
-              {/* Puntaje y estado solo existen en los locales traídos de Google */}
               {(s.rating != null || s.abiertoAhora != null) && (
                 <View style={styles.metaRow}>
                   {s.rating != null && (
@@ -139,7 +124,6 @@ export default function TabServicios({
 const styles = StyleSheet.create({
   zooniBox: { paddingHorizontal: 4, marginBottom: 4 },
   zooniTitulo: { fontSize: 12, fontWeight: '800', color: colores.verde, marginBottom: 4, marginLeft: 10 },
-  // flexGrow/flexShrink 0: alto fijo, que la lista de abajo no la aplaste
   chips:       { flexDirection: 'row', paddingVertical: 8, height: 50, flexGrow: 0, flexShrink: 0 },
   chip:        { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: colores.gris50, marginRight: 8 },
   chipOn:      { backgroundColor: colores.verde },

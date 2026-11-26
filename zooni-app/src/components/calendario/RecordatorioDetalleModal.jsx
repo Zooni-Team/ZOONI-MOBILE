@@ -1,8 +1,3 @@
-/**
- * RecordatorioDetalleModal.jsx — El recordatorio completo (la tarjeta de la
- * lista corta la descripción a dos renglones).
- */
-
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 

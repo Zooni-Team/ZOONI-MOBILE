@@ -15,7 +15,6 @@ export default function DraggableList({ items, onReorder, renderItem, itemHeight
 
   hoverRef.current = hoverIndex;
 
-  // Extrae pageY compatible con web (touches[0]) y mobile (pageY directo)
   const getPageY = (e) => {
     if (e.nativeEvent.touches && e.nativeEvent.touches.length > 0) {
       return e.nativeEvent.touches[0].pageY;

@@ -1,13 +1,3 @@
-/**
- * EliminarCuentaScreen.jsx — Confirmación de eliminación de cuenta (§3.5.11)
- *
- * Pantalla dedicada, nunca un diálogo simple. Exige checkbox + contraseña
- * (si la cuenta tiene: las de Google / Facebook / Apple no). Período de
- * gracia de 30 días: la base anota el pedido y oculta el perfil
- * (solicitar_eliminacion_cuenta, MIGRACION_072); volver a iniciar sesión
- * antes del vencimiento la recupera, y después la purga borra lo personal.
- */
-
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View,
@@ -43,7 +33,6 @@ export default function EliminarCuentaScreen() {
   const [motivoTexto, setMotivoTexto] = useState('');
   const [password, setPassword] = useState('');
   const [entiendo, setEntiendo] = useState(false);
-  // null mientras se averigua: hasta saberlo, se pide la contraseña.
   const [conContrasena, setConContrasena] = useState(null);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState(null);
@@ -55,7 +44,6 @@ export default function EliminarCuentaScreen() {
   const pidePassword = conContrasena !== false;
   const puedeEliminar = entiendo && (!pidePassword || password.length > 0) && !enviando;
 
-  // Sólo para el texto de abajo: la fecha que vale es la que devuelve la base.
   const fechaLimite = formatearFecha(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
 
   const confirmar = async () => {
@@ -63,8 +51,6 @@ export default function EliminarCuentaScreen() {
     setEnviando(true);
     try {
       const vence = await solicitarBajaDeCuenta({ password, motivo, motivoTexto: motivo === 'otro' ? motivoTexto : null });
-      // Cerrar la sesión de este dispositivo: si quedara abierta, abrir la
-      // app de nuevo contaría como "volver a entrar" y cancelaría la baja.
       await clearToken();
       await clearCurrentUserId();
       alerta(
@@ -81,7 +67,6 @@ export default function EliminarCuentaScreen() {
   return (
     <SettingsScreen title="Eliminar mi cuenta">
 
-      {/* Qué se pierde */}
       <View style={s.alertBox}>
         <Text style={s.alertTitulo}>Al eliminar tu cuenta perdés para siempre:</Text>
         {SE_PIERDE.map((item) => (

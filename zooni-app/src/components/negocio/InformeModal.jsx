@@ -1,16 +1,3 @@
-/**
- * InformeModal.jsx — Cerrar un turno atendido
- *
- *   · Veterinaria: la consulta → motivo, diagnóstico, tratamiento / indicaciones,
- *     peso, temperatura y próximo control. Queda en la historia clínica del
- *     paciente y el dueño la ve en "Turnos y pedidos".
- *   · Peluquería: notas del trabajo y fotos de cómo quedó (opcional: sumarlas
- *     a "Trabajos", la galería que ven los clientes).
- *
- * Props: visible · tipo · turno · editar (true = corregir un informe ya
- *        guardado) · onGuardar(informe, { aGaleria }) · onCerrar
- */
-
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text,
@@ -41,7 +28,7 @@ function Campo({ label, children }) {
 export default function InformeModal({ visible, tipo, turno, editar = false, onGuardar, onCerrar }) {
   const esVet = tipo === 'veterinaria';
   const [f, setF] = useState({});
-  const [fotos, setFotos] = useState([]); // urls ya subidas
+  const [fotos, setFotos] = useState([]);
   const [subiendo, setSubiendo] = useState(false);
   const [aGaleria, setAGaleria] = useState(true);
   const [verFecha, setVerFecha] = useState(false);

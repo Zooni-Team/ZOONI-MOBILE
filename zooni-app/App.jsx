@@ -1,7 +1,3 @@
-/**
- * App.jsx — Punto de entrada de la aplicación Zooni
- */
-
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -83,24 +79,17 @@ const rolesCon4s = (id) => Promise.race([
   new Promise((resolve) => setTimeout(() => resolve(null), 4000)),
 ]);
 
-/**
- * Vuelta de "Entrar con Google / Facebook / Apple" (services/socialAuthApi):
- * decide la primera pantalla según si la cuenta existe y para qué entró
- * (dueño o paseador). Devuelve [ruta, params].
- */
 async function rutaTrasLoginSocial() {
   const res = await completarRetornoSocial();
   const loginDe = res.intencion === 'paseador' ? 'PaseadorLogin' : 'Login';
   if (!res.usuario && !res.nuevo) return [loginDe, res.error ? { errorSocial: res.error } : undefined];
 
-  // Cuenta nueva → registro con nombre, mail y foto del proveedor ya cargados
   if (res.nuevo) {
     return res.intencion === 'paseador'
       ? ['PaseadorRegistro', { social: res.perfil }]
       : ['RegisterStep1', { social: res.perfil }];
   }
 
-  // Cuenta existente: la sesión ya quedó iniciada
   avisarSiSeCanceloLaBaja(res.usuario);
   const roles = await rolesCon4s(res.usuario.id);
   if (res.intencion === 'paseador') {
@@ -108,7 +97,6 @@ async function rutaTrasLoginSocial() {
       await setModo(MODO_PASEADOR);
       return roles.tienePerfil ? ['PaseadorApp'] : ['PaseadorRegistro', { completar: true }];
     }
-    // Dueño que quiere sumarse como paseador: sólo le falta el perfil
     return ['PaseadorRegistro', {
       activarSocial: { nombre: res.usuario.nombre, fotoPerfil: res.usuario.fotoPerfil ?? null },
     }];
@@ -120,13 +108,6 @@ export default function App() {
   const [initialRoute, setInitialRoute] = useState(null);
   const [initialParams, setInitialParams] = useState(undefined);
 
-  // Con sesión guardada, según las apps de la cuenta (utils/rutaSegunRoles):
-  //   · más de una (dueño, paseador, negocios) → "¿Cómo querés entrar hoy?"
-  //   · sólo paseador / sólo un negocio        → esa app
-  //   · sólo dueño                             → Home
-  // Si los roles no se pueden consultar (sin red, o tardan más de 4 s), se usa
-  // el último modo guardado para no dejar a nadie trabado en el arranque.
-  // Sin sesión → Login.
   useEffect(() => {
     (async () => {
       const [userId, modo] = await Promise.all([restaurarSesion(), loadStoredModo()]);
@@ -147,15 +128,6 @@ export default function App() {
     })();
   }, []);
 
-  // Latido de presencia: mantiene actualizado "última vez en línea" mientras la
-  // app está abierta y lo refresca al volver del segundo plano (si se quedó
-  // dormida, el último latido puede ser de hace rato). Al lado se mide el
-  // tiempo de uso (services/usoApp), que sólo cuenta con sesión iniciada.
-  //
-  // Espera a que la sesión esté restaurada ANTES de latir: este efecto corría en
-  // paralelo con restaurarSesion(), así que el primer latido salía con el id
-  // que hubiera en ese momento y le escribía UltimaConexion a la cuenta
-  // equivocada. Si no hay nadie logueado no late (el Login no tiene presencia).
   useEffect(() => {
     let frenar = null;
     let cancelado = false;
@@ -195,14 +167,9 @@ export default function App() {
   );
 }
 
-// Navegador raíz: dentro del ThemeProvider para leer "reducir movimiento" y
-// desactivar las transiciones entre pantallas en toda la app cuando está activo.
 function RootNavigator({ initialRoute, initialParams }) {
-  // Los params iniciales sólo van a la pantalla con la que arranca la app
   const p = (name) => (name === initialRoute ? initialParams : undefined);
   const { reduceMotion } = useTheme();
-  // URL y título de pestaña en web (constants/rutas.js). Se arma una vez: la
-  // sesión ya está resuelta cuando se monta el navegador.
   const [linking] = useState(() => crearLinking(haySesion(), initialRoute));
   return (
     <NavigationContainer
@@ -256,7 +223,6 @@ function RootNavigator({ initialRoute, initialParams }) {
           <Stack.Screen name="EditarMascota"        component={EditarMascotaScreen} />
           <Stack.Screen name="EliminarMascota"      component={EliminarMascotaScreen} />
           <Stack.Screen name="ElegirModo"             component={ElegirModoScreen} initialParams={p('ElegirModo')} />
-          {/* Zooni Paseadores (proveedores) */}
           <Stack.Screen name="ProveedorTipo"          component={ProveedorTipoScreen} />
           <Stack.Screen name="PaseadorLogin"          component={PaseadorLoginScreen} initialParams={p('PaseadorLogin')} />
           <Stack.Screen name="PaseadorRegistro"       component={PaseadorRegistroScreen} initialParams={p('PaseadorRegistro')} />
@@ -264,16 +230,13 @@ function RootNavigator({ initialRoute, initialParams }) {
           <Stack.Screen name="PaseadorChat"           component={PaseadorChatScreen} />
           <Stack.Screen name="PaseadorDisponibilidad" component={PaseadorDisponibilidadScreen} />
           <Stack.Screen name="PaseadorChats"          component={PaseadorChatsScreen} />
-          {/* Zooni Negocios: veterinarias, peluquerías y pet shops */}
           <Stack.Screen name="NegocioLogin"           component={NegocioLoginScreen} />
           <Stack.Screen name="NegocioRegistro"        component={NegocioRegistroScreen} />
           <Stack.Screen name="NegocioApp"             component={NegocioAppScreen} initialParams={p('NegocioApp')} />
           <Stack.Screen name="NegocioChat"            component={NegocioChatScreen} />
-          {/* Lado dueño de los negocios */}
           <Stack.Screen name="NegocioPublico"         component={NegocioPublicoScreen} />
           <Stack.Screen name="ReservarTurno"          component={ReservarTurnoScreen} />
           <Stack.Screen name="MisTurnos"              component={MisTurnosScreen} />
-          {/* Lado dueño de los paseos */}
           <Stack.Screen name="SolicitarPaseo"         component={SolicitarPaseoScreen} />
           <Stack.Screen name="MisPaseos"              component={MisPaseosScreen} />
         </Stack.Navigator>

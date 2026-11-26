@@ -1,14 +1,3 @@
-/**
- * VacunasScreen.jsx — Vacunas de una mascota.
- *
- * Llega desde la Ficha Médica con { petId } (o usa la mascota activa). Muestra
- * las vacunas ya aplicadas (se pueden agregar, editar y eliminar) y las que le
- * corresponden según el calendario, que se registran con un toque.
- *
- * El armazón y las tarjetas son los mismos que en Tratamientos
- * (components/salud); acá queda sólo lo propio de las vacunas.
- */
-
 import { useState } from 'react';
 
 import FechaPicker from '../components/FechaPicker';
@@ -32,7 +21,6 @@ const traerVacunas = async (idMascota) => {
   return { mascota, aplicados: aplicadas, sugeridos: sugeridas };
 };
 
-/** Color de "Próxima dosis": rojo si ya pasó, ámbar si falta un mes o menos. */
 function colorProximaDosis(fechaISO) {
   const dias = fechaISO ? diasHasta(fechaISO) : null;
   if (dias == null) return undefined;
@@ -41,10 +29,6 @@ function colorProximaDosis(fechaISO) {
   return undefined;
 }
 
-/**
- * Estado de una vacuna del calendario. La lista ya viene filtrada por edad,
- * peso y raza (fetchVacunas): si aparece y no está aplicada, le corresponde.
- */
 function estadoSugerida(sugerida) {
   if (!sugerida.applied) return { texto: 'Pendiente', color: colores.ambarOscuro };
   const dias = diasHasta(sugerida.proximo_refuerzo);
@@ -53,7 +37,6 @@ function estadoSugerida(sugerida) {
   return { texto: 'Al día', color: colores.verdeOscuro };
 }
 
-/** Fecha del refuerzo según la frecuencia del catálogo (6 meses o anual). */
 function proximoRefuerzo(fecha, sugerida) {
   const meses = sugerida?.frecuencia_descripcion?.includes('6 meses') ? 6 : 12;
   const d = new Date(fecha);
@@ -67,8 +50,6 @@ export default function VacunasScreen() {
   const salud = useRegistrosSalud(traerVacunas);
   const { toast, mostrarToast } = useToast();
 
-  // `edicion`: null (cerrado) · { modo: 'nueva' } · { modo: 'sugerida', sugerida }
-  // · { modo: 'editar', vacuna }. Una sola variable dice qué hace "Guardar".
   const [edicion, setEdicion] = useState(null);
   const [visible, setVisible] = useState(false);
   const [form, setForm] = useState(FORM_VACIO);
@@ -82,8 +63,6 @@ export default function VacunasScreen() {
     setErrores((e) => (e[campo] ? { ...e, [campo]: null } : e));
   };
 
-  // La fecha arranca en hoy y se calcula al abrir: sigue bien si la app quedó
-  // abierta de un día para el otro.
   const abrir = (nuevaEdicion, valores) => {
     setEdicion(nuevaEdicion);
     setForm({ ...FORM_VACIO, fecha: new Date(), ...valores });
@@ -147,8 +126,6 @@ export default function VacunasScreen() {
     try {
       await eliminarVacunaAplicada(vacuna.id);
       salud.setAplicados((prev) => prev.filter((v) => v.id !== vacuna.id));
-      // Si venía del calendario, su tarjeta vuelve a quedar pendiente (si no,
-      // seguía "Aplicada" y no dejaba registrarla otra vez).
       if (vacuna.vacuna_sugerida_id != null) {
         salud.setSugeridos((prev) => prev.map((sg) => (
           sg.id === vacuna.vacuna_sugerida_id ? { ...sg, applied: false, proximo_refuerzo: null } : sg
@@ -189,8 +166,6 @@ export default function VacunasScreen() {
           cargando={salud.cargando} items={salud.sugeridos}
           vacio={salud.error ? '' : 'No hay vacunas sugeridas para esta especie'}
           renderItem={(sg, i) => (
-            // `dosis` ("1 de 3", "Refuerzo") ubica la vacuna dentro del plan: sin
-            // eso, tres dosis de la misma se leían como tres vacunas sueltas.
             <TarjetaSugerido key={sg.id} orden={i} nombre={sg.nombre} detalle={sg.dosis}
               estado={estadoSugerida(sg)} frecuencia={sg.frecuencia_descripcion}
               aplicada={sg.applied} onRegistrar={() => abrirSugerida(sg)} />
@@ -201,7 +176,6 @@ export default function VacunasScreen() {
         titulo={editando ? 'Editar vacuna' : 'Registrar vacuna'}
         textoGuardar={editando ? 'Guardar cambios' : 'Guardar'}
         guardando={guardando} error={errorGuardar} onGuardar={guardar} onCerrar={() => setVisible(false)}>
-        {/* Una vacuna del calendario se registra con su nombre tal cual. */}
         <CampoTexto etiqueta="Vacuna" placeholder="Ej.: Antirrábica" value={form.nombre}
           bloqueado={edicion?.modo === 'sugerida'} error={errores.nombre}
           onChangeText={(v) => cambiar('nombre', v)} returnKeyType="next" maxLength={120} />
@@ -213,7 +187,6 @@ export default function VacunasScreen() {
           onChangeText={(v) => cambiar('descripcion', v)} multilinea maxLength={400} />
       </ModalFormulario>
 
-      {/* Una vacuna aplicada no puede tener fecha futura. */}
       <FechaPicker visible={eligiendoFecha} titulo="Fecha de aplicación" sinFuturo
         valor={form.fecha ?? new Date()}
         onConfirmar={(d) => { cambiar('fecha', d); setEligiendoFecha(false); }}

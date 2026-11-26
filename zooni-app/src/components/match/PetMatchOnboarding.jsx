@@ -1,25 +1,3 @@
-/**
- * PetMatchOnboarding.jsx — Crear el perfil de Match de UNA mascota, paso a paso
- *
- * Es lo que se abre al tocar "Crear perfil de {mascota}" en Match.
- *
- * POR QUÉ ASÍ
- * Antes esto era una hoja inferior con todo junto (descripción + un checkbox de
- * visibilidad) y, encima, la foto real se pedía DESPUÉS, en otra pantalla que
- * bloqueaba el swipe: se creaba el perfil y recién ahí aparecía "para aparecer
- * en Match, X necesita una foto real". Dos pasos desconectados para una sola
- * cosa. Acá se pregunta de a una y la foto entra donde corresponde, al
- * principio, porque sin ella la mascota no puede mostrarse.
- *
- * Tres preguntas, ninguna de más: foto, cómo es, y si aparece en Match.
- *
- * Todo lo que se guarda usa columnas que ya existen (Mascota.Foto,
- * Descripcion, VisibleEnMatch, PerfilMatchCreado): no hace falta migración.
- *
- * El guardado ocurre UNA sola vez, al final: si se abandona a la mitad no queda
- * una mascota marcada como "con perfil" pero sin nada cargado.
- */
-
 import { useState } from 'react';
 import {
   ActivityIndicator, Image, KeyboardAvoidingView, Platform, SafeAreaView,
@@ -47,7 +25,6 @@ export default function PetMatchOnboarding({ mascota, onListo, onCancelar }) {
 
   if (!mascota) return null;
 
-  // Si la mascota ya tiene una foto real cargada, sirve: no se vuelve a pedir.
   const fotoExistente = mascota.fotoUrl ?? null;
   const fotoMostrada = fotoUri ?? fotoExistente;
 
@@ -59,7 +36,6 @@ export default function PetMatchOnboarding({ mascota, onListo, onCancelar }) {
   const validarPaso = () => {
     switch (PASOS[paso]) {
       case 'foto':
-        // Obligatoria: una ilustración no alcanza para que otra persona decida.
         return (!fotoUri && !fotoExistente)
           ? `Agregá una foto real de ${mascota.nombre} para continuar`
           : null;
@@ -73,7 +49,6 @@ export default function PetMatchOnboarding({ mascota, onListo, onCancelar }) {
   const guardar = async () => {
     setGuardando(true);
     try {
-      // La foto primero: si falla, no queremos la mascota marcada con perfil.
       if (fotoUri) await setFotoPrincipalMascota(mascota.id, fotoUri);
       await crearPerfilMatchMascota(mascota.id, {
         descripcion: descripcion.trim() || undefined,

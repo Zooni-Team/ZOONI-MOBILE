@@ -1,13 +1,3 @@
-/**
- * MensajesNegocioTab.jsx — Bandeja de chats del negocio
- *
- * Una conversación por dueño que le escribió (fetchConversacionesNegocio):
- * el último mensaje ("Vos: …" si lo mandó el negocio), hace cuánto y cuántos
- * sin leer. Arriba las que tienen mensajes sin leer. Buscador por nombre.
- * Se refresca sola cada INTERVALO_BANDEJA_MS mientras está abierta. Tocar una abre el chat
- * (NegocioChat), con las respuestas rápidas del tipo de negocio.
- */
-
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View,
@@ -35,11 +25,10 @@ export default function MensajesNegocioTab({ negocio, cfg, abrirChat, refrescarB
     }
   }, [negocio.idServicio]);
 
-  // Al volver de un chat, la lista y el badge del menú se actualizan
   useFocusEffect(useCallback(() => {
     cargar();
     refrescarBadges?.();
-  }, [cargar])); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cargar]));
 
   useEffect(() => {
     const t = setInterval(cargar, INTERVALO_BANDEJA_MS);

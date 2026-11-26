@@ -3,7 +3,7 @@
 ← [índice](README.md) · se aplican en [estilos](estilos.md), [componentes](componentes.md), [utilidades](utilidades.md), [servicios](servicios.md) · se verifican con [testing](testing.md)
 
 ## Idioma y nombres
-- Código y comentarios en **español rioplatense** (como el resto del repo):
+- Código en **español rioplatense** (como el resto del repo):
   `fetchMisTurnos`, `crearPedido`, `colores.verde`.
 - Componentes en `PascalCase.jsx`; módulos de lógica en `camelCase.js`.
 - Booleanos que se leen como pregunta: `esEmailValido`, `haySesion`, `soyPaseador`.
@@ -29,13 +29,17 @@ usar en dos lugares, va al módulo central desde el primer día.
 - Las notificaciones (`notificar`) sí son "best effort": no rompen el flujo.
 
 ## Comentarios
-- Explican **por qué** (decisión, bug que evitan, regla de negocio), no qué hace
-  cada línea.
-- Si dicen algo de seguridad o arquitectura, tiene que ser verdad hoy. Si cambia
-  el código, se actualiza el comentario y el doc correspondiente.
-- Cabecera de archivo: `nombre.js — qué es` + cómo se usa.
+- **No se escriben comentarios** en el código: ni en JS/JSX/TS, ni en SQL, ni
+  en el HTML/JS armado como texto (mapas, PDF). Los nombres tienen que alcanzar
+  para entender qué hace cada cosa.
+- El **porqué** (decisión, bug que evitan, regla de negocio, seguridad) va en
+  el doc del tema en `docs/claude/` y en el mensaje del commit.
+- Tampoco directivas `eslint-disable`: los avisos de dependencias de hooks que
+  quedan son conocidos (ver Calidad).
 
 ## Calidad
-- `npm run lint`: **0 errores**. Quedan 7 avisos de dependencias de hooks
-  documentados en [faltaporhacer.md](../../faltaporhacer.md).
+- `npm run lint`: **0 errores**. Quedan 17 avisos de dependencias de hooks
+  (`react-hooks/exhaustive-deps`) que antes estaban silenciados con
+  `eslint-disable`. Son omisiones a propósito: agregar la dependencia cambia
+  cuándo corre el efecto, así que se revisan de a una, probando la pantalla.
 - `npm test` en verde antes de commitear.

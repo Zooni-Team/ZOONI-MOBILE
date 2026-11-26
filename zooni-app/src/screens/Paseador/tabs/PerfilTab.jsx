@@ -1,14 +1,3 @@
-/**
- * PerfilTab.jsx — Tab 5 de Zooni Paseadores
- *
- *   · Editar perfil: foto, descripción ("Sobre vos") y zona con su radio en km
- *     (botón "Editar perfil" o tocando la foto)
- *   · Rating, paseos y antigüedad en Zooni (desde el alta como paseador)
- *   · Servicios ofrecidos (tiempos de paseo y precios editables, tamaños, perros por paseo)
- *   · Reseñas de los dueños ("Ver todas" abre ResenasPaseadorModal, con fotos y videos)
- *   · Configuración de disponibilidad, cambiar a modo dueño, cerrar sesión
- */
-
 import { useCallback, useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text,
@@ -39,7 +28,6 @@ import { Estrellas } from '../../../components/ui/Estrellas';
 
 const TAMANO_LABEL = { chico: 'Chicos', mediano: 'Medianos', grande: 'Grandes' };
 
-
 function FilaMenu({ icono, titulo, sub, onPress, color = C.texto }) {
   return (
     <TouchableOpacity style={s.menuFila} onPress={onPress} activeOpacity={0.8}>
@@ -62,15 +50,11 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
   const [form, setForm] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [verResenas, setVerResenas] = useState(false);
-  // Editor del perfil (foto, descripción, zona y radio). Va aparte del de
-  // servicios: antes la descripción estaba escondida ahí adentro y la zona
-  // sólo se cambiaba desde Configuración, al fondo de todo.
   const [editPerfil, setEditPerfil] = useState(null);
   const [guardandoPerfil, setGuardandoPerfil] = useState(false);
 
   const cargar = useCallback(async () => {
     fetchResenas().then(setResenas).catch(() => setResenas({ promedio: null, cantidad: 0, totalPaseos: 0, primerPaseo: null, resenas: [] }));
-    // ¿También es dueño? (para ofrecer pasar al modo dueño)
     const roles = await fetchRolesCuenta().catch(() => null);
     setTieneMascotas(!!roles?.esDueno);
   }, []);
@@ -91,7 +75,7 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
 
   const abrirEditorPerfil = () => {
     setEditPerfil({
-      fotoUri: null, // foto nueva elegida acá; null = queda la actual
+      fotoUri: null,
       bio: perfil.bio ?? '',
       zona: { lat: perfil.lat, lng: perfil.lng, radioKm: perfil.radioKm, zona: perfil.zona ?? '' },
     });
@@ -119,7 +103,6 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
     };
     setGuardandoPerfil(true);
     try {
-      // La foto primero: si falla la subida no queda guardada la mitad
       const foto = editPerfil.fotoUri ? await actualizarMiFotoPerfil(editPerfil.fotoUri) : perfil.foto;
       await actualizarPerfilPaseador(cambios);
       setPerfil((p) => ({ ...p, ...cambios, foto }));
@@ -167,7 +150,6 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
   const salir = async () => {
     const ok = await confirmar('¿Cerrar sesión?', 'Vas a dejar de recibir solicitudes en este dispositivo.', { textoOk: 'Cerrar sesión', destructivo: true });
     if (!ok) return;
-    // Al salir deja de figurar disponible: nadie le asigna paseos con la app cerrada
     await actualizarPerfilPaseador({ disponible: false }).catch(() => {});
     await clearCurrentUserId();
     navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
@@ -177,7 +159,6 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
 
   return (
     <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-      {/* ── Cabecera ───────────────────────────────────────────────── */}
       <View style={s.cabecera}>
         <TouchableOpacity onPress={abrirEditorPerfil} activeOpacity={0.85} accessibilityLabel="Cambiar foto de perfil">
           <Avatar uri={perfil.foto} nombre={nombre} size={76} borde />
@@ -214,7 +195,6 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
 
       {perfil.bio ? <Text style={s.bio}>{perfil.bio}</Text> : null}
 
-      {/* ── Servicios ──────────────────────────────────────────────── */}
       <Seccion titulo="Servicios que ofrecés" accion="Editar" onAccion={abrirEditor} />
       <Card>
         {serviciosDe(perfil).map((x, i) => (
@@ -232,7 +212,6 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
         </View>
       </Card>
 
-      {/* ── Reseñas ────────────────────────────────────────────────── */}
       <Seccion titulo="Reseñas" accion={resenas ? (resenas.cantidad ? 'Ver todas' : 'Escribir una') : null} onAccion={() => setVerResenas(true)} />
       {resenas?.resenas?.length ? (
         resenas.resenas.slice(0, 5).map((r) => (
@@ -263,7 +242,6 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
         onCerrar={() => { setVerResenas(false); cargar(); }}
       />
 
-      {/* ── Configuración ──────────────────────────────────────────── */}
       <Seccion titulo="Configuración" />
       <Card style={{ paddingVertical: 4 }}>
         <FilaMenu icono="map" titulo="Zona y horarios"
@@ -275,7 +253,6 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
         <FilaMenu icono="log-out-outline" titulo="Cerrar sesión" color={C.rojo} onPress={salir} />
       </Card>
 
-      {/* ── Editor de servicios ────────────────────────────────────── */}
       <Modal visible={editando} transparent animationType="slide" onRequestClose={() => setEditando(false)}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Pressable style={s.overlay} onPress={() => setEditando(false)} />
@@ -298,7 +275,6 @@ export default function PerfilTab({ perfil, setPerfil, navigation, avisar }) {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ── Editor de perfil ───────────────────────────────────────── */}
       <Modal visible={!!editPerfil} transparent animationType="slide" onRequestClose={() => setEditPerfil(null)}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Pressable style={s.overlay} onPress={() => setEditPerfil(null)} />
@@ -392,7 +368,6 @@ const s = StyleSheet.create({
     backgroundColor: colores.blanco, borderTopLeftRadius: 24, borderTopRightRadius: 24,
     padding: 20, paddingBottom: 30,
   },
-  // El editor de perfil trae el mapa de la zona: alto tope y scroll adentro
   sheetAlto: { maxHeight: '92%', paddingBottom: 20 },
   fotoEditor: { alignItems: 'center', gap: 12 },
   fotoBotones: { flexDirection: 'row', gap: 10 },

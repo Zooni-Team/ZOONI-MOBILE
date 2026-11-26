@@ -1,10 +1,4 @@
 import { colores } from '../theme/colores';
-/**
- * categoriasConsejos.js — Sistema de categorías de consejos Zooni
- *
- * Cada categoría tiene: nombre, icono (Ionicons), fondo (chip/encabezado pastel), acento (borde/texto)
- * Para agregar una nueva categoría, solo agregar una entrada aquí.
- */
 
 export const CATEGORIAS_CONSEJOS = {
   general:        { nombre: 'General',        icono: 'bulb-outline',       fondo: '#FFFDE7', acento: colores.amarillo },
@@ -15,12 +9,6 @@ export const CATEGORIAS_CONSEJOS = {
   cuidado:        { nombre: 'Cuidado',         icono: 'cut-outline',        fondo: '#EAF5FF', acento: '#3498DB' },
 };
 
-/**
- * getCategoriaInfo(key)
- * Devuelve la info de una categoría. Si no existe, retorna un fallback genérico.
- * @param {string} key
- * @returns {{ nombre: string, icono: string, fondo: string, acento: string }}
- */
 export function getCategoriaInfo(key) {
   return CATEGORIAS_CONSEJOS[key] ?? {
     nombre: key ?? 'General',

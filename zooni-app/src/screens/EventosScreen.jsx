@@ -1,12 +1,3 @@
-/**
- * EventosScreen.jsx — Agenda pública de Zooni: jornadas, ferias y encuentros
- * para mascotas, cargados por organizadores verificados.
- *
- * Es de sólo lectura; la única acción es sumar un evento al calendario de una
- * mascota. Los datos los trae hooks/useEventosPublicos y cada tarjeta es
- * components/eventos/EventoPublicoCard.
- */
-
 import { useCallback, useState } from 'react';
 import {
   ImageBackground, RefreshControl, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View,
@@ -73,8 +64,6 @@ export default function EventosScreen() {
           ) : null}
         </View>
 
-        {/* Cada mascota tiene su calendario: hay que poder elegir a cuál va el
-            evento. Con una sola, el selector no se muestra. */}
         <SelectorMascota mascotas={datos.mascotas} valor={datos.idMascota}
           onCambiar={datos.elegirMascota} style={styles.selector} />
 
@@ -123,11 +112,9 @@ export default function EventosScreen() {
 }
 
 const styles = StyleSheet.create({
-  // ── Raíz — mismo fondo e igual estructura de header que Home ──
   safeArea: { flex: 1, backgroundColor: colores.mentaClara },
   screenBackground: { flex: 1, width: '100%' },
   screenBackgroundImage: { width: '100%', height: '100%' },
-  // ── Header ────────────────────────────────────────────────
   header: {
     height: 56,
     flexDirection: 'row',
@@ -138,7 +125,6 @@ const styles = StyleSheet.create({
   headerBtn: { width: 44, height: 44, justifyContent: 'center' },
   selector: { marginBottom: 10 },
   errorContainer: { paddingHorizontal: 20 },
-  // ── Título y subtítulo ────────────────────────────────────
   tituloContainer: {
     paddingHorizontal: 20,
     paddingTop: 4,
@@ -158,11 +144,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
   },
-  // ── ScrollView ────────────────────────────────────────────
   scrollContent: {
     paddingBottom: 32,
   },
-  // ── Estado vacío ──────────────────────────────────────────
   emptyContainer: {
     flexGrow: 1,
     justifyContent: 'center',

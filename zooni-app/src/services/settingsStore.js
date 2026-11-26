@@ -1,21 +1,5 @@
-/**
- * settingsStore.js — Preferencias de Configuración (Instruction-Configuracion §4)
- *
- * Tres categorías que NO se mezclan (§4.1):
- *   - Preferencias de CUENTA  (privacy / notifications / wellbeing) → cuando
- *     exista la tabla user_settings en Supabase, acá va el patch al servidor.
- *   - Preferencias de DISPOSITIVO (device) → solo locales, nunca suben.
- *   - Permisos del SO → se leen, nunca se escriben (viven en permisosApi).
- *
- * Hoy todo persiste local (localStorage en web / memoria en nativo hasta que
- * se agregue AsyncStorage). La API ya es asíncrona y con patch parcial para
- * que el cambio a Supabase (update_user_settings) no toque las pantallas.
- */
-
 import { Platform } from 'react-native';
 
-// Defaults obligatorios (§4.2 — promotions y map_posters arrancan en false:
-// todo lo comercial y lo ruidoso es opt-in)
 export const DEFAULTS = {
   privacy: {
     private_profile: false,
@@ -59,9 +43,6 @@ export const DEFAULTS = {
     wifi_only_downloads: false,
     preload_feed: false,
     save_photos: false,
-    // Recordar el mail de la última cuenta para precargarlo en el login.
-    // Opt-out (informe de seguridad #82): en un equipo compartido, alguien
-    // puede no querer que quede ni el mail después de cerrar sesión.
     recordar_mail: true,
   },
 };
@@ -80,24 +61,22 @@ function cargarPersistido() {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) return JSON.parse(raw);
-    } catch { /* storage bloqueado */ }
+    } catch {  }
   }
   return null;
 }
 
 function persistir(settings) {
   if (Platform.OS === 'web') {
-    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch { /* lleno */ }
+    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); } catch {  }
   }
 }
 
-/** Devuelve las preferencias completas; nunca falla por ausencia (§4.4). */
 export function getSettings() {
   if (!cache) {
     const guardado = cargarPersistido();
     cache = clonar(DEFAULTS);
     if (guardado) {
-      // merge superficial por sección: claves desconocidas se descartan
       for (const seccion of Object.keys(DEFAULTS)) {
         Object.assign(cache[seccion], guardado[seccion] ?? {});
       }
@@ -106,11 +85,6 @@ export function getSettings() {
   return cache;
 }
 
-/**
- * Patch parcial optimista: aplica al instante, notifica a los suscriptores y
- * persiste. Devuelve una función rollback() por si el guardado remoto falla
- * (V5: el control vuelve al valor anterior + toast con Reintentar).
- */
 export function patchSettings(seccion, patch) {
   const settings = getSettings();
   const previo = clonar(settings[seccion]);
@@ -124,7 +98,6 @@ export function patchSettings(seccion, patch) {
   };
 }
 
-/** Suscripción para que las pantallas reflejen cambios hechos en otra pantalla. */
 export function subscribeSettings(fn) {
   listeners.add(fn);
   return () => listeners.delete(fn);

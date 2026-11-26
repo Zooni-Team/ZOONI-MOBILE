@@ -1,17 +1,3 @@
-/**
- * GananciasTab.jsx — Tab 4 de Zooni Paseadores
- *
- *   · Filtro Semana / Mes / Todo
- *   · Total cobrado como número protagonista ("Cobraste $X esta semana")
- *   · Barras de lo cobrado por día (semana), por semana (mes) o por mes (todo)
- *   · Historial: UNA fila por perro (paseos, último paseo y cobrado en el
- *     período). Tocarlo abre todos sus paseos con vos (HistorialPerroModal).
- *
- * Gráfico: una sola serie → un solo color (teal), sin leyenda; tocar una barra
- * muestra su valor. El teal tiene poco contraste contra el blanco, por eso el
- * valor seleccionado y las etiquetas van siempre visibles en texto.
- */
-
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, TouchableOpacity, View,
@@ -33,7 +19,6 @@ const DIAS_CORTOS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 const MESES_CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 const ALTO_GRAFICO = 120;
 
-/** Agrupa lo cobrado en barras según el período. */
 function armarBarras(paseos, periodo) {
   if (periodo === 'semana') {
     const lunes = inicioDePeriodo('semana');
@@ -56,7 +41,6 @@ function armarBarras(paseos, periodo) {
     });
     return barras;
   }
-  // todo → últimos 6 meses
   const hoy = new Date();
   const barras = [];
   for (let k = 5; k >= 0; k -= 1) {
@@ -71,7 +55,6 @@ function armarBarras(paseos, periodo) {
   return barras;
 }
 
-/** Un grupo por perro, del paseado más recientemente al más viejo. */
 function agruparPorPerro(paseos) {
   const grupos = new Map();
   paseos.forEach((p) => {
@@ -134,7 +117,7 @@ export default function GananciasTab() {
   const [periodo, setPeriodo] = useState('semana');
   const [paseos, setPaseos] = useState(null);
   const [refrescando, setRefrescando] = useState(false);
-  const [perroSel, setPerroSel] = useState(null); // grupo cuyo historial completo se ve
+  const [perroSel, setPerroSel] = useState(null);
 
   const cargar = useCallback(async () => {
     try {
@@ -266,7 +249,6 @@ const g = StyleSheet.create({
   tooltipValor: { fontSize: 20, fontWeight: '900', color: C.texto },
   tooltipLabel: { fontSize: 13, color: C.texto2, fontWeight: '600' },
   area: { height: ALTO_GRAFICO, flexDirection: 'row', alignItems: 'flex-end' },
-  // Cada columna es más ancha que la barra: área de toque generosa y 2px+ de aire entre barras
   col: { flex: 1, height: '100%', justifyContent: 'flex-end', alignItems: 'center' },
   barra: { width: '58%', maxWidth: 28, borderTopLeftRadius: 4, borderTopRightRadius: 4 },
   barraOn: { backgroundColor: C.teal },

@@ -1,15 +1,3 @@
-/**
- * InicioTab.jsx — Tab 1 de Zooni Paseadores
- *
- *   · Toggle "Disponible" (el control más importante de la app)
- *   · Paseo en curso: TODAS las mascotas que se están paseando (un grupo),
- *     cada una con su tiempo y sus botones de pausar y finalizar
- *   · Resumen del día: cobrado, paseos y km — números grandes
- *   · Próximo paseo con mini mapa e "Iniciar paseo" (o "Sumar al paseo" si
- *     ya hay mascotas en curso)
- *   · Aviso de solicitudes nuevas
- */
-
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,7 +27,6 @@ export default function InicioTab({
   const [agenda, setAgenda] = useState([]);
   const [refrescando, setRefrescando] = useState(false);
   const [guardando, setGuardando] = useState(false);
-  // Paseo cuyo mapa se está viendo en grande (null = cerrado)
   const [mapaAmpliado, setMapaAmpliado] = useState(null);
 
   const cargar = useCallback(async () => {
@@ -51,14 +38,11 @@ export default function InicioTab({
       setHoy(finalizados);
       setAgenda(aceptados);
     } catch {
-      // queda lo anterior
     }
   }, []);
 
-  // Al iniciar o finalizar una mascota cambian la agenda y lo cobrado hoy
   useEffect(() => { cargar(); }, [cargar, paseosActivos.length]);
 
-  // Los timers del paseo en curso avanzan solos dentro de FilaPaseo (useReloj).
   const alguienCamina = paseosActivos.some((p) => p.reanudadoEn);
 
   const refrescar = async () => {
@@ -68,7 +52,7 @@ export default function InicioTab({
   };
 
   const cambiarDisponible = async (valor) => {
-    setPerfil((p) => ({ ...p, disponible: valor })); // optimista
+    setPerfil((p) => ({ ...p, disponible: valor }));
     setGuardando(true);
     try {
       await setDisponible(valor);
@@ -85,7 +69,6 @@ export default function InicioTab({
   const kmHoy = hoy.reduce((acc, p) => acc + (p.distanciaMetros ?? 0), 0);
   const proximo = agenda[0] ?? null;
   const disponible = !!perfil?.disponible;
-  // Dirigidas a mí: siempre. Abiertas: sólo si estoy disponible
   const nuevas = disponible ? solicitudes : solicitudes.filter((x) => !x.abierta);
 
   return (
@@ -94,7 +77,6 @@ export default function InicioTab({
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={refrescando} onRefresh={refrescar} tintColor={C.teal} />}
     >
-      {/* ── Disponible ─────────────────────────────────────────────── */}
       <View style={[s.disponible, disponible ? s.disponibleOn : s.disponibleOff]}>
         <View style={{ flex: 1 }}>
           <Text style={s.dispTitulo}>{disponible ? 'Estás disponible' : 'No estás disponible'}</Text>
@@ -107,7 +89,6 @@ export default function InicioTab({
         <SwitchGrande valor={disponible} onCambio={cambiarDisponible} disabled={guardando} />
       </View>
 
-      {/* ── Paseo en curso ─────────────────────────────────────────── */}
       {paseosActivos.length > 0 && (
         <View style={s.enCurso}>
           <TouchableOpacity style={s.enCursoHeader} onPress={() => irA('paseo')} activeOpacity={0.8}
@@ -132,7 +113,6 @@ export default function InicioTab({
         </View>
       )}
 
-      {/* ── Resumen del día ────────────────────────────────────────── */}
       <Seccion titulo="Tu día" accion="Ver ganancias" onAccion={() => irA('ganancias')} />
       <Card>
         <Text style={s.cobradoLabel}>Cobraste hoy</Text>
@@ -146,7 +126,6 @@ export default function InicioTab({
         </View>
       </Card>
 
-      {/* ── Solicitudes nuevas ─────────────────────────────────────── */}
       {nuevas.length > 0 && (
         <TouchableOpacity style={s.nuevas} onPress={() => irA('solicitudes')} activeOpacity={0.9}>
           <View style={s.nuevasBadge}>
@@ -159,22 +138,11 @@ export default function InicioTab({
         </TouchableOpacity>
       )}
 
-      {/* ── Próximo paseo ──────────────────────────────────────────── */}
       <Seccion titulo="Próximo paseo" accion={agenda.length > 1 ? `Ver agenda (${agenda.length})` : null}
         onAccion={() => irA('solicitudes')} />
       {proximo ? (
         <View>
           {proximo.lat != null && (
-            /*
-              Tocar el mini mapa lo abre a pantalla completa. Antes era una
-              imagen muerta: con 150 px y sin zoom no se podía ver por dónde
-              llegar, y tocarlo no hacía nada.
-
-              El toque va en un contenedor que envuelve al mapa (y no dentro de
-              MapaPaseo) porque en web el mapa es un <iframe>: se come los
-              eventos, así que la capa que recibe el toque tiene que estar
-              ENCIMA — es lo que hace `s.miniMapaTapa`.
-            */
             <View style={s.miniMapa}>
               <MapaPaseo destino={{ lat: proximo.lat, lng: proximo.lng }}
                 centro={{ lat: proximo.lat, lng: proximo.lng }} interactivo={false} style={{ flex: 1 }} />
@@ -239,7 +207,6 @@ export default function InicioTab({
 const s = StyleSheet.create({
   scroll: { padding: 20, paddingBottom: 32 },
 
-
   disponible: {
     flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 20, padding: 18,
   },
@@ -274,8 +241,6 @@ const s = StyleSheet.create({
   nuevasTxt: { flex: 1, fontSize: 15, fontWeight: '800', color: C.texto },
 
   miniMapa: { height: 150, borderTopLeftRadius: 18, borderTopRightRadius: 18, overflow: 'hidden' },
-  // Capa transparente ENCIMA del mapa: en web el mapa es un iframe y se queda
-  // con los eventos, así que el toque tiene que recibirse acá arriba.
   miniMapaTapa: { ...StyleSheet.absoluteFillObject },
   miniMapaLupa: {
     position: 'absolute', top: 10, right: 10,

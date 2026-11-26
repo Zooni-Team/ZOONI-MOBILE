@@ -1,9 +1,3 @@
-/**
- * fichaMedicaApi.js — Mascota, Vacunas y Tratamientos sobre Supabase
- *
- * Usado por FichaMedicaScreen, VacunasScreen y TratamientosScreen.
- */
-
 import { supabase } from '../lib/supabase';
 import { urlsFirmadas, borrarArchivoPrivado, borrarImagenPublica } from './imagenStorage';
 import { calcularEdadMeses } from '../utils/calcularEdad';
@@ -23,7 +17,6 @@ function mapMascota(m) {
   };
 }
 
-/** Trae una mascota por id. */
 export async function fetchMascota(petId) {
   if (!petId) return null;
   const { data, error } = await supabase.from('Mascota').select('*').eq('Id_Mascota', petId).single();
@@ -34,12 +27,9 @@ export async function fetchMascota(petId) {
 export async function actualizarPeso(petId, peso) {
   const { data, error } = await supabase.from('Mascota').update({ Peso: peso }).eq('Id_Mascota', petId).select().single();
   if (error) throw error;
-  // El punto del historial lo agrega la base (trigger de 066), sea cual sea
-  // la pantalla que cambió el peso.
   return mapMascota(data);
 }
 
-/** Últimos registros de peso de la mascota (más reciente primero). */
 export async function fetchHistorialPeso(petId, limit = 12) {
   const { data, error } = await supabase
     .from('historial_peso')
@@ -68,10 +58,6 @@ export async function actualizarFechaNacimiento(petId, fechaNacimiento) {
   return mapMascota(data);
 }
 
-// ─────────────────────────────────────────────
-// VACUNAS
-// ─────────────────────────────────────────────
-
 function mapAplicada(row) {
   return {
     id: row.Id,
@@ -85,7 +71,6 @@ function mapAplicada(row) {
   };
 }
 
-/** Trae mascota + vacunas aplicadas + calendario sugerido según su especie. */
 export async function fetchVacunas(petId) {
   const [mascota, { data: aplicadas, error: errAplicadas }, { data: catalogo, error: errCatalogo }] = await Promise.all([
     fetchMascota(petId),
@@ -110,9 +95,6 @@ export async function fetchVacunas(petId) {
       pesoMinKg: v.PesoMinKg, pesoMaxKg: v.PesoMaxKg, razas: v.Razas,
     }, perfil))
     .map((v) => {
-      // Por id del catálogo, o por nombre si se cargó a mano ("Añadir" guarda
-      // NombreLibre sin Id_Vacuna): si no, una Séxtuple cargada a mano
-      // seguía figurando como pendiente.
       const nombre = normalizarBusqueda(v.Nombre).trim();
       const aplicacion = (aplicadas ?? []).find((a) => a.Id_Vacuna === v.Id_Vacuna)
         ?? (aplicadas ?? []).find((a) => a.Id_Vacuna == null
@@ -120,9 +102,6 @@ export async function fetchVacunas(petId) {
       return {
         id: v.Id_Vacuna,
         nombre: v.Nombre,
-        // La columna Dosis existía en el catálogo pero no se mapeaba, así que
-        // nunca llegaba a la pantalla: es la que dice "1 de 3" o "Refuerzo",
-        // el dato que ubica cada vacuna dentro del plan (migración 033).
         dosis: v.Dosis ?? null,
         frecuencia_descripcion: v.FrecuenciaDescripcion ?? 'Sin frecuencia definida',
         applied: !!aplicacion,
@@ -133,7 +112,6 @@ export async function fetchVacunas(petId) {
   return { mascota, aplicadas: aplicadasMapeadas, sugeridas };
 }
 
-/** Registra una vacuna/tratamiento aplicado con nombre libre (botón "Añadir"). */
 export async function crearVacunaAplicada(petId, datos) {
   const { data, error } = await supabase
     .from('MascotaVacuna')
@@ -152,7 +130,6 @@ export async function crearVacunaAplicada(petId, datos) {
   return mapAplicada(data);
 }
 
-/** Marca una vacuna del catálogo como aplicada ("Marcar" en el calendario sugerido). */
 export async function marcarVacunaSugerida(petId, vacunaCatalogoId, datos) {
   const { data, error } = await supabase
     .from('MascotaVacuna')
@@ -193,10 +170,6 @@ export async function eliminarVacunaAplicada(id) {
   if (error) throw error;
 }
 
-// ─────────────────────────────────────────────
-// TRATAMIENTOS
-// ─────────────────────────────────────────────
-
 function mapTratamiento(row) {
   return {
     id: row.Id_Tratamiento,
@@ -208,7 +181,6 @@ function mapTratamiento(row) {
   };
 }
 
-/** Trae mascota + tratamientos aplicados + catálogo de sugeridos según su especie. */
 export async function fetchTratamientos(petId) {
   const [mascota, { data: aplicados, error: errAplicados }, { data: catalogo, error: errCatalogo }] = await Promise.all([
     fetchMascota(petId),
@@ -225,9 +197,6 @@ export async function fetchTratamientos(petId) {
     raza: mascota?.raza ?? null,
   };
 
-  // "Tratamiento" no tiene una columna que lo vincule al catálogo (a diferencia
-  // de MascotaVacuna.Id_Vacuna) — se matchea por nombre para saber si ya está
-  // aplicado, igual que hace Vacunas pero sin el id de por medio.
   const sugeridos = (catalogo ?? [])
     .filter((t) => t.especie === especie)
     .filter((t) => aplicaParaMascota({
@@ -289,10 +258,6 @@ export async function eliminarTratamiento(id) {
   if (error) throw error;
 }
 
-// ─────────────────────────────────────────────
-// CONSULTAS VETERINARIAS (anotaciones de consultas pasadas)
-// ─────────────────────────────────────────────
-
 function mapConsulta(row, firmadas = {}) {
   return {
     id: row.id,
@@ -301,13 +266,10 @@ function mapConsulta(row, firmadas = {}) {
     notas: row.notas,
     veterinario: row.veterinario,
     imagen_path: row.imagen_path ?? null,
-    // Imagen nueva: URL firmada del bucket privado (vence). Consultas viejas,
-    // anteriores a 064: la URL pública que quedó guardada.
     imagen_url: (row.imagen_path ? firmadas[row.imagen_path] : row.imagen_url) ?? null,
   };
 }
 
-/** Firma las imágenes privadas de un lote de filas. Si falla, sin imágenes (no sin consultas). */
 async function firmarImagenes(rows) {
   try {
     return await urlsFirmadas(rows.map((r) => r.imagen_path));
@@ -316,7 +278,6 @@ async function firmarImagenes(rows) {
   }
 }
 
-/** Trae las consultas registradas de la mascota (más reciente primero). */
 export async function fetchConsultas(petId) {
   const { data, error } = await supabase
     .from('consultas_veterinarias')
@@ -329,17 +290,12 @@ export async function fetchConsultas(petId) {
   return rows.map((r) => mapConsulta(r, firmadas));
 }
 
-/** PGRST204 = PostgREST no encontró una columna del insert en el esquema. */
 function esColumnaInexistente(error, columna) {
   return error?.code === 'PGRST204'
     || new RegExp(`'?${columna}'? column`, 'i').test(error?.message ?? '')
     || /could not find the .* column/i.test(error?.message ?? '');
 }
 
-/**
- * Alta de una consulta. La imagen, si hay, ya está subida al bucket privado:
- * llega su ruta en `datos.imagen_path` (ver subirImagenPrivada).
- */
 export async function crearConsulta(petId, datos) {
   const base = {
     mascota_id: petId,
@@ -357,10 +313,6 @@ export async function crearConsulta(petId, datos) {
 
   if (!error) return mapConsulta(data, await firmarImagenes([data]));
 
-  // Si 064 (que agrega imagen_path) no está corrida en esta base, PostgREST
-  // devuelve 400 PGRST204 por la columna desconocida y se perdía la consulta
-  // entera. Reintentamos sin la imagen para no bloquear el alta — correr
-  // SUPABASE_PEGAR_TODO.sql habilita el adjunto.
   if (!esColumnaInexistente(error, 'imagen_path')) throw error;
 
   const { data: dataSinImagen, error: error2 } = await supabase
@@ -373,11 +325,6 @@ export async function crearConsulta(petId, datos) {
 }
 
 export async function eliminarConsulta(id) {
-  // La imagen se lee ANTES de borrar la fila: después no hay de dónde sacar la
-  // ruta. Puede ser del bucket privado (consultas nuevas, imagen_path) o una
-  // URL pública entera (consultas de antes de la 064). Los triggers de la 068
-  // también la anotan para el script de limpieza; esto la saca en el momento
-  // y nunca tira: la fila ya se borró (#70).
   const { data: fila } = await supabase.from('consultas_veterinarias')
     .select('imagen_path, imagen_url').eq('id', id).maybeSingle();
 

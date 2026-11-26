@@ -1,11 +1,3 @@
-/**
- * ModalFormulario.jsx — Ventana centrada con un formulario corto: título, los
- * campos (hijos), "Guardar" y "Cancelar". La usan Vacunas y Tratamientos.
- *
- * También exporta CampoTexto y CampoFecha para que los dos formularios tengan
- * los mismos bordes, el mismo foco y el mismo lugar para el error.
- */
-
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, Animated, Dimensions, Keyboard, KeyboardAvoidingView, Modal, Platform,
@@ -19,16 +11,7 @@ import { colores, sombras } from '../../theme';
 const PANTALLA = Dimensions.get('window');
 const ANCHO = Math.min(PANTALLA.width * 0.88, 360);
 
-/**
- * @param {boolean}  visible
- * @param {string}   titulo
- * @param {string}   textoGuardar   "Guardar" / "Guardar cambios"
- * @param {boolean}  guardando      deshabilita y muestra el spinner
- * @param {string}   [error]        por qué no se pudo guardar (se ve arriba de los botones:
- *                                  un Toast de la pantalla quedaría tapado por el modal)
- */
 export default function ModalFormulario({ visible, titulo, textoGuardar = 'Guardar', guardando, error, onGuardar, onCerrar, children }) {
-  // `montado` sigue en true mientras dura la animación de salida.
   const [montado, setMontado] = useState(visible);
   const escala = useRef(new Animated.Value(0.92)).current;
   const opacidad = useRef(new Animated.Value(0)).current;
@@ -52,18 +35,14 @@ export default function ModalFormulario({ visible, titulo, textoGuardar = 'Guard
   return (
     <Modal visible={montado} transparent animationType="none" onRequestClose={onCerrar}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.flex}>
-        {/* Tocar afuera cierra; tocar la tarjeta no. */}
         <TouchableOpacity style={s.fondo} activeOpacity={1} onPress={onCerrar} accessible={false}>
           <TouchableOpacity activeOpacity={1} accessible={false}>
             <Animated.View style={[s.tarjeta, { transform: [{ scale: escala }], opacity: opacidad }]}>
-              {/* flexShrink: 1 y no flex: 1: la tarjeta mide lo que mide el
-                  formulario y sólo desplaza si no entra en la pantalla. */}
               <ScrollView style={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <Text style={s.titulo} accessibilityRole="header">{titulo}</Text>
                 {children}
                 {error ? <Text style={s.errorGeneral} accessibilityRole="alert">{error}</Text> : null}
               </ScrollView>
-              {/* Los botones van fuera del scroll: siempre a la vista. */}
               <View style={s.pie}>
                 <TouchableOpacity style={s.btnCancelar} onPress={onCerrar} disabled={guardando}
                   activeOpacity={0.85} accessibilityRole="button">
@@ -84,7 +63,6 @@ export default function ModalFormulario({ visible, titulo, textoGuardar = 'Guard
   );
 }
 
-/** TextInput con rótulo, borde verde al enfocar y el error debajo. */
 export function CampoTexto({ etiqueta, error, multilinea, bloqueado, style, ...props }) {
   const [enfocado, setEnfocado] = useState(false);
   return (
@@ -105,7 +83,6 @@ export function CampoTexto({ etiqueta, error, multilinea, bloqueado, style, ...p
   );
 }
 
-/** Campo que abre el FechaPicker de la pantalla. `valor` es un Date o null. */
 export function CampoFecha({ etiqueta, valor, vacio = 'Elegir fecha', error, onAbrir }) {
   return (
     <View style={s.campo}>
@@ -126,8 +103,6 @@ const s = StyleSheet.create({
   fondo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.50)', justifyContent: 'center', alignItems: 'center' },
   tarjeta: {
     backgroundColor: colores.blanco, borderRadius: 20, width: ANCHO,
-    // En píxeles y no en '%': el porcentaje se resuelve contra un padre de alto
-    // automático y la tarjeta terminaba recortando el final del formulario.
     maxHeight: PANTALLA.height * 0.9,
     paddingHorizontal: 22, paddingTop: 24, paddingBottom: 18,
     ...sombras.modal,

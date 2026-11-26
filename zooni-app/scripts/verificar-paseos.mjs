@@ -1,9 +1,4 @@
 #!/usr/bin/env node
-// verificar-paseos.mjs — Prueba la lógica pura de paseos y distancias SIN
-// Supabase ni pantalla (npm run verify:paseos). Sale con código 1 si algo falla.
-//
-// Es posible porque esa lógica ya no vive dentro de services/paseadorApi.js
-// (que habla con la base) sino en src/domain/paseos.js y src/utils/geo.js.
 
 import assert from 'node:assert/strict';
 import path from 'node:path';

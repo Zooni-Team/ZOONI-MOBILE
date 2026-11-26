@@ -1,16 +1,3 @@
-/**
- * CampoFormulario.jsx — Piezas de formulario compartidas por los registros de
- * Negocio y de Paseador (antes cada pantalla tenía su copia).
- *
- *   <Campo label="Email" error={errores.email} ayuda="Lo usás para entrar">
- *     <TextInput style={estilosCampo.input} … />
- *   </Campo>
- *   <InputPassword value={…} onChangeText={…} placeholder="Contraseña" error={!!errores.pass} />
- *
- * `estilosCampo.input` / `.inputError` sirven para los TextInput comunes que
- * van adentro de un Campo, así todos los bordes quedan iguales.
- */
-
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,7 +5,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { colores } from '../../theme';
 import { C } from '../paseador/PaseadorUI';
 
-/** Rótulo + control + ayuda (si no hay error) + mensaje de error. */
 export function Campo({ label, error, ayuda, children }) {
   return (
     <View style={estilosCampo.campo}>
@@ -30,7 +16,6 @@ export function Campo({ label, error, ayuda, children }) {
   );
 }
 
-/** Contraseña nueva con el ojito para mostrarla. */
 export function InputPassword({ value, onChangeText, placeholder, error }) {
   const [ver, setVer] = useState(false);
   return (

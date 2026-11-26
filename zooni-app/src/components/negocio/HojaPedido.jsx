@@ -1,10 +1,3 @@
-/**
- * HojaPedido.jsx — La hoja del pedido de un pet shop en la ficha pública del
- * negocio (NegocioPublicoScreen): el carrito, la entrega, el medio de pago y
- * el envío del pedido; y el Stepper +/− de cantidades que usa también la
- * lista de productos. Antes vivían dentro de la pantalla (devolución, FEC-GOD).
- */
-
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';

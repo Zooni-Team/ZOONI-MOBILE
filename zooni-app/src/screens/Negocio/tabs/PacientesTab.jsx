@@ -1,13 +1,3 @@
-/**
- * PacientesTab.jsx — Pacientes (veterinaria) / Clientes (peluquería)
- *
- * Una ficha por mascota que atendiste o que tiene turno, armada con sus
- * turnos (fetchPacientes): última visita, próximo turno y —en veterinarias—
- * el próximo control indicado. Buscador por mascota, raza o dueño, y filtros
- * rápidos. Tocar una abre su historia completa (FichaPacienteModal), donde se
- * puede corregir el informe de cada visita.
- */
-
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View,
@@ -29,8 +19,8 @@ export default function PacientesTab({ negocio, tipo, avisar, abrirChat }) {
   const [busqueda, setBusqueda] = useState('');
   const [filtro, setFiltro] = useState('todos');
   const [refrescando, setRefrescando] = useState(false);
-  const [abierta, setAbierta] = useState(null); // idMascota
-  const [editando, setEditando] = useState(null); // turno
+  const [abierta, setAbierta] = useState(null);
+  const [editando, setEditando] = useState(null);
 
   const cargar = useCallback(async () => {
     try {

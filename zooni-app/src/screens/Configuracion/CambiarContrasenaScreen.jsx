@@ -1,10 +1,3 @@
-/**
- * CambiarContrasenaScreen.jsx — Cuenta y Seguridad › Cambiar contraseña (§3.5.1)
- *
- * Una de las TRES pantallas con botón Guardar explícito (junto con cambio de
- * email y eliminar cuenta). Medidor de fuerza débil / media / fuerte.
- */
-
 import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View,

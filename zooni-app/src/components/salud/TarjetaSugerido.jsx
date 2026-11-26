@@ -1,26 +1,9 @@
-/**
- * TarjetaSugerido.jsx — Algo que le corresponde a la mascota según el
- * calendario (una vacuna del plan, un tratamiento recomendado) y todavía se
- * puede registrar. Si ya está registrado muestra "Aplicada".
- *
- * Era CardSugerido, copiado en Vacunas y Tratamientos con dos diseños. Quedó
- * el de Vacunas: nombre a la izquierda; estado, frecuencia y botón a la derecha.
- */
-
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { colores, sombras } from '../../theme';
 import { useEntrada } from './useEntrada';
 
-/**
- * @param {string}  nombre
- * @param {string}  [detalle]      "1 de 3", "Refuerzo": dónde cae dentro del plan
- * @param {{ texto: string, color: string }} [estado]   "Pendiente", "Vencida"…
- * @param {string}  [frecuencia]   "Cada 12 meses"
- * @param {boolean} aplicada
- * @param {number}  orden          posición en la lista (escalona la entrada)
- */
 export default function TarjetaSugerido({ nombre, detalle, estado, frecuencia, aplicada, orden, onRegistrar }) {
   const entrada = useEntrada(orden);
   return (
@@ -57,9 +40,6 @@ const s = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     marginBottom: 10,
   },
-  // minWidth: 0 de un lado y maxWidth del otro: sin esto, un texto largo en
-  // cualquiera de los dos empuja al otro a un ancho casi nulo y se parte letra
-  // por letra (visto con una frecuencia larga).
   izquierda: { flex: 1, minWidth: 0, paddingRight: 8 },
   derecha: { maxWidth: '45%', alignItems: 'flex-end', justifyContent: 'center', gap: 4 },
   nombre: { fontSize: 14, fontWeight: '700', color: colores.texto },

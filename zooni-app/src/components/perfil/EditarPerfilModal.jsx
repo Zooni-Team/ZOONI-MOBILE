@@ -1,22 +1,3 @@
-/**
- * EditarPerfilModal.jsx — El editor de perfil, compartido
- *
- * Vive acá y no dentro de PerfilScreen porque se abre desde dos lugares: el
- * botón "Editar perfil" del perfil y el mismo botón dentro de "Así te ven" de
- * Match. Es el MISMO formulario y el mismo `actualizarMiPerfil`, así que lo que
- * se cambia desde Match aparece igual al entrar a Perfil (que recarga al
- * enfocarse) y al revés.
- *
- * `perfil` es opcional: si el que abre el modal ya tiene los datos (Perfil) los
- * pasa y el formulario aparece lleno; si no (Match), se piden con
- * `fetchMiPerfil` al abrirse.
- *
- * `onCerrar` recibe 'navegacion' cuando se cierra para irse a Configuración:
- * quien lo abrió no tiene que reabrir nada encima de la pantalla nueva (un
- * Modal se dibuja por arriba de todo, incluso de la pantalla que se acaba de
- * abrir).
- */
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Dimensions, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,8 +7,6 @@ import { fetchMiPerfil, actualizarMiPerfil } from '../../services/perfilApi';
 import { colores } from '../../theme';
 
 const { height: SH } = Dimensions.get('window');
-
-// ─── MODAL ANIMADO (lo usa también el modal de nueva publicación) ─────────────
 
 export function AModal({ visible, onClose, children }) {
   const sc = useRef(new Animated.Value(0.92)).current;
@@ -43,7 +22,6 @@ export function AModal({ visible, onClose, children }) {
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <KeyboardAvoidingView behavior="padding" style={s.modalKAV}>
-        {/* Overlay: solo cierra al tocar FUERA del card */}
         <Pressable style={s.overlay} onPress={onClose}>
           <Pressable style={s.modalCardWrap} onPress={() => {}}>
             <Animated.View style={[s.modalCard, { transform: [{ scale: sc }], opacity: op }]}>
@@ -63,8 +41,6 @@ export function AModal({ visible, onClose, children }) {
   );
 }
 
-// ─── INPUT con borde que cambia en focus ──────────────────────────────────────
-
 export function FocusInput({ style, multiline, ...props }) {
   const [foc, setFoc] = useState(false);
   return (
@@ -78,8 +54,6 @@ export function FocusInput({ style, multiline, ...props }) {
   );
 }
 
-// ─── EDITOR ───────────────────────────────────────────────────────────────────
-
 export default function EditarPerfilModal({ visible, perfil, onCerrar, onGuardado, onError }) {
   const navigation = useNavigation();
 
@@ -92,18 +66,6 @@ export default function EditarPerfilModal({ visible, perfil, onCerrar, onGuardad
   const [cargando,  setCargando]  = useState(false);
   const [guardando, setGuardando] = useState(false);
 
-  /*
-    Salida con cambios sin guardar.
-
-    Irse a Configuración a cambiar el @usuario descartaba en silencio lo que
-    hubieras escrito en nombre, apellido, bio y zona: el modal se cierra y
-    nunca se guardó nada. Ahora cualquier salida (ese link, "Cancelar", tocar
-    afuera o el botón atrás) pasa por `intentarSalir`, que si hay algo tocado
-    frena y ofrece guardar primero.
-
-    `pendiente` es la salida que quedó esperando esa decisión: 'cerrar' o
-    'usuario' (irse a Configuración).
-  */
   const [pendiente, setPendiente] = useState(null);
   const inicial = useRef({ nombre: '', apellido: '', bio: '', ubicacion: '' });
 
@@ -114,9 +76,6 @@ export default function EditarPerfilModal({ visible, perfil, onCerrar, onGuardad
     || ubicacion.trim() !== inicial.current.ubicacion
   );
 
-  // Por referencia y no como dependencias del efecto de abajo: los padres pasan
-  // objetos y funciones inline, que cambian de identidad en cada render suyo, y
-  // el formulario se recargaría encima de lo que el usuario está tipeando.
   const onErrorRef = useRef(onError);
   onErrorRef.current = onError;
   const perfilRef = useRef(perfil);
@@ -129,9 +88,6 @@ export default function EditarPerfilModal({ visible, perfil, onCerrar, onGuardad
       bio:       u?.bio ?? '',
       ubicacion: u?.ubicacion ?? '',
     };
-    // Con lo que se guardó recién: contra esto se compara para saber si quedó
-    // algo sin guardar (comparado ya trimmeado, igual que como se guarda, para
-    // que un espacio de más no cuente como cambio).
     inicial.current = {
       nombre: base.nombre.trim(), apellido: base.apellido.trim(),
       bio: base.bio.trim(), ubicacion: base.ubicacion.trim(),
@@ -143,11 +99,6 @@ export default function EditarPerfilModal({ visible, perfil, onCerrar, onGuardad
     setNombreUsuario(u?.nombreUsuario ?? null);
   }, []);
 
-  /*
-    Corre una vez por apertura (`visible` es la única dependencia que cambia):
-    arranca siempre con lo último guardado, pero no se rellena de nuevo mientras
-    está abierto, así lo que el usuario está tipeando no se pierde.
-  */
   useEffect(() => {
     if (!visible) return;
     setErr('');
@@ -163,7 +114,6 @@ export default function EditarPerfilModal({ visible, perfil, onCerrar, onGuardad
     return () => { cancelado = true; };
   }, [visible, llenar]);
 
-  /** Ejecuta una salida ya decidida: cerrar, o cerrar e ir a Configuración. */
   function salir(destino) {
     if (destino === 'usuario') {
       onCerrar?.('navegacion');
@@ -173,7 +123,6 @@ export default function EditarPerfilModal({ visible, perfil, onCerrar, onGuardad
     }
   }
 
-  /** Puerta de salida: con cambios sin guardar, pregunta antes de descartarlos. */
   function intentarSalir(destino) {
     if (hayCambios) { setPendiente(destino); return; }
     salir(destino);
@@ -181,7 +130,6 @@ export default function EditarPerfilModal({ visible, perfil, onCerrar, onGuardad
 
   async function guardar(destino) {
     if (!nombre.trim()) {
-      // El aviso tapa el formulario: hay que volver a él para que se vea el error.
       setPendiente(null);
       setErr('El nombre es requerido');
       return;
@@ -192,17 +140,14 @@ export default function EditarPerfilModal({ visible, perfil, onCerrar, onGuardad
         nombre: nombre.trim(), apellido: apellido.trim(),
         bio: bio.trim(), ubicacion: ubicacion.trim(),
       });
-      // El motivo va al padre para que no reabra nada encima de Configuración.
       onGuardado?.(actualizado, destino === 'usuario' ? 'navegacion' : undefined);
       if (destino === 'usuario') navigation.navigate('ConfigCuenta');
     } catch {
       onError?.('No se pudo actualizar el perfil');
-      setPendiente(null); // que se vea el mensaje de error del padre
+      setPendiente(null);
     } finally { setGuardando(false); }
   }
 
-  // Envuelto a propósito: TouchableOpacity/Pressable pasan el evento del toque
-  // como primer argumento y se colaría como "destino".
   const cerrar = () => intentarSalir('cerrar');
 
   if (pendiente) {
@@ -252,7 +197,6 @@ export default function EditarPerfilModal({ visible, perfil, onCerrar, onGuardad
           <FocusInput placeholder="Apellido" placeholderTextColor={colores.textoTenue}
             value={apellido} onChangeText={setApellido} style={{ marginBottom: 12 }} />
 
-          {/* El @usuario se cambia desde Configuración (con bloqueo de 30 días) */}
           <TouchableOpacity style={s.usuarioRow}
             onPress={() => intentarSalir('usuario')}
             accessibilityRole="button" accessibilityLabel="Cambiar nombre de usuario en Configuración">
@@ -295,7 +239,6 @@ const s = StyleSheet.create({
   modalTitulo: { fontSize:18, fontWeight:'700', color:colores.verde, textAlign:'center', marginBottom:20 },
   cargando:    { paddingVertical:40 },
 
-  // Aviso de cambios sin guardar
   avisoIconoWrap: { alignItems:'center', marginBottom:10 },
   avisoTitulo: { fontSize:18, fontWeight:'800', color:colores.texto, textAlign:'center' },
   avisoTxt:    { fontSize:14, color:colores.textoSecundario, textAlign:'center', lineHeight:20,

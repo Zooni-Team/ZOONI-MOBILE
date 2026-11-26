@@ -1,32 +1,3 @@
-/**
- * PaseadorRegistroScreen.jsx — Alta de paseador en 2 pasos
- *
- *   Paso 1 · Tus datos      (nombre, apellido, género, nacimiento, mail, teléfono, contraseña)
- *   Paso 2 · Cómo trabajás  (zona, tiempos de paseo y precios, perros por paseo, tamaños, bio)
- *
- * Con route.params.activar ({ email, nombre }) viene de una cuenta de
- * dueño existente: se saltea el paso 1 y sólo se suma el perfil de paseador.
- * Con route.params.social ({ email, nombre, apellido, foto, proveedor }) viene
- * de "Continuar con Google / Facebook / Apple" sin cuenta: el paso 1 no pide
- * mail ni contraseña y la foto del proveedor sirve como foto de la cara.
- * Con route.params.activarSocial ({ nombre, fotoPerfil }) es un dueño que entró
- * con su proveedor y se suma como paseador: como `activar`, sin contraseña.
- * Con route.params.completar la cuenta YA tiene el rol de paseador pero no su
- * perfil (ej. rol asignado a mano): también se saltea el paso 1.
- *
- * La zona se elige arrastrando un círculo en el mapa (ZonaMapaPicker) y el
- * radio lo escribe el paseador en km: no viene ninguno elegido de entrada.
- * Los tiempos de paseo tampoco son fijos: el paseador carga cuántos minutos
- * dura cada paseo que ofrece y cuánto cobra (ServiciosEditor).
- * La FOTO DE LA CARA es obligatoria (es lo primero que ve un dueño antes de
- * dejarle su mascota): en cuenta nueva va en el paso 1; si la cuenta ya
- * existe y no tiene foto, se pide arriba del paso 2.
- * Al terminar entra directo a la app (el paseador viene a trabajar).
- *
- * La edad se pide como FECHA DE NACIMIENTO (igual que en mascotas): una edad
- * fija queda vieja. Hay que ser mayor de EDAD_MINIMA para pasear perros ajenos.
- */
-
 import { useEffect, useRef, useState } from 'react';
 import {
   Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet,
@@ -76,11 +47,8 @@ const TAMANOS = [
   { key: 'grande', label: 'Grande', detalle: '+25 kg' },
 ];
 
-
-/** Campo "Foto de tu cara": círculo con la vista previa + cámara / galería. */
 function CampoFoto({ uri, error, onElegir }) {
   const elegir = async (camara) => {
-    // Cámara frontal: es una foto de la cara del paseador
     const elegida = await elegirImagen({ camara, cuadrada: true, frontal: true });
     if (elegida) onElegir(elegida);
   };
@@ -123,11 +91,8 @@ export default function PaseadorRegistroScreen() {
   const [cargando, setCargando] = useState(false);
   const scrollRef = useRef(null);
   const [foto, setFoto] = useState(null);
-  // Foto que la cuenta YA tenía (dueño que activa / cuenta que completa): no se vuelve a pedir
   const [fotoExistente, setFotoExistente] = useState(activar?.fotoPerfil ?? activarSocial?.fotoPerfil ?? null);
-  // Foto del proveedor (Google / Facebook): sirve de foto de la cara si no elige otra
   const fotoSocial = /^https:\/\//.test(social?.foto ?? '') ? social.foto : null;
-  // Si la cuenta se creó pero falló la subida de la foto, reintentar sólo la foto
   const cuentaCreadaRef = useRef(false);
 
   useEffect(() => {
@@ -162,14 +127,12 @@ export default function PaseadorRegistroScreen() {
     else if (edad < EDAD_MINIMA) e.fechaNacimiento = `Para ser paseador es necesario tener al menos ${EDAD_MINIMA} años`;
     else if (edad > EDAD_MAXIMA) e.fechaNacimiento = 'Revisá tu fecha de nacimiento';
     if (usuario.telefono.length < 8) e.telefono = 'El teléfono es obligatorio (mínimo 8 números)';
-    // Con Google / Facebook / Apple el mail lo verificó el proveedor y no hay contraseña
     if (!social) {
       if (!EMAIL_REGEX.test(usuario.email.trim())) e.email = 'Es necesario un email válido';
       if (usuario.password.length < PASSWORD_MIN) e.password = `La contraseña necesita al menos ${PASSWORD_MIN} caracteres`;
       else if (usuario.password !== usuario.password2) e.password2 = 'Las contraseñas no coinciden';
     }
     if (!social && !e.email) {
-      // Máximo 3 s: si la red tarda, se sigue (el servidor igual rechaza mails repetidos)
       const { mailTomado } = await Promise.race([
         verificarDisponibilidad({ email: usuario.email }).catch(() => ({ mailTomado: false })),
         new Promise((resolve) => setTimeout(() => resolve({ mailTomado: false }), 3000)),
@@ -207,8 +170,6 @@ export default function PaseadorRegistroScreen() {
       return;
     }
     if (!validarPaso2()) {
-      // El error de la zona está arriba (mapa): subir. Los de precios/tamaños
-      // quedan cerca, pero el resumen junto al botón los dice igual.
       scrollRef.current?.scrollTo({ y: 0, animated: true });
       return;
     }
@@ -231,7 +192,6 @@ export default function PaseadorRegistroScreen() {
           await registrarPaseadorSocial({
             usuario: { ...usuario, fechaNacimiento: toISODateLocal(usuario.fechaNacimiento) },
             perfil: datosPerfil,
-            // Si eligió una foto propia se sube después; si no, queda la del proveedor
             fotoPerfil: foto ? null : fotoSocial,
           });
         } else {
@@ -243,8 +203,6 @@ export default function PaseadorRegistroScreen() {
         cuentaCreadaRef.current = true;
       }
 
-      // La foto se sube con la sesión ya iniciada (va a "User".FotoPerfil,
-      // la misma que usa el perfil de dueño)
       let fotoUrl = fotoExistente ?? (foto ? null : fotoSocial);
       if (foto) {
         try {
@@ -255,7 +213,6 @@ export default function PaseadorRegistroScreen() {
           return;
         }
       }
-      // El perfil viaja a la home: si la base no lo deja leer, se usa esta copia
       const perfilLocal = {
         idUser: null,
         nombre: usuario.nombre.trim() || activar?.nombre || activarSocial?.nombre || '',
@@ -273,7 +230,6 @@ export default function PaseadorRegistroScreen() {
       });
     } catch (err) {
       const msg = err?.message;
-      // El detalle real de Supabase queda en la consola y en pantalla
       console.error('[Registro paseador]', msg, err?.detalle ?? err);
       const detalle = err?.detalle ? `\n\nDetalle: ${err.detalle}` : '';
       if (msg === 'email_existente') {
@@ -401,8 +357,6 @@ export default function PaseadorRegistroScreen() {
                   <TextInput style={[s.input, errores.email && s.inputError]} value={usuario.email}
                     onChangeText={(v) => setU('email', v.trim())} placeholder="vos@mail.com" placeholderTextColor={C.gris}
                     keyboardType="email-address" autoCapitalize="none" autoCorrect={false}
-                    // Sin esto el navegador guardaba el TELÉFONO (el campo justo antes de la
-                    // contraseña) como usuario, y después lo rellenaba en el login
                     autoComplete="username" textContentType="username" />
                 </Campo>
               )}

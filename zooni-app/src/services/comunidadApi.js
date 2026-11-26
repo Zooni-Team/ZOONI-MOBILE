@@ -1,12 +1,3 @@
-/**
- * comunidadApi.js — Datos del mapa de Comunidad: servicios (pines), carteles
- * de mascotas perdidas y avisos, amigos y solicitudes, y la ubicación que
- * cada uno decide compartir.
- *
- * Tablas: servicios, carteles, amistades, ubicaciones_usuarios
- * (supabase/SUPABASE_PEGAR_TODO.sql; permisos en la sección 061).
- */
-
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
 import { subirImagenPublica } from './imagenStorage';
@@ -23,23 +14,6 @@ function aplicarBbox(query, bbox, latCol = 'lat', lngCol = 'lng') {
     .gte(lngCol, bbox.lng_min).lte(lngCol, bbox.lng_max);
 }
 
-// ─────────────────────────────────────────────
-// SERVICIOS
-// ─────────────────────────────────────────────
-
-/**
- * Servicios del área visible: los cargados en Zooni MÁS los negocios reales que
- * existen ahí (veterinarias, pet shops y peluquerías caninas).
- *
- * La tabla `servicios` sola estaba prácticamente vacía, así que la pestaña
- * mostraba "No hay servicios en esta área" en casi todos lados. Los locales
- * reales los aporta el proveedor de mapas — OpenStreetMap por defecto, gratis y
- * sin clave; ver services/lugaresApi.js.
- *
- * Si el proveedor falla, esto devuelve exactamente lo mismo que antes: los
- * servicios propios. La pestaña nunca queda peor que como estaba.
- */
-/** Servicios cargados en Zooni (tabla `servicios`): rápido, es Supabase. */
 export async function fetchServiciosPropios(bbox, tipo) {
   let query = supabase.from('servicios').select('*');
   query = aplicarBbox(query, bbox);
@@ -57,7 +31,6 @@ export async function fetchServicios(bbox, tipo) {
   return { servicios: combinarServicios(propios, externos) };
 }
 
-/** Servicios puntuales por id (sin el catálogo de la zona ni los externos). */
 export async function fetchServiciosPorId(ids) {
   const lista = [...new Set((ids ?? []).filter((x) => x != null))];
   if (!lista.length) return [];
@@ -66,12 +39,6 @@ export async function fetchServiciosPorId(ids) {
   return data ?? [];
 }
 
-// ─────────────────────────────────────────────
-// AMIGOS
-// ─────────────────────────────────────────────
-
-// Ventana para considerar a alguien "en línea" (mismo umbral que
-// utils/tiempoRelativo.UMBRAL_EN_LINEA_MS)
 const CINCO_MIN = 5 * 60 * 1000;
 
 async function miUbicacion() {
@@ -92,7 +59,6 @@ export async function fetchAmigos() {
 
   const [usuarios, { data: mascotas }, { data: ubicaciones }, miUbi] = await Promise.all([
     perfilesPorId(idsAmigos, 'Id_User, Nombre, Apellido, UltimaConexion'),
-    // Mascotas de los amigos: ajenas, van por la vista (#12)
     supabase.from('mascota_publica').select('Id_User, Nombre').in('Id_User', idsAmigos),
     supabase.from('ubicaciones_usuarios').select('*').in('usuario_id', idsAmigos),
     miUbicacion(),
@@ -104,13 +70,6 @@ export async function fetchAmigos() {
 
   const amigos = (usuarios ?? []).map((u) => {
     const ubi = ubicacionPorUsuario.get(u.Id_User);
-    /*
-      Última conexión: se toma el latido de presencia (User.UltimaConexion) y,
-      si esa columna todavía no existe o el usuario nunca la actualizó, se cae
-      al updated_at de su ubicación — que es lo único que había antes.
-      El estado "en línea" lo decide utils/tiempoRelativo.estadoPresencia con el
-      mismo umbral de 5 minutos que se usaba acá.
-    */
     const ultimaConexion = u.UltimaConexion ?? ubi?.updated_at ?? null;
     const online = ultimaConexion
       ? (Date.now() - new Date(ultimaConexion).getTime()) < CINCO_MIN
@@ -159,9 +118,6 @@ export async function enviarSolicitud(usuarioDestinoId) {
     .insert({ usuario_a_id: getCurrentUserId(), usuario_b_id: usuarioDestinoId, estado: 'pendiente' });
   if (error) throw error;
 
-  // La pestaña "Solicitudes" de Comunidad ya lee esto de "amistades" directo,
-  // pero el panel de Notificaciones del Home lee de la tabla "Notificacion" —
-  // sin este insert, la solicitud nunca aparecía ahí.
   const { data: yo } = await supabase.from('User').select('Nombre, Apellido').eq('Id_User', getCurrentUserId()).single();
   const nombreSolicitante = `${yo?.Nombre ?? ''} ${yo?.Apellido ?? ''}`.trim() || 'Alguien';
   await notificar(usuarioDestinoId, 'Nueva solicitud de amistad', `${nombreSolicitante} te envió una solicitud de amistad`, { tipo: 'amistad' });
@@ -176,17 +132,11 @@ export async function responderSolicitud(id, accion) {
   return { ok: true };
 }
 
-/**
- * Buscador de personas. Trae SÓLO lo que muestra la lista (nombre, barrio y
- * el nombre de una mascota), desde perfil_publico: antes traía la fila
- * entera de "User" (mail, teléfono, coordenadas…) de 20 desconocidos.
- */
 export async function buscarUsuarios(q) {
   const filtros = filtrosBusquedaPersonas(q);
   if (!filtros.length) return { resultados: [] };
   const usuarios = await consultarPerfiles('Id_User, Nombre, Apellido, Ubicacion', (query) => {
     let x = query.neq('Id_User', getCurrentUserId()).limit(20);
-    // Cada palabra en el nombre, el apellido o el @usuario ("Adrian Turek")
     filtros.forEach((f) => { x = x.or(f); });
     return x;
   });
@@ -219,10 +169,6 @@ export async function buscarUsuarios(q) {
   return { resultados };
 }
 
-// ─────────────────────────────────────────────
-// CARTELES
-// ─────────────────────────────────────────────
-
 function mapCartel(row, nombrePublicador, mascota) {
   return {
     id: row.id,
@@ -242,9 +188,6 @@ function mapCartel(row, nombrePublicador, mascota) {
 }
 
 export async function crearCartel(datos) {
-  // A diferencia de la foto de mascota del registro (que queda solo en el
-  // dispositivo), acá hace falta subirla de verdad: el cartel lo ve gente
-  // que no tiene ese archivo local.
   const fotoUrl = datos.fotoUri ? await subirImagenPublica(datos.fotoUri, 'carteles') : null;
 
   const { data: row, error } = await supabase
@@ -274,15 +217,6 @@ export async function eliminarCartel(id) {
   return { ok: true };
 }
 
-// ─────────────────────────────────────────────
-// MAPA (carteles)
-// ─────────────────────────────────────────────
-
-/**
- * Carteles activos del área visible, con el nombre del autor y su mascota.
- * Va aparte de los servicios: Comunidad los pinta apenas llegan, sin esperar
- * a los locales de OpenStreetMap (que tardan bastante más).
- */
 export async function fetchCarteles(bbox) {
   let carteleQuery = supabase.from('carteles').select('*').eq('activo', true);
   carteleQuery = aplicarBbox(carteleQuery, bbox);
@@ -291,7 +225,6 @@ export async function fetchCarteles(bbox) {
 
   const usuarioIds = [...new Set((cartelesRaw ?? []).map((c) => c.usuario_id))];
   const mascotaIds = [...new Set((cartelesRaw ?? []).map((c) => c.mascota_id).filter(Boolean))];
-  // Autores y mascotas no dependen entre sí: en paralelo
   const [usuarios, { data: mascotas }] = await Promise.all([
     perfilesPorId(usuarioIds, 'Id_User, Nombre, Apellido'),
     mascotaIds.length
@@ -304,10 +237,6 @@ export async function fetchCarteles(bbox) {
   return (cartelesRaw ?? []).map((c) =>
     mapCartel(c, nombrePorUsuario.get(c.usuario_id), c.mascota_id ? mascotaPorId.get(c.mascota_id) : null));
 }
-
-// ─────────────────────────────────────────────
-// UBICACIÓN
-// ─────────────────────────────────────────────
 
 export async function actualizarUbicacion(lat, lng) {
   const { error } = await supabase

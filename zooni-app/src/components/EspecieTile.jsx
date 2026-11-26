@@ -1,12 +1,3 @@
-/**
- * EspecieTile.jsx — Tarjeta para elegir la especie de una mascota (perro,
- * gato, …). La usan el registro (RegisterStep1) y el alta de mascota; antes
- * cada pantalla tenía una copia idéntica con sus mismos estilos.
- *
- * `especie`: { label, imagen?, icono? } — imagen (require) o, si no hay, emoji.
- * Va dentro de una fila con flexWrap: cada tarjeta ocupa ~la mitad.
- */
-
 import { useRef } from 'react';
 import { Animated, Image, StyleSheet, Text, TouchableOpacity } from 'react-native';
 

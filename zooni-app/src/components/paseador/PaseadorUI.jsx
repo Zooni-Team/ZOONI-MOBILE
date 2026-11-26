@@ -1,11 +1,3 @@
-/**
- * PaseadorUI.jsx — Piezas visuales de Zooni Paseadores
- *
- * Misma paleta y mismos botones pill que Zooni (ver Instruction-PaseadoresDiseño.md).
- * La diferencia está en la estructura: fondo blanco roto de "panel de control",
- * verde menta sólo como acento, y números grandes en el peso más pesado.
- */
-
 import { useEffect, useRef } from 'react';
 import {
   ActivityIndicator, Animated, Image, Pressable, StyleSheet, Text, TouchableOpacity, View,
@@ -29,12 +21,8 @@ export const C = {
   borde: '#E6EFE9',
 };
 
-/** Sombra de tarjeta: la misma de todo Zooni (theme/sombras). */
 export const sombra = sombras.tarjeta;
 
-// ─── Botón pill ─────────────────────────────────────────────────────────────
-// variante: 'primario' (amarillo) | 'secundario' (outline teal) |
-//           'peligro' (rojo) | 'teal' (verde sólido, ej. "Ingresar")
 export function PillButton({
   titulo, onPress, variante = 'primario', icono, cargando = false, disabled = false,
   chico = false, style, accessibilityLabel,
@@ -74,7 +62,6 @@ const VARIANTES = {
   teal: { caja: { backgroundColor: C.teal }, texto: { color: colores.blanco } },
 };
 
-// ─── Card ───────────────────────────────────────────────────────────────────
 export function Card({ children, style, onPress }) {
   if (onPress) {
     return (
@@ -86,7 +73,6 @@ export function Card({ children, style, onPress }) {
   return <View style={[ui.card, style]}>{children}</View>;
 }
 
-// ─── Chip de estado ─────────────────────────────────────────────────────────
 export function Chip({ texto, icono, color = C.teal, fondo = C.menta, style }) {
   return (
     <View style={[ui.chip, { backgroundColor: fondo }, style]}>
@@ -96,7 +82,6 @@ export function Chip({ texto, icono, color = C.teal, fondo = C.menta, style }) {
   );
 }
 
-// ─── Stat: número grande + etiqueta ─────────────────────────────────────────
 export function Stat({ valor, etiqueta, icono, grande = false, style }) {
   return (
     <View style={[ui.stat, style]}>
@@ -109,7 +94,6 @@ export function Stat({ valor, etiqueta, icono, grande = false, style }) {
   );
 }
 
-// ─── Avatar redondo (foto real o iniciales) ─────────────────────────────────
 export function Avatar({ fuente, uri, nombre = '', size = 44, borde = false }) {
   const src = fuente ?? (uri ? { uri } : null);
   const iniciales = nombre.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase() || '?';
@@ -123,7 +107,6 @@ export function Avatar({ fuente, uri, nombre = '', size = 44, borde = false }) {
   );
 }
 
-// ─── Título de sección ──────────────────────────────────────────────────────
 export function Seccion({ titulo, accion, onAccion }) {
   return (
     <View style={ui.seccion}>
@@ -137,7 +120,6 @@ export function Seccion({ titulo, accion, onAccion }) {
   );
 }
 
-// ─── Estado vacío ───────────────────────────────────────────────────────────
 export function Vacio({ icono = 'paw-outline', titulo, texto, children }) {
   return (
     <View style={ui.vacio}>
@@ -151,8 +133,6 @@ export function Vacio({ icono = 'paw-outline', titulo, texto, children }) {
   );
 }
 
-// ─── Switch grande "Disponible" ─────────────────────────────────────────────
-// Es el control más importante de la app: grande, con área de toque generosa.
 export function SwitchGrande({ valor, onCambio, disabled }) {
   const anim = useRef(new Animated.Value(valor ? 1 : 0)).current;
   useEffect(() => {

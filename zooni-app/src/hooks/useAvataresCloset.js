@@ -1,16 +1,3 @@
-/**
- * useAvataresCloset — Datos de la pantalla Closet: la mascota que se viste,
- * los avatares de su especie y "aplicar" uno. La pantalla sólo dibuja y anima.
- *
- *   const { mascota, avatares, cargando, aplicando, aplicar } = useAvataresCloset(petId);
- *   const r = await aplicar('perro_bandana');   // { ok } | { error: 'sin_permiso' | 'error' }
- *
- * Los errores se avisan con utils/dialogo (alerta): Alert.alert no muestra
- * nada en la web, y antes la pantalla esperaba errores con forma de axios
- * (`err.response`) que Supabase nunca manda, así que todo fallo se mostraba
- * como "Sin conexión".
- */
-
 import { useCallback, useEffect, useState } from 'react';
 
 import { aplicarAvatar, fetchAvatares } from '../services/api';
@@ -46,7 +33,6 @@ export function useAvataresCloset(petId) {
       setMascota((prev) => (prev ? { ...prev, imagen_asset: imagenAsset } : prev));
       return { ok: true };
     } catch (err) {
-      // .single() sin filas (PGRST116) = la RLS no dejó tocar esa mascota
       if (esSinPermiso(err) || err?.code === 'PGRST116') {
         alerta('Sin permiso', 'No podés modificar esta mascota.');
         return { error: 'sin_permiso' };

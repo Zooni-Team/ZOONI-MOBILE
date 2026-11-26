@@ -1,15 +1,3 @@
-/**
- * PaseadorHeader.jsx — AppBar de Zooni Paseadores
- *
- * Hamburguesa a la izquierda (igual que la app de dueños), y después lo único
- * que cambia: alineado a la izquierda (avatar + nombre o sección + estado de
- * trabajo) en vez de un título centrado. La
- * campana con badge ámbar queda a la derecha, igual que en Zooni.
- *
- * Zooni Negocios lo reusa: `chip` ({ texto, on }) reemplaza a Disponible y
- * `contarChats` cuenta sus mensajes sin leer en lugar de los de paseos.
- */
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FlatList, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View,
@@ -34,8 +22,6 @@ export default function PaseadorHeader({
   chip, contarChats,
 }) {
   const navigation = useNavigation();
-  // Las funciones que manda el padre cambian de identidad en cada render: se
-  // leen por ref para no reiniciar el refresco periódico a cada rato.
   const contarRef = useRef(contarChats);
   contarRef.current = contarChats;
   const onChatsSinLeerRef = useRef(onChatsSinLeer);
@@ -52,7 +38,6 @@ export default function PaseadorHeader({
       setNotifs(n);
       onChatsSinLeerRef.current?.(c);
     } catch {
-      // sin red: los íconos quedan sin badge
     }
   }, []);
 
@@ -70,7 +55,6 @@ export default function PaseadorHeader({
     setAbierto(true);
     if (noLeidas > 0) {
       marcarNotificacionesLeidas().catch(() => {});
-      // se muestran como no leídas en esta apertura; al cerrar ya cuentan leídas
     }
   };
   const cerrar = () => {
@@ -78,11 +62,6 @@ export default function PaseadorHeader({
     setNotifs((prev) => prev.map((n) => ({ ...n, leido: true })));
   };
 
-  /**
-   * Tocar una notificación la abre, igual que en el Home de dueños. Antes el
-   * panel era solo una lista para mirar: te avisaba de una solicitud nueva y
-   * después tenías que ir a buscarla a mano.
-   */
   const tocar = async (item) => {
     if (!item.leido) {
       setNotifs((prev) => prev.map((n) => (n.id === item.id ? { ...n, leido: true } : n)));
@@ -92,8 +71,6 @@ export default function PaseadorHeader({
 
     const destino = destinoNotificacionPaseador(item);
     if (destino === 'chats') navigation.navigate('PaseadorChats');
-    // Las secciones (solicitudes/inicio) son pestañas dentro de PaseadorApp, no
-    // rutas propias: las cambia la pantalla contenedora.
     else onIrASeccion?.(destino);
   };
 
@@ -128,11 +105,6 @@ export default function PaseadorHeader({
           <Text style={s.sub}>{subtitulo}</Text>
         ) : null}
       </View>
-
-      {/* El acceso a Chats vive SOLO en el menú (ya estaba ahí, con su badge).
-          Tenerlo también acá, pegado a la campana, hacía que dos íconos casi
-          iguales compitieran y se tocara el equivocado. Igual que en la app de
-          dueños, en el header queda únicamente la campana. */}
 
       <TouchableOpacity onPress={abrir} style={s.campana} accessibilityLabel={`Notificaciones${noLeidas ? `, ${noLeidas} sin leer` : ''}`}>
         <Ionicons name="notifications-outline" size={26} color={C.texto} />

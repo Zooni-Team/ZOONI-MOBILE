@@ -1,20 +1,3 @@
-/**
- * registroAssets.js — Catálogo de especies y países del flujo Login/Registro
- *
- * Las imágenes del flujo (mascota de bienvenida, cajas por especie, mascota
- * básica por raza) viven en constants/registroImages.js, extraídas de
- * ZOONI-MVC (wwwroot/img/).
- */
-
-/**
- * Especies del grid del Registro Paso 1 (Login2.png de Figma).
- * `key` es el valor que se guarda en Mascota.Especie y el que usan el catálogo
- * de razas (tabla `razas`) y los consejos/vacunas/tratamientos por especie.
- * `icono` es el emoji que se muestra hasta que se carguen los PNG reales
- * (assets/registro/especie_<key>.png — ver Instruction-CargarImagenes.md);
- * cuando existan, agregar acá una prop `imagen: require(...)` por especie y
- * el tile la va a preferir sobre el emoji.
- */
 export const ESPECIES = [
   { key: 'perro',   label: 'Perro',   icono: '🐕', imagen: null },
   { key: 'gato',    label: 'Gato',    icono: '🐈', imagen: null },
@@ -26,10 +9,6 @@ export const ESPECIES = [
   { key: 'raton',   label: 'Ratón',   icono: '🐭', imagen: null },
 ];
 
-/**
- * Países del selector del Registro Paso 4 (sin dependencia externa).
- * `callingCode` autocompleta el campo Código. Mantener en orden alfabético.
- */
 export const PAISES = [
   { codigo: 'AR', nombre: 'Argentina', bandera: '🇦🇷', callingCode: '+54' },
   { codigo: 'BO', nombre: 'Bolivia', bandera: '🇧🇴', callingCode: '+591' },

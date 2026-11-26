@@ -39,9 +39,6 @@ export default function PopupCartel({ cartel, userId, onClose, onEliminado }) {
   };
 
   const handleEliminar = () => {
-    // Alert.alert con botones no hace nada en web (react-native-web no lo
-    // implementa: Alert.alert es un no-op ahí), por eso hace falta este
-    // fallback a window.confirm para que "Eliminar Cartel" funcione en el navegador.
     if (Platform.OS === 'web') {
       if (window.confirm('¿Eliminar este cartel? Esta acción no se puede deshacer.')) confirmarEliminar();
       return;

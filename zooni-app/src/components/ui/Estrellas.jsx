@@ -1,11 +1,3 @@
-/**
- * Estrellas.jsx — Calificación de 1 a 5 estrellas (antes había 4 copias).
- *
- *   <Estrellas valor={4.5} size={14} />                       // sólo mostrar (admite medias)
- *   <EstrellasInput valor={rating} onCambio={setRating} />      // elegir
- *   <EstrellasInput valor={v} onCambio={…} borrable />          // tocar la misma la borra (0)
- */
-
 import { TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -13,7 +5,6 @@ import { colores } from '../../theme';
 
 const UNO_A_CINCO = [1, 2, 3, 4, 5];
 
-/** Muestra un promedio: estrella llena, media o vacía. */
 export function Estrellas({ valor = 0, size = 14, gap = 1 }) {
   return (
     <View style={{ flexDirection: 'row', gap }} accessibilityLabel={`${valor} de 5 estrellas`}>
@@ -25,7 +16,6 @@ export function Estrellas({ valor = 0, size = 14, gap = 1 }) {
   );
 }
 
-/** Para elegir una calificación. Con `borrable`, tocar la elegida vuelve a 0. */
 export function EstrellasInput({ valor = 0, onCambio, size = 34, borrable = false }) {
   return (
     <View style={{ flexDirection: 'row', gap: 6 }}>

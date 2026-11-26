@@ -1,9 +1,3 @@
-/**
- * useEntrada.js — Animación de entrada de las tarjetas de salud: suben 12 px
- * mientras aparecen. `orden` escalona una lista (60 ms entre tarjetas).
- * Devuelve el estilo para un <Animated.View>.
- */
-
 import { useEffect, useRef } from 'react';
 import { Animated } from 'react-native';
 

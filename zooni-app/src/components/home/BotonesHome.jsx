@@ -1,11 +1,3 @@
-/**
- * BotonesHome.jsx — Los accesos del Inicio: los botones amarillos que eligió
- * el usuario (se reordenan arrastrando y se quitan en modo edición) y, siempre
- * último, el SOS Veterinario.
- *
- * Qué botones hay y en qué orden lo maneja hooks/useHome; acá sólo se dibujan.
- */
-
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import DraggableList from '../DraggableList';
@@ -14,17 +6,10 @@ import { SkeletonBloque } from '../ui/Skeleton';
 import { getSeccion } from '../../services/secciones';
 import { colores, sombras } from '../../theme';
 
-/**
- * @param {Array}     botones      [{ seccion }] visibles, en orden
- * @param {boolean}   editMode     arrastrar y quitar habilitados; tocar no navega
- * @param {function}  onAbrir      (claveSeccion, seccion) al tocar un botón
- * @param {function}  onSos        al tocar SOS Veterinario
- */
 export default function BotonesHome({ botones, cargando, editMode, onReordenar, onQuitar, onGuardar, onAbrir, onSos }) {
   return (
     <View style={styles.buttonsZone}>
 
-      {/* Botón guardar — arriba, verde, solo en modo edición */}
       {editMode && (
         <TouchableOpacity style={styles.saveBtn} onPress={onGuardar} accessibilityRole="button">
           <Text style={styles.saveBtnText}>Guardar</Text>
@@ -32,7 +17,6 @@ export default function BotonesHome({ botones, cargando, editMode, onReordenar, 
       )}
 
       {cargando ? (
-        // Sin etiquetas: todavía no se sabe qué botones eligió el usuario.
         <View style={styles.cargando}>
           <SkeletonBloque width="100%" height={56} borderRadius={16} />
           <SkeletonBloque width="100%" height={56} borderRadius={16} />
@@ -41,7 +25,6 @@ export default function BotonesHome({ botones, cargando, editMode, onReordenar, 
         </View>
       ) : (
         <>
-          {/* Botones dinámicos con drag & drop */}
           <DraggableList
             items={botones}
             disabled={!editMode}
@@ -63,7 +46,6 @@ export default function BotonesHome({ botones, cargando, editMode, onReordenar, 
             }}
           />
 
-          {/* SOS — siempre visible, siempre último */}
           <NavButton
             label="SOS Veterinario"
             iconName="medical"

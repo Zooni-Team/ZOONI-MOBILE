@@ -1,7 +1,3 @@
-/**
- * Botones de acción inferiores: volver, skip, like, estrella.
- */
-
 import React, { useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';

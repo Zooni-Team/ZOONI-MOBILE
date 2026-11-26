@@ -1,22 +1,3 @@
-/**
- * paseador/paseos.js — Los paseos vistos por el paseador: leerlos y moverlos
- * de estado.
- *
- * Una solicitud ES una fila de "Paseo" en estado 'pendiente'. El ciclo de vida
- * completo vive en esa misma fila:
- *
- *   pendiente → aceptado → en_curso → finalizado
- *             ↘ rechazado / cancelado / vencido
- *
- * Solicitudes abiertas (Id_Walker NULL) las ve cualquier paseador; rechazar
- * una abierta sólo la oculta para mí (paseo_rechazos). Rechazar una dirigida
- * a mí la pasa a 'rechazado' para que el dueño se entere.
- *
- * Las transiciones válidas, el precio y la comisión los decide la base
- * (triggers _paseo_al_crear / _paseo_al_actualizar): lo que se calcula acá es
- * sólo para mostrar sin esperar otra consulta.
- */
-
 import { supabase } from '../../lib/supabase';
 import { getCurrentUserId } from '../../config/session';
 import { datosDeClientePorMascota } from '../mascotasDeClientes';
@@ -32,14 +13,9 @@ const HORA = 3600 * 1000;
 export const COLUMNAS_PASEO = '"Id_Paseo","Id_Mascota","Id_Walker","Id_Dueno","Estado","FechaProgramada","DuracionMin","Precio","Direccion","Lat","Lng","Notas","DistanciaMetros","SegundosAcumulados","ReanudadoEn","HoraInicio","HoraFin","Rating","Resena","CreadoEn"'
   .replace(/"/g, '');
 
-/** Le agrega mascota y dueño a cada paseo (dos queries en lote, sin embeds). */
 export async function enriquecer(rows) {
   if (!rows?.length) return [];
   const idsMascota = [...new Set(rows.map((r) => r.Id_Mascota))];
-  // La mascota es del dueño, no del paseador: "Mascota" sólo devuelve la fila
-  // propia (informe de seguridad #12), así que va por "mascota_publica", que
-  // trae "Tamano" (lo que usa el precio por tamaño). El peso llega aparte y
-  // sólo de los paseos aceptados o en curso de este paseador (072).
   const [{ data: mascotas }, clientes] = await Promise.all([
     supabase
       .from('mascota_publica')
@@ -61,7 +37,6 @@ export async function enriquecer(rows) {
     const u = porDueno[idDueno] ?? {};
     return {
       id: r.Id_Paseo,
-      // 'vencido' si ya pasó la hora y nadie lo hizo (domain/paseos)
       estado: estadoVigente({ estado: r.Estado, fecha: r.FechaProgramada, duracionMin: r.DuracionMin ?? 30 }),
       abierta: r.Id_Walker == null,
       idWalker: r.Id_Walker,
@@ -108,7 +83,6 @@ export async function enriquecer(rows) {
   });
 }
 
-/** Solicitudes pendientes que puedo tomar: dirigidas a mí o abiertas. */
 export async function fetchSolicitudes() {
   const yo = getCurrentUserId();
   const { data, error } = await supabase
@@ -120,16 +94,13 @@ export async function fetchSolicitudes() {
 
   const { data: rechazos } = await supabase.from('paseo_rechazos').select('id_paseo').eq('id_walker', yo);
   const ocultas = new Set((rechazos ?? []).map((r) => r.id_paseo));
-  // Una solicitud cuya hora ya pasó no se puede cumplir: no se ofrece.
   const limite = Date.now() - HORA;
-  // Si el paseador también es dueño, sus propios pedidos no le aparecen.
   const vigentes = (data ?? []).filter((r) =>
     !ocultas.has(r.Id_Paseo) && r.Id_Dueno !== yo
     && (!r.FechaProgramada || new Date(r.FechaProgramada).getTime() > limite));
   return enriquecer(vigentes);
 }
 
-/** Mis paseos en ciertos estados (aceptado, en_curso, finalizado…). */
 export async function fetchMisPaseos(estados, { desde } = {}) {
   const yo = getCurrentUserId();
   let q = supabase.from('Paseo').select(COLUMNAS_PASEO)
@@ -138,14 +109,9 @@ export async function fetchMisPaseos(estados, { desde } = {}) {
   if (desde) q = q.gte('FechaProgramada', desde.toISOString());
   const { data, error } = await q;
   if (error) throw errorApp('error_base', error);
-  // Un 'aceptado' de hace días vuelve como 'vencido': no va a la agenda.
   return (await enriquecer(data ?? [])).filter((p) => estados.includes(p.estado));
 }
 
-/**
- * Los paseos que están en curso ahora: uno por mascota, así que si el
- * paseador saca a un grupo hay varios a la vez (en el orden en que arrancaron).
- */
 export async function fetchPaseosEnCurso() {
   const lista = await fetchMisPaseos(['en_curso']);
   return lista.sort((a, b) => String(a.horaInicio ?? '').localeCompare(String(b.horaInicio ?? '')));
@@ -158,26 +124,18 @@ export async function fetchPaseo(id) {
   return (await enriquecer([data]))[0];
 }
 
-/** Recorrido guardado del paseo: [{lat, lng}] en orden. */
 export async function fetchRecorrido(idPaseo) {
   const { data } = await supabase.from('PaseoTrack')
     .select('Lat, Lng').eq('Id_Paseo', idPaseo).order('Timestamp', { ascending: true });
   return (data ?? []).map((p) => ({ lat: Number(p.Lat), lng: Number(p.Lng) }));
 }
 
-// ─────────────────────────────────────────────
-// PASEOS (acciones)
-// ─────────────────────────────────────────────
-
 async function updatePaseo(id, fila) {
   const { error } = await supabase.from('Paseo').update(fila).eq('Id_Paseo', id);
   if (error) throw error;
 }
 
-/** Devuelve false si otro paseador la tomó antes. */
 export async function aceptarSolicitud(paseo) {
-  // El paseador es el de la sesión (usuario_actual, 070): p_id_walker queda
-  // en la firma por compatibilidad y va en null.
   const { data, error } = await supabase.rpc('aceptar_solicitud_paseo', {
     p_id_paseo: paseo.id, p_id_walker: null,
   });
@@ -201,7 +159,6 @@ export async function rechazarSolicitud(paseo) {
     `El paseador no puede pasear a ${paseo.mascota.nombre} en ese horario. Probá con otro.`);
 }
 
-/** Cancela un paseo ya aceptado (antes de empezar). */
 export async function cancelarPaseo(paseo) {
   await updatePaseo(paseo.id, { Estado: 'cancelado' });
   notificarDueno(paseo, 'Paseo cancelado',
@@ -231,12 +188,6 @@ export async function reanudarPaseo(paseo) {
   return { ...paseo, reanudadoEn: ahora };
 }
 
-/**
- * Termina el paseo. Se cobra el precio pactado, dure lo que dure: el tiempo
- * paseado queda registrado pero no cambia el monto. "Precio" y
- * "PrecioPactado" quedan iguales; la comisión de Zooni se calcula acá, una
- * vez por paseo.
- */
 export async function finalizarPaseo(paseo, distancia) {
   const ahora = new Date().toISOString();
   const segundos = Math.round(segundosDePaseo(paseo));
@@ -254,20 +205,12 @@ export async function finalizarPaseo(paseo, distancia) {
     SegundosAcumulados: segundos, DistanciaMetros: metros,
     Precio: precio, PrecioPactado: precioPactado, Comision: comision,
   };
-  // Precio y comisión los recalcula la base (trigger de 062): esto es lo que
-  // se muestra mientras tanto.
   await updatePaseo(paseo.id, fila);
   notificarDueno(paseo, `${paseo.mascota.nombre} ya volvió a casa 🏠`,
     `Paseo de ${formatoTiempoPaseado(segundos)} · ${formatoDistancia(metros)} · ${formatoPlata(precio)}. ¡Dejale una reseña al paseador!`);
   return { ...paseo, ...cambios };
 }
 
-/**
- * Deshace un "Finalizar" tocado sin querer: el paseo vuelve a estar en curso
- * con el tiempo y la distancia que llevaba (el rato que estuvo finalizado no
- * cuenta, como una pausa) y vuelve al precio pactado; al finalizar de nuevo
- * se recalcula. Le avisa al dueño, que ya había recibido "volvió a casa".
- */
 export async function retomarPaseo(paseo) {
   const ahora = new Date().toISOString();
   const precio = paseo.precioPactado ?? paseo.precio;
@@ -281,7 +224,6 @@ export async function retomarPaseo(paseo) {
   return { ...paseo, ...cambios };
 }
 
-/** Guarda un punto del recorrido y la distancia acumulada. */
 export async function registrarPunto(idPaseo, { lat, lng }, distanciaTotal) {
   await Promise.all([
     supabase.from('PaseoTrack').insert({ Id_Paseo: idPaseo, Lat: lat, Lng: lng, Timestamp: new Date().toISOString() }),

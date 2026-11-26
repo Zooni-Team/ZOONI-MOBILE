@@ -1,15 +1,5 @@
 import { colores } from '../theme/colores';
-/**
- * negocios.js — Qué cambia entre una veterinaria, una peluquería y un pet shop
- *
- * Las tres apps de Zooni Negocios comparten diseño (el de Zooni Paseadores:
- * header con estado, menú lateral, cards, botones pill). Lo que cambia —qué
- * secciones tienen, cómo se llama cada cosa, qué categorías y servicios
- * sugeridos ofrece, qué respuestas rápidas tiene el chat— vive acá, para que
- * las pantallas sean las mismas y se adapten solas al tipo.
- */
 
-// ─── Secciones posibles (cada tipo elige las suyas) ─────────────────────────
 const S = {
   inicio: { key: 'inicio', label: 'Inicio', icono: 'home-outline' },
   turnos: { key: 'turnos', label: 'Turnos', icono: 'calendar-outline' },
@@ -36,7 +26,6 @@ export const TIPOS_NEGOCIO = {
     secciones: [S.inicio, S.turnos, S.pacientes, S.servicios, S.mensajes, S.perfil],
     textoTipo: 'Turnos, historia clínica de tus pacientes y urgencias.',
     abierto: { on: 'Recibiendo turnos', off: 'Sin turnos nuevos' },
-    // Lo que se escribe en el registro y en "Mi negocio"
     placeholderNombre: 'Ej: Veterinaria San Martín',
     placeholderDescripcion: 'Ej: Clínica general, vacunación y cirugías. Atendemos perros y gatos.',
     categorias: ['Consultas', 'Vacunación', 'Cirugías', 'Estudios', 'Tratamientos', 'Otros'],
@@ -137,14 +126,12 @@ export const TIPOS_NEGOCIO = {
 export const LISTA_TIPOS_NEGOCIO = Object.values(TIPOS_NEGOCIO);
 export const configNegocio = (tipo) => TIPOS_NEGOCIO[tipo] ?? TIPOS_NEGOCIO.veterinaria;
 
-// ─── Tamaños (precios de peluquería y turnos) ───────────────────────────────
 export const TAMANOS = [
   { key: 'chico', label: 'Chico', detalle: 'hasta 10 kg' },
   { key: 'mediano', label: 'Mediano', detalle: '10–25 kg' },
   { key: 'grande', label: 'Grande', detalle: '+25 kg' },
 ];
 
-/** Tamaño de una mascota por su peso (para el precio de peluquería). */
 export function tamanoPorPeso(peso) {
   const kg = Number(peso);
   if (!(kg > 0)) return null;
@@ -153,14 +140,12 @@ export function tamanoPorPeso(peso) {
   return 'grande';
 }
 
-// ─── Horarios ───────────────────────────────────────────────────────────────
 export const DIAS_SEMANA = [
   { key: 'lun', label: 'Lunes', corto: 'Lun' }, { key: 'mar', label: 'Martes', corto: 'Mar' },
   { key: 'mie', label: 'Miércoles', corto: 'Mié' }, { key: 'jue', label: 'Jueves', corto: 'Jue' },
   { key: 'vie', label: 'Viernes', corto: 'Vie' }, { key: 'sab', label: 'Sábado', corto: 'Sáb' },
   { key: 'dom', label: 'Domingo', corto: 'Dom' },
 ];
-// Date.getDay(): 0 = domingo
 export const DIA_DE_JS = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
 
 export function HORARIOS_NEGOCIO_DEFAULT() {
@@ -175,7 +160,6 @@ export function HORARIOS_NEGOCIO_DEFAULT() {
   };
 }
 
-// ─── Estados de turnos y pedidos (los ven el negocio y el dueño) ────────────
 export const ESTADOS_TURNO = {
   pendiente: { label: 'Por confirmar', color: colores.ambarOscuro, fondo: colores.ambarFondo, icono: 'hourglass-outline' },
   confirmado: { label: 'Confirmado', color: colores.verde, fondo: colores.mentaTarjeta, icono: 'checkmark-circle-outline' },

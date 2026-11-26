@@ -1,9 +1,3 @@
-/**
- * FichaNegocioUI.jsx — Piezas chicas de la ficha pública de un negocio
- * (NegocioPublicoScreen): el sello (chip con ícono), el título de sección, la
- * próxima apertura y qué sellos mostrar según el tipo de negocio.
- */
-
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -15,7 +9,6 @@ import { horarioDelDia } from '../../domain/negocios';
 
 import { colores } from '../../theme';
 
-/** "Abre mañana a las 09:00" / "Abre el lunes a las 09:00" (o null si nunca abre). */
 export function proximaApertura(horarios, ahora = new Date()) {
   for (let i = 0; i < 8; i += 1) {
     const d = new Date(ahora);
@@ -49,11 +42,6 @@ export function Titulo({ children, extra }) {
   );
 }
 
-/**
- * Sellos (chips) que se muestran en la ficha según el tipo de negocio:
- * urgencias, a domicilio, especies, envíos, mínimo de compra…
- * Puro (sin base ni pantalla): devuelve [{ icono, texto, color?, fondo? }].
- */
 export function sellosDeNegocio(negocio) {
   const d = negocio?.datos ?? {};
   const sellos = [];

@@ -1,10 +1,3 @@
-/**
- * TarjetasMascota.jsx — Piezas de Configuración › Mis mascotas
- * (MisMascotasScreen): los tokens de color de la pantalla (§3.1), las tarjetas
- * de mascota activa / archivada / en memoria, el título de sección y el
- * esqueleto de carga. Antes vivían dentro de la pantalla (devolución, FEC-GOD).
- */
-
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,7 +11,6 @@ import { colores } from '../../theme';
 import { formatearFecha, parseFechaLocal } from '../../utils/fechaLocal';
 import { capitalizar } from '../../utils/texto';
 
-// ─── TOKENS (§3.1) ───────────────────────────────────────────────────────────
 export const P = {
   bgTop: '#E4F9EA',
   surface: colores.blanco,
@@ -50,8 +42,6 @@ export function CardActiva({ m, onPress, onEditar, onArchivar, onMenu, disabled 
 
   return (
     <Pressable
-      // La principal se distingue con un borde verde en toda la card, no solo
-      // con el chip: de un vistazo se ve cuál es sin tener que leer.
       style={[s.card, m.esPrincipal && s.cardPrincipal]}
       onPress={onPress} accessibilityRole="button"
       accessibilityLabel={`${m.nombre}${m.esPrincipal ? ', mascota principal' : ''}, ver detalle`}>
@@ -69,8 +59,6 @@ export function CardActiva({ m, onPress, onEditar, onArchivar, onMenu, disabled 
         <Ionicons name="ellipsis-vertical" size={20} color={P.textSoft} />
       </TouchableOpacity>
 
-      {/* Fila avatar + datos: antes era todo centrado en columna y la card
-          quedaba altísima con mucho aire muerto entre el nombre y los botones. */}
       <View style={s.cardCuerpo}>
         <Image source={img}
           style={[s.avatarActiva, m.esPrincipal && s.avatarPrincipal]} resizeMode="cover" />
@@ -121,7 +109,6 @@ export function CardArchivada({ m, onPress, onRecuperar, onMenu, disabled }) {
         <Ionicons name="ellipsis-vertical" size={20} color={P.textSoft} />
       </TouchableOpacity>
 
-      {/* Mismo layout en fila que la card activa, para que la lista se lea pareja */}
       <View style={s.cardCuerpo}>
         <Image source={img} style={s.avatarArchivada} resizeMode="cover" />
         <View style={s.cardDatos}>
@@ -147,13 +134,10 @@ export function CardArchivada({ m, onPress, onRecuperar, onMenu, disabled }) {
 
 export function CardMemoria({ m, onPress, onMenu }) {
   const img = resolveMascotaVisual(m);
-  // parseFechaLocal y no new Date('YYYY-MM-DD'): ese lo lee en UTC y en
-  // Argentina un 1/1 caía en el año anterior.
   const anioNac = parseFechaLocal(m.fechaNacimiento)?.getFullYear() ?? null;
   const anioFin = parseFechaLocal(m.fechaFallecimiento)?.getFullYear() ?? null;
   return (
     <View style={s.cardArchivada}>
-      {/* Menú ⋮: por si se marcó "Falleció" sin querer (recuperar / eliminar) */}
       <TouchableOpacity style={s.cardMenu} onPress={onMenu} accessibilityRole="button"
         accessibilityLabel={`Más opciones de ${m.nombre}`}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>

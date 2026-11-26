@@ -1,11 +1,3 @@
-/**
- * AyudaSoporteScreen.jsx — Configuración › Ayuda y Soporte (§3.5.11)
- *
- * Todavía no hay centro de ayuda ni canal de soporte: la pantalla va con el
- * aviso de vista previa. Reportar o bloquear a una persona sí funciona, desde
- * el chat con ella (MatchInfoModal → moderacionApi).
- */
-
 import React from 'react';
 import { Linking } from 'react-native';
 

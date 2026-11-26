@@ -16,7 +16,7 @@ conectados: cada uno dice de qué depende y quién lo usa.
 | Documento | De qué trata |
 |---|---|
 | [arquitectura.md](arquitectura.md) | Capas, carpetas y cómo viaja un dato de la pantalla a la base |
-| [convenciones.md](convenciones.md) | Nombres, imports, errores, comentarios, lint |
+| [convenciones.md](convenciones.md) | Nombres, imports, errores, sin comentarios, lint |
 | [estilos.md](estilos.md) | Paleta, sombras, tamaño de texto (`src/theme`) |
 | [componentes.md](componentes.md) | Catálogo de componentes compartidos y cuándo usar cada uno |
 | [utilidades.md](utilidades.md) | Catálogo de `src/utils`, `src/domain`, `src/constants`, `src/hooks` |

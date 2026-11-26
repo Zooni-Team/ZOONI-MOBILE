@@ -1,12 +1,3 @@
--- ⚠ NO PEGAR EN SUPABASE. Archivo de pruebas para un Postgres LOCAL (lo corre
---   supabase/scripts/probar-esquema.mjs). Crea usuarios de prueba.
--- pruebas_072.sql — correr DESPUÉS de pruebas_rls.sql (helpers pg_temp.como / salir).
---   · #22 Baja de cuenta: pedido sólo por RPC, cuenta oculta durante los 30
---         días, volver a entrar la recupera, la purga anonimiza y conserva lo
---         que es también de otra persona (el paseo).
---   · #100 No queda ninguna función de public sin search_path.
---   · #90  La contraseña débil de una cuenta migrada queda marcada hasta cambiarla.
-
 DO $$
 DECLARE
   sufijo TEXT := substr(md5(random()::TEXT), 1, 8);
@@ -38,18 +29,15 @@ BEGIN
 
   SELECT "Id_Mascota" INTO mascota_ana FROM "Mascota" WHERE "Id_User" = ana;
 
-  -- Un paseo terminado entre los dos: es también de Beto (lo cobró).
   INSERT INTO "Paseo" ("Id_Dueno", "Id_Mascota", "Estado", "Precio", "PrecioPactado", "DuracionMin")
   VALUES (ana, mascota_ana, 'pendiente', 1000, 1000, 30)
   RETURNING "Id_Paseo" INTO paseo;
   UPDATE "Paseo" SET "Estado" = 'aceptado', "Id_Walker" = beto WHERE "Id_Paseo" = paseo;
 
-  -- Un archivo subido por Ana (su carpeta en Storage)
   INSERT INTO storage.buckets (id, name, public) VALUES ('public-images', 'public-images', TRUE)
   ON CONFLICT (id) DO NOTHING;
   INSERT INTO storage.objects (bucket_id, name) VALUES ('public-images', ana_auth || '/perfiles/foto.jpg');
 
-  -- ── El pedido no se escribe a mano ─────────────────────────────────────────
   PERFORM pg_temp.como(ana_auth);
   fallo := FALSE;
   BEGIN
@@ -66,7 +54,6 @@ BEGIN
     'Ana ve su propio pedido (y hay uno solo)';
   PERFORM pg_temp.salir();
 
-  -- ── Durante los 30 días, la cuenta no se ve ────────────────────────────────
   PERFORM pg_temp.como(beto_auth);
   ASSERT NOT EXISTS (SELECT 1 FROM perfil_publico WHERE "Id_User" = ana),
     'el perfil de una cuenta dada de baja no se ve';
@@ -77,7 +64,6 @@ BEGIN
   ASSERT (SELECT count(*) FROM deletion_requests) = 0, 'Beto no ve pedidos ajenos';
   PERFORM pg_temp.salir();
 
-  -- ── Volver a entrar la recupera ────────────────────────────────────────────
   PERFORM pg_temp.como(ana_auth);
   r := login_social();
   ASSERT (r->>'bajaCancelada')::BOOLEAN, 'entrar cancela la baja y lo avisa';
@@ -90,7 +76,6 @@ BEGIN
     'después de arrepentirse, el perfil vuelve a verse';
   PERFORM pg_temp.salir();
 
-  -- ── Purga: sólo las vencidas ───────────────────────────────────────────────
   PERFORM pg_temp.como(ana_auth);
   PERFORM solicitar_eliminacion_cuenta(NULL, NULL);
   PERFORM pg_temp.salir();
@@ -122,14 +107,12 @@ BEGIN
     'la cuenta purgada no se ve nunca más';
   PERFORM pg_temp.salir();
 
-  -- El mismo mail entra como cuenta nueva (no hereda la anonimizada).
   INSERT INTO auth.users (id, email) VALUES (nueva_auth, mail_ana);
   PERFORM pg_temp.como(nueva_auth);
   r := login_social();
   ASSERT (r->>'nuevo')::BOOLEAN, 'el mail de una cuenta purgada se puede volver a registrar';
   PERFORM pg_temp.salir();
 
-  -- ── #100 ───────────────────────────────────────────────────────────────────
   ASSERT NOT EXISTS (
     SELECT 1 FROM pg_proc p JOIN pg_namespace ns ON ns.oid = p.pronamespace
     WHERE ns.nspname = 'public' AND p.prokind = 'f'
@@ -168,7 +151,6 @@ BEGIN
   ASSERT (r->>'debeCambiarContrasena')::BOOLEAN, 'login_social lo avisa en cada login';
   r := login_social();
   ASSERT (r->>'debeCambiarContrasena')::BOOLEAN, 'y lo sigue avisando (no es de una sola vez)';
-  -- Lo que hace la app después de cambiarla (perfilApi.cambiarMiContrasena)
   UPDATE "User" SET "DebeCambiarContrasena" = FALSE WHERE "Id_User" = u_corta;
   r := login_social();
   ASSERT NOT (r->>'debeCambiarContrasena')::BOOLEAN, 'cambiada la contraseña, deja de pedirse';
@@ -177,7 +159,6 @@ BEGIN
   RAISE NOTICE 'pruebas_072 (#90) OK';
 END $$;
 
--- ── mascota_de_cliente: peso y nacimiento sólo con un trato vigente ─────────
 DO $$
 DECLARE
   sufijo TEXT := substr(md5(random()::TEXT), 1, 8);
@@ -213,7 +194,6 @@ BEGIN
 
   SELECT "Id_Mascota" INTO mascota FROM "Mascota" WHERE "Id_User" = duena;
 
-  -- Sin ningún trato, nadie ve el peso
   PERFORM pg_temp.como(pas_auth);
   ASSERT NOT EXISTS (SELECT 1 FROM mascota_de_cliente WHERE "Id_Mascota" = mascota),
     'sin paseo, el paseador no ve el peso';
@@ -227,7 +207,7 @@ BEGIN
   VALUES (neg, 'veterinaria', 'Vete Nora', 'Calle 1', -34.6, -58.4) RETURNING id INTO negocio;
   INSERT INTO negocio_items (id_negocio, clase, nombre, precio)
   VALUES (negocio, 'servicio', 'Consulta', 5000) RETURNING id INTO item;
-  PERFORM pg_temp.como(duena_auth);   -- el turno lo pide la dueña (es_mi_mascota)
+  PERFORM pg_temp.como(duena_auth);
   INSERT INTO negocio_turnos (id_negocio, id_dueno, id_mascota, id_item, servicio, fecha, precio)
   VALUES (negocio, duena, mascota, item, 'Consulta', now() + interval '1 day', 5000);
   PERFORM pg_temp.salir();

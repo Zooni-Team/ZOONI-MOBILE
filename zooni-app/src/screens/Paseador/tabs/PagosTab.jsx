@@ -1,16 +1,3 @@
-/**
- * PagosTab.jsx — Sección "Pagos" de Zooni Paseadores (cuenta corriente)
- *
- *   · Arriba: cuánto te deben en total y cuántos clientes deben
- *   · Filtro: Todos / Deben / Al día
- *   · Una fila por dueño con su saldo (Debe $X / Al día / A favor) y con qué
- *     medio paga. Tocarla abre su cuenta corriente (CuentaCorrienteModal),
- *     donde se anotan, corrigen o borran los pagos (PagoFormModal).
- *
- * Los paseos finalizados suman a lo que debe cada dueño; los pagos que anota
- * el paseador restan. Ver fetchCuentasCorrientes en services/paseadorApi.js.
- */
-
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View,
@@ -41,8 +28,7 @@ export default function PagosTab({ avisar }) {
   const [error, setError] = useState(null);
   const [filtro, setFiltro] = useState('todos');
   const [refrescando, setRefrescando] = useState(false);
-  const [abierta, setAbierta] = useState(null); // idDueno de la cuenta abierta
-  // Formulario de pago: { pago } (null = nuevo) — undefined = cerrado
+  const [abierta, setAbierta] = useState(null);
   const [form, setForm] = useState(undefined);
 
   const cargar = useCallback(async () => {

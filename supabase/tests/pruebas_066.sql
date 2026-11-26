@@ -1,15 +1,3 @@
--- ⚠ NO PEGAR EN SUPABASE. Archivo de pruebas para un Postgres LOCAL (lo corre
---   supabase/scripts/probar-esquema.mjs). Crea usuarios de prueba.
--- pruebas_066.sql — Pruebas de la sección 066 (correr DESPUÉS de pruebas_rls.sql,
--- que crea los helpers pg_temp.como / pg_temp.salir).
---
---   · Pedir un paseo en el pasado, sin dirección o superpuesto: se rechaza.
---   · vencer_paseos() marca 'vencido' lo que nadie hizo a tiempo, y un
---     vencido no se puede aceptar.
---   · Cambiar el peso deja un punto en historial_peso.
---   · Un paseador no puede opinar de sí mismo.
---   · Las veterinarias de ejemplo no están activas.
-
 DO $$
 DECLARE
   sufijo TEXT := substr(md5(random()::TEXT), 1, 8);
@@ -38,7 +26,6 @@ BEGIN
   INSERT INTO paseador_perfil (id_user, servicios) VALUES (pas, '[{"minutos": 30, "precio": 5000}]'::JSONB)
   ON CONFLICT (id_user) DO UPDATE SET servicios = EXCLUDED.servicios;
 
-  -- ── Alta de paseos ──────────────────────────────────────────────────────
   PERFORM pg_temp.como(duena_auth);
   fallo := FALSE;
   BEGIN
@@ -68,8 +55,6 @@ BEGIN
   ASSERT fallo, 'la misma mascota no puede tener dos paseos que se pisan';
   PERFORM pg_temp.salir();
 
-  -- ── Vencidos ───────────────────────────────────────────────────────────
-  -- (como superusuario: simula un pedido viejo que nadie tomó)
   UPDATE "Paseo" SET "FechaProgramada" = now() - interval '10 days' WHERE "Id_Paseo" = paseo;
   PERFORM pg_temp.como(pas_auth);
   fallo := FALSE;
@@ -78,25 +63,22 @@ BEGIN
   EXCEPTION WHEN raise_exception THEN fallo := SQLERRM = 'paseo_vencido';
   END;
   ASSERT fallo, 'un paseo vencido no se acepta';
-  n := vencer_paseos();   -- cualquiera con sesión la puede llamar
+  n := vencer_paseos();
   PERFORM pg_temp.salir();
   ASSERT n >= 1, 'vencer_paseos vence el pedido viejo';
   SELECT "Estado" INTO estado FROM "Paseo" WHERE "Id_Paseo" = paseo;
   ASSERT estado = 'vencido', 'el pedido viejo queda vencido';
 
-  -- ── Peso ───────────────────────────────────────────────────────────────
   PERFORM pg_temp.como(duena_auth);
   UPDATE "Mascota" SET "Peso" = 12.5 WHERE "Id_Mascota" = mascota;
   PERFORM pg_temp.salir();
   ASSERT (SELECT peso_kg FROM historial_peso WHERE mascota_id = mascota ORDER BY fecha DESC, id DESC LIMIT 1) = 12.5,
          'cambiar el peso deja el punto en el historial';
 
-  -- ── Opinar de uno mismo ────────────────────────────────────────────────
   PERFORM pg_temp.como(pas_auth);
   fallo := FALSE;
   BEGIN
     INSERT INTO paseador_opiniones (id_walker, id_autor, rating) VALUES (pas, pas, 5);
-  -- Con la 066 sola lo frena la RLS; desde la 070, el trigger con su motivo.
   EXCEPTION
     WHEN insufficient_privilege THEN fallo := TRUE;
     WHEN raise_exception THEN fallo := SQLERRM = 'no_podes_opinar_de_vos_mismo';
@@ -104,7 +86,6 @@ BEGIN
   ASSERT fallo, 'un paseador no opina de sí mismo';
   PERFORM pg_temp.salir();
 
-  -- ── SOS ────────────────────────────────────────────────────────────────
   ASSERT NOT EXISTS (SELECT 1 FROM veterinary_clinics WHERE is_active AND phone = '011-15-6044-2211'),
          'las veterinarias inventadas no se muestran';
 

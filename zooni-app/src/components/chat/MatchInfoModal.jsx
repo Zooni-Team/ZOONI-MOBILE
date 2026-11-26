@@ -1,15 +1,3 @@
-/**
- * MatchInfoModal.jsx — Ficha de perfil de un match (tipo Instagram/WhatsApp)
- *
- * Se abre al tocar la foto o el nombre en el chat o en la lista de mensajes.
- * Muestra: foto grande (tocable → visor a pantalla completa), datos de la
- * persona, su mascota (la del match), intereses y desde cuándo son match.
- *
- * Props:
- *   visible, matchId, onClose
- *   onAbrirChat (opcional) → botón "Abrir chat" (para la lista de mensajes)
- */
-
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator, Image, Modal, Pressable, ScrollView,
@@ -77,7 +65,6 @@ export default function MatchInfoModal({ visible, matchId, onClose, onAbrirChat,
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={s.root}>
-        {/* Header con cerrar */}
         <View style={s.topBar}>
           <TouchableOpacity onPress={onClose} style={s.topBtn} accessibilityLabel="Cerrar">
             <Ionicons name="chevron-down" size={26} color={C.text} />
@@ -98,7 +85,6 @@ export default function MatchInfoModal({ visible, matchId, onClose, onAbrirChat,
           </View>
         ) : (
           <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-            {/* Foto grande (tocable → pantalla completa) */}
             <TouchableOpacity activeOpacity={0.9} disabled={!tieneFoto}
               onPress={() => setFotoFull(true)} style={s.fotoWrap}
               accessibilityRole="imagebutton" accessibilityLabel={`Foto de ${persona.nombre}`}>
@@ -111,13 +97,11 @@ export default function MatchInfoModal({ visible, matchId, onClose, onAbrirChat,
               )}
             </TouchableOpacity>
 
-            {/* Nombre + edad + @usuario */}
             <Text style={s.nombre}>
               {persona.nombre}{persona.edad != null ? `, ${persona.edad}` : ''}
             </Text>
             {persona.nombreUsuario ? <Text style={s.usuario}>@{persona.nombreUsuario}</Text> : null}
 
-            {/* Ubicación / distancia */}
             {(persona.ubicacion || persona.distanciaKm != null) && (
               <View style={s.ubicRow}>
                 <Ionicons name="location-outline" size={15} color={C.textSoft} />
@@ -128,7 +112,6 @@ export default function MatchInfoModal({ visible, matchId, onClose, onAbrirChat,
               </View>
             )}
 
-            {/* Match desde */}
             {detalle.fechaMatch && (
               <View style={s.matchBadge}>
                 <Ionicons name="heart" size={13} color={C.brandText} />
@@ -136,7 +119,6 @@ export default function MatchInfoModal({ visible, matchId, onClose, onAbrirChat,
               </View>
             )}
 
-            {/* Su mascota */}
             {mascota && (
               <View style={s.card}>
                 <Text style={s.cardTitulo}>Su mascota</Text>
@@ -157,7 +139,6 @@ export default function MatchInfoModal({ visible, matchId, onClose, onAbrirChat,
               </View>
             )}
 
-            {/* Intereses */}
             {persona.intereses?.length > 0 && (
               <View style={s.card}>
                 <Text style={s.cardTitulo}>Intereses en común y gustos</Text>
@@ -181,7 +162,6 @@ export default function MatchInfoModal({ visible, matchId, onClose, onAbrirChat,
           </ScrollView>
         )}
 
-        {/* Menú: bloquear / reportar */}
         <Modal visible={menu} transparent animationType="slide" onRequestClose={() => setMenu(false)}>
           <Pressable style={s.sheetScrim} onPress={() => setMenu(false)}>
             <Pressable style={s.sheet} onPress={() => {}}>
@@ -199,7 +179,6 @@ export default function MatchInfoModal({ visible, matchId, onClose, onAbrirChat,
           </Pressable>
         </Modal>
 
-        {/* Sheet de motivos de reporte */}
         <Modal visible={reporteAbierto} transparent animationType="slide" onRequestClose={() => setReporteAbierto(false)}>
           <Pressable style={s.sheetScrim} onPress={() => setReporteAbierto(false)}>
             <Pressable style={s.sheet} onPress={() => {}}>
@@ -214,7 +193,6 @@ export default function MatchInfoModal({ visible, matchId, onClose, onAbrirChat,
           </Pressable>
         </Modal>
 
-        {/* Visor de foto a pantalla completa */}
         <Modal visible={fotoFull} transparent animationType="fade" onRequestClose={() => setFotoFull(false)}>
           <Pressable style={s.fullScrim} onPress={() => setFotoFull(false)}>
             <TouchableOpacity style={s.fullClose} onPress={() => setFotoFull(false)} accessibilityLabel="Cerrar foto">

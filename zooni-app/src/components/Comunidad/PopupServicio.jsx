@@ -16,11 +16,7 @@ export default function PopupServicio({ servicio, onClose }) {
     ]).start();
   }, [opacity, translateY]);
 
-  // Un local traído del proveedor de mapas (OpenStreetMap o Google) existe en
-  // el mundo real pero no tiene usuario en Zooni: el chat no iría a ninguna
-  // parte. Solo los servicios cargados en la tabla `servicios` son chateables.
   const esExterno = servicio.origen === 'osm' || servicio.origen === 'google';
-  // Negocio de Zooni (046): tiene ficha propia con turnos o catálogo
   const idNegocio = servicio.id_negocio ?? null;
 
   const verFicha = () => {
@@ -28,9 +24,6 @@ export default function PopupServicio({ servicio, onClose }) {
     navigation.navigate('NegocioPublico', { idNegocio });
   };
 
-  // google_maps_url la escribe el dueño del negocio (servicios.google_maps_url,
-  // #10 del informe de seguridad): sólo se abre si de verdad es un link de
-  // Google Maps, nunca lo que sea que haya puesto ahí.
   const HOSTS_MAPS = ['google.com', 'www.google.com', 'maps.google.com', 'goo.gl', 'maps.app.goo.gl'];
   function esUrlDeMaps(url) {
     try {
@@ -101,8 +94,6 @@ export default function PopupServicio({ servicio, onClose }) {
           )}
         </View>
       )}
-      {/* OpenStreetMap no dice si está abierto ahora, pero sí publica el horario
-          en texto ("Mo-Fr 09:00-19:00"), que es lo que hace falta saber. */}
       {servicio.horario && (
         <View style={styles.infoRow}>
           <Ionicons name="time-outline" size={13} color={colores.textoSecundario} />
@@ -124,7 +115,6 @@ export default function PopupServicio({ servicio, onClose }) {
         </View>
       ) : (
       <View style={styles.btnsRow}>
-        {/* En los externos se ofrece llamar en lugar de chatear. */}
         {esExterno ? (
           servicio.telefono && (
             <TouchableOpacity

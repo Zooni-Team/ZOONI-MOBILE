@@ -1,20 +1,9 @@
-/**
- * FichaMedicaScreen.jsx — Pantalla "Ficha Médica" de Zooni
- *
- * Sin dependencias externas más allá de las ya instaladas en el proyecto.
- * Navegación: desde Home con { petId } o { mascotaId }.
- */
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Platform, RefreshControl, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-// Import estático: el import() dinámico no es confiable con Metro (el
-// bundler de Expo) para este tipo de caso. Solo se USA en la rama web
-// (generarPdfWeb) — en nativo, expo-print ya genera el PDF real sin este
-// problema, así que esta librería nunca llega a ejecutarse ahí.
 import jsPDF from 'jspdf';
 
 import { calcularEdad } from '../utils/calcularEdad';
@@ -38,8 +27,6 @@ import { imagenADataUri } from '../utils/imagenBase64';
 import { colores } from '../theme';
 import { formatearFecha } from '../utils/fechaLocal';
 import { capitalizar } from '../utils/texto';
-
-// ─── COMPONENTES ─────────────────────────────────────────────────────────────
 
 function FilaDato({ icono, label, valor, onEditar, editando, children }) {
   return (
@@ -76,15 +63,9 @@ function BotonNav({ icono, iconoColor, texto, onPress }) {
   );
 }
 
-// ─── SCREEN ───────────────────────────────────────────────────────────────────
-
 export default function FichaMedicaScreen() {
   const navigation = useNavigation();
   const route      = useRoute();
-  // Estado y no constante: el selector de arriba cambia de mascota sin salir
-  // de la ficha (`cargarMascota` depende de petId y recarga sola). Los botones
-  // de sección le pasan este mismo petId, así que Vacunas, Tratamientos y
-  // Consultas se abren con la mascota que se está mirando.
   const [petId, setPetId] = useState(route.params?.petId || route.params?.mascotaId || null);
 
   const [mascota,        setMascota]        = useState(null);
@@ -103,34 +84,25 @@ export default function FichaMedicaScreen() {
   const [drawerOpen,     setDrawerOpen]     = useState(false);
   const [refreshing,     setRefreshing]     = useState(false);
   const [historialVisible,  setHistorialVisible]  = useState(false);
-  const [historialPeso,     setHistorialPeso]     = useState(null); // null = no cargado aún
+  const [historialPeso,     setHistorialPeso]     = useState(null);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
   const { usuario, mascotaActiva: mascotaActivaDemo } = useUsuarioActivo();
   const { mascotas } = useMisMascotas();
 
   const pesoInputRef = useRef(null);
 
-  // ── Cambio de mascota (mismas flechas que el hero del Home) ───────────────
-  // Si la ficha se abrió sin petId, se elige sola la mascota activa: sin esto
-  // las flechas no tendrían desde dónde arrancar.
   useEffect(() => {
     if (petId != null || !mascotas.length) return;
     setPetId((mascotas.find((mx) => mx.esActiva) ?? mascotas[0]).id);
   }, [petId, mascotas]);
 
-  /** Alterna a la mascota anterior/siguiente, en círculo. */
   const cambiarMascota = (direccion) => {
     if (mascotas.length < 2) return;
     const i = mascotas.findIndex((mx) => mx.id === petId);
-    // Si la actual no está en la lista (recién archivada, por ejemplo), se
-    // arranca desde el principio en vez de quedarse sin hacer nada.
     const desde = i === -1 ? 0 : i;
     setPetId(mascotas[(desde + direccion + mascotas.length) % mascotas.length].id);
   };
 
-  // ── Carga ─────────────────────────────────────────────────────────────────
-  // Timeout de 3 segundos: si el backend no responde, mostrar la vista demo
-  // en vez de dejar al usuario esperando (mismo patrón que HomeScreen).
   const cargarMascota = useCallback(async (silencioso = false) => {
     if (!petId) { setLoading(false); return; }
     if (!silencioso) setLoading(true);
@@ -157,7 +129,6 @@ export default function FichaMedicaScreen() {
     setRefreshing(false);
   };
 
-  // ── Historial de peso ─────────────────────────────────────────────────────
   const cargarHistorial = async () => {
     setCargandoHistorial(true);
     try { setHistorialPeso(await fetchHistorialPeso(petId)); }
@@ -171,7 +142,6 @@ export default function FichaMedicaScreen() {
     if (historialPeso === null) await cargarHistorial();
   };
 
-  // ── Peso ──────────────────────────────────────────────────────────────────
   const abrirEditPeso = () => {
     setPesoBorrador(mascota.peso != null ? String(mascota.peso).replace('.', ',') : '');
     setEditandoPeso(true);
@@ -180,8 +150,6 @@ export default function FichaMedicaScreen() {
 
   const confirmarPeso = async () => {
     const n = parseFloat(pesoBorrador.replace(',', '.'));
-    // El rango sale de la especie: 0–500 kg aceptaba cualquier cosa para un
-    // hámster y encima chocaba con el CHECK de la base.
     if (isNaN(n) || !pesoValido(n, mascota?.especie)) {
       Alert.alert('Valor inválido', `Ingresá un peso entre ${textoRangoPeso(mascota?.especie)}.`);
       return;
@@ -191,13 +159,11 @@ export default function FichaMedicaScreen() {
       const actualizada = await actualizarPeso(petId, n);
       setMascota((p) => ({ ...p, peso: actualizada.peso }));
       setEditandoPeso(false);
-      // Si el historial ya está a la vista, sumarle el registro nuevo
       if (historialPeso !== null) cargarHistorial();
     } catch { Alert.alert('Error', 'No se pudo actualizar el peso.'); }
     finally { setGuardandoPeso(false); }
   };
 
-  // ── Raza — mismo picker que en el registro, no texto libre ─────────────────
   const abrirEditRaza = async () => {
     setShowRazaPicker(true);
     setCargandoRazas(true);
@@ -221,7 +187,6 @@ export default function FichaMedicaScreen() {
     finally { setGuardandoRaza(false); }
   };
 
-  // ── Fecha ─────────────────────────────────────────────────────────────────
   const abrirEditFecha = () => {
     setFechaBorrador(parseFechaLocal(mascota.fecha_nacimiento) ?? new Date());
     setEditandoFecha(true);
@@ -238,28 +203,11 @@ export default function FichaMedicaScreen() {
     finally { setGuardandoFecha(false); }
   };
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  // Debajo del kilo se muestra en gramos ("120 g" y no "0,12 kg")
   const formatPeso = (p) => (p == null ? 'Sin registrar' : formatearPeso(p));
 
-  // ── PDF ───────────────────────────────────────────────────────────────────
-  // Se genera localmente con los datos ya disponibles, sin depender de un
-  // backend que hoy no existe. Solo lo esencial: especie, raza, edad, peso,
-  // vacunas y tratamientos aplicados (sin datos del propietario).
-  /*
-    La generación del PDF vive en utils/fichaPdf.js, no acá.
-
-    Estaba escrita dentro de esta pantalla —dos generadores de ~200 líneas cada
-    uno, uno para web y otro para nativo—, así que la única forma de probarla
-    era abrir la app y descargar el archivo. Por eso pasó inadvertido que el
-    documento salía incompleto. Separada del componente se puede renderizar en
-    un test y verificar que TODOS los registros cargados aparecen.
-  */
   const generarPDF = async () => {
     setGenerandoPdf(true);
     try {
-      // Las consultas son best-effort: si la migración 016 no está corrida, el
-      // PDF sale igual con vacunas y tratamientos.
       const [vac, trat, consultas] = petId
         ? await Promise.all([
           fetchVacunas(petId),
@@ -268,23 +216,17 @@ export default function FichaMedicaScreen() {
         ])
         : [{ aplicadas: [], sugeridas: [] }, { aplicados: [] }, []];
 
-      // La foto va incrustada en base64: ni expo-print ni jsPDF esperan a que
-      // baje una URL remota. Si falla, el PDF sale igual pero sin foto.
       const fotoDataUri = await imagenADataUri(petImg);
 
-      // El plan sugerido (vac.sugeridas) NO va al PDF: es una recomendación
-      // genérica de la app, no un dato del animal. Vive en la pantalla Vacunas.
       const datos = {
         mascota: mascota ?? m,
-        usuario,                              // titular responsable del documento
+        usuario,
         vacunas: vac.aplicadas ?? [],
         tratamientos: trat.aplicados ?? [],
         consultas: consultas ?? [],
       };
 
       if (Platform.OS === 'web') {
-        // expo-print en el navegador ignora el HTML y hace window.print() de la
-        // pantalla actual: para bajar un archivo de verdad hace falta jsPDF.
         construirDocPdf(jsPDF, datos, fotoDataUri).save(nombreArchivo(m.nombre));
       } else {
         const html = construirHtmlFicha(datos, fotoDataUri);
@@ -300,30 +242,23 @@ export default function FichaMedicaScreen() {
         }
       }
     } catch (e) {
-      // Con el mensaje real: un "No se pudo" a secas no deja diagnosticar nada.
       Alert.alert('Error', `No se pudo generar el PDF.\n\n${e?.message ?? e}`);
     } finally {
       setGenerandoPdf(false);
     }
   };
 
-  // Sin petId o error sin mascota (una vez terminada la carga): pantalla demo visual
   const demoMascota = !loading && (!petId || !mascota);
   const interactuable = !loading && !demoMascota;
-  // Con sesión iniciada nunca se muestra la mascota de demo: si los datos no
-  // llegaron, va el placeholder neutro. Titán solo aparece en la vista previa
-  // sin login, que es para lo que estaba pensado.
   const m = mascota ?? MASCOTA_VACIA;
   const edad = calcularEdad(m.fecha_nacimiento);
   const petImg = resolveMascotaVisual(m);
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={s.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       <View style={s.screenBackground}>
-        {/* Header */}
         <View style={s.header}>
           <TouchableOpacity onPress={() => setDrawerOpen(true)} style={s.headerBtn} accessibilityLabel="Abrir menú"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -338,7 +273,6 @@ export default function FichaMedicaScreen() {
               colors={[colores.verde]} tintColor={colores.verde} />
           }>
 
-          {/* Hero */}
           <View style={s.heroSection}>
             {loading ? (
               <SkeletonBloque width={140} height={30} borderRadius={8} style={{ marginBottom: 12 }} />
@@ -348,12 +282,9 @@ export default function FichaMedicaScreen() {
             {loading ? (
               <SkeletonBloque width={110} height={110} borderRadius={20} />
             ) : (
-              // Sin sombra: sobre un PNG transparente dibuja un rectángulo.
               <Image source={petImg} style={s.heroImg} resizeMode="contain" accessibilityLabel={`Ilustración de ${m.nombre}`} />
             )}
 
-            {/* Flechas para alternar entre mascotas, igual que en el Home.
-                Solo con más de una: con una sola no hay a dónde ir. */}
             {!loading && mascotas.length > 1 && (
               <>
                 <TouchableOpacity
@@ -378,7 +309,6 @@ export default function FichaMedicaScreen() {
             )}
           </View>
 
-        {/* Card blanco */}
         <View style={s.whiteCard}>
 
           {demoMascota && (
@@ -417,7 +347,6 @@ export default function FichaMedicaScreen() {
             </View>
           </FilaDato>
 
-          {/* Historial de peso — desplegable, se guarda un punto por cada edición */}
           {interactuable && (
             <>
               <TouchableOpacity style={s.histToggle} onPress={toggleHistorial}
@@ -516,8 +445,6 @@ export default function FichaMedicaScreen() {
   );
 }
 
-// ─── ESTILOS ─────────────────────────────────────────────────────────────────
-
 const s = StyleSheet.create({
   safeArea:    { flex: 1, backgroundColor: colores.menta },
   screenBackground: { flex: 1, width: '100%', backgroundColor: colores.menta },
@@ -540,8 +467,6 @@ const s = StyleSheet.create({
   },
   heroImg:      { width: 110, height: 110 },
 
-  // Flechas del selector de mascota, a la altura de la ilustración (110 px de
-  // alto): 55 de centro menos 20 de media flecha = 35 desde abajo.
   petArrow: {
     position: 'absolute', bottom: 35,
     width: 40, height: 40, borderRadius: 20,
@@ -582,7 +507,6 @@ const s = StyleSheet.create({
   pdfBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colores.verde, borderRadius: 30, height: 48, width: '65%', alignSelf: 'center', marginTop: 28, marginBottom: 10, shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 4 },
   pdfBtnTxt: { fontSize: 15, fontWeight: '700', color: colores.blanco },
 
-  // Historial de peso (desplegable bajo la fila Peso)
   histToggle:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 6, marginTop: -4, marginBottom: 8 },
   histToggleTxt: { fontSize: 12, fontWeight: '700', color: colores.verde },
   histCard:      { backgroundColor: colores.blanco, borderRadius: 16, paddingHorizontal: 18, paddingVertical: 6, marginBottom: 10, shadowColor: colores.negro, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 },

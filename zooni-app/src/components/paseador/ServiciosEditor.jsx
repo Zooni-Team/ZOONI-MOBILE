@@ -1,18 +1,3 @@
-/**
- * ServiciosEditor.jsx — El paseador arma sus propios tiempos de paseo
- *
- * Cada fila es un paseo que ofrece: cuántos minutos dura y cuánto cobra.
- * No hay duraciones fijas (antes eran siempre 30 y 60): arranca con una fila
- * vacía y se pueden sumar hasta SERVICIOS_MAX.
- *
- * Props:
- *   filas    [{ id, minutos: '45', precio: '7000' }] — strings, como se tipean
- *   onCambio(filas)
- *   error    texto del error (pinta los campos vacíos/incorrectos en rojo)
- *
- * filasDesdeServicios / serviciosDesdeFilas pasan de y hacia [{ minutos, precio }].
- */
-
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 

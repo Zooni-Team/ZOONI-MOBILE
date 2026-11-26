@@ -1,10 +1,3 @@
--- ⚠ NO PEGAR EN SUPABASE. Archivo de pruebas para un Postgres LOCAL (lo corre
---   supabase/scripts/probar-esquema.mjs). Crea usuarios de prueba.
--- pruebas_067.sql — correr DESPUÉS de pruebas_rls.sql (helpers pg_temp.como / salir).
---   · Un usuario no puede llamar las funciones internas (_upsert_*, _devolver_stock).
---   · Un paseador no se marca verificado a sí mismo.
---   · migrar_cuenta_legada frena después de 5 fallos.
-
 DO $$
 DECLARE
   sufijo TEXT := substr(md5(random()::TEXT), 1, 8);

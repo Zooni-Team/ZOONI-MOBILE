@@ -1,14 +1,6 @@
 import { useRef } from 'react';
 import { Animated, Image, Text, TouchableOpacity } from 'react-native';
 
-/**
- * Tile de especie (elegir perro/gato/...), con el rebote al tocar. Antes
- * duplicado en RegisterStep1Screen y Configuracion/AltaMascotaScreen
- * (faltaporhacer.md §2).
- *
- * @param {object} styles - el `s` de la pantalla que llama (claves: tileWrap,
- *   tile, tileOn, tileImg, tileEmoji, tileLabel, tileLabelOn).
- */
 export default function EspecieTile({ styles: s, especie, seleccionada, onPress }) {
   const scale = useRef(new Animated.Value(1)).current;
 

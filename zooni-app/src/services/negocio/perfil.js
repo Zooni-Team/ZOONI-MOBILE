@@ -1,8 +1,3 @@
-/**
- * negocio/perfil.js — Perfil del negocio (tabla negocio_perfil) y su pin en el
- * mapa de Comunidad (servicios.id_negocio), que se mantiene sincronizado acá.
- */
-
 import { supabase } from '../../lib/supabase';
 import { getCurrentUserId } from '../../config/session';
 import { subirImagenPublica } from '../imagenStorage';
@@ -10,7 +5,6 @@ import { HORARIOS_NEGOCIO_DEFAULT } from '../../constants/negocios';
 import { errorBase } from '../comun';
 import { fetchItems } from './catalogo';
 
-/** Fila de negocio_perfil → objeto que usan las pantallas. */
 export function mapNegocio(r, idServicio = null) {
   return {
     id: r.id,
@@ -37,7 +31,6 @@ async function servicioDe(idNegocio) {
   return data?.id ?? null;
 }
 
-/** Mi negocio de este tipo (o null si la cuenta no tiene uno). */
 export async function fetchMiNegocio(tipo) {
   const { data, error } = await supabase.from('negocio_perfil').select('*')
     .eq('id_user', getCurrentUserId()).eq('tipo', tipo).maybeSingle();
@@ -46,7 +39,6 @@ export async function fetchMiNegocio(tipo) {
   return mapNegocio(data, await servicioDe(data.id));
 }
 
-/** [{ id, tipo, nombre }] de los negocios de una cuenta (para los roles). */
 export async function fetchMisNegocios(id = getCurrentUserId()) {
   if (id == null) return [];
   const { data, error } = await supabase.from('negocio_perfil').select('id, tipo, nombre').eq('id_user', id);
@@ -59,10 +51,8 @@ const COLUMNAS_NEGOCIO = {
   lat: 'lat', lng: 'lng', telefono: 'telefono', logo: 'logo', horarios: 'horarios',
   abierto: 'abierto', datos: 'datos',
 };
-// Lo que también se ve en el pin de Comunidad
 const COLUMNAS_PIN = ['nombre', 'direccion', 'lat', 'lng', 'telefono', 'descripcion'];
 
-/** Guarda cambios del negocio (camelCase) y los copia al pin de Comunidad. */
 export async function actualizarNegocio(negocio, campos) {
   const fila = { actualizado_en: new Date().toISOString() };
   Object.entries(campos).forEach(([k, v]) => { if (COLUMNAS_NEGOCIO[k]) fila[COLUMNAS_NEGOCIO[k]] = v; });
@@ -78,7 +68,6 @@ export async function actualizarNegocio(negocio, campos) {
   return { ...negocio, ...campos };
 }
 
-/** Actualiza sólo lo propio del tipo (matrícula, envíos, galería…). */
 export function actualizarDatos(negocio, cambios) {
   return actualizarNegocio(negocio, { datos: { ...(negocio.datos ?? {}), ...cambios } });
 }
@@ -92,7 +81,6 @@ export function setAbiertoNegocio(negocio, abierto) {
   return actualizarNegocio(negocio, { abierto });
 }
 
-// ─── Galería (peluquería): fotos de trabajos en datos.galeria ───────────────
 export const GALERIA_MAX = 30;
 
 export async function agregarFotoGaleria(negocio, uri, nota = '') {
@@ -106,13 +94,11 @@ export function borrarFotoGaleria(negocio, url) {
   return actualizarDatos(negocio, { galeria: (negocio.datos?.galeria ?? []).filter((f) => f.url !== url) });
 }
 
-/** Negocio + lo que ofrece (sólo lo activo), para la ficha que ve el dueño. */
 export async function fetchNegocioPublico(idNegocio) {
   const { data, error } = await supabase.from('negocio_perfil').select('*').eq('id', idNegocio).maybeSingle();
   if (error) throw errorBase(error);
   if (!data) return null;
   const [idServicio, items] = await Promise.all([servicioDe(idNegocio), fetchItems(idNegocio, { soloActivos: true })]);
-  // Cuántos atendió / vendió: lo que hace confiar en un negocio nuevo
   const tabla = data.tipo === 'petshop' ? 'negocio_pedidos' : 'negocio_turnos';
   const estado = data.tipo === 'petshop' ? 'entregado' : 'completado';
   const { count } = await supabase.from(tabla).select('id', { count: 'exact', head: true })

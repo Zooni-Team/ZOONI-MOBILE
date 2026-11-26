@@ -1,14 +1,3 @@
-/**
- * AltaMascotaScreen.jsx — Agregar nueva mascota desde Configuración
- *
- * Mismo recorrido que crear la mascota en el REGISTRO:
- *   Paso 1 (= RegisterStep1): nombre + grilla de especies con ilustraciones
- *   Paso 2 (= RegisterStep2): sexo y raza (dropdowns), slider amarillo de peso,
- *   fecha de nacimiento y foto — con la mascota "en caja" arriba.
- * La única diferencia es el final: acá se guarda la mascota del usuario
- * logueado (crearMascota → Supabase) en vez de seguir a los pasos de cuenta.
- */
-
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -49,7 +38,6 @@ import EspecieTile from '../../components/EspecieTile';
 
 const SEXOS = ['Macho', 'Hembra'];
 
-// Mismo mapa que usa el registro (authApi.js)
 const IMAGEN_ASSET_POR_ESPECIE = {
   perro: 'perro_default',
   gato: 'gato_default',
@@ -61,30 +49,23 @@ const IMAGEN_ASSET_POR_ESPECIE = {
   raton: 'hamster_default',
 };
 
-/** Tile de especie — igual que en RegisterStep1 */
-
 export default function AltaMascotaScreen() {
   const navigation = useNavigation();
   const [paso, setPaso] = useState(1);
   const [guardando, setGuardando] = useState(false);
-  // Mascota recién creada: dispara el cartel de "¿completás la ficha médica?"
   const [altaOk, setAltaOk] = useState(null);
 
-  // Paso 1 (= RegisterStep1)
   const [nombre, setNombre] = useState('');
   const [especie, setEspecie] = useState(null);
   const [errNombre, setErrNombre] = useState(false);
   const [focusNombre, setFocusNombre] = useState(false);
   const gridShake = useRef(new Animated.Value(0)).current;
 
-  // Paso 2 (= RegisterStep2)
   const [sexo, setSexo] = useState(null);
-  const [raza, setRaza] = useState(null);           // { id, nombre }
+  const [raza, setRaza] = useState(null);
   const [razas, setRazas] = useState([]);
   const [cargandoRazas, setCargandoRazas] = useState(true);
-  const [peso, setPeso] = useState(rangoPeso(null).inicial);   // kg
-  // Fecha de nacimiento, no edad: una edad en meses queda vieja sola (ver el
-  // comentario del Paso 2 del registro)
+  const [peso, setPeso] = useState(rangoPeso(null).inicial);
   const [fechaNacimiento, setFechaNacimiento] = useState(null);
   const [showFecha, setShowFecha] = useState(false);
   const [fotoUri, setFotoUri] = useState(null);
@@ -126,8 +107,6 @@ export default function AltaMascotaScreen() {
     setErrNombre(!nombreOk);
     if (!especie) shakeGrid();
     if (!nombreOk || !especie) return;
-    // La especie recién se sabe acá: el peso arranca en el valor típico de ESA
-    // especie (35 g para un ave, 10 kg para un perro) y no en uno genérico.
     setPeso(rangoPeso(especie).inicial);
     setPaso(2);
   };
@@ -162,14 +141,8 @@ export default function AltaMascotaScreen() {
         peso,
         fechaNacimiento: toISODateLocal(fechaNacimiento),
         imagenAsset: IMAGEN_ASSET_POR_ESPECIE[especie] ?? 'perro_default',
-        fotoUri, // se sube a Storage y se guarda en Mascota.Foto (la de Match)
+        fotoUri,
       });
-      /*
-        Cartel propio de la app (AppDialog) y no confirmar(): en web ese helper
-        cae en window.confirm, que se ve como el cuadro gris del navegador con
-        el "localhost:8081 dice" arriba. Es lo único de este flujo que no
-        parecía parte de Zooni.
-      */
       setGuardando(false);
       setAltaOk(mascota);
     } catch (e) {
@@ -188,7 +161,6 @@ export default function AltaMascotaScreen() {
     ? formatearFecha(fechaNacimiento, 'larga')
     : null;
 
-  // ── PASO 1: nombre + especie (mismo layout que RegisterStep1) ──
   if (paso === 1) {
     return (
       <SafeAreaView style={s.safe}>
@@ -238,7 +210,6 @@ export default function AltaMascotaScreen() {
     );
   }
 
-  // ── PASO 2: datos (mismo layout que RegisterStep2) ──
   return (
     <SafeAreaView style={s.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={colores.menta} />
@@ -258,14 +229,12 @@ export default function AltaMascotaScreen() {
             accessibilityLabel={`${capitalizar(especie)} en caja`} />
 
           <View style={s.cardPaso2}>
-            {/* Sexo */}
             <TouchableOpacity style={[s.dropdown, errores.sexo && s.inputError]} onPress={() => setShowSexo(true)}>
               <Text style={[s.dropdownTxt, !sexo && s.placeholder]}>{sexo ?? 'Sexo'}</Text>
               <Ionicons name="chevron-down" size={16} color={colores.textoSecundario} />
             </TouchableOpacity>
             {errores.sexo && <Text style={s.errorTxt}>{errores.sexo}</Text>}
 
-            {/* Raza */}
             <TouchableOpacity
               style={[s.dropdown, raza && s.dropdownSeleccionado, errores.raza && s.inputError]}
               onPress={() => setShowRaza(true)}
@@ -277,7 +246,6 @@ export default function AltaMascotaScreen() {
             </TouchableOpacity>
             {errores.raza && <Text style={s.errorTxt}>{errores.raza}</Text>}
 
-            {/* Peso — rango realista según la especie elegida en el paso 1 */}
             <Text style={s.sliderLabel}>Peso</Text>
             <SliderAmarillo value={peso} min={rango.min} max={rango.max} step={rango.step}
               onChange={(v) => { setPeso(v); setErrores((p2) => ({ ...p2, peso: null })); }}
@@ -286,7 +254,6 @@ export default function AltaMascotaScreen() {
             <Text style={s.sliderAyuda}>Habitual en {especie}s: {textoRangoPeso(especie)}</Text>
             {errores.peso && <Text style={[s.errorTxt, { textAlign: 'center' }]}>{errores.peso}</Text>}
 
-            {/* Fecha de nacimiento (igual que el Paso 2 del registro) */}
             <Text style={s.sliderLabel}>¿Cuándo nació?</Text>
             <TouchableOpacity
               style={[s.dropdown, fechaNacimiento && s.dropdownSeleccionado, errores.fechaNacimiento && s.inputError]}
@@ -300,7 +267,6 @@ export default function AltaMascotaScreen() {
             {errores.fechaNacimiento && <Text style={[s.errorTxt, { textAlign: 'center' }]}>{errores.fechaNacimiento}</Text>}
             {fechaNacimiento && <Text style={s.sliderValor}>{calcularEdad(fechaNacimiento)}</Text>}
 
-            {/* Foto REAL (opcional): si está, es la que se ve en Match */}
             <Text style={s.fotoLabel}>📷 Agregá una foto real de tu mascota (opcional)</Text>
             {fotoUri && (
               <View style={s.previewWrap}>
@@ -330,16 +296,6 @@ export default function AltaMascotaScreen() {
         </TouchableOpacity>
       </KeyboardAvoidingView>
 
-      {/*
-        Alta lista: cartel de la app, no el confirm del navegador.
-
-        SIN `onCerrar` a propósito. AppDialog ejecuta onCerrar ANTES que el
-        onPress del botón, así que cualquier navegación puesta ahí pisaría la
-        del botón (el goBack se comía el replace a la ficha médica). Sin la
-        prop, el cartel no se cierra tocando afuera y hay que elegir una de las
-        dos opciones — que es lo correcto acá: la mascota ya está creada y
-        dejar al usuario de nuevo en el formulario invita a cargarla dos veces.
-      */}
       <AppDialog
         visible={!!altaOk}
         titulo={altaOk ? `¡${altaOk.nombre} ya es parte de Zooni!` : ''}
@@ -387,7 +343,6 @@ export default function AltaMascotaScreen() {
   );
 }
 
-// Estilos calcados de RegisterStep1 / RegisterStep2
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colores.menta },
   scroll: { flexGrow: 1, paddingHorizontal: 20 },

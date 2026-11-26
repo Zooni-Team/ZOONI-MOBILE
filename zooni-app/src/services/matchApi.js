@@ -1,16 +1,3 @@
-/**
- * matchApi.js — Módulo Match sobre Supabase
- *
- * El "swipe" es mascota-contra-mascota: la tabla Voto guarda
- * idMascotaOrigen/idMascotaDestino, y Match se crea cuando ambas mascotas
- * se dieron like. "Mi mascota" para votar es la mascota activa
- * (Mascota.EsActiva) del usuario actual (getCurrentUserId()).
- *
- * Los filtros de búsqueda (distancia, especie, edad, intereses) no son un
- * dato de negocio compartido entre dispositivos todavía, así que se
- * guardan localmente (mismo patrón que fetchHomeConfig en services/api.js).
- */
-
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { supabase } from '../lib/supabase';
@@ -23,10 +10,6 @@ import { calcularEdadAnios } from '../utils/calcularEdad';
 import { mapaPerfilesPorId, perfilPorId } from './perfilesPublicos';
 
 const FILTROS_KEY = 'zooni_match_filtros';
-
-// ─────────────────────────────────────────────
-// FILTROS (persistencia local por dispositivo)
-// ─────────────────────────────────────────────
 
 async function leerFiltrosGuardados() {
   try {
@@ -48,10 +31,6 @@ async function guardarFiltrosStorage(filtros) {
   await SecureStore.setItemAsync(FILTROS_KEY, raw);
 }
 
-// ─────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────
-
 const puntoDe = (u) => ({ lat: u?.Lat, lng: u?.Lng });
 
 async function miMascotaActiva() {
@@ -67,7 +46,6 @@ async function miMascotaActiva() {
 
 function mapPerfil(mascota, miUsuario, fotosPorMascota) {
   const user = mascota.User;
-  // Portada (Mascota.Foto) + galería (mascota_fotos), sin duplicar
   const galeria = (fotosPorMascota?.get(mascota.Id_Mascota) ?? []).map((f) => f.url);
   const fotos = [mascota.Foto, ...galeria].filter((u, i, arr) => u && arr.indexOf(u) === i);
   return {
@@ -77,8 +55,6 @@ function mapPerfil(mascota, miUsuario, fotosPorMascota) {
     genero: user.Genero ?? null,
     edad: user.Edad ?? null,
     foto_perfil_url: user.FotoPerfil ?? null,
-    // "Ubicacion" ya es el texto completo ("Almagro, CABA"): antes iba en
-    // barrio Y en ciudad y la tarjeta mostraba "Almagro, CABA, Almagro, CABA".
     barrio: user.Ubicacion ?? null,
     ciudad: null,
     distancia_km: distanciaKm(puntoDe(miUsuario), puntoDe(user)),
@@ -87,16 +63,9 @@ function mapPerfil(mascota, miUsuario, fotosPorMascota) {
       nombre: mascota.Nombre,
       especie: mascota.Especie,
       raza: mascota.Raza,
-      // De otras personas la mascota viene por "mascota_publica", que no
-      // expone FechaNacimiento (dato de salud) y da "EdadAnios" ya calculada;
-      // la tarjeta propia ("Así te ven") sigue saliendo de "Mascota".
       edad_anios: mascota.EdadAnios ?? calcularEdadAnios(mascota.FechaNacimiento),
       foto_real_url: mascota.Foto ?? null,
-      // Todas las fotos (portada + galería) para el carrusel de la tarjeta
       fotos,
-      // Antes venía hardcodeado en null: el avatarcito de Match nunca
-      // reflejaba el look aplicado en Closet. Se resuelve con el mismo
-      // ImagenAsset que usan Home y Ficha Médica.
       imagen_asset: mascota.ImagenAsset ?? null,
     },
     intereses: user.Intereses ?? [],
@@ -126,7 +95,6 @@ function aplicarFiltros(lista, filtros) {
       return true;
     });
   }
-  // Edad del dueño (max 65 = "65+", no pone techo)
   if (filtros.edad_dueno_min != null || filtros.edad_dueno_max != null) {
     result = result.filter((p) => {
       if (p.edad == null) return true;
@@ -135,23 +103,17 @@ function aplicarFiltros(lista, filtros) {
       return true;
     });
   }
-  // Género del dueño ('todos' = sin filtro)
   if (filtros.genero_dueno?.length && !filtros.genero_dueno.includes('todos')) {
     result = result.filter((p) => p.genero != null && filtros.genero_dueno.includes(p.genero));
   }
   return result;
 }
 
-/** Candidatos crudos (sin filtros de búsqueda) ya excluyendo vistos/matcheados. */
 async function obtenerCandidatos() {
   const miMascota = await miMascotaActiva();
 
   const [{ data: miUsuario }, { data: candidatos, error }, { data: votos }, { data: matches }] = await Promise.all([
     supabase.from('User').select('Lat, Lng').eq('Id_User', getCurrentUserId()).single(),
-    // Nunca mascotas propias, ni archivadas/en memoria/eliminadas
-    // (mascota_publica ya filtra Estado = 'active' y a los bloqueados), ni
-    // las que su dueño sacó del pool de Match. De otra persona sólo se leen
-    // las columnas no sensibles: por eso la vista y no "Mascota" (#12).
     supabase.from('mascota_publica').select('*')
       .neq('Id_User', getCurrentUserId())
       .eq('VisibleEnMatch', true),
@@ -165,7 +127,6 @@ async function obtenerCandidatos() {
   ]);
   if (error) throw error;
 
-  // Dueños de los candidatos: sólo lo que muestra la tarjeta (perfil_publico)
   const duenos = await mapaPerfilesPorId((candidatos ?? []).map((m) => m.Id_User),
     'Id_User, Nombre, NombreUsuario, Genero, Edad, FotoPerfil, Ubicacion, Lat, Lng, Intereses');
   (candidatos ?? []).forEach((m) => { m.User = duenos.get(m.Id_User) ?? null; });
@@ -175,21 +136,15 @@ async function obtenerCandidatos() {
     ...(matches ?? []).flatMap((m) => [m.idMascotaUno, m.idMascotaDos]),
   ]);
 
-  // Usuarios que bloqueé: sus mascotas no aparecen
   const bloqueados = await fetchIdsBloqueados().catch(() => new Set());
 
   const visibles = (candidatos ?? []).filter((m) =>
     m.User
     && !vistoIds.has(m.Id_Mascota)
     && !bloqueados.has(m.Id_User)
-    // Foto real OBLIGATORIA: sin foto no aparece en Match (nunca se muestra la
-    // ilustración grande). Las mascotas viejas sin foto quedan fuera hasta que
-    // su dueño suba una.
     && !!m.Foto
-    // Visibles en Match (mascota_publica ya excluye las archivadas/eliminadas)
     && m.VisibleEnMatch !== false);
 
-  // Galería de fotos de todas las mascotas visibles, en una sola consulta
   const ids = visibles.map((m) => m.Id_Mascota);
   const fotosPorMascota = new Map();
   if (ids.length) {
@@ -205,28 +160,11 @@ async function obtenerCandidatos() {
   return visibles.map((m) => mapPerfil(m, miUsuario, fotosPorMascota));
 }
 
-// ─────────────────────────────────────────────
-// PERFIL DE MATCH POR MASCOTA (migración 023)
-// ─────────────────────────────────────────────
-// Con varias mascotas activas, cada una tiene su propio perfil de Match.
-// La pantalla detecta cuáles no lo tienen y ofrece crearlo.
-
-/** Mascotas activas del usuario con el estado de su perfil de Match. */
 export async function fetchMisMascotasMatch() {
   const { data, error } = await supabase
     .from('Mascota')
     .select('*')
     .eq('Id_User', getCurrentUserId())
-    /*
-      El ORDER BY no es cosmético: sin él Postgres devuelve las filas en el
-      orden físico de la tabla, y activarMascota hace dos UPDATE (apaga todas,
-      prende una). Cada UPDATE escribe una versión nueva de la fila al final
-      del heap, así que la mascota recién tocada saltaba al final de la lista y
-      las pastillas del selector se reordenaban solas en cada toque.
-
-      Por Id_Mascota, igual que fetchMisMascotas en petsApi: orden estable y el
-      mismo en todas las pantallas.
-    */
     .order('Id_Mascota', { ascending: true });
   if (error) throw error;
   return (data ?? [])
@@ -239,14 +177,11 @@ export async function fetchMisMascotasMatch() {
       imagenAsset: m.ImagenAsset ?? null,
       fotoUrl: m.Foto ?? null,
       esActiva: !!m.EsActiva,
-      // Sin la migración 023 la columna no existe → se asume creado para
-      // no molestar con prompts que no se pueden guardar
       perfilCreado: m.PerfilMatchCreado !== undefined ? !!m.PerfilMatchCreado : true,
       descripcion: m.Descripcion ?? null,
     }));
 }
 
-/** Crea/actualiza el perfil de Match de una mascota del usuario. */
 export async function crearPerfilMatchMascota(mascotaId, { descripcion, visibleEnMatch = true } = {}) {
   const patch = { PerfilMatchCreado: true, VisibleEnMatch: visibleEnMatch };
   if (descripcion !== undefined) patch.Descripcion = descripcion || null;
@@ -258,15 +193,6 @@ export async function crearPerfilMatchMascota(mascotaId, { descripcion, visibleE
   if (error) throw error;
 }
 
-// ─────────────────────────────────────────────
-// DETALLE DE UN MATCH (para la ficha de perfil desde el chat)
-// ─────────────────────────────────────────────
-
-/**
- * Info completa de la OTRA persona de un match: su perfil, su mascota (la del
- * match), intereses y desde cuándo son match. La usa la ficha tipo
- * Instagram/WhatsApp que se abre al tocar la foto/nombre en el chat o la lista.
- */
 export async function fetchDetalleMatch(matchId) {
   const miId = getCurrentUserId();
 
@@ -283,7 +209,6 @@ export async function fetchDetalleMatch(matchId) {
     perfilPorId(otroUserId, 'Id_User, Nombre, Apellido, NombreUsuario, Edad, Genero, FotoPerfil, Ubicacion, Lat, Lng, Intereses')
       .then((data) => ({ data })),
     otraMascotaId
-      // Mascota de la otra persona: por la vista (#12), no por "Mascota".
       ? supabase.from('mascota_publica').select('*').eq('Id_Mascota', otraMascotaId).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
@@ -308,7 +233,7 @@ export async function fetchDetalleMatch(matchId) {
           nombre: mascota.Nombre,
           especie: mascota.Especie,
           raza: mascota.Raza,
-          edad: mascota.EdadAnios ?? null,   // mascota_publica no trae FechaNacimiento
+          edad: mascota.EdadAnios ?? null,
           sexo: mascota.Sexo ?? null,
           descripcion: mascota.Descripcion ?? null,
           fotoUrl: mascota.Foto ?? null,
@@ -318,16 +243,6 @@ export async function fetchDetalleMatch(matchId) {
   };
 }
 
-// ─────────────────────────────────────────────
-// PERFIL DE MATCH DEL USUARIO
-// ─────────────────────────────────────────────
-// El registro solo pide los datos de la mascota + login; para aparecer en el
-// swipe de Match hace falta además: foto de perfil (del dueño, no de la
-// mascota), fecha de nacimiento, género e intereses. Mientras falte algo de
-// esto, MatchScreen muestra el formulario de MatchProfileSetup en vez del
-// swipe.
-
-/** Trae los datos de Match del usuario actual (no vienen en fetchHome). */
 export async function fetchMiPerfilMatch() {
   const { data, error } = await supabase
     .from('User')
@@ -343,17 +258,6 @@ export async function fetchMiPerfilMatch() {
   };
 }
 
-/**
- * Mi propia tarjeta de Match, con EXACTAMENTE la misma forma que las de los
- * demás. La usa el botón "Así te ven" del header.
- *
- * Pasa por `mapPerfil`, el mismo mapeo que arma los perfiles del swipe, a
- * propósito: si la vista previa se armara aparte, mostraría algo distinto de lo
- * que ve la gente en cuanto una de las dos cambiara — que es justo lo que el
- * usuario quiere poder comprobar acá.
- *
- * Devuelve null si todavía no hay mascota activa (nada que mostrar).
- */
 export async function fetchMiTarjetaMatch() {
   const [{ data: user, error }, mascota] = await Promise.all([
     supabase.from('User').select('*').eq('Id_User', getCurrentUserId()).single(),
@@ -367,12 +271,9 @@ export async function fetchMiTarjetaMatch() {
     .order('orden', { ascending: true });
 
   const fotosPorMascota = new Map([[mascota.Id_Mascota, fotos ?? []]]);
-  // `miUsuario` es uno mismo, así que la distancia da 0: la tarjeta no la
-  // muestra en la vista previa (ver MiTarjetaMatchModal).
   return mapPerfil({ ...mascota, User: user }, user, fotosPorMascota);
 }
 
-/** true si el usuario ya cargó todo lo que necesita su perfil de Match. */
 export function perfilMatchCompleto(perfil) {
   return Boolean(
     perfil?.fechaNacimiento
@@ -382,10 +283,6 @@ export function perfilMatchCompleto(perfil) {
   );
 }
 
-/**
- * Guarda el perfil de Match del usuario actual.
- * `fotoUri` es opcional: si no viene, se mantiene la foto ya guardada.
- */
 export async function guardarPerfilMatch({ fechaNacimiento, genero, intereses, fotoUri }) {
   const patch = { FechaNacimiento: fechaNacimiento, Genero: genero, Intereses: intereses };
   if (fotoUri) patch.FotoPerfil = await subirImagenPublica(fotoUri, 'perfiles');
@@ -394,34 +291,16 @@ export async function guardarPerfilMatch({ fechaNacimiento, genero, intereses, f
   if (error) throw error;
 }
 
-/**
- * Guarda la ubicación del usuario (User.Lat/Lng) para poder calcular
- * distancia_km contra otros perfiles. El registro no la pide, así que sin
- * esto ningún usuario nuevo tiene ubicación — MatchScreen llama a esto con
- * la geolocalización del navegador/dispositivo apenas se abre Match.
- */
 export async function actualizarMiUbicacionMatch(lat, lng) {
   const { error } = await supabase.from('User').update({ Lat: lat, Lng: lng }).eq('Id_User', getCurrentUserId());
   if (error) throw error;
 }
-
-// ─────────────────────────────────────────────
-// API PÚBLICA (mismos nombres que usan las pantallas)
-// ─────────────────────────────────────────────
 
 export async function fetchMatchPerfiles() {
   const [candidatos, filtros] = await Promise.all([obtenerCandidatos(), leerFiltrosGuardados()]);
   return { perfiles: aplicarFiltros(candidatos, filtros), cursor_siguiente: null, hay_mas: false };
 }
 
-/**
- * Vota una mascota (me gusta / no me gusta) con la mascota activa.
- *
- * Todo lo decide la base en una transacción (votar_mascota, 062): guarda el
- * voto; si el otro ya había dicho que sí, crea el Match UNA vez y notifica a
- * los dos. Antes la app hacía cuatro pasos sueltos (votar, leer, crear Match,
- * notificar) y dos likes simultáneos podían crear dos Match o ninguno.
- */
 async function votar(mascotaDestinoId, leGusta) {
   const miMascota = await miMascotaActiva();
   if (!miMascota) return { match: false };
@@ -432,26 +311,15 @@ async function votar(mascotaDestinoId, leGusta) {
   return data ?? { match: false };
 }
 
-/** Da like a la mascota `mascotaDestinoId`. Si hay like recíproco, hay Match. */
 export function postMatchLike(mascotaDestinoId) {
   return votar(mascotaDestinoId, true);
 }
 
-/** Descarta la mascota `mascotaDestinoId` (no vuelve a aparecer en el swipe). */
 export async function postMatchSkip(mascotaDestinoId) {
   await votar(mascotaDestinoId, false);
 }
 
-/**
- * Resuelve el chat del match más reciente de una mascota propia.
- * Lo usa el panel de notificaciones para las notificaciones de match que no
- * tienen DataExtra (creadas antes de la migración 024, o si falló el insert).
- * Devuelve { chatId, nombre, fotoPerfilUrl } o null.
- */
 export async function chatDeMatchPorMascota(idMascotaParam) {
-  // El id puede venir de DataExtra, que escribió otra cuenta: se fuerza a
-  // número antes de armar el filtro, para que no se pueda inyectar sintaxis
-  // de PostgREST en el .or() (informe de seguridad #124).
   const idMascota = Number(idMascotaParam);
   const { data: match } = await supabase
     .from('Match')

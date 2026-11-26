@@ -1,15 +1,3 @@
-/**
- * NotificacionesScreen.jsx — Configuración › Notificaciones y alertas (§3.5.8)
- *
- * El toggle maestro colapsa todos los grupos siguientes.
- * Excepción no configurable: las notificaciones críticas de seguridad de la
- * cuenta se listan como "Siempre activas".
- *
- * Todavía no hay notificaciones push (ni expo-notifications ni servidor que
- * las mande): los avisos llegan a la campana de la app. Por eso toda la
- * pantalla va con el aviso de vista previa.
- */
-
 import React, { useState } from 'react';
 
 import {

@@ -1,14 +1,3 @@
-/**
- * MediaResena.jsx — Fotos y videos de las reseñas
- *
- *   · <MiniaturaMedia>  cuadradito para listas (los videos llevan ▶)
- *   · <VisorMedia>      pantalla completa para ver una foto o reproducir un
- *                       video, deslizando entre todos los de la lista
- *
- * No hay reproductor nativo instalado (expo-av): en web el video se ve con el
- * <video> del navegador; en el celular se abre con el reproductor del sistema.
- */
-
 import { createElement, useEffect, useState } from 'react';
 import {
   Image, Linking, Modal, Platform, SafeAreaView, StyleSheet, Text, TouchableOpacity, View,
@@ -20,8 +9,6 @@ import { esUrlPropia } from '../../services/imagenStorage';
 const esWeb = Platform.OS === 'web';
 
 export function MiniaturaMedia({ item, size = 76, onPress, extra }) {
-  // Sólo de nuestro Storage: el media de una reseña lo escribe la base, pero
-  // no se valida que la URL sea del propio bucket (informe de seguridad #42).
   const url = esUrlPropia(item.url ?? item.uri) ? (item.url ?? item.uri) : null;
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={[s.mini, { width: size, height: size }]}

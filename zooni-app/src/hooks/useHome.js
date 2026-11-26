@@ -1,21 +1,9 @@
-/**
- * useHome.js — Datos del Inicio: el usuario, sus mascotas, cuál es la activa,
- * cuántas notificaciones tiene sin leer y qué botones eligió mostrar.
- *
- * Se recarga cada vez que la pantalla vuelve a tener foco (al volver del
- * Closet con un avatar nuevo, por ejemplo: React Navigation no la remonta).
- *
- * Si la consulta falla no se inventa nada: queda lo último que se cargó bien y
- * `error` en true para poder reintentar.
- */
-
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 
 import { activarMascota, fetchHome, fetchHomeConfig, saveHomeConfig } from '../services/api';
 import { actualizarMascota } from '../services/petsApi';
 
-// Los botones amarillos son como mucho 4 (con el SOS fijo, 5 en total).
 export const MAX_BOTONES_HOME = 4;
 
 const BOTONES_POR_DEFECTO = [
@@ -24,8 +12,6 @@ const BOTONES_POR_DEFECTO = [
   { seccion: 'match', orden: 3, visible: true },
 ];
 
-// Cortafuegos para que la pantalla no quede cargando si la red nunca contesta.
-// Holgado a propósito: con 3 s, una red de celular normal lo cruzaba seguido.
 const TIMEOUT_MS = 12000;
 
 function conLimite(promesa, ms) {
@@ -41,7 +27,6 @@ export function useHome() {
   const [refrescando, setRefrescando] = useState(false);
   const [error, setError] = useState(false);
 
-  // silencioso: refresca sin volver a mostrar los placeholders.
   const cargar = useCallback(async ({ silencioso = false } = {}) => {
     if (!silencioso) setCargando(true);
     try {
@@ -65,11 +50,6 @@ export function useHome() {
     setRefrescando(false);
   }, [cargar]);
 
-  // ── Mascota activa ─────────────────────────────────────────────────────────
-  // Optimista: la pantalla cambia ya y la base se entera después (EsActiva es
-  // lo que sigue el resto de la app). Si no se pudo guardar, se recarga para
-  // volver al estado real.
-
   const elegirMascota = useCallback((mascota) => {
     setDatos((d) => (d ? { ...d, mascotaActiva: mascota } : d));
     activarMascota(mascota.id).catch(() => cargar({ silencioso: true }));
@@ -88,8 +68,6 @@ export function useHome() {
     setDatos((d) => (d ? { ...d, notificacionesNoLeidas: 0 } : d));
   }, []);
 
-  // ── Botones ────────────────────────────────────────────────────────────────
-
   const quitarBoton = useCallback((seccion) => {
     setBotones((prev) => prev.filter((b) => b.seccion !== seccion));
   }, []);
@@ -100,7 +78,6 @@ export function useHome() {
       : [...prev, { seccion, orden: prev.length + 1, visible: true }]));
   }, []);
 
-  /** Guarda el orden actual (en el dispositivo: es una preferencia de esta instalación). */
   const guardarBotones = useCallback(async () => {
     const ordenados = botones.map((b, i) => ({ ...b, orden: i + 1, visible: true }));
     setBotones(ordenados);

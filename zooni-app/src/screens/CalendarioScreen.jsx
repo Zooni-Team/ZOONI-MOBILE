@@ -1,12 +1,3 @@
-/**
- * CalendarioScreen.jsx — Calendario de Cuidados: los recordatorios de una
- * mascota (turnos, medicación, paseos, eventos sumados desde la agenda),
- * coloreados según cuánto falta.
- *
- * Se abre desde la Ficha Médica o el menú, con { petId } opcional. Los datos
- * los maneja hooks/useCalendario; las piezas están en components/calendario.
- */
-
 import { useEffect, useRef, useState } from 'react';
 import {
   Animated, ImageBackground, Pressable, RefreshControl, SafeAreaView, ScrollView, StatusBar,
@@ -30,13 +21,11 @@ export default function CalendarioScreen() {
   const calendario = useCalendario();
   const { toast, mostrarToast } = useToast();
   const [menuAbierto, setMenuAbierto] = useState(false);
-  // `formulario`: null (cerrado) · { recordatorio: null } (nuevo) · { recordatorio } (edición)
   const [formulario, setFormulario] = useState(null);
   const [formularioVisible, setFormularioVisible] = useState(false);
   const [detalle, setDetalle] = useState(null);
   const [detalleVisible, setDetalleVisible] = useState(false);
 
-  // El botón "+" aparece una vez, cuando termina la primera carga.
   const fabEscala = useRef(new Animated.Value(0.5)).current;
   const fabOpacidad = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -52,7 +41,6 @@ export default function CalendarioScreen() {
     setFormularioVisible(true);
   };
 
-  // Si falla, el error lo muestra el propio formulario (queda abierto).
   async function guardar(datos, idMascota) {
     if (formulario.recordatorio) {
       await calendario.editar(formulario.recordatorio.id, datos);
@@ -93,7 +81,6 @@ export default function CalendarioScreen() {
 
         <Text style={s.titulo} accessibilityRole="header">Calendario de Cuidados</Text>
 
-        {/* Cada mascota tiene su calendario. Con una sola, no se muestra. */}
         <SelectorMascota mascotas={calendario.mascotas} valor={calendario.idMascota}
           onCambiar={calendario.elegirMascota} style={s.selector} />
 
@@ -150,13 +137,11 @@ const s = StyleSheet.create({
   screenBgImage: { width: '100%', height: '100%' },
   scroll:   { flex: 1 },
   scrollContent: { flexGrow: 1, paddingHorizontal: 16, paddingBottom: 100 },
-  // Header
   header:    { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20 },
   headerBtn: { width: 44, height: 44, justifyContent: 'center' },
   selector: { marginBottom: 6 },
   titulo: { fontSize: 22, fontWeight: '800', color: colores.texto, textAlign: 'center', marginTop: 8, marginBottom: 20, paddingHorizontal: 20 },
   emptyTxt: { fontSize: 15, color: colores.textoSecundario, textAlign: 'center', marginTop: 60 },
-  // FAB
   fab:       { position: 'absolute', width: 56, height: 56 },
   fabCentro: { alignSelf: 'center', top: '42%' },
   fabCorner: { bottom: 32, right: 20 },

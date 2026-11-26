@@ -1,15 +1,3 @@
-/**
- * CuentaSeguridadScreen.jsx — Configuración › Cuenta y Seguridad (§3.5.1)
- *
- * Conectada a la tabla "User" real (perfilApi): carga y edita nombre, usuario,
- * bio, foto, email y teléfono del usuario logueado. La contraseña se cambia
- * en su propia pantalla (verifica la actual contra el servidor).
- *
- * Lo que NO existe como infraestructura hoy (2FA real, tracking de sesiones
- * por dispositivo, login con Google/Apple) NO se muestra con datos inventados:
- * se omite hasta que haya backend. Ver nota al pie del archivo.
- */
-
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator, Image, Modal, Pressable, StyleSheet,
@@ -35,14 +23,11 @@ import { alerta } from '../../utils/dialogo';
 import { colores } from '../../theme';
 import { formatearFecha } from '../../utils/fechaLocal';
 
-// ─── MODAL DE EDICIÓN DE UN CAMPO (uno o dos inputs) ─────────────────────────
-
 function EditModal({ visible, titulo, campos, onGuardar, onCerrar }) {
   const [valores, setValores] = useState({});
   const [error, setError] = useState(null);
   const [guardando, setGuardando] = useState(false);
 
-  // Reset al abrir con los valores iniciales de cada campo
   React.useEffect(() => {
     if (visible) {
       const init = {};
@@ -104,20 +89,14 @@ function EditModal({ visible, titulo, campos, onGuardar, onCerrar }) {
   );
 }
 
-// ─── PANTALLA ────────────────────────────────────────────────────────────────
-
 export default function CuentaSeguridadScreen() {
   const navigation = useNavigation();
   const [cuenta, setCuenta] = useState(null);
   const [cargando, setCargando] = useState(true);
-  const [modal, setModal] = useState(null);   // editor de campo { titulo, campos, onGuardar }
-  const [dialogo, setDialogo] = useState(null); // cartel Zooni { titulo, mensaje, botones }
+  const [modal, setModal] = useState(null);
+  const [dialogo, setDialogo] = useState(null);
   const [recordarMail, setRecordarMail] = useState(() => getSettings().device.recordar_mail);
 
-  // Informe de seguridad #82: el mail quedaba precargado en el login después
-  // de cerrar sesión, también en un teléfono compartido. Sigue siendo el
-  // default (es cómodo), pero ahora se puede apagar — y al apagarlo se olvida
-  // el que ya estaba guardado.
   const cambiarRecordarMail = (valor) => {
     patchSettings('device', { recordar_mail: valor });
     setRecordarMail(valor);
@@ -139,10 +118,8 @@ export default function CuentaSeguridadScreen() {
 
   const refrescar = () => cargar();
 
-  // ── Foto de perfil: sube la imagen elegida (cámara o galería) ──
   const tomarFoto = async (desdeGaleria) => {
     try {
-      // Recorte cuadrado: la foto se muestra en un círculo.
       const uri = await elegirImagen({ camara: !desdeGaleria, cuadrada: true });
       if (!uri) return;
       await actualizarMiFotoPerfil(uri);
@@ -161,7 +138,6 @@ export default function CuentaSeguridadScreen() {
     }
   };
 
-  // Cartel Zooni con las opciones de origen de la foto (y quitarla, si hay)
   const cambiarFoto = () => setDialogo({
     titulo: 'Foto de perfil',
     mensaje: '¿De dónde querés tomar la foto?',
@@ -177,7 +153,6 @@ export default function CuentaSeguridadScreen() {
   const nombreCompleto = [cuenta?.nombre, cuenta?.apellido].filter(Boolean).join(' ') || 'Sin nombre';
   const usuario = cuenta?.nombreUsuario ? `@${cuenta.nombreUsuario}` : 'Sin usuario';
 
-  // Si cambió el @usuario hace menos de 30 días, hasta cuándo queda bloqueado
   const bloqueadoHasta = fechaProximoCambioUsuario(cuenta?.nombreUsuarioCambiadoEn);
   const fmtFecha = (d) => formatearFecha(d, 'numericaCeros');
   const telefonoTxt = cuenta?.telefono
@@ -212,7 +187,6 @@ export default function CuentaSeguridadScreen() {
     <SettingsScreen title="Cuenta y Seguridad">
 
       <SettingsGroup label="Tu perfil">
-        {/* Cabecera: foto real + nombre + @usuario → editar en Perfil */}
         <TouchableOpacity style={s.perfilHeader} onPress={() => navigation.navigate('Perfil')}
           accessibilityRole="button" accessibilityLabel="Ver mi perfil, botón">
           {cuenta.fotoPerfil ? (
@@ -243,7 +217,6 @@ export default function CuentaSeguridadScreen() {
 
         <SettingsRow label="Nombre de usuario" value={usuario}
           onPress={() => {
-            // Bloqueado por 30 días: no abre el editor, avisa hasta cuándo
             if (bloqueadoHasta) {
               setDialogo({
                 titulo: 'No podés cambiar tu usuario todavía',
@@ -363,11 +336,6 @@ export default function CuentaSeguridadScreen() {
     </SettingsScreen>
   );
 }
-
-// Nota: la verificación en dos pasos, el listado de sesiones activas por
-// dispositivo y las cuentas vinculadas (Google/Apple) requieren Supabase Auth
-// / OAuth, que todavía no están integrados. Se omiten a propósito en vez de
-// mostrar datos inventados; se agregan cuando exista ese backend.
 
 const s = StyleSheet.create({
   perfilHeader: {

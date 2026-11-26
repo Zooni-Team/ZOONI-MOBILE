@@ -1,21 +1,3 @@
-/**
- * AppDialog.jsx — Cartel modal con estilo Zooni (reemplaza los alert/confirm
- * nativos del navegador, que en web se ven como "localhost dice ...").
- *
- * Uso:
- *   <AppDialog
- *     visible={...}
- *     titulo="Foto de perfil"
- *     mensaje="¿De dónde querés tomar la foto?"
- *     botones={[
- *       { texto: 'Sacar una foto', estilo: 'primary',   onPress: ... },
- *       { texto: 'Elegir de la galería', estilo: 'secondary', onPress: ... },
- *       { texto: 'Cancelar', estilo: 'ghost' },
- *     ]}
- *     onCerrar={...}
- *   />
- */
-
 import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colores } from '../theme';

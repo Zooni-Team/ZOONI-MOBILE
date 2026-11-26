@@ -1,19 +1,3 @@
-/**
- * useRegistrosSalud.js — Carga de las pantallas de Vacunas y Tratamientos: la
- * mascota, lo que ya tiene registrado y lo que le sugiere el calendario.
- *
- *   const salud = useRegistrosSalud(async (id) => {
- *     const { mascota, aplicadas, sugeridas } = await fetchVacunas(id);
- *     return { mascota, aplicados: aplicadas, sugeridos: sugeridas };
- *   });
- *
- * La mascota sale del parámetro de navegación `petId` o, si no vino, de la
- * mascota activa; el selector de la pantalla la cambia con `setPetId`.
- *
- * Si la consulta falla NO se inventa nada: queda lo último que se había
- * cargado (o la mascota vacía) y `error` en true para que la pantalla avise.
- */
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRoute } from '@react-navigation/native';
 
@@ -33,11 +17,8 @@ export function useRegistrosSalud(traer) {
   const [refrescando, setRefrescando] = useState(false);
   const [error, setError] = useState(false);
 
-  // La función cambia en cada render de la pantalla; se guarda en un ref para
-  // que `cargar` sólo dependa de la mascota.
   const traerRef = useRef(traer);
   traerRef.current = traer;
-  // Si se cambia de mascota mientras carga, la respuesta vieja se descarta.
   const pedido = useRef(0);
 
   const cargar = useCallback(async ({ silencioso = false } = {}) => {

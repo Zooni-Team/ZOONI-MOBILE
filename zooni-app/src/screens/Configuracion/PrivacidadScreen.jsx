@@ -1,12 +1,3 @@
-/**
- * PrivacidadScreen.jsx — Configuración › Privacidad y visibilidad (§3.5.6)
- *
- * Lo que funciona de verdad: los bloqueos (usuarios_bloqueados, que la base
- * aplica en perfiles, mascotas y Match). El resto de las opciones se guarda
- * en el dispositivo pero todavía no cambia quién ve qué: va con el aviso de
- * vista previa. Los textos de apoyo explican la consecuencia, no la mecánica.
- */
-
 import React, { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -30,9 +21,6 @@ export default function PrivacidadScreen() {
     setPrivacy({ ...getSettings().privacy });
   };
 
-  // Bloqueados: el número real. De quien bloqueaste la base no deja ver el
-  // perfil (perfil_publico lo oculta en los dos sentidos), así que no hay
-  // nombres para listar: se ofrece desbloquear a todos.
   const [bloqueados, setBloqueados] = useState(null);
   const cargarBloqueados = useCallback(() => {
     fetchIdsBloqueados().then(setBloqueados).catch(() => setBloqueados(null));

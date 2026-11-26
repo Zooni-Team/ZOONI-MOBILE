@@ -1,14 +1,3 @@
-/**
- * MisPaseosScreen.jsx — Los paseos que pedí como dueño
- *
- * Estado en vivo de cada pedido (pendiente → aceptado → en curso →
- * finalizado), chat con el paseador, cancelar mientras no empezó y calificar
- * al terminar (esa calificación es la reseña que ve el paseador en su Perfil).
- * Mientras hay un paseo en curso se refresca solo cada 15 s.
- *
- * App de DUEÑOS: fondo menta, header centrado con hamburguesa.
- */
-
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator, FlatList, Image, RefreshControl, SafeAreaView,
@@ -34,7 +23,6 @@ import { colores } from '../theme';
 import { Estrellas } from '../components/ui/Estrellas';
 import { useReloj } from '../hooks/useReloj';
 
-/** "Paseando · 12:34 · 1,2 km": se re-dibuja sólo esta línea cada segundo. */
 function TiempoEnVivo({ paseo }) {
   useReloj(!!paseo.reanudadoEn);
   return (
@@ -54,7 +42,6 @@ const ESTADOS = {
   vencido: { txt: 'Vencido · nadie lo hizo a tiempo', icono: 'time-outline', color: colores.textoSecundario, fondo: colores.gris100 },
 };
 
-
 export default function MisPaseosScreen() {
   const navigation = useNavigation();
   const route = useRoute();
@@ -65,7 +52,7 @@ export default function MisPaseosScreen() {
   const [refrescando, setRefrescando] = useState(false);
   const [aviso, setAviso] = useState(route.params?.enviada
     ? `¡Listo! Le enviamos tu solicitud a ${route.params.enviada}. Te avisamos cuando responda.` : null);
-  const [calificando, setCalificando] = useState(null); // paseo
+  const [calificando, setCalificando] = useState(null);
 
   const cargar = useCallback(async () => {
     try {
@@ -81,8 +68,6 @@ export default function MisPaseosScreen() {
 
   useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
 
-  // En curso: refresco del estado cada 15 s (el cronómetro avanza solo en
-  // TiempoEnVivo, sin re-dibujar la pantalla entera cada segundo)
   const hayEnCurso = !!paseos?.some((p) => p.estado === 'en_curso');
   useEffect(() => {
     if (!hayEnCurso) return undefined;
@@ -115,8 +100,6 @@ export default function MisPaseosScreen() {
     cargar();
   };
 
-  // Se compara con lo pactado: "Duró 4 min" de un paseo de 120 no puede
-  // leerse como un paseo normal. Sin GPS registrado se dice, no "0 m".
   const resumenFinalizado = (p) => {
     const duro = formatoTiempoPaseado(p.segundosAcumulados);
     const corto = (p.segundosAcumulados ?? 0) < p.duracionMin * 60 * 0.6;

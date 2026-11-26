@@ -1,16 +1,3 @@
-/**
- * petsApi.js — Ciclo de vida de mascotas contra Supabase (Instruction-MisMascotas)
- *
- * Todas las funciones operan SOLO sobre las mascotas del usuario logueado
- * (getCurrentUserId()), nunca datos al azar. Requiere la migración
- * sección 020 de SUPABASE_PEGAR_TODO.sql (columnas Estado / ArchivadaEn / etc.).
- *
- * Estados: active → archived → active · → memorial (falleció) · → deleted
- * (borrado lógico con 30 días de gracia; el cliente nunca ve las deleted).
- *
- * "EsActiva" = mascota PRINCIPAL (la de Home). No confundir con Estado.
- */
-
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
 import { enRango, sanitizarDigitos, sanitizarTexto } from '../utils/sanitizar';
@@ -19,8 +6,6 @@ import { edadResumida } from '../utils/calcularEdad';
 import { toISODateLocal } from '../utils/fechaLocal';
 import { esFuncionInexistente } from './comun';
 
-// El mismo número lo controla la base (trigger de MIGRACION_071): acá es sólo
-// para avisar antes de subir la foto.
 export const LIMITE_ACTIVAS = 10;
 
 function errorLimite() {
@@ -29,7 +14,6 @@ function errorLimite() {
   return err;
 }
 
-/** El trigger de la 071 rechazó el alta/recuperación por el límite. */
 const esErrorDeLimite = (error) => String(error?.message ?? '').includes('limite_mascotas_activas');
 
 function errorNoEncontrada() {
@@ -38,7 +22,6 @@ function errorNoEncontrada() {
   return err;
 }
 
-/** Estado actual de una mascota propia. Tira si la base falla o si no es mía. */
 async function estadoPrevio(id) {
   const { data, error } = await supabase
     .from('Mascota').select('"Estado","EsActiva"')
@@ -62,8 +45,6 @@ export function labelMotivo(value) {
   return MOTIVOS_ARCHIVO.find((m) => m.value === value)?.label ?? null;
 }
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
-
 function mapMascota(m) {
   return {
     id: m.Id_Mascota,
@@ -73,8 +54,6 @@ function mapMascota(m) {
     sexo: m.Sexo ?? null,
     fotoUrl: m.Foto ?? null,
     imagenAsset: m.ImagenAsset ?? 'perro_default',
-    // Si la columna todavía no existe (migración 032 sin correr), se asume
-    // true: mismo comportamiento que antes, la foto manda.
     mostrarFoto: m.MostrarFoto ?? true,
     peso: m.Peso != null ? Number(m.Peso) : null,
     fechaNacimiento: m.FechaNacimiento ?? null,
@@ -95,19 +74,14 @@ function mapMascota(m) {
 }
 
 async function registrarHistorial(idMascota, desde, hasta, motivo) {
-  // Auditoría best-effort: si la tabla no existe todavía, no rompe el flujo
   try {
     await supabase.from('mascota_estado_historial').insert({
       id_mascota: idMascota, desde, hasta, motivo: motivo ?? null,
       cambiado_por: getCurrentUserId(),
     });
-  } catch { /* auditoría opcional */ }
+  } catch {  }
 }
 
-/**
- * Si la principal sale de las activas, promueve a la activa más antigua.
- * Devuelve la mascota promovida (para el toast) o null.
- */
 async function promoverPrincipalSiHaceFalta(idQueSale) {
   const { data: activas, error } = await supabase
     .from('Mascota')
@@ -117,7 +91,7 @@ async function promoverPrincipalSiHaceFalta(idQueSale) {
     .neq('Id_Mascota', idQueSale)
     .order('Id_Mascota', { ascending: true });
   if (error || !activas?.length) return null;
-  if (activas.some((m) => m.EsActiva)) return null; // ya hay principal
+  if (activas.some((m) => m.EsActiva)) return null;
   const promovida = activas[0];
   const { error: errUp } = await supabase
     .from('Mascota')
@@ -126,12 +100,6 @@ async function promoverPrincipalSiHaceFalta(idQueSale) {
   return errUp ? null : mapMascota(promovida);
 }
 
-// ─── LECTURA ─────────────────────────────────────────────────────────────────
-
-/**
- * Todas las mascotas del usuario logueado, agrupadas por estado.
- * Las 'deleted' en período de gracia no se devuelven nunca.
- */
 export async function fetchMisMascotas() {
   const { data, error } = await supabase
     .from('Mascota')
@@ -151,18 +119,10 @@ export async function fetchMisMascotas() {
   };
 }
 
-// ─── CICLO DE VIDA ───────────────────────────────────────────────────────────
-
-/**
- * active → archived (o memorial si motivo = 'deceased').
- * Idempotente: si ya está archivada devuelve OK sin fallar.
- * Devuelve { promovida } con la nueva principal si la archivada lo era.
- */
 export async function archivarMascota(id, motivo = null, motivoTexto = null) {
   const esMemorial = motivo === 'deceased';
-  // Antes el error de esta lectura se ignoraba y se seguía "a ciegas".
   const previa = await estadoPrevio(id);
-  if (previa.Estado !== 'active') return { promovida: null }; // idempotente
+  if (previa.Estado !== 'active') return { promovida: null };
 
   const { data: cambiadas, error } = await supabase
     .from('Mascota')
@@ -171,7 +131,6 @@ export async function archivarMascota(id, motivo = null, motivoTexto = null) {
       ArchivadaEn: new Date().toISOString(),
       MotivoArchivo: motivo,
       MotivoArchivoTexto: motivoTexto,
-      // Fecha LOCAL: toISOString() es UTC y de noche (UTC-3) guardaba el día siguiente.
       FechaFallecimiento: esMemorial ? toISODateLocal(new Date()) : null,
       EsActiva: false,
     })
@@ -180,7 +139,6 @@ export async function archivarMascota(id, motivo = null, motivoTexto = null) {
     .eq('Estado', 'active')
     .select('Id_Mascota');
   if (error) throw error;
-  // 0 filas: otro dispositivo la cambió mientras tanto. Nada que hacer.
   if (!cambiadas?.length) return { promovida: null };
 
   await registrarHistorial(id, 'active', esMemorial ? 'memorial' : 'archived', motivo);
@@ -188,9 +146,6 @@ export async function archivarMascota(id, motivo = null, motivoTexto = null) {
   return { promovida };
 }
 
-/**
- * archived → active. Valida el límite de activas. No vuelve principal.
- */
 export async function recuperarMascota(id) {
   const { activas } = await fetchMisMascotas();
   if (activas.length >= LIMITE_ACTIVAS) throw errorLimite();
@@ -201,7 +156,6 @@ export async function recuperarMascota(id) {
       ArchivadaEn: null,
       MotivoArchivo: null,
       MotivoArchivoTexto: null,
-      // Si estaba "En memoria" por un toque sin querer, se limpia también
       FechaFallecimiento: null,
     })
     .eq('Id_Mascota', id)
@@ -210,14 +164,10 @@ export async function recuperarMascota(id) {
   if (error) throw esErrorDeLimite(error) ? errorLimite() : error;
   if (!cambiadas?.length) throw errorNoEncontrada();
   await registrarHistorial(id, 'archived', 'active', null);
-  // Si no quedaba ninguna principal, la recuperada asume
   await promoverPrincipalSiHaceFalta(-1);
   return true;
 }
 
-/**
- * Borrado lógico con 30 días de gracia. La recuperación es por soporte.
- */
 export async function eliminarMascota(id) {
   const ahora = new Date();
   const purga = new Date(ahora.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -242,11 +192,6 @@ export async function eliminarMascota(id) {
   return true;
 }
 
-/**
- * Baja la principal anterior y sube la nueva en UNA transacción (RPC de la
- * 071). Antes eran dos UPDATE sueltos: si el segundo fallaba, la cuenta
- * quedaba sin principal. Sin la 071 todavía pegada, cae al camino viejo.
- */
 export async function marcarPrincipal(id) {
   const { error: errRpc } = await supabase.rpc('marcar_mascota_principal', { p_id_mascota: id });
   if (!errRpc) return true;
@@ -264,18 +209,11 @@ export async function marcarPrincipal(id) {
   return true;
 }
 
-// ─── ALTA Y EDICIÓN ──────────────────────────────────────────────────────────
-
-/**
- * Crea una mascota del usuario logueado. Solo nombre y especie obligatorios.
- * Si es la primera activa, queda como principal.
- */
 export async function crearMascota(datos) {
   const userId = getCurrentUserId();
   const { activas } = await fetchMisMascotas();
   if (activas.length >= LIMITE_ACTIVAS) throw errorLimite();
 
-  // Sanitización + validación de rangos antes de tocar la base
   const peso = datos.peso ?? null;
   if (!enRango(peso, 0.1, 120)) {
     const err = new Error('peso');
@@ -284,8 +222,6 @@ export async function crearMascota(datos) {
   }
   const microchip = datos.microchip ? sanitizarDigitos(datos.microchip, 15) : null;
 
-  // Foto real: se sube a Supabase Storage y se guarda su URL en Mascota.Foto
-  // (es la que muestra Match). Si viene una URL ya subida, se usa tal cual.
   let fotoUrl = datos.fotoUrl ?? null;
   if (!fotoUrl && datos.fotoUri) {
     fotoUrl = await subirImagenPublica(datos.fotoUri, 'mascotas');
@@ -308,16 +244,14 @@ export async function crearMascota(datos) {
     VisibleEnMatch: datos.visibleEnMatch ?? true,
     ImagenAsset: datos.imagenAsset ?? `${(datos.especie ?? 'perro').toLowerCase()}_default`,
     Estado: 'active',
-    EsActiva: activas.length === 0, // primera mascota → principal
+    EsActiva: activas.length === 0,
   };
 
   const { data, error } = await supabase
     .from('Mascota').insert(fila).select().single();
   if (error) {
-    // La foto ya se subió: si la mascota no se crea, no tiene que quedar huérfana.
     if (fotoUrl && fotoUrl !== datos.fotoUrl) await borrarImagenPublica(fotoUrl);
     if (esErrorDeLimite(error)) throw errorLimite();
-    // Microchip duplicado: nunca se revela de quién es
     if (String(error.message ?? '').includes('idx_mascota_microchip')) {
       const err = new Error('microchip');
       err.code = 'MICROCHIP_DUPLICADO';
@@ -329,13 +263,6 @@ export async function crearMascota(datos) {
   return mapMascota(data);
 }
 
-// ─── GALERÍA DE FOTOS (varias fotos por mascota — migración 028) ─────────────
-
-/**
- * Todas las fotos de una mascota para el carrusel: la portada (Mascota.Foto)
- * primero, después las de la galería por orden. Devuelve array de
- * { id, url, esPortada }. `id` null para la portada (no está en mascota_fotos).
- */
 export async function fetchFotosMascota(idMascota, fotoPortada) {
   const { data } = await supabase
     .from('mascota_fotos').select('*')
@@ -347,7 +274,6 @@ export async function fetchFotosMascota(idMascota, fotoPortada) {
     : galeria;
 }
 
-/** Sube una foto nueva a la galería de la mascota. */
 export async function agregarFotoMascota(idMascota, uri) {
   const url = await subirImagenPublica(uri, 'mascotas');
   const { data, error } = await supabase
@@ -358,11 +284,7 @@ export async function agregarFotoMascota(idMascota, uri) {
   return { id: data.id, url: data.url, esPortada: false };
 }
 
-/** Elimina una foto de la galería (no la portada). */
 export async function eliminarFotoMascota(fotoId) {
-  // La URL se lee ANTES de borrar la fila. El trigger de la 068 también la
-  // anota en archivos_por_borrar; esto la saca de Storage en el momento y
-  // nunca tira (la fila ya se borró) — informe #70.
   const { data: fila } = await supabase.from('mascota_fotos').select('url').eq('id', fotoId).maybeSingle();
 
   const { error } = await supabase.from('mascota_fotos').delete().eq('id', fotoId);
@@ -372,7 +294,6 @@ export async function eliminarFotoMascota(fotoId) {
   return true;
 }
 
-/** Sube y setea la foto principal (portada) de una mascota. Devuelve la URL. */
 export async function setFotoPrincipalMascota(id, uri) {
   const url = await subirImagenPublica(uri, 'mascotas');
   const { error } = await supabase
@@ -382,10 +303,6 @@ export async function setFotoPrincipalMascota(id, uri) {
   return url;
 }
 
-/**
- * Merge parcial de campos editables. Los cambios de Estado van por las
- * funciones de ciclo de vida, nunca por acá.
- */
 export async function actualizarMascota(id, patch) {
   const permitidos = {
     nombre: 'Nombre', especie: 'Especie', raza: 'Raza', sexo: 'Sexo',
@@ -394,7 +311,6 @@ export async function actualizarMascota(id, patch) {
     senas: 'SenasParticulares', visibleEnMatch: 'VisibleEnMatch',
     imagenAsset: 'ImagenAsset', fotoUrl: 'Foto', mostrarFoto: 'MostrarFoto',
   };
-  // Longitudes máximas por campo de texto (mismas que los CHECK del 021)
   const maxLen = {
     Nombre: 30, Especie: 50, Raza: 100, Sexo: 10, Tamano: 10,
     Descripcion: 150, SenasParticulares: 200,

@@ -1,23 +1,3 @@
-/**
- * useToast — Estado + temporizador del <Toast /> (src/components/ui/Toast.jsx).
- *
- *   const { toast, mostrarToast, ocultarToast } = useToast();
- *   mostrarToast('Guardado');                          // verde, 2,5 s
- *   mostrarToast('No se pudo guardar', colores.rojo);  // color (forma corta)
- *   mostrarToast('Mascota archivada', {                // forma larga
- *     icono: 'archive', duracionMs: 6000,
- *     accion: { texto: 'Deshacer', onPress: deshacer },
- *   });
- *   <Toast {...toast} onCerrar={ocultarToast} />
- *
- * Si se muestra otro aviso antes de que termine el anterior, lo reemplaza y
- * reinicia el tiempo (no se apilan). Al desmontar la pantalla, el
- * temporizador se limpia.
- *
- * Es el ÚNICO aviso flotante de la app: antes Comunidad, Mis mascotas, Zooni
- * Negocios y Zooni Paseadores tenían cada una su propia copia.
- */
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { colores } from '../theme/colores';

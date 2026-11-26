@@ -1,15 +1,3 @@
--- ⚠ NO PEGAR EN SUPABASE. Archivo de pruebas para un Postgres LOCAL (lo corre
---   supabase/scripts/probar-esquema.mjs). Crea usuarios de prueba.
--- pruebas_064.sql — Pruebas de la sección 064 (correr DESPUÉS de pruebas_rls.sql,
--- que crea los helpers pg_temp.como / pg_temp.salir).
---
---   · Purgar una mascota eliminada: se lleva su salud, votos, matches (y sus
---     mensajes) y fotos; el paseo queda (con la mascota en NULL) y su chat también.
---   · Una mascota sin vencer NO se purga.
---   · Cupo de ZooniVet: al llegar al límite devuelve FALSE y no sigue sumando.
---   · Bucket privado: nadie lee ni sube en la carpeta de otro.
--- Cualquier ASSERT que falle corta la ejecución con error.
-
 DO $$
 DECLARE
   sufijo TEXT := substr(md5(random()::TEXT), 1, 8);
@@ -43,7 +31,6 @@ BEGIN
   INSERT INTO "Mascota" ("Id_User", "Nombre", "Estado") VALUES (ana, 'Viva', 'active')
   RETURNING "Id_Mascota" INTO mascota_viva;
 
-  -- Todo lo que cuelga de la mascota de Ana
   INSERT INTO "MascotaVacuna" ("Id_Mascota", "NombreLibre") VALUES (mascota_ana, 'Antirrábica');
   INSERT INTO "Tratamiento" ("Id_Mascota", "Nombre") VALUES (mascota_ana, 'Antiparasitario');
   INSERT INTO "HistorialEvento" ("Id_Mascota", "Tipo") VALUES (mascota_ana, 'control');
@@ -62,12 +49,10 @@ BEGIN
   ASSERT match_id IS NOT NULL, 'el like cruzado crea el Match';
   INSERT INTO "Mensaje" ("idMatch", "idUsuario", texto) VALUES (match_id, beto, 'hola');
 
-  -- Un paseo de la mascota de Ana (como superusuario: sin reglas de rol)
   INSERT INTO "Paseo" ("Id_Mascota", "Id_Dueno", "Precio", "DuracionMin")
   VALUES (mascota_ana, ana, 5000, 30) RETURNING "Id_Paseo" INTO paseo;
   INSERT INTO paseo_mensajes (id_paseo, id_user, texto) VALUES (paseo, ana, 'llego en 5');
 
-  -- ── Purga ────────────────────────────────────────────────────────────────
   UPDATE "Mascota" SET "Estado" = 'deleted', "PurgarDespues" = now() - interval '1 day'
   WHERE "Id_Mascota" = mascota_ana;
   UPDATE "Mascota" SET "Estado" = 'deleted', "PurgarDespues" = now() + interval '10 days'
@@ -90,7 +75,6 @@ BEGIN
          'el paseo queda (lo cobrado no se pierde) con la mascota en NULL';
   ASSERT EXISTS (SELECT 1 FROM paseo_mensajes WHERE id_paseo = paseo), 'el chat del paseo queda';
 
-  -- El trigger NO deja poner la mascota en NULL a mano si la mascota existe
   INSERT INTO "Paseo" ("Id_Mascota", "Id_Dueno", "Precio", "DuracionMin")
   VALUES (mascota_beto, beto, 5000, 30) RETURNING "Id_Paseo" INTO paseo;
   PERFORM pg_temp.como(beto_auth);
@@ -99,7 +83,6 @@ BEGIN
   ASSERT (SELECT "Id_Mascota" FROM "Paseo" WHERE "Id_Paseo" = paseo) = mascota_beto,
          'la mascota de un paseo no se puede borrar a mano';
 
-  -- Nadie con sesión puede llamar a la purga
   PERFORM pg_temp.como(beto_auth);
   fallo := FALSE;
   BEGIN
@@ -109,7 +92,6 @@ BEGIN
   ASSERT fallo, 'la purga es sólo para service_role';
   PERFORM pg_temp.salir();
 
-  -- ── Cupo de ZooniVet ─────────────────────────────────────────────────────
   ASSERT zoonivet_consumir_cupo(beto, 2), 'mensaje 1 de 2';
   ASSERT zoonivet_consumir_cupo(beto, 2), 'mensaje 2 de 2';
   ASSERT NOT zoonivet_consumir_cupo(beto, 2), 'el 3ro se rechaza';
@@ -126,7 +108,6 @@ BEGIN
   ASSERT fallo, 'un usuario no puede tocar su propio cupo';
   PERFORM pg_temp.salir();
 
-  -- ── Bucket privado de consultas ─────────────────────────────────────────
   ASSERT EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'consultas-privadas' AND NOT public),
          'el bucket de consultas es privado';
   INSERT INTO storage.objects (bucket_id, name) VALUES ('consultas-privadas', ana_auth || '/consultas/estudio.jpg');

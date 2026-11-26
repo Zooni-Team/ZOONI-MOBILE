@@ -1,12 +1,3 @@
-/**
- * PantallaSalud.jsx — Armazón de las pantallas de la Ficha Médica que listan
- * registros de una mascota (Vacunas y Tratamientos).
- *
- * Pone lo que era idéntico en las dos: flecha para volver, selector de
- * mascota, el hero con la ilustración, la hoja blanca con scroll y "tirar para
- * recargar", y el Toast. Cada pantalla pasa su contenido como hijos.
- */
-
 import { useEffect, useRef } from 'react';
 import {
   Animated, RefreshControl, SafeAreaView, ScrollView, StatusBar, StyleSheet, TouchableOpacity, View,
@@ -21,12 +12,6 @@ import { colores } from '../../theme';
 
 const AREA_TOQUE = { top: 12, bottom: 12, left: 12, right: 12 };
 
-/**
- * @param {string}   titulo        "Vacunas", "Tratamientos" (va en el hero)
- * @param {object}   mascota       la que muestra el hero
- * @param {boolean}  cargando      mientras carga, el hero todavía no entra
- * @param {object}   toast         lo que devuelve useToast()
- */
 export default function PantallaSalud({
   titulo, mascota, petId, onCambiarMascota, cargando, refrescando, onRefrescar, toast, children,
 }) {
@@ -34,7 +19,6 @@ export default function PantallaSalud({
   const escala = useRef(new Animated.Value(0.88)).current;
   const opacidad = useRef(new Animated.Value(0)).current;
 
-  // El hero entra cuando termina la primera carga.
   useEffect(() => {
     if (cargando) return;
     Animated.parallel([

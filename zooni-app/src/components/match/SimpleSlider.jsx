@@ -1,7 +1,3 @@
-/**
- * Slider simple con barra táctil (ancho adaptable).
- */
-
 import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, PanResponder } from 'react-native';
 import { colores } from '../../theme';

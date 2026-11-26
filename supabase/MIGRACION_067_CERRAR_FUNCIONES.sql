@@ -1,10 +1,3 @@
--- =============================================================================
--- MIGRACION_067_CERRAR_FUNCIONES.sql — Pegar ENTERO en Supabase → SQL Editor → Run.
--- Va DESPUÉS de la 066. Idempotente. No toca datos.
--- Si algo no queda como debe, la verificación del final hace ROLLBACK y no
--- cambia nada.
--- =============================================================================
-
 BEGIN;
 
 DO $$
@@ -14,40 +7,9 @@ BEGIN
   END IF;
 END $$;
 
--- =============================================================================
--- 067 — Funciones cerradas por lista blanca, intentos de login viejo con
--- límite y "verificado" sólo lo pone Zooni. Idempotente. Requiere 060–066.
--- =============================================================================
--- PROBLEMA (verificado en producción el 13/11/2026):
---   · Supabase le da EXECUTE a anon y authenticated en TODA función nueva del
---     esquema public (privilegios por defecto), no sólo a través de PUBLIC.
---     Varias funciones internas tenían "REVOKE … FROM anon, public" y seguían
---     abiertas para cualquier usuario logueado. Entre ellas:
---       _upsert_paseador_perfil(id, perfil) → reescribir el perfil de
---         CUALQUIER paseador (precio, zona, horarios…).
---       _upsert_negocio(id_user, negocio)  → lo mismo con cualquier negocio.
---     Y _devolver_stock(items) no tenía ningún REVOKE: hasta sin sesión se
---     podía subir el stock de cualquier producto.
---   · migrar_cuenta_legada (sin sesión) no tenía límite de intentos: se podía
---     probar contraseñas contra las cuentas viejas (sha256 sin sal) sin freno.
---   · Un paseador podía marcarse verificado = true a sí mismo (su política es
---     FOR ALL sobre su fila), y un negocio, verified = true en sus servicios.
---
--- AHORA:
---   1. Lista blanca: de las funciones SECURITY DEFINER de public, sólo las de
---      abajo se pueden llamar desde la app. Todas las demás: sólo el dueño de
---      la base y service_role. Las que se creen en el futuro arrancan cerradas
---      para anon (hay que darle GRANT a propósito).
---   2. migrar_cuenta_legada: 5 intentos fallidos por mail cada 15 minutos.
---   3. verificado / verified sólo cambian sin sesión (SQL Editor, service_role).
--- =============================================================================
-
--- ─── 1. Funciones: lista blanca ─────────────────────────────────────────────
 DO $$
 DECLARE
-  -- Sin sesión (pantallas de login y registro)
   para_anon TEXT[] := ARRAY['disponibilidad_registro', 'migrar_cuenta_legada'];
-  -- Con sesión: las RPC que llama la app + los helpers que usan las políticas
   para_usuarios TEXT[] := ARRAY[
     'usuario_actual', 'es_mi_mascota', 'soy_dueno_negocio', 'soy_dueno_servicio',
     'participo_en_match', 'participo_en_paseo', 'soy_walker_de_paseo', 'soy_paseador',
@@ -56,8 +18,6 @@ DECLARE
     'registrar_paseador_social', 'activar_paseador_social', 'completar_perfil_paseador',
     'registrar_negocio_sesion', 'activar_negocio_sesion',
     'aceptar_solicitud_paseo', 'votar_mascota', 'vencer_paseos',
-    -- Las que agregaron las migraciones siguientes: si se vuelve a pegar sólo
-    -- la 067, que no las cierre (070, 071, 072).
     'esta_bloqueado', 'crear_notificacion', 'marcar_mascota_principal',
     'solicitar_eliminacion_cuenta', 'cuenta_dada_de_baja'];
   f RECORD;
@@ -78,16 +38,14 @@ BEGIN
   END LOOP;
 END $$;
 
--- Funciones que se creen de acá en adelante: cerradas para anon y PUBLIC.
 ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM anon, public;
 
--- ─── 2. Login de cuentas viejas: límite de intentos ─────────────────────────
 CREATE TABLE IF NOT EXISTS migracion_intentos (
   mail     TEXT PRIMARY KEY,
   fallos   INTEGER NOT NULL DEFAULT 0,
   ultimo   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-ALTER TABLE migracion_intentos ENABLE ROW LEVEL SECURITY;   -- sin políticas: nadie desde la app
+ALTER TABLE migracion_intentos ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON migracion_intentos FROM anon, authenticated;
 
 CREATE OR REPLACE FUNCTION migrar_cuenta_legada(p_mail TEXT, p_password TEXT)
@@ -110,8 +68,6 @@ BEGIN
     RETURN FALSE;
   END IF;
 
-  -- 5 fallos en 15 minutos → ese mail queda frenado hasta que pasen (067).
-  -- Mismo FALSE que una contraseña mala: no revela nada.
   SELECT CASE WHEN ultimo > v_ahora - interval '15 minutes' THEN fallos ELSE 0 END
   INTO v_fallos FROM migracion_intentos WHERE mail = v_mail;
   IF coalesce(v_fallos, 0) >= 5 THEN RETURN FALSE; END IF;
@@ -132,7 +88,6 @@ BEGIN
     RETURN FALSE;
   END IF;
 
-  -- Un usuario de Auth con ese mail que NO es esta cuenta: fuera
   DELETE FROM auth.users a
   WHERE lower(a.email) = v_mail
     AND NOT EXISTS (SELECT 1 FROM "User" u WHERE u.auth_id = a.id);
@@ -167,11 +122,10 @@ END $$;
 REVOKE ALL ON FUNCTION migrar_cuenta_legada(TEXT, TEXT) FROM public;
 GRANT EXECUTE ON FUNCTION migrar_cuenta_legada(TEXT, TEXT) TO anon, authenticated, service_role;
 
--- ─── 3. "Verificado" lo pone Zooni, no el interesado ────────────────────────
 CREATE OR REPLACE FUNCTION _sin_autoverificarse()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
-  IF usuario_actual() IS NULL THEN RETURN NEW; END IF;  -- SQL Editor / service_role
+  IF usuario_actual() IS NULL THEN RETURN NEW; END IF;
   IF TG_TABLE_NAME = 'paseador_perfil' THEN
     NEW.verificado := CASE WHEN TG_OP = 'INSERT' THEN FALSE ELSE OLD.verificado END;
   ELSE
@@ -188,7 +142,6 @@ DROP TRIGGER IF EXISTS trg_servicio_sin_autoverificarse ON servicios;
 CREATE TRIGGER trg_servicio_sin_autoverificarse BEFORE INSERT OR UPDATE ON servicios
   FOR EACH ROW EXECUTE FUNCTION _sin_autoverificarse();
 
--- ─── 4. Verificación (si falla, se deshace todo) ────────────────────────────
 DO $$
 BEGIN
   ASSERT NOT has_function_privilege('authenticated', '_upsert_paseador_perfil(integer, jsonb)', 'EXECUTE'),

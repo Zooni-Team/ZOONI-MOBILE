@@ -1,23 +1,7 @@
-/**
- * imagenBase64.js — Convierte la imagen de una mascota en un data URI
- *
- * Hace falta para el PDF de la Ficha Médica: ni expo-print ni jsPDF pueden
- * cargar una URL remota por su cuenta de forma confiable (el PDF se genera
- * antes de que la imagen termine de bajar y sale el hueco en blanco), así que
- * la imagen se incrusta ya convertida a base64.
- *
- * Cubre los dos tipos de fuente que devuelve resolveMascotaVisual():
- *   · { uri: 'https://…' }  → foto real subida por el usuario
- *   · require('…png')       → ilustración local (número de módulo)
- *
- * Nunca tira error: si algo falla devuelve null y el PDF sale sin foto.
- */
-
 import { Platform } from 'react-native';
 import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system';
 
-/** Blob → "data:image/png;base64,…" (camino web) */
 function blobADataUri(blob) {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -40,10 +24,6 @@ async function desdeUrl(url) {
     if (!res.ok) return null;
     return blobADataUri(await res.blob());
   }
-  // En nativo se baja a un archivo temporal y se lee en base64: fetch + Blob
-  // en React Native no siempre soporta readAsDataURL. El temporal se borra
-  // al terminar, se use o no (informe de seguridad #129: si no, queda la
-  // foto de la mascota suelta en el caché del dispositivo).
   const destino = `${FileSystem.cacheDirectory}ficha-mascota-${Date.now()}`;
   try {
     const { uri: local } = await FileSystem.downloadAsync(url, destino);
@@ -69,21 +49,16 @@ async function desdeAssetLocal(modulo) {
   return `data:${tipoMime(uri)};base64,${base64}`;
 }
 
-/**
- * @param {number|object} source  lo que devuelve resolveMascotaVisual()
- * @returns {Promise<string|null>} data URI, o null si no se pudo
- */
 export async function imagenADataUri(source) {
   try {
     if (!source) return null;
-    if (typeof source === 'number') return await desdeAssetLocal(source);   // require()
+    if (typeof source === 'number') return await desdeAssetLocal(source);
     if (typeof source === 'object' && source.uri) {
-      // Un data URI ya viene listo
       if (String(source.uri).startsWith('data:')) return source.uri;
       return await desdeUrl(source.uri);
     }
     return null;
   } catch {
-    return null; // el PDF sale sin foto, no se cancela la descarga
+    return null;
   }
 }

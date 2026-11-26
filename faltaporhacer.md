@@ -150,6 +150,21 @@ Deploy.
 
 ---
 
+## Hecho el 26/11/2026 (noche)
+
+- **Configuración honesta**: cartel "Vista previa" en lo que se ve pero no
+  funciona (Notificaciones, Suscripciones, Ayuda, gran parte de Privacidad y
+  de Medios) y etiqueta en el índice. Fuera los datos inventados (8 permisos
+  con estados falsos, caché de 248 MB, tarjeta •••• 4242, "2 pendientes",
+  "Todo funcionando", versión 1.4.2, "te enviamos tus datos por mail").
+- **Ahora funciona de verdad**: estado real de los permisos, calidad de
+  subida de fotos, cantidad de bloqueados + desbloquear, quitar la foto de
+  perfil (y la vieja se borra de Storage al cambiarla).
+- **Sin comentarios en el código** (288 archivos, JS y SQL). La base se
+  probó igual desde cero después del borrado. Lint quedó con 0 errores y 17
+  avisos de hooks (antes silenciados con `eslint-disable`). La explicación
+  vieja de cada archivo sigue en git: `git show 9da681e:<archivo>`.
+
 ## Hecho el 26/11/2026 (tarde)
 
 - **MIGRACION_072** (probada desde cero, dos pasadas + `pruebas_072.sql`; la

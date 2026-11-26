@@ -1,20 +1,3 @@
-/**
- * MisMascotasScreen.jsx — "Configuración de Mascotas" (Instruction-MisMascotas v1.0)
- *
- * Índice del ciclo de vida: Activas / Archivadas / En memoria, contra la tabla
- * "Mascota" de Supabase filtrada por el usuario logueado (petsApi.js).
- *
- * Reglas duras del spec que esta pantalla cumple:
- *  - Archivar NO es eliminar: Archivar es neutro (#EDF3EF, reversible con
- *    Deshacer en el toast); Eliminar es rojo, vive en el menú ⋮ y abre una
- *    pantalla dedicada con confirmación escrita.
- *  - La card archivada usa fondo opaco #F1F7F3 + chip "Archivada", nunca
- *    opacidad reducida.
- *  - CTA amarillo (8.79:1), Recuperar #177046 (6.10:1), línea de sección
- *    #177046 — los colores del diseño de Figma no pasaban contraste.
- *  - Escritura optimista con rollback (V7) y toast con Deshacer de 6s.
- */
-
 import React, { useCallback, useRef, useState } from 'react';
 import { Image, Modal, Platform, Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,36 +13,22 @@ import { useToast } from '../../hooks/useToast';
 
 import { P, CardActiva, CardArchivada, CardMemoria, TituloSeccion, SkeletonCard } from '../../components/mascotas/TarjetasMascota';
 
-// ─── CARD ACTIVA (§3.4.F) ────────────────────────────────────────────────────
-
-// ─── CARD ARCHIVADA (§3.4.G) ─────────────────────────────────────────────────
-
-// ─── CARD EN MEMORIA (§4.5) ─────────────────────────────────────────────────
-
-// ─── TÍTULO DE SECCIÓN (§3.4.E) ─────────────────────────────────────────────
-
-// ─── SKELETON (V5) ──────────────────────────────────────────────────────────
-
-// ─── PANTALLA ───────────────────────────────────────────────────────────────
-
 export default function MisMascotasScreen() {
   const navigation = useNavigation();
 
-  // 'cargando' | 'ok' | 'offline'
   const [estadoCarga, setEstadoCarga] = useState('cargando');
   const [activas, setActivas] = useState([]);
   const [archivadas, setArchivadas] = useState([]);
   const [enMemoria, setEnMemoria] = useState([]);
   const [busqueda, setBusqueda] = useState('');
 
-  // Toast compartido (ui/Toast + useToast) con "Deshacer" (§3.4.C, 6 s)
   const { toast, mostrarToast: mostrarAviso, ocultarToast } = useToast(6000);
   const undoRef = useRef(null);
 
-  const [sheetArchivar, setSheetArchivar] = useState(null); // mascota a archivar
+  const [sheetArchivar, setSheetArchivar] = useState(null);
   const [motivoSel, setMotivoSel] = useState(null);
   const [motivoTexto, setMotivoTexto] = useState('');
-  const [sheetMenu, setSheetMenu] = useState(null);         // mascota del menú ⋮
+  const [sheetMenu, setSheetMenu] = useState(null);
 
   const cargar = useCallback(async () => {
     try {
@@ -69,13 +38,12 @@ export default function MisMascotasScreen() {
       setEnMemoria(data.enMemoria);
       setEstadoCarga('ok');
     } catch {
-      setEstadoCarga('offline'); // V6: sin conexión / Supabase sin configurar
+      setEstadoCarga('offline');
     }
   }, []);
 
   useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
 
-  // ── Toast (6s, se reemplaza, no se apila) ──
   const mostrarToast = (texto, undo = null, error = false) => {
     undoRef.current = undo;
     mostrarAviso(texto, {
@@ -93,7 +61,6 @@ export default function MisMascotasScreen() {
     }
   }
 
-  // ── Archivar (optimista con rollback, §4.2) ──
   const confirmarArchivo = async () => {
     const m = sheetArchivar;
     const motivo = motivoSel;
@@ -102,7 +69,6 @@ export default function MisMascotasScreen() {
     setMotivoSel(null);
     setMotivoTexto('');
 
-    // Optimista: sale de Activas ya
     setActivas((prev) => prev.filter((x) => x.id !== m.id));
     try {
       const { promovida } = await archivarMascota(m.id, motivo, texto);
@@ -116,14 +82,11 @@ export default function MisMascotasScreen() {
         mostrarToast('Mascota archivada correctamente', () => recuperarMascota(m.id));
       }
     } catch {
-      // V7: rollback
       await cargar();
       mostrarToast(`No pudimos archivar a ${m.nombre}`, null, true);
     }
   };
 
-  // ── Recuperar (§4.3 — baja fricción, sin sheet). Sirve también para
-  // sacar una mascota de "En memoria" si se marcó Falleció sin querer. ──
   const recuperar = async (m) => {
     setArchivadas((prev) => prev.filter((x) => x.id !== m.id));
     setEnMemoria((prev) => prev.filter((x) => x.id !== m.id));
@@ -145,7 +108,6 @@ export default function MisMascotasScreen() {
     }
   };
 
-  // ── Menú ⋮ (§3.4.F — Eliminar vive acá, nunca en la cara de la card) ──
   const abrirMenu = (m) => setSheetMenu(m);
 
   const accionMenu = async (accion) => {
@@ -186,7 +148,6 @@ export default function MisMascotasScreen() {
     <SafeAreaView style={s.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* Header: flecha ←, es una sub-pantalla de segundo nivel (anexo) */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.headerBtn}
           accessibilityRole="button" accessibilityLabel="Volver"
@@ -198,7 +159,6 @@ export default function MisMascotasScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={s.content}
         showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-        {/* Título con huella vectorial */}
         <View style={s.tituloFila}>
           <Ionicons name="paw" size={20} color={P.brandText} />
           <Text style={s.titulo}>Configuración de Mascotas</Text>
@@ -213,7 +173,6 @@ export default function MisMascotasScreen() {
           </View>
         )}
 
-        {/* CTA principal — amarillo, siempre visible salvo límite (§3.4.D) */}
         {!vacioTotal && (
           <>
             <TouchableOpacity
@@ -232,7 +191,6 @@ export default function MisMascotasScreen() {
           </>
         )}
 
-        {/* V4: vacío total — sin encabezados de sección */}
         {vacioTotal && (
           <View style={s.vacioTotal}>
             <Ionicons name="paw-outline" size={80} color={P.brand} />
@@ -250,7 +208,6 @@ export default function MisMascotasScreen() {
 
         {!vacioTotal && (
           <>
-            {/* ── ACTIVAS ── */}
             <TituloSeccion titulo="Activas" contador={activas.length} />
             {cargando && <SkeletonCard />}
             {!cargando && activas.length === 0 && (
@@ -272,7 +229,6 @@ export default function MisMascotasScreen() {
               />
             ))}
 
-            {/* ── ARCHIVADAS ── */}
             <TituloSeccion titulo="Archivadas" contador={archivadas.length} icono="archive-outline" />
             {archivadas.length > 8 && (
               <View style={s.buscador}>
@@ -295,7 +251,6 @@ export default function MisMascotasScreen() {
               />
             ))}
 
-            {/* ── EN MEMORIA (solo si hay) ── */}
             {enMemoria.length > 0 && (
               <>
                 <TituloSeccion titulo="En memoria" contador={enMemoria.length} icono="heart-outline" />
@@ -312,7 +267,6 @@ export default function MisMascotasScreen() {
 
       <Toast {...toast} onCerrar={ocultarToast} />
 
-      {/* ── BOTTOM SHEET: menú ⋮ ── */}
       <Modal visible={!!sheetMenu} transparent animationType="slide" onRequestClose={() => setSheetMenu(null)}>
         <Pressable style={s.scrim} onPress={() => setSheetMenu(null)}>
           <Pressable style={s.sheet} onPress={() => {}}>
@@ -345,7 +299,6 @@ export default function MisMascotasScreen() {
         </Pressable>
       </Modal>
 
-      {/* ── BOTTOM SHEET: archivar (§4.2) ── */}
       <Modal visible={!!sheetArchivar} transparent animationType="slide"
         onRequestClose={() => setSheetArchivar(null)}>
         <Pressable style={s.scrim} onPress={() => setSheetArchivar(null)}>
@@ -377,7 +330,6 @@ export default function MisMascotasScreen() {
               </View>
             </View>
 
-            {/* Motivo (opcional, §4.2) */}
             <Text style={s.motivoLabel}>Motivo (opcional)</Text>
             <View style={s.motivosWrap}>
               {MOTIVOS_ARCHIVO.map((mo) => (
@@ -418,8 +370,6 @@ export default function MisMascotasScreen() {
   );
 }
 
-// ─── ESTILOS ────────────────────────────────────────────────────────────────
-
 const s = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: P.bgTop },
   header: {
@@ -445,9 +395,6 @@ const s = StyleSheet.create({
   },
   ctaTxt:    { fontSize: 16, fontWeight: '700', color: P.text },
   limiteTxt: { fontSize: 13, color: P.amberText, textAlign: 'center', marginTop: 8 },
-
-  // Outline de la mascota principal (§ pedido): borde verde + fondo apenas
-  // teñido, para que se reconozca sin depender solo del texto del chip.
 
   especieRaza:  { fontSize: 14, color: P.textSoft, marginTop: 4, textAlign: 'center' },
 

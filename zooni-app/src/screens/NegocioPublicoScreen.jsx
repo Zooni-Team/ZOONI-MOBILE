@@ -1,28 +1,3 @@
-/**
- * NegocioPublicoScreen.jsx — La ficha de un negocio que ve el dueño
- *
- * Se llega desde el pin del negocio en Comunidad, desde "Turnos y pedidos" o
- * desde el chat. El negocio mismo la abre con { vistaPrevia: true } ("Ver mi
- * ficha como cliente"): se ve igual pero no se puede pedir ni comprar.
- *
- * Arriba, igual para los tres: logo, nombre, si está abierto ahora, cuántos
- * turnos atendió / pedidos entregó en Zooni, y los botones Chat · Llamar ·
- * Cómo llegar. Después cambia según el tipo:
- *
- *   Veterinaria  urgencias 24 h (llamar a la guardia / turno urgente),
- *                especialidades, matrícula, a domicilio, y los servicios con
- *                "Pedir turno" (→ ReservarTurno).
- *   Peluquería   sellos (busca y lleva, hipoalergénicos), tamaños que atiende,
- *                galería de trabajos y servicios con precio por tamaño.
- *   Pet shop     envíos (costo, gratis desde, demora), pedido mínimo, medios
- *                de pago y el catálogo con buscador, categorías y carrito. El
- *                pedido se arma en una hoja (retiro o envío, pago, notas).
- *
- * Al final, los horarios de toda la semana con el día de hoy marcado.
- *
- * Params: { idNegocio, vistaPrevia? }
- */
-
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Modal, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,10 +19,6 @@ import { normalizarBusqueda } from '../utils/texto';
 import { HojaPedido, Stepper } from '../components/negocio/HojaPedido';
 import { proximaApertura, Sello, sellosDeNegocio, Titulo } from '../components/negocio/FichaNegocioUI';
 
-// ─── Hoja del pedido (pet shop) ─────────────────────────────────────────────
-
-// ─── Pantalla ───────────────────────────────────────────────────────────────
-
 export default function NegocioPublicoScreen() {
   const navigation = useNavigation();
   const { idNegocio, vistaPrevia = false } = useRoute().params ?? {};
@@ -55,7 +26,7 @@ export default function NegocioPublicoScreen() {
   const [negocio, setNegocio] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
-  const [carrito, setCarrito] = useState({}); // idItem → cantidad
+  const [carrito, setCarrito] = useState({});
   const [verPedido, setVerPedido] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [categoria, setCategoria] = useState(null);
@@ -167,7 +138,6 @@ export default function NegocioPublicoScreen() {
 
       <ScrollView contentContainerStyle={[s.scroll, lineas.length && { paddingBottom: 110 }]}
         keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        {/* Cabecera */}
         <View style={s.card}>
           <View style={s.heroFila}>
             {negocio.logo
@@ -230,7 +200,6 @@ export default function NegocioPublicoScreen() {
           </View>
         )}
 
-        {/* ── Veterinaria ── */}
         {negocio.tipo === 'veterinaria' && d.urgencias24h && (
           <View style={s.urgencia}>
             <View style={s.urgenciaTop}>
@@ -266,7 +235,6 @@ export default function NegocioPublicoScreen() {
           </>
         ) : null}
 
-        {/* ── Peluquería: trabajos ── */}
         {negocio.tipo === 'peluqueria' && d.galeria?.length > 0 && (
           <>
             <Titulo>Trabajos</Titulo>
@@ -280,7 +248,6 @@ export default function NegocioPublicoScreen() {
           </>
         )}
 
-        {/* ── Servicios (veterinaria / peluquería) ── */}
         {cfg.usaTurnos && (
           <>
             <Titulo>{negocio.tipo === 'veterinaria' ? 'Consultas y servicios' : 'Servicios y precios'}</Titulo>
@@ -320,7 +287,6 @@ export default function NegocioPublicoScreen() {
           </>
         )}
 
-        {/* ── Catálogo (pet shop) ── */}
         {cfg.usaPedidos && (
           <>
             <Titulo extra={<Text style={s.tituloExtra}>{items.length} productos</Text>}>Catálogo</Titulo>
@@ -381,7 +347,6 @@ export default function NegocioPublicoScreen() {
           </>
         )}
 
-        {/* Horarios */}
         <Titulo>Horarios</Titulo>
         <View style={s.card}>
           {DIAS_SEMANA.map((dia) => {
@@ -400,7 +365,6 @@ export default function NegocioPublicoScreen() {
         </View>
       </ScrollView>
 
-      {/* Carrito */}
       {lineas.length > 0 && (
         <View style={s.carritoBarra}>
           <TouchableOpacity style={s.carritoBtn} onPress={() => setVerPedido(true)} activeOpacity={0.9}>
@@ -548,7 +512,6 @@ const s = StyleSheet.create({
   carritoTxt: { flex: 1, fontSize: 16, fontWeight: '800', color: colores.texto },
   carritoTotal: { fontSize: 16, fontWeight: '900', color: colores.texto, marginRight: 6 },
 
-  // Hoja del pedido
   btn: {
     marginTop: 20, height: 56, borderRadius: 30, backgroundColor: colores.amarillo, alignItems: 'center', justifyContent: 'center',
     shadowColor: colores.negro, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 3,

@@ -1,16 +1,3 @@
-/**
- * SolicitarPaseoScreen.jsx — El dueño contrata a un paseador de Zooni
- *
- * Se llega desde Comunidad (círculo del paseador en el mapa o lista de
- * Servicios) con { paseadorId }. Ve qué días y en qué horario pasea, y elige
- * mascota, día, hora, duración (con el precio que puso el paseador),
- * dirección y notas. Si elige un horario fuera de los del paseador se le
- * avisa, pero puede pedirlo igual (el paseador decide si lo acepta). La solicitud queda
- * 'pendiente' y le llega al paseador en su pestaña Solicitudes ("Para vos").
- *
- * App de DUEÑOS: fondo menta, header centrado, botones pill.
- */
-
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView,
@@ -38,8 +25,6 @@ function proximaHoraRedonda() {
   return d;
 }
 
-
-/** ¿El paseo (desde `fecha`, `duracion` minutos) cae fuera de los horarios del paseador? */
 function fueraDeHorario(horarios, fecha, duracion) {
   const h = horarioDelDia(horarios, fecha);
   if (!h.activo) return true;
@@ -56,17 +41,14 @@ export default function SolicitarPaseoScreen() {
   const [cargando, setCargando] = useState(true);
   const [mascotaId, setMascotaId] = useState(null);
   const [fecha, setFecha] = useState(proximaHoraRedonda);
-  const [duracion, setDuracion] = useState(null); // minutos de uno de sus servicios
-  // Cómo le va a pagar al paseador: él lo ve en su sección Pagos
+  const [duracion, setDuracion] = useState(null);
   const [medioPago, setMedioPago] = useState(null);
   const [direccion, setDireccion] = useState('');
   const [coords, setCoords] = useState(null);
   const [notas, setNotas] = useState('');
-  const [picker, setPicker] = useState(null); // 'fecha' | 'hora'
+  const [picker, setPicker] = useState(null);
   const [ubicando, setUbicando] = useState(false);
   const [enviando, setEnviando] = useState(false);
-  // Candado sincrónico: dos toques rápidos llegan antes de que `enviando`
-  // deshabilite el botón, y cada uno creaba una solicitud.
   const enviandoRef = useRef(false);
   const [errores, setErrores] = useState([]);
   const [errorGeneral, setErrorGeneral] = useState(null);
@@ -75,14 +57,12 @@ export default function SolicitarPaseoScreen() {
     fetchPaseadorPublico(paseadorId)
       .then((p) => {
         setPaseador(p);
-        // El primer paseo que ofrece (el más corto) queda elegido de entrada
         setDuracion(serviciosDe(p)[0]?.minutos ?? null);
       })
       .catch(() => setPaseador(null))
       .finally(() => setCargando(false));
   }, [paseadorId]);
 
-  // Primera mascota (la principal) elegida por defecto
   useEffect(() => {
     if (!mascotaId && mascotas.length) {
       setMascotaId((mascotas.find((m) => m.esPrincipal) ?? mascotas[0]).id);
@@ -121,14 +101,12 @@ export default function SolicitarPaseoScreen() {
     enviandoRef.current = true;
     setEnviando(true);
     try {
-      // Dirección escrita a mano: tiene que existir (antes se aceptaba
-      // "gttt7tt"). Con "Usar mi ubicación" ya vienen las coordenadas.
       let punto = coords;
       if (!punto) {
         try {
           punto = await ubicarDireccion(direccion, { cerca: paseador });
         } catch {
-          punto = undefined; // el buscador no responde: no se frena el pedido por eso
+          punto = undefined;
         }
         if (punto === null) {
           setErrores(['No encontramos esa dirección. Escribí calle y altura (ej. "Av. Cabildo 2250, Belgrano") o usá tu ubicación.']);
@@ -185,7 +163,6 @@ export default function SolicitarPaseoScreen() {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          {/* Paseador */}
           <View style={s.card}>
             <View style={s.paseadorFila}>
               {paseador.foto
@@ -217,7 +194,6 @@ export default function SolicitarPaseoScreen() {
             })}
           </View>
 
-          {/* Mascota */}
           <Text style={s.label}>¿Quién sale a pasear?</Text>
           {cargandoMascotas ? <ActivityIndicator color={colores.verde} /> : mascotas.length === 0 ? (
             <Text style={s.ayuda}>No tenés mascotas cargadas. Agregá una desde Mis Mascotas.</Text>
@@ -236,7 +212,6 @@ export default function SolicitarPaseoScreen() {
             </ScrollView>
           )}
 
-          {/* Cuándo */}
           <Text style={s.label}>¿Cuándo?</Text>
           <View style={s.fila}>
             <TouchableOpacity style={[s.campo, { flex: 1.6 }]} onPress={() => setPicker('fecha')}>
@@ -258,7 +233,6 @@ export default function SolicitarPaseoScreen() {
             </View>
           )}
 
-          {/* Duración y precio */}
           <Text style={s.label}>¿Cuánto tiempo?</Text>
           <View style={[s.fila, { flexWrap: 'wrap' }]}>
             {servicios.map(({ minutos, precio: p }) => {
@@ -273,8 +247,6 @@ export default function SolicitarPaseoScreen() {
             })}
           </View>
 
-          {/* Dónde */}
-          {/* Medio de pago */}
           <Text style={s.label}>¿Cómo le vas a pagar?</Text>
           <View style={s.medios}>
             {MEDIOS_PAGO.map((m) => {
@@ -299,7 +271,6 @@ export default function SolicitarPaseoScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Notas */}
           <Text style={s.label}>Notas para el paseador (opcional)</Text>
           <TextInput style={[s.input, { minHeight: 80, textAlignVertical: 'top' }]} value={notas} onChangeText={setNotas}
             multiline maxLength={500} placeholderTextColor={colores.textoTenue}

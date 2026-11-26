@@ -1,12 +1,3 @@
--- ⚠ NO PEGAR EN SUPABASE. Archivo de pruebas para un Postgres LOCAL (lo corre
---   supabase/scripts/probar-esquema.mjs). Crea usuarios de prueba.
--- pruebas_071.sql — correr DESPUÉS de pruebas_rls.sql (helpers pg_temp.como / salir).
---   · #1  El margen anti-trampa del paseo no se acumula update a update.
---   · #8  No se puede tener más de 10 mascotas activas.
---   · #15 marcar_mascota_principal deja exactamente una principal.
--- Ojo: todo corre en UNA transacción, así que now() no avanza: el "tramo"
--- transcurrido es 0 y el margen es de 30 s / 450 m.
-
 DO $$
 DECLARE
   sufijo TEXT := substr(md5(random()::TEXT), 1, 8);
@@ -40,18 +31,14 @@ BEGIN
   VALUES (duena, mascota, 'pendiente', 1000, 1000, 30)
   RETURNING "Id_Paseo" INTO paseo;
 
-  -- Asignado al paseador como superusuario (ver la misma nota en pruebas_070:
-  -- un UPDATE directo del paseador sobre un paseo abierto no toca filas).
   UPDATE "Paseo" SET "Estado" = 'aceptado', "Id_Walker" = pas WHERE "Id_Paseo" = paseo;
 
-  -- ── #1: el margen no se acumula ────────────────────────────────────────────
   PERFORM pg_temp.como(pas_auth);
   UPDATE "Paseo" SET "Estado" = 'en_curso', "HoraInicio" = now(), "ReanudadoEn" = now()
   WHERE "Id_Paseo" = paseo;
   ASSERT (SELECT "Estado" FROM "Paseo" WHERE "Id_Paseo" = paseo) = 'en_curso',
     'el paseador arranca su paseo (si no, lo de abajo no prueba nada)';
 
-  -- Con el tramo abierto, los segundos no se pueden subir sin cerrarlo
   fallo := FALSE;
   BEGIN
     UPDATE "Paseo" SET "SegundosAcumulados" = 20 WHERE "Id_Paseo" = paseo;
@@ -59,9 +46,7 @@ BEGIN
   END;
   ASSERT fallo, 'los segundos sólo suben al pausar o finalizar (#1)';
 
-  -- La distancia: 400 m entra en el margen (30 s × 15 m/s = 450 m)…
   UPDATE "Paseo" SET "DistanciaMetros" = 400 WHERE "Id_Paseo" = paseo;
-  -- …pero repetir el update no suma otros 450 m (antes sí: 400 + 450 = 850 pasaba)
   fallo := FALSE;
   BEGIN
     UPDATE "Paseo" SET "DistanciaMetros" = 800 WHERE "Id_Paseo" = paseo;
@@ -69,10 +54,8 @@ BEGIN
   END;
   ASSERT fallo, 'la distancia no puede crecer más que el tiempo del paseo (#1)';
 
-  -- Pausar cierra el tramo (dentro del margen)
   UPDATE "Paseo" SET "SegundosAcumulados" = 25, "ReanudadoEn" = NULL WHERE "Id_Paseo" = paseo;
 
-  -- En pausa, nada sube
   fallo := FALSE;
   BEGIN
     UPDATE "Paseo" SET "SegundosAcumulados" = 50 WHERE "Id_Paseo" = paseo;
@@ -80,8 +63,6 @@ BEGIN
   END;
   ASSERT fallo, 'en pausa no se pueden sumar segundos (#1)';
 
-  -- Reanudar con una hora del teléfono "vieja" no agranda el tramo: el ancla
-  -- es la hora del servidor, así que después no se pueden cobrar 2 horas.
   UPDATE "Paseo" SET "ReanudadoEn" = now() - interval '2 hours' WHERE "Id_Paseo" = paseo;
   ASSERT (SELECT "ReanudadoEn" FROM "Paseo" WHERE "Id_Paseo" = paseo) = now(),
     'ReanudadoEn lo fija el reloj del servidor, no el del teléfono';
@@ -93,7 +74,6 @@ BEGIN
   ASSERT fallo, 'no se puede pausar declarando un tramo que no pasó';
   PERFORM pg_temp.salir();
 
-  -- ── #15: una sola principal ────────────────────────────────────────────────
   PERFORM pg_temp.como(duena_auth);
   INSERT INTO "Mascota" ("Id_User", "Nombre", "Especie", "Estado", "EsActiva")
   VALUES (duena, 'Segunda', 'gato', 'active', FALSE)
@@ -112,8 +92,6 @@ BEGIN
   END;
   ASSERT fallo, 'no se puede marcar como principal una mascota ajena (#15)';
 
-  -- ── #8: límite de 10 activas ───────────────────────────────────────────────
-  -- Ya tiene 2; se completan hasta 10.
   FOR i IN 3..10 LOOP
     INSERT INTO "Mascota" ("Id_User", "Nombre", "Especie", "Estado", "EsActiva")
     VALUES (duena, 'Extra ' || i, 'gato', 'active', FALSE);
@@ -126,7 +104,6 @@ BEGIN
   END;
   ASSERT fallo, 'no se puede tener una 11.ª mascota activa (#8)';
 
-  -- Archivada sí se puede (no cuenta)
   INSERT INTO "Mascota" ("Id_User", "Nombre", "Especie", "Estado", "EsActiva")
   VALUES (duena, 'Archivada', 'gato', 'archived', FALSE);
   PERFORM pg_temp.salir();

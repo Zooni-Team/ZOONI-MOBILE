@@ -1,14 +1,3 @@
-/**
- * SliderAmarillo.jsx — Slider (thumb + track activo #F5C842) sin dependencias
- *
- * Con flechas de −/+ a los costados: en un celular arrastrar el thumb para
- * ajustar medio kilo es incómodo; con las flechas se afina de a un paso.
- * Mantener apretada una flecha repite el paso.
- *
- * Lo usan el Paso 2 del registro y el alta de mascota de Configuración (antes
- * estaba copiado en las dos pantallas).
- */
-
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,15 +9,9 @@ export default function SliderAmarillo({
   const [trackWidth, setTrackWidth] = useState(1);
   const repeatTimer = useRef(null);
 
-  // El valor vive también en un ref: el setInterval de la repetición captura el
-  // closure una sola vez y con `value` a secas se quedaría clavado en el valor
-  // que tenía al apretar.
   const valorActual = useRef(value);
   valorActual.current = value;
 
-  // Los pasos chicos (0,005 kg para un canario) arrastran error de coma
-  // flotante: 7 * 0.005 da 0.035000000000000003 y eso terminaba en la base.
-  // Se redondea a los decimales que tenga el propio paso.
   const decimales = (String(step).split('.')[1] ?? '').length;
   const clamp = (v) => Number(
     Math.max(min, Math.min(max, Math.round(v / step) * step)).toFixed(decimales)

@@ -1,17 +1,3 @@
-/**
- * InicioNegocioTab.jsx — El "panel de control" del negocio
- *
- *   · Estado: el switch grande para recibir (o no) turnos / pedidos nuevos, si
- *     está abierto ahora según su horario y —en veterinarias— urgencias 24 h.
- *   · Primeros pasos: lo que le falta cargar para que los clientes lo elijan
- *     (servicios o catálogo, logo, descripción). Desaparece cuando está todo.
- *   · Números del día y del mes:
- *       turnos  → hoy, por confirmar, facturado y atendidos en el mes
- *       pedidos → nuevos, en curso, ventas del mes y ticket promedio
- *   · Lo que hay que mirar ya: urgencias, turnos de hoy o pedidos nuevos, y
- *     productos con poco stock.
- */
-
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View,
@@ -101,7 +87,6 @@ export default function InicioNegocioTab({ negocio, setNegocio, cfg, irA, avisar
   return (
     <ScrollView contentContainerStyle={s.scroll}
       refreshControl={<RefreshControl refreshing={refrescando} onRefresh={refrescar} tintColor={C.teal} />}>
-      {/* Estado */}
       <Card style={[s.estado, negocio.abierto ? s.estadoOn : null]}>
         <View style={{ flex: 1 }}>
           <Text style={s.estadoTitulo}>{negocio.abierto ? cfg.abierto.on : cfg.abierto.off}</Text>
@@ -148,7 +133,6 @@ export default function InicioNegocioTab({ negocio, setNegocio, cfg, irA, avisar
             </>
           )}
 
-          {/* Números */}
           {cfg.usaPedidos ? (
             <View style={s.stats}>
               <TouchableOpacity style={s.statBox} onPress={() => irA('pedidos')}>
@@ -180,7 +164,6 @@ export default function InicioNegocioTab({ negocio, setNegocio, cfg, irA, avisar
             </Text>
           </Card>
 
-          {/* Lo urgente */}
           {!cfg.usaPedidos && resumen.urgencias.length > 0 && (
             <>
               <Seccion titulo="🚨 Urgencias por confirmar" accion="Ver" onAccion={() => irA('turnos')} />

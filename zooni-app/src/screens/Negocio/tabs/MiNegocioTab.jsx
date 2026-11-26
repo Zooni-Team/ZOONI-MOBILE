@@ -1,20 +1,3 @@
-/**
- * MiNegocioTab.jsx — "Mi negocio": todo lo que el cliente ve en la ficha
- *
- *   · Cabecera: logo (tocar para cambiarlo), nombre, tipo y cómo se ve la
- *     ficha ("Ver como cliente").
- *   · Qué tan completa está la ficha, con lo que falta.
- *   · Datos del local: nombre, descripción, teléfono, dirección y el punto en
- *     el mapa (se copian al pin de Comunidad).
- *   · Horarios de atención: con ellos se arman los turnos libres y el
- *     "Abierto ahora".
- *   · Lo propio del tipo (DatosTipoNegocio): matrícula y urgencias en
- *     veterinarias, tamaños y busca y lleva en peluquerías, envíos y medios
- *     de pago en pet shops.
- *
- * Un solo "Guardar cambios" abajo, que aparece cuando hay algo para guardar.
- */
-
 import { useState } from 'react';
 import {
   ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text,
@@ -60,12 +43,10 @@ export default function MiNegocioTab({ negocio, setNegocio, tipo, cfg, avisar, n
     setErrores((e) => ({ ...e, [k]: null }));
   };
 
-  // ¿Hay algo distinto a lo guardado? Se compara contra una "foto" del formulario
   const fotoDe = (n) => JSON.stringify([localDe(n), datosInicialesNegocio(tipo, n.datos)]);
   const [base, setBase] = useState(() => fotoDe(negocio));
   const hayCambios = JSON.stringify([local, tipoForm.datos]) !== base;
 
-  // Qué le falta a la ficha para estar completa
   const pendientes = [
     !negocio.logo && 'Subí tu logo o una foto del local',
     (local.descripcion ?? '').trim().length <= 10 && 'Contá qué hacen en la descripción',
@@ -114,11 +95,9 @@ export default function MiNegocioTab({ negocio, setNegocio, tipo, cfg, avisar, n
         lat: local.lat,
         lng: local.lng,
         horarios: local.horarios,
-        // Se mezcla con lo guardado: la galería y lo que no está en el formulario no se pisa
         datos: { ...(negocio.datos ?? {}), ...datosNegocioParaGuardar(tipo, tipoForm.datos) },
       });
       setNegocio(nuevo);
-      // Lo guardado (ya recortado) pasa a ser la nueva referencia de "sin cambios"
       const guardado = localDe(nuevo);
       setLocal(guardado);
       setBase(JSON.stringify([guardado, tipoForm.datos]));
@@ -140,7 +119,6 @@ export default function MiNegocioTab({ negocio, setNegocio, tipo, cfg, avisar, n
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
-        {/* Cabecera */}
         <Card style={s.cabecera}>
           <TouchableOpacity style={s.logo} onPress={cambiarLogo} disabled={subiendoLogo}
             accessibilityRole="button" accessibilityLabel="Cambiar logo">
@@ -175,7 +153,6 @@ export default function MiNegocioTab({ negocio, setNegocio, tipo, cfg, avisar, n
           </Card>
         )}
 
-        {/* Datos del local */}
         <Seccion titulo="Datos del local" />
         <Card>
           <Campo label={`Nombre de tu ${cfg.label.toLowerCase()}`} error={errores.nombre}>
@@ -205,7 +182,6 @@ export default function MiNegocioTab({ negocio, setNegocio, tipo, cfg, avisar, n
           {errores.ubicacion ? <Text style={s.error}>{errores.ubicacion}</Text> : null}
         </Card>
 
-        {/* Horarios */}
         <Seccion titulo="Horarios de atención" />
         <Card>
           <Text style={s.ayuda}>
@@ -218,7 +194,6 @@ export default function MiNegocioTab({ negocio, setNegocio, tipo, cfg, avisar, n
             onCambio={(h) => setL('horarios', h)} />
         </Card>
 
-        {/* Lo propio del tipo */}
         <Seccion titulo={tipo === 'veterinaria' ? 'Tu práctica' : tipo === 'peluqueria' ? 'A quiénes atendés' : 'Ventas y envíos'} />
         <DatosTipoNegocio tipo={tipo} datos={tipoForm.datos} onCambio={tipoForm.cambiar} errores={tipoForm.errores} />
 

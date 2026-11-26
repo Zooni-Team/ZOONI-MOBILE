@@ -1,17 +1,3 @@
-/**
- * TurnosTab.jsx — Turnos de la veterinaria / peluquería
- *
- *   Por confirmar  lo que pidieron los dueños (urgencias primero):
- *                  Confirmar · Rechazar (con motivo opcional)
- *   Agenda         día por día (hoy y las próximas 2 semanas), con los
- *                  confirmados y los por confirmar. Al atender: veterinaria →
- *                  informe de la consulta; peluquería → fotos y notas del
- *                  trabajo. También "No vino" y "Cancelar".
- *   Historial      los últimos 60 días; tocar uno atendido corrige su informe.
- *
- * Cada cambio le llega al dueño como notificación (negocioApi).
- */
-
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator, FlatList, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View,
@@ -49,9 +35,9 @@ export default function TurnosTab({ negocio, setNegocio, tipo, avisar, abrirChat
   const [vista, setVista] = useState('pendientes');
   const [dia, setDia] = useState(() => diasAgenda()[0]);
   const [refrescando, setRefrescando] = useState(false);
-  const [ocupado, setOcupado] = useState(null); // id del turno que se está guardando
-  const [motivo, setMotivo] = useState(null); // { turno, estado }
-  const [informe, setInforme] = useState(null); // { turno, editar }
+  const [ocupado, setOcupado] = useState(null);
+  const [motivo, setMotivo] = useState(null);
+  const [informe, setInforme] = useState(null);
 
   const cargar = useCallback(async () => {
     const desde = new Date(Date.now() - 60 * 86400000);
@@ -111,8 +97,6 @@ export default function TurnosTab({ negocio, setNegocio, tipo, avisar, abrirChat
   };
 
   const confirmarTurno = async (turno) => {
-    // Si se pisa con otro confirmado, avisar antes (el dueño eligió de los
-    // horarios libres, pero el negocio puede haber confirmado otro a mano)
     const ini = new Date(turno.fecha).getTime();
     const fin = ini + turno.duracionMin * 60000;
     const choca = lista.find((t) => t.id !== turno.id && t.estado === 'confirmado'
@@ -147,7 +131,6 @@ export default function TurnosTab({ negocio, setNegocio, tipo, avisar, abrirChat
           galeria: [...nuevas, ...(negocio.datos?.galeria ?? [])].slice(0, GALERIA_MAX),
         }));
       } catch {
-        // las fotos quedan en el informe igual
       }
     }
     setInforme(null);

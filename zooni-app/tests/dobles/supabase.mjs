@@ -1,12 +1,3 @@
-// Doble del cliente de Supabase. Cada test programa las respuestas:
-//
-//   import { fake } from './dobles/supabase.mjs';
-//   fake.reiniciar();
-//   fake.responder((op) => op.tabla === 'User' ? { data: [...] } : {});
-//   fake.rpc('votar_mascota', { data: { match: true } });
-//   ... llamar al servicio ...
-//   fake.llamadas  → [{ tipo: 'tabla'|'rpc'|'auth'|'funcion', ... }]
-
 const estado = {
   responder: () => ({ data: null, error: null }),
   rpcs: new Map(),
@@ -88,8 +79,6 @@ export const supabase = {
   },
 };
 
-// Mismo origen que usan los dobles de getPublicUrl/createSignedUrl de arriba,
-// para que esUrlPropia() (imagenStorage.js) reconozca las urls de prueba.
 export const SUPABASE_ORIGIN = 'https://cdn.test';
 
 export default { supabase };

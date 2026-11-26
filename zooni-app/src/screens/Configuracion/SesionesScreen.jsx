@@ -1,9 +1,3 @@
-/**
- * SesionesScreen.jsx — Cuenta y Seguridad › Sesiones activas (§3.5.1)
- *
- * La sesión actual se marca "Este dispositivo" y no se puede cerrar desde acá.
- */
-
 import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';

@@ -1,12 +1,3 @@
-/**
- * RecordatorioCard.jsx — Un recordatorio del Calendario de Cuidados (turno,
- * medicación, paseo…) con el color de qué tan cerca está, y los botones de
- * editar y eliminar.
- *
- * Los que vienen de la agenda pública (origen 'eventos') no se editan: sólo se
- * pueden quitar.
- */
-
 import { useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,8 +22,6 @@ export default function RecordatorioCard({ evento, index, onEditar, onEliminar, 
   const color   = getColorByProximidad(evento.fecha_hora);
   const texto   = getTextoDias(evento.fecha_hora);
 
-  // Evita que el tap en los íconos de editar/eliminar además dispare la
-  // apertura del detalle (el evento de click burbujea hacia el Pressable padre).
   const detener = (fn) => (e) => { e?.stopPropagation?.(); fn(); };
 
   return (
@@ -80,13 +69,11 @@ export default function RecordatorioCard({ evento, index, onEditar, onEliminar, 
   );
 }
 
-/** Placeholder de una tarjeta mientras carga el calendario. */
 export function RecordatorioCargando() {
   return <Skeleton style={s.skeletonCard} min={0.5} />;
 }
 
 const s = StyleSheet.create({
-  // Card evento
   card: {
     backgroundColor: colores.blanco,
     borderRadius: 14,
@@ -111,6 +98,5 @@ const s = StyleSheet.create({
   badgeDiasTxt: { fontSize: 11, fontWeight: '700' },
   cardFecha: { fontSize: 13, color: colores.textoSecundario, marginTop: 4 },
   cardDescripcion: { fontSize: 13, color: colores.textoSecundario, marginTop: 2 },
-  // Skeleton
   skeletonCard: { backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 14, height: 90, marginBottom: 12 },
 });

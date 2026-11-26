@@ -1,14 +1,3 @@
-/**
- * TratamientosScreen.jsx — Tratamientos de una mascota (desparasitaciones,
- * medicación, controles).
- *
- * Llega desde la Ficha Médica con { petId } (o usa la mascota activa). Muestra
- * los tratamientos cargados (se pueden agregar, editar y eliminar) y los
- * sugeridos para la especie, que se registran con un toque.
- *
- * El armazón y las tarjetas son los mismos que en Vacunas (components/salud).
- */
-
 import { useState } from 'react';
 
 import FechaPicker from '../components/FechaPicker';
@@ -40,16 +29,13 @@ export default function TratamientosScreen() {
   const salud = useRegistrosSalud(traerTratamientos);
   const { toast, mostrarToast } = useToast();
 
-  // `edicion`: { tratamiento } si se edita uno, { sugerido } si se registra
-  // uno sugerido, {} si es uno nuevo. Una sola variable decide qué hace
-  // "Guardar" (con dos se desincronizaban y "Guardar cambios" creaba un duplicado).
   const [edicion, setEdicion] = useState({});
   const [visible, setVisible] = useState(false);
   const [form, setForm] = useState(FORM_VACIO);
   const [errores, setErrores] = useState({});
   const [guardando, setGuardando] = useState(false);
   const [errorGuardar, setErrorGuardar] = useState(null);
-  const [eligiendo, setEligiendo] = useState(null); // 'inicio' | 'control' | null
+  const [eligiendo, setEligiendo] = useState(null);
 
   const cambiar = (campo, valor) => {
     setForm((f) => ({ ...f, [campo]: valor }));
@@ -119,7 +105,6 @@ export default function TratamientosScreen() {
     try {
       await eliminarTratamiento(tratamiento.id);
       salud.setAplicados((prev) => prev.filter((t) => t.id !== tratamiento.id));
-      // Si venía de un sugerido, su tarjeta vuelve a ofrecer "Registrar".
       salud.setSugeridos((prev) => prev.map((sg) => (
         sg.tratamiento_aplicado_id === tratamiento.id ? { ...sg, applied: false, tratamiento_aplicado_id: null } : sg
       )));
@@ -181,7 +166,6 @@ export default function TratamientosScreen() {
           onChangeText={(v) => cambiar('descripcion', v)} multilinea maxLength={400} />
       </ModalFormulario>
 
-      {/* A diferencia de las vacunas, acá sí hay fechas futuras (el control). */}
       <FechaPicker visible={eligiendo != null} aniosAdelante={5}
         titulo={eligiendo === 'control' ? 'Próximo control' : 'Fecha de inicio'}
         valor={(eligiendo === 'control' ? form.control : form.inicio) ?? new Date()}

@@ -1,11 +1,3 @@
-// imports.test.mjs — Todo `import { x } from './modulo'` apunta a algo que ese
-// módulo exporta de verdad.
-//
-// Metro no lo comprueba: un nombre mal escrito (o que quedó en otro archivo al
-// partir un servicio) llega como `undefined` y recién explota al tocar el botón.
-// Acá se lee cada archivo de src/ con el parser de Babel y se cruzan imports y
-// exports, siguiendo los `export * from`.
-
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
@@ -79,7 +71,6 @@ test('cada import con nombre existe en el módulo de origen', () => {
       const destino = resolver(archivo, imp.de);
       const donde = `${path.relative(raiz, archivo)}:${imp.linea}`;
       if (!destino) {
-        // Imágenes y otros recursos los resuelve Metro; un .js que falta, no.
         if (!/\.(png|jpe?g|gif|svg|json|ttf|otf)$/.test(imp.de)) rotos.push(`${donde} → no existe '${imp.de}'`);
         continue;
       }
@@ -92,7 +83,6 @@ test('cada import con nombre existe en el módulo de origen', () => {
 });
 
 test('sólo services/ (y config/session) habla con Supabase', () => {
-  // Regla 2 de CLAUDE.md: las pantallas y componentes llaman servicios.
   const permitidos = /^src\/(services|lib|config)\//;
   const archivos = [...archivosDe(path.join(raiz, 'src')), path.join(raiz, 'App.jsx')];
   const directos = archivos

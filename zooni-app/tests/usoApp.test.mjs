@@ -1,4 +1,3 @@
-// usoApp.test.mjs — Tiempo en la app: formato y lectura de la semana.
 import { beforeEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 

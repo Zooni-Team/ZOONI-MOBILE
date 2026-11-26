@@ -1,28 +1,3 @@
-/**
- * api/lugares.js — Función de Vercel: veterinarias, pet shops y peluquerías de
- * OpenStreetMap para el mapa de Servicios (GET /api/lugares?s=&w=&n=&e=).
- *
- * POR QUÉ EXISTE: desde el navegador, la API pública de Overpass casi nunca
- * respondía y el mapa mostraba "No hay servicios en esta área" en pleno
- * Palermo. Verificado con curl (12/11/2026):
- *   · overpass-api.de responde 406 a todo pedido que mencione "vercel.app"
- *     (en el Referer o en el User-Agent), y el navegador no deja cambiar el
- *     User-Agent;
- *   · los espejos se cuelgan o devuelven 502/504 "at capacity" muy seguido.
- *
- * Desde acá:
- *   1. Overpass, todos los servidores a la vez, con un User-Agent propio.
- *   2. Si ninguno contesta: Nominatim (el buscador de OpenStreetMap), que
- *      responde en 1-2 s. Trae menos (50 por categoría) pero nunca vacío.
- *   3. La respuesta queda en el CDN de Vercel un día (s-maxage): cada zona de
- *      la grilla se consulta UNA vez para todos los usuarios.
- *
- * Devuelve siempre la forma de Overpass ({ elements: [{ type, id, lat, lon,
- * tags }] }) para que services/lugaresOsm.js no distinga el origen.
- * No es un proxy abierto: la consulta la arma esta función; el cliente sólo
- * manda la caja, y una caja grande se rechaza.
- */
-
 const OVERPASS = [
   'https://overpass-api.de/api/interpreter',
   'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
@@ -30,24 +5,14 @@ const OVERPASS = [
   'https://overpass.kumi.systems/api/interpreter',
 ];
 const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
-// Sin "vercel.app": overpass-api.de responde 406 a todo lo que lo mencione.
 const USER_AGENT = 'ZooniApp/1.0 (app de mascotas; github.com/Zooni-Team)';
-const AREA_MAX_GRADOS2 = 0.25; // igual que lugaresOsm.js
+const AREA_MAX_GRADOS2 = 0.25;
 const MAX_RESULTADOS = 200;
 const ESPERA_OVERPASS_MS = 12000;
-// Nominatim también puede colgarse: sumado a los 12 s de Overpass, sin tope
-// se pasaba de los 30 s de la función y Vercel cortaba con un 504.
 const ESPERA_NOMINATIM_MS = 6000;
-// La app (lugaresOsm.js) alinea siempre la caja a esta grilla. Se exige del
-// lado del servidor: con floats libres, cada caja distinta era una entrada
-// nueva en el CDN y cualquiera podía usar la función de proxy para martillar
-// a Overpass/Nominatim (y que bloquearan el User-Agent de Zooni).
 const GRILLA = 0.02;
 const enGrilla = (x) => Math.abs(x / GRILLA - Math.round(x / GRILLA)) < 1e-6;
 
-// Nominatim no busca por etiqueta: busca texto y se filtra por categoría.
-// (Probado en CABA: "veterinario" → amenity=veterinary, "pet shop" → shop=pet;
-// "peluquería" trae peluquerías de personas, por eso no se usa.)
 const BUSQUEDAS_NOMINATIM = ['veterinario', 'pet shop'];
 const ES_DE_MASCOTAS = (x) =>
   (x.category === 'amenity' && x.type === 'veterinary')
@@ -73,7 +38,7 @@ async function desdeOverpass(caja) {
         body: cuerpo,
       });
       if (!r.ok) throw new Error(`${r.status}`);
-      const json = await r.json(); // un 200 con XML de error ("too busy") tira acá
+      const json = await r.json();
       if (!Array.isArray(json.elements)) throw new Error('sin elements');
       return json.elements;
     }));
@@ -83,7 +48,6 @@ async function desdeOverpass(caja) {
   }
 }
 
-/** Resultado de Nominatim → elemento con la forma de Overpass. */
 function aElemento(x) {
   const a = x.address ?? {};
   const extra = x.extratags ?? {};
@@ -105,7 +69,6 @@ function aElemento(x) {
 async function desdeNominatim({ s, w, n, e }) {
   const vistos = new Set();
   const elementos = [];
-  // De a una (la política de uso de Nominatim pide no más de 1 por segundo).
   for (const q of BUSQUEDAS_NOMINATIM) {
     const url = `${NOMINATIM}?${new URLSearchParams({
       q, viewbox: `${w},${n},${e},${s}`, bounded: '1', format: 'jsonv2',
@@ -157,7 +120,6 @@ module.exports = async function handler(req, res) {
       errores.push(`${fuente}: ${e?.errors?.map((x) => x.message).join(', ') ?? e?.message}`);
     }
   }
-  // Fallo breve en caché: si OSM está caído, no martillarlo con cada usuario.
   res.setHeader('Cache-Control', 'public, s-maxage=60');
   res.status(503).json({ error: 'OpenStreetMap no respondió', detalle: errores });
 };

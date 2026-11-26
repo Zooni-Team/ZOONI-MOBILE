@@ -1,26 +1,3 @@
-/**
- * socialAuthApi.js — Entrar / registrarse con Google y Facebook
- *
- * (Apple se sacó: "Sign in with Apple" pide la cuenta paga de Apple Developer.)
- *
- * Flujo (web):
- *   1. iniciarConProveedor('google', 'dueno') guarda la intención (dueño o
- *      paseador) y manda al navegador al login del proveedor.
- *   2. El proveedor vuelve a la app con ?code=… . App.jsx detecta ese retorno
- *      (hayRetornoSocial) y llama a completarRetornoSocial(), que canjea el
- *      código por una sesión de Supabase Auth (el mismo cliente de toda la app).
- *   3. login_social() (043) busca la cuenta por el mail VERIFICADO del
- *      proveedor (lo lee el servidor, no lo manda la app):
- *        · existe → se inicia la sesión de Zooni como en el login normal
- *        · no existe → { nuevo, perfil } y la app sigue al registro con nombre,
- *          mail y foto ya cargados y sin pedir contraseña.
- *   4. Las altas sociales (registrarSocial… / activarPaseadorSocial) usan esa
- *      misma sesión: el JWT dice quién es, el mail lo lee el servidor.
- *
- * En la app nativa no está habilitado todavía: necesita expo-web-browser y un
- * "scheme" de deep link para volver del navegador.
- */
-
 import { Platform } from 'react-native';
 
 import { supabase } from '../lib/supabase';
@@ -36,7 +13,7 @@ const INTENCION_KEY = 'zooni_social_intencion';
 export const loginSocialDisponible = Platform.OS === 'web';
 
 function guardarIntencion(valor) {
-  try { localStorage.setItem(INTENCION_KEY, JSON.stringify(valor)); } catch { /* noop */ }
+  try { localStorage.setItem(INTENCION_KEY, JSON.stringify(valor)); } catch {  }
 }
 function leerIntencion() {
   try {
@@ -48,12 +25,6 @@ function leerIntencion() {
   }
 }
 
-/**
- * ¿El proveedor está activado en Supabase (Authentication → Providers)?
- * Se pregunta ANTES de salir de la app: si no está activado, Supabase no
- * vuelve a la app sino que muestra un JSON de error en su propio dominio y
- * la persona queda varada ahí. null = no se pudo saber (se intenta igual).
- */
 async function proveedorHabilitado(proveedor) {
   const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
   const key = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -68,10 +39,6 @@ async function proveedorHabilitado(proveedor) {
   }
 }
 
-/**
- * Manda al login del proveedor. `intencion` es 'dueno' o 'paseador': decide a
- * qué registro se sigue si la cuenta es nueva. La página se va: no vuelve acá.
- */
 export async function iniciarConProveedor(proveedor, intencion = 'dueno') {
   if (!loginSocialDisponible) throw new Error('social_no_disponible');
   if (await proveedorHabilitado(proveedor) === false) throw new Error('provider is not enabled');
@@ -81,10 +48,6 @@ export async function iniciarConProveedor(proveedor, intencion = 'dueno') {
     provider: proveedor,
     options: {
       redirectTo,
-      // Google: dejar elegir la cuenta siempre (si no, entra sola con la última).
-      // Facebook: sin `scopes` propios. Supabase ya pide "email" y separa los
-      // extra por COMA: el "email public_profile" de antes llegaba a Facebook
-      // como un único permiso inválido. public_profile viene siempre.
       queryParams: proveedor === 'google' ? { prompt: 'select_account' } : undefined,
     },
   });
@@ -94,7 +57,6 @@ export async function iniciarConProveedor(proveedor, intencion = 'dueno') {
   }
 }
 
-/** ¿La app se está abriendo de vuelta desde Google / Facebook? */
 export function hayRetornoSocial() {
   if (!loginSocialDisponible || typeof window === 'undefined') return false;
   const q = new URLSearchParams(window.location.search);
@@ -108,13 +70,6 @@ const MENSAJES_ERROR = {
   sin_sesion_social: 'Se cortó el inicio de sesión. Probá de nuevo.',
 };
 
-/**
- * Copia la foto de perfil del proveedor (Google/Facebook) a nuestro propio
- * Storage, en vez de guardar el link externo: quien lo controla no debe
- * poder registrar la IP de cada persona que vea ese perfil o el mapa
- * (informe de seguridad #68, #138). Si falla (sin red, CORS del proveedor),
- * se sigue con la URL original: nunca bloquea el registro por esto.
- */
 async function copiarFotoSocial(url) {
   if (!url) return null;
   try {
@@ -143,28 +98,18 @@ function mensajeDe(err) {
   return 'No se pudo iniciar sesión con ese proveedor. Probá de nuevo.';
 }
 
-/**
- * Termina el retorno del proveedor. Devuelve:
- *   { error }                         — algo falló (mensaje para mostrar)
- *   { usuario, intencion }            — cuenta existente: la sesión ya quedó iniciada
- *   { nuevo: true, perfil, intencion } — no hay cuenta con ese mail: seguir al alta
- */
 export async function completarRetornoSocial() {
   const url = new URL(window.location.href);
   const q = url.searchParams;
   const h = new URLSearchParams(url.hash.replace(/^#/, ''));
   const guardada = leerIntencion();
   const intencion = guardada?.intencion ?? 'dueno';
-  // Limpiar la URL: que un refresh no intente canjear el mismo código
   window.history.replaceState({}, document.title, `${url.origin}${url.pathname}`);
 
   const errorProveedor = q.get('error_description') || h.get('error_description') || q.get('error') || h.get('error');
   if (errorProveedor) {
     if (__DEV__) console.error('[Login social] el proveedor volvió con error:', errorProveedor);
-    // Cancelar en el proveedor no es un error para mostrar en rojo
     if (/cancel|denied/i.test(errorProveedor)) return { error: null, intencion };
-    // Facebook sin mail (cuentas creadas con el teléfono, o el permiso de mail
-    // sin aceptar): Supabase vuelve con "Error getting user email…"
     if (/email/i.test(errorProveedor)) return { error: MENSAJES_ERROR.sin_email, intencion };
     return { error: 'El proveedor no permitió el inicio de sesión. Probá de nuevo.', intencion };
   }
@@ -196,7 +141,6 @@ export async function completarRetornoSocial() {
   }
 }
 
-/** Llamada a una RPC del alta social (necesita la sesión del proveedor). */
 export async function rpcSocial(nombre, params) {
   const { data, error } = await supabase.rpc(nombre, params);
   if (error) {
@@ -207,7 +151,6 @@ export async function rpcSocial(nombre, params) {
   return data;
 }
 
-/** Corta la sesión del proveedor (al cerrar sesión en Zooni o si algo falló). */
 export function cerrarSesionSocial() {
   return supabase.auth.signOut({ scope: 'local' }).catch(() => {});
 }

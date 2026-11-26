@@ -1,11 +1,3 @@
-/**
- * HomeScreen.jsx — Inicio del modo dueño: la mascota activa arriba y los
- * accesos a las secciones abajo, con el SOS Veterinario siempre a mano.
- *
- * Los datos los trae hooks/useHome. El hero animado es
- * components/home/HeroMascota y los botones, components/home/BotonesHome.
- */
-
 import { useState } from 'react';
 import {
   ImageBackground, RefreshControl, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View,
@@ -23,7 +15,6 @@ import { HOME_BACKGROUND } from '../constants/homeAssets';
 import { useHome } from '../hooks/useHome';
 import { colores, sombras } from '../theme';
 
-// La campana manda nombres de pantalla ('Mensajes') o rutas viejas ('perfil/…').
 const PANTALLA_DE_NOTIFICACION = {
   perfil: 'Perfil', match: 'Match', fichamedica: 'FichaMedica', comunidad: 'Comunidad', mensajes: 'Mensajes',
 };
@@ -37,14 +28,12 @@ export default function HomeScreen() {
   const [agregando, setAgregando] = useState(false);
 
   const abrirSeccion = (clave, seccion) => {
-    // Estas dos necesitan saber de qué mascota se trata.
     if (clave === 'ficha_medica' && home.mascota) navigation.navigate('FichaMedica', { mascotaId: home.mascota.id });
     else if (clave === 'closet' && home.mascota) navigation.navigate('Closet', { petId: home.mascota.id });
     else navigation.navigate(seccion.ruta);
   };
 
   const abrirNotificacion = (ruta) => {
-    // Destino con parámetros ({ screen, params }): por ejemplo el chat de un match
     if (typeof ruta === 'object' && ruta?.screen) {
       navigation.navigate(ruta.screen, ruta.params);
       return;
@@ -55,8 +44,6 @@ export default function HomeScreen() {
 
   const guardarBotones = () => {
     setEditando(false);
-    // Es una preferencia local: si no se pudo guardar, el orden vale igual
-    // hasta cerrar la app.
     home.guardarBotones().catch(() => {});
   };
 
@@ -154,7 +141,6 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { flexGrow: 1 },
   aviso: { paddingHorizontal: 16, paddingTop: 8 },
-  // FABs
   fabContainer: { position: 'absolute', bottom: 16, right: 16, flexDirection: 'row', gap: 10 },
   fab: {
     width: 48, height: 48, borderRadius: 24, backgroundColor: colores.verde,

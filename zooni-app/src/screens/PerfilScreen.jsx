@@ -1,12 +1,3 @@
-/**
- * PerfilScreen.jsx — Perfil del usuario en Zooni
- *
- * Zona verde superior con avatar + nombre.
- * Card blanco inferior con botones, stats, bio, tabs grid/lista.
- * Modales: editar perfil, nueva publicación.
- * Conectado directo a Supabase (ver src/services/perfilApi.js) — sin backend propio.
- */
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -30,8 +21,6 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { elegirImagen } from '../utils/elegirImagen';
 import HamburgerDrawer from '../components/HamburgerDrawer';
 import AppDialog from '../components/AppDialog';
-// El editor de perfil es compartido con "Así te ven" de Match: mismo
-// formulario y misma API desde los dos lados.
 import EditarPerfilModal, { AModal, FocusInput } from '../components/perfil/EditarPerfilModal';
 import { HOME_BACKGROUND } from '../constants/homeAssets';
 import {
@@ -46,15 +35,9 @@ import Skeleton from '../components/ui/Skeleton';
 import { useToast } from '../hooks/useToast';
 import { formatearFecha } from '../utils/fechaLocal';
 
-// ─── SKELETON ─────────────────────────────────────────────────────────────────
-
 function Skel({ w, h, r = 8, style }) {
   return <Skeleton min={0.4} style={[{ width: w, height: h, borderRadius: r, backgroundColor: colores.gris300 }, style]} />;
 }
-
-// ─── AVISO INLINE (banner verde dentro del perfil, justo antes de los tabs) ───
-// A diferencia del <Toast /> flotante, este ocupa lugar en el layout. El
-// estado y el temporizador salen del mismo hook useToast.
 
 function AvisoInline({ visible, mensaje }) {
   const ty  = useRef(new Animated.Value(-8)).current;
@@ -74,27 +57,22 @@ function AvisoInline({ visible, mensaje }) {
   );
 }
 
-// ─── SCREEN ───────────────────────────────────────────────────────────────────
-
 export default function PerfilScreen() {
   const navigation = useNavigation();
 
-  // Estado principal
   const [perfil,        setPerfil]        = useState(null);
   const [mascotaActiva, setMascotaActiva] = useState(null);
   const [stats,         setStats]         = useState({ totalPublicaciones: 0, totalAmigos: 0 });
   const [pubs,       setPubs]       = useState([]);
   const [loading,    setLoading]    = useState(true);
-  const [tab,        setTab]        = useState('grid'); // 'grid' | 'lista'
+  const [tab,        setTab]        = useState('grid');
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Modales
   const [modalEditar,   setModalEditar]   = useState(false);
   const [modalPublicar, setModalPublicar] = useState(false);
-  const [pubAbierta,    setPubAbierta]    = useState(null); // publicación en el visor
+  const [pubAbierta,    setPubAbierta]    = useState(null);
   const [confirmarBorrar, setConfirmarBorrar] = useState(null);
 
-  // Form publicar
   const [fImagen,   setFImagen]   = useState(null);
   const [fDesc,     setFDesc]     = useState('');
   const [imgErr,    setImgErr]    = useState(false);
@@ -102,14 +80,12 @@ export default function PerfilScreen() {
 
   const { toast, mostrarToast } = useToast();
 
-  // Animaciones botones
   const scEditar   = useRef(new Animated.Value(1)).current;
   const scPublicar = useRef(new Animated.Value(1)).current;
   const [cfgPress, setCfgPress] = useState(false);
 
   const scrollRef = useRef(null);
 
-  // ── Carga ────────────────────────────────────────────────────────────────
   const cargar = useCallback(async () => {
     setLoading(true);
     try {
@@ -128,11 +104,9 @@ export default function PerfilScreen() {
 
   useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
 
-  // ── Botón press animations ────────────────────────────────────────────────
   const pi = (sc) => Animated.timing(sc, { toValue: 0.97, duration: 100, useNativeDriver: true }).start();
   const po = (sc) => Animated.timing(sc, { toValue: 1,    duration: 150, useNativeDriver: true }).start();
 
-  // ── Abrir modales ────────────────────────────────────────────────────────
   function abrirPublicar() {
     setFImagen(null); setFDesc(''); setImgErr(false);
     setModalPublicar(true);
@@ -149,7 +123,6 @@ export default function PerfilScreen() {
     ]);
   }
 
-  // ── Cambiar foto ─────────────────────────────────────────────────────────
   async function elegirFotoPerfil(modo) {
     const uri = await elegirImagen({ camara: modo !== 'galeria' });
     if (!uri) return;
@@ -176,7 +149,6 @@ export default function PerfilScreen() {
     }
   }
 
-  // ── Publicar ─────────────────────────────────────────────────────────────
   async function elegirImagenPublicar(modo) {
     const uri = await elegirImagen({ camara: modo !== 'galeria' });
     if (!uri) return;
@@ -209,7 +181,6 @@ export default function PerfilScreen() {
     } finally { setPublicando(false); }
   }
 
-  // ── Eliminar publicación ──────────────────────────────────────────────────
   async function borrarPublicacion(pub) {
     setConfirmarBorrar(null);
     setPubAbierta(null);
@@ -223,11 +194,9 @@ export default function PerfilScreen() {
     }
   }
 
-  // ── Nombre a mostrar bajo el avatar ──────────────────────────────────────
   const p = perfil ?? {};
   const displayNombreCompleto = [p.nombre, p.apellido].filter(Boolean).join(' ') || p.nombreUsuario || 'Usuario';
 
-  // ── RENDER ───────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={s.safe}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
@@ -241,10 +210,8 @@ export default function PerfilScreen() {
       <ScrollView ref={scrollRef} style={s.scroll} contentContainerStyle={s.scrollContent}
         showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-        {/* ══ ZONA VERDE ══════════════════════════════════════════════════ */}
         <View style={s.zonaVerde}>
 
-          {/* Header */}
           <View style={s.header}>
             <TouchableOpacity style={s.hBtn} hitSlop={{ top:12, bottom:12, left:12, right:12 }}
               onPress={() => setDrawerOpen(true)}
@@ -253,7 +220,6 @@ export default function PerfilScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Avatar */}
           <View style={s.avatarWrap}>
             {loading
               ? <Skel w={84} h={84} r={42} />
@@ -267,7 +233,6 @@ export default function PerfilScreen() {
             }
           </View>
 
-          {/* Nombre y apellido grande, @usuario abajo (estilo TikTok) */}
           {loading ? (
             <Skel w={120} h={16} r={8} style={{ alignSelf:'center', marginTop:12, marginBottom:20 }} />
           ) : (
@@ -282,10 +247,8 @@ export default function PerfilScreen() {
           )}
         </View>
 
-        {/* ══ CARD BLANCO ═════════════════════════════════════════════════ */}
         <View style={s.card}>
 
-          {/* ── Botones ── */}
           <Animated.View style={{ transform:[{scale:scEditar}] }}>
             <Pressable style={s.btnEditar}
               onPressIn={()=>pi(scEditar)} onPressOut={()=>po(scEditar)} onPress={()=>setModalEditar(true)}>
@@ -306,7 +269,6 @@ export default function PerfilScreen() {
             </Pressable>
           </Animated.View>
 
-          {/* ── Stats ── */}
           <View style={s.statsRow}>
             <TouchableOpacity style={s.statCol}
               onPress={() => scrollRef.current?.scrollTo({ y: 600, animated: true })}>
@@ -324,7 +286,6 @@ export default function PerfilScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* ── Bio ── */}
           {loading ? (
             <View style={s.bioWrap}>
               <Skel w={140} h={14} r={6} style={{marginBottom:6}}/>
@@ -337,13 +298,10 @@ export default function PerfilScreen() {
             </View>
           ) : null}
 
-          {/* ── Toast (banner inline antes de tabs) ── */}
           <AvisoInline {...toast} />
 
-          {/* ── Separador ── */}
           <View style={s.tabSep}/>
 
-          {/* ── Tabs ── */}
           <View style={s.tabsRow}>
             {['grid','lista'].map((t) => (
               <TouchableOpacity key={t} style={s.tabBtn} onPress={()=>setTab(t)}>
@@ -355,7 +313,6 @@ export default function PerfilScreen() {
             ))}
           </View>
 
-          {/* ── Contenido ── */}
           {loading ? (
             <View style={s.grid}>
               {[0,1,2,3,4,5].map(i=><View key={i} style={[s.gridCell, {backgroundColor:colores.gris300}]}/>)}
@@ -396,7 +353,6 @@ export default function PerfilScreen() {
       </ScrollView>
       </ImageBackground>
 
-      {/* ══ MODAL EDITAR PERFIL (compartido con Match) ═══════════════════ */}
       <EditarPerfilModal
         visible={modalEditar}
         perfil={perfil}
@@ -404,18 +360,14 @@ export default function PerfilScreen() {
         onGuardado={(actualizado, motivo) => {
           setPerfil((prev) => ({ ...prev, ...actualizado }));
           setModalEditar(false);
-          // Si se guardó de camino a Configuración, el toast quedaría festejando
-          // en una pantalla que el usuario ya no está mirando.
           if (motivo !== 'navegacion') mostrarToast('Perfil actualizado correctamente');
         }}
         onError={mostrarToast}
       />
 
-      {/* ══ MODAL NUEVA PUBLICACIÓN ═════════════════════════════════════ */}
       <AModal visible={modalPublicar} onClose={cerrarPublicar}>
           <Text style={s.modalTitulo}>Nueva publicación</Text>
 
-          {/* Selector imagen */}
           <TouchableOpacity
             style={[s.imgSel, imgErr && s.imgSelErr]}
             onPress={abrirPickerPublicar}>
@@ -448,7 +400,6 @@ export default function PerfilScreen() {
           </TouchableOpacity>
       </AModal>
 
-      {/* ══ VISOR DE PUBLICACIÓN (estilo Instagram) ═════════════════════ */}
       <Modal visible={!!pubAbierta} transparent animationType="slide"
         onRequestClose={() => setPubAbierta(null)}>
         <View style={s.pvRoot}>
@@ -516,8 +467,6 @@ export default function PerfilScreen() {
   );
 } 
 
-// ─── ESTILOS ─────────────────────────────────────────────────────────────────
-
 const s = StyleSheet.create({
   safe:        { flex:1, backgroundColor:colores.mentaClara },
   background:  { flex:1, width:'100%' },
@@ -525,12 +474,10 @@ const s = StyleSheet.create({
   scroll:      { flex:1, backgroundColor:'transparent' },
   scrollContent:{ flexGrow:1 },
 
-  // Zona verde
   zonaVerde:   { backgroundColor:'transparent', paddingBottom: 24, minHeight: 200 },
   header:      { height:56, flexDirection:'row', alignItems:'center', paddingHorizontal:20, backgroundColor:'transparent', zIndex:10 },
   hBtn:        { width:44, alignItems:'center', justifyContent:'center' },
 
-  // Avatar
   avatarWrap:  { alignItems:'center', marginTop:8 },
   avatarImg:   { width:84, height:84, borderRadius:42, resizeMode:'cover',
                  shadowColor:colores.negro, shadowOffset:{width:0,height:2}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
@@ -541,11 +488,9 @@ const s = StyleSheet.create({
   nombreUsuario:{ fontSize:20, fontWeight:'700', color:colores.texto, textAlign:'center' },
   arrobaUsuario:{ fontSize:14, color:colores.gris550, textAlign:'center', marginTop:2 },
 
-  // Card blanco
   card:        { backgroundColor:colores.blanco, borderTopLeftRadius:28, borderTopRightRadius:28,
                  paddingHorizontal:20, paddingTop:24, paddingBottom:40 },
 
-  // Botones acción
   btnEditar:   { backgroundColor:colores.verde, borderRadius:30, height:48,
                  alignItems:'center', justifyContent:'center', marginBottom:10,
                  shadowColor:colores.negro, shadowOffset:{width:0,height:2}, shadowOpacity:0.10, shadowRadius:4, elevation:3 },
@@ -559,41 +504,34 @@ const s = StyleSheet.create({
                  shadowColor:colores.negro, shadowOffset:{width:0,height:2}, shadowOpacity:0.10, shadowRadius:4, elevation:3 },
   btnPublicarTxt:{ fontSize:15, fontWeight:'700', color:colores.texto },
 
-  // Stats
   statsRow:    { flexDirection:'row', marginTop:24, marginBottom:16, alignItems:'center' },
   statCol:     { flex:1, alignItems:'center' },
   statSep:     { width:1, height:30, backgroundColor:colores.gris100 },
   statNum:     { fontSize:18, fontWeight:'700', color:colores.texto },
   statLbl:     { fontSize:12, color:colores.textoSecundario, marginTop:2, textAlign:'center' },
 
-  // Bio
   bioWrap:     { marginBottom:20 },
   bioNombre:   { fontSize:15, fontWeight:'700', color:colores.texto },
   bioTxt:      { fontSize:14, color:colores.textoSecundario, marginTop:2 },
 
-  // Toast inline
   toast:       { flexDirection:'row', alignItems:'center', gap:8,
                  backgroundColor:colores.verde, borderRadius:12,
                  paddingVertical:12, paddingHorizontal:16, marginBottom:16 },
   toastTxt:    { fontSize:14, fontWeight:'700', color:colores.blanco, flex:1 },
 
-  // Separador tabs
   tabSep:      { height:1, backgroundColor:colores.gris100 },
 
-  // Tabs
   tabsRow:     { flexDirection:'row', marginBottom:12 },
   tabBtn:      { flex:1, alignItems:'center', paddingVertical:12 },
   tabTxt:      { fontSize:15, color:colores.textoTenue },
   tabTxtOn:    { color:colores.texto, fontWeight:'700' },
   tabLine:     { width:'30%', height:2, backgroundColor:colores.verde, marginTop:4 },
 
-  // Grid
   grid:        { flexDirection:'row', flexWrap:'wrap', gap:2, backgroundColor:'transparent' },
   gridCell:    { width:'33%', aspectRatio:1, overflow:'hidden' },
   gridImg:     { width:'100%', height:'100%', resizeMode:'cover' },
   gridPH:      { backgroundColor:colores.gris100, alignItems:'center', justifyContent:'center' },
 
-  // Lista
   lista:       { gap:12 },
   listaCard:   { backgroundColor:colores.blanco, borderRadius:12, overflow:'hidden',
                  shadowColor:colores.negro, shadowOffset:{width:0,height:2}, shadowOpacity:0.07, shadowRadius:6, elevation:3 },
@@ -602,15 +540,12 @@ const s = StyleSheet.create({
   listaDesc:   { fontSize:14, color:colores.texto, padding:12, paddingBottom:4 },
   listaFecha:  { fontSize:12, color:colores.textoTenue, paddingHorizontal:12, paddingBottom:12 },
 
-  // Empty
   empty:       { alignItems:'center', marginTop:40, gap:12 },
   emptyTxt:    { fontSize:15, color:colores.textoSecundario, textAlign:'center' },
 
-  // Modal (el card animado y los inputs viven en EditarPerfilModal)
   modalTitulo: { fontSize:18, fontWeight:'700', color:colores.verde, textAlign:'center', marginBottom:20 },
   errTxt:      { fontSize:11, color:colores.rojo, marginBottom:8, marginLeft:4 },
 
-  // Selector imagen publicación
   imgSel:      { width:'100%', height:130, borderRadius:12,
                  backgroundColor:colores.gris50, borderWidth:1.5, borderColor:colores.gris300,
                  borderStyle:'dashed', overflow:'hidden', marginBottom:14 },
@@ -621,7 +556,6 @@ const s = StyleSheet.create({
   imgEditBtn:  { position:'absolute', top:8, right:8, width:34, height:34, borderRadius:17,
                  backgroundColor:'rgba(0,0,0,0.4)', alignItems:'center', justifyContent:'center' },
 
-  // Botones modales
   btnGuardar:      { width:'100%', height:48, borderRadius:30, backgroundColor:colores.verde,
                      alignItems:'center', justifyContent:'center',
                      shadowColor:colores.negro, shadowOffset:{width:0,height:3}, shadowOpacity:0.12, shadowRadius:6, elevation:4 },
@@ -634,7 +568,6 @@ const s = StyleSheet.create({
                      alignItems:'center', justifyContent:'center', marginTop:10 },
   btnCancelarTxt:  { fontSize:15, fontWeight:'700', color:colores.texto },
 
-  // Visor de publicación
   pvRoot:    { flex:1, backgroundColor:colores.blanco },
   pvHeader:  { height:56, flexDirection:'row', alignItems:'center', justifyContent:'space-between',
                paddingHorizontal:12, borderBottomWidth:1, borderBottomColor:colores.gris100,

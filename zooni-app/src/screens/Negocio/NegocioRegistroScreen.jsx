@@ -1,28 +1,3 @@
-/**
- * NegocioRegistroScreen.jsx — Alta de una veterinaria, peluquería o pet shop
- *
- *   Paso 1 · Tus datos     (responsable: nombre, apellido, mail, teléfono, contraseña)
- *   Paso 2 · Tu negocio    (logo, nombre, descripción, dirección + punto en el
- *                           mapa, teléfono, horarios y lo propio de cada tipo)
- *
- * Lo propio de cada tipo (va a negocio_perfil.datos) lo arma DatosTipoNegocio
- * (components/negocio/CamposNegocio), el mismo que se edita después en
- * "Mi negocio":
- *   · Veterinaria: matrícula (obligatoria), especialidades, especies,
- *     urgencias 24 h con teléfono de guardia, atención a domicilio.
- *   · Peluquería: especies y tamaños, busca y lleva (con costo), productos
- *     hipoalergénicos.
- *   · Pet shop: envíos (costo, gratis desde, radio, demora), pedido mínimo y
- *     medios de pago.
- *
- * Con params.activar ({ email, nombre }) es una cuenta que ya existe:
- * se saltea el paso 1 y sólo se suma el negocio.
- * Al terminar entra directo a la app del negocio, donde un checklist lo guía
- * para cargar sus servicios o su catálogo.
- *
- * Params: { tipo, activar? }
- */
-
 import { useRef, useState } from 'react';
 import {
   Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet,
@@ -73,7 +48,6 @@ export default function NegocioRegistroScreen() {
     nombre: '', descripcion: '', direccion: '', telefono: '',
     lat: null, lng: null, barrio: '', horarios: HORARIOS_NEGOCIO_DEFAULT(),
   });
-  // Lo propio del tipo (matrícula, tamaños, envíos…), con sus propios errores
   const tipoForm = useDatosNegocio(tipo);
   const [logo, setLogo] = useState(null);
 
@@ -124,7 +98,6 @@ export default function NegocioRegistroScreen() {
       setCargando(true);
       const ok = await validarPaso1().finally(() => setCargando(false));
       if (ok) {
-        // El teléfono del local arranca con el del responsable
         setNegocio((n) => ({ ...n, telefono: n.telefono || usuario.telefono }));
         setPaso(2);
       }
@@ -144,20 +117,12 @@ export default function NegocioRegistroScreen() {
         else await registrarNegocio({ usuario, negocio: datosNegocio });
         cuentaCreadaRef.current = true;
       }
-      /*
-        El alta pasa por una RPC con permisos propios, pero la app después lee
-        el negocio con la key pública. Si esa lectura vuelve vacía (tabla con
-        RLS activo, ver la 049), entrar llevaría a "esta cuenta no tiene una
-        veterinaria" y el login ofrecería sumarla otra vez, en bucle. Mejor
-        decirlo acá, con la solución.
-      */
       const creado = await fetchMiNegocio(tipo).catch(() => null);
       if (!creado) throw new Error('negocio_no_visible');
       if (logo) {
         try {
           await subirLogoNegocio(creado, logo);
         } catch (errLogo) {
-          // El negocio ya quedó: el logo se puede subir después desde "Mi negocio"
           console.error('[Registro negocio] logo', errLogo);
         }
       }
@@ -331,7 +296,6 @@ export default function NegocioRegistroScreen() {
                   onCambio={(h) => { setN('horarios', h); limpiar('horarios'); }} />
               </View>
 
-              {/* ─── Lo propio de cada tipo ─── */}
               <DatosTipoNegocio tipo={tipo} datos={tipoForm.datos} onCambio={tipoForm.cambiar}
                 errores={tipoForm.errores} style={{ marginTop: 14 }} />
             </>

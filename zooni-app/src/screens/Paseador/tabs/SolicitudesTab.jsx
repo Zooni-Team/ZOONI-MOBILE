@@ -1,13 +1,3 @@
-/**
- * SolicitudesTab.jsx — Tab 2 de Zooni Paseadores
- *
- *   Nuevas  → pedidos pendientes con Aceptar (amarillo) / Rechazar (outline)
- *   Agenda  → paseos ya aceptados, con Iniciar / Cancelar
- *
- * Listas accionables en vez del swipe de Match: el paseador decide con una
- * mano, con botones grandes y la info siempre en el mismo orden.
- */
-
 import { useCallback, useEffect, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,7 +14,6 @@ import {
 import { confirmar } from '../../../utils/dialogo';
 import { colores } from '../../../theme';
 
-// Se puede iniciar desde 1 hora antes del horario pactado
 const VENTANA_INICIO_MS = 60 * 60 * 1000;
 
 export default function SolicitudesTab({
@@ -34,13 +23,12 @@ export default function SolicitudesTab({
   const [vista, setVista] = useState('nuevas');
   const [agenda, setAgenda] = useState([]);
   const [refrescando, setRefrescando] = useState(false);
-  const [ocupado, setOcupado] = useState(null); // id del paseo con una acción en curso
+  const [ocupado, setOcupado] = useState(null);
 
   const cargarAgenda = useCallback(async () => {
     try {
       setAgenda(await fetchMisPaseos(['aceptado']));
     } catch {
-      // queda lo anterior
     }
   }, []);
 
@@ -117,7 +105,6 @@ export default function SolicitudesTab({
   };
 
   const disponible = !!perfil?.disponible;
-  // Las que un dueño me mandó a MÍ se ven siempre; las abiertas, sólo disponible
   const visibles = disponible ? solicitudes : solicitudes.filter((x) => !x.abierta);
   const datos = vista === 'nuevas' ? visibles : agenda;
 
@@ -132,7 +119,6 @@ export default function SolicitudesTab({
 
   const renderAgenda = ({ item }) => {
     const falta = item.fecha ? new Date(item.fecha).getTime() - Date.now() : 0;
-    // Con otras mascotas ya en curso, ésta se suma al grupo
     const puedeIniciar = falta < VENTANA_INICIO_MS;
     const sumar = paseosActivos.length > 0;
     return (

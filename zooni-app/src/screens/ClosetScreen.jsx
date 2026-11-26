@@ -17,20 +17,11 @@ import { alerta } from '../utils/dialogo';
 
 import { SkeletonCloset, AvatarThumbnail } from '../components/closet/PiezasCloset';
 
-// ─── Skeleton ────────────────────────────────────────────────────────────────
-
-// ─── Thumbnail ───────────────────────────────────────────────────────────────
-
-// ─── Pantalla principal ───────────────────────────────────────────────────────
-
 export default function ClosetScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  // Estado y no constante: el selector de arriba permite vestir a otra mascota
-  // sin salir del closet (el efecto de carga depende de petId y recarga solo).
   const [petId, setPetId] = useState(route.params?.petId || null);
 
-  // La carga y el "aplicar" viven en el hook; acá sólo selección y animaciones.
   const { mascota, avatares, cargando: loading, aplicando, aplicar } = useAvataresCloset(petId);
   const [avatarSeleccionado, setAvatarSeleccionado] = useState(null);
   const { toast, mostrarToast } = useToast();
@@ -43,12 +34,9 @@ export default function ClosetScreen() {
 
   const esAvatarActual = avatarSeleccionado === mascota?.imagen_asset;
 
-  // ── Carga inicial ──────────────────────────────────────────────────────────
-
-  // Al cargar (o cambiar de mascota) queda seleccionado el avatar que tiene puesto
   useEffect(() => {
     if (mascota) setAvatarSeleccionado(mascota.imagen_asset);
-  }, [mascota?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mascota?.id]);
 
   useEffect(() => {
     if (!petId) {
@@ -57,12 +45,9 @@ export default function ClosetScreen() {
     }
   }, [petId, navigation]);
 
-  // ── Animar preview al seleccionar ─────────────────────────────────────────
-
   const seleccionarAvatar = useCallback((assetName) => {
     setAvatarSeleccionado(assetName);
 
-    // Animación de "rebote" en el preview
     previewScale.setValue(0.82);
     previewRotate.setValue(-2);
     Animated.parallel([
@@ -78,8 +63,6 @@ export default function ClosetScreen() {
     }).start();
   }, [botonColor, mascota?.imagen_asset, previewRotate, previewScale]);
 
-  // ── Aplicar avatar ────────────────────────────────────────────────────────
-
   const handleAplicar = async () => {
     if (esAvatarActual || aplicando) return;
     const r = await aplicar(avatarSeleccionado);
@@ -90,8 +73,6 @@ export default function ClosetScreen() {
       navigation.navigate('Home');
     }
   };
-
-  // ── Render thumbnail ──────────────────────────────────────────────────────
 
   const renderThumbnail = ({ item, index }) => (
     <AvatarThumbnail
@@ -104,8 +85,6 @@ export default function ClosetScreen() {
     />
   );
 
-  // ── Estilo dinámico del botón (amarillo → gris) ───────────────────────────
-
   const botonBg = botonColor.interpolate({
     inputRange: [0, 1],
     outputRange: [colores.gris420, colores.amarillo],
@@ -115,8 +94,6 @@ export default function ClosetScreen() {
     inputRange: [-10, 10],
     outputRange: ['-10deg', '10deg'],
   });
-
-  // ── UI ───────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -130,7 +107,6 @@ export default function ClosetScreen() {
       >
         <Toast {...toast} />
 
-        {/* ── HEADER ── */}
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => setDrawerOpen(true)}
@@ -148,7 +124,6 @@ export default function ClosetScreen() {
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
-          {/* ── HERO SECTION ── */}
           <View style={styles.heroSection}>
             <Text style={styles.heroSubtitulo}>
               {mascota?.nombre ? (
@@ -167,9 +142,7 @@ export default function ClosetScreen() {
             <SkeletonCloset />
           ) : (
             <>
-              {/* ── PREVIEW CARD ── */}
               <View style={styles.previewCardOuter}>
-                {/* Etiqueta de estado */}
                 <View style={[
                   styles.previewBadge,
                   esAvatarActual ? styles.previewBadgeActual : styles.previewBadgePreview,
@@ -189,13 +162,10 @@ export default function ClosetScreen() {
                 </View>
 
                 <View style={styles.previewCard}>
-                  {/* Contenedor centrado para círculo + avatar */}
                   <View style={styles.previewAvatarWrap}>
-                    {/* Círculo decorativo centrado absolutamente */}
                     <View style={styles.previewCircleOuter} />
                     <View style={styles.previewCircleInner} />
 
-                    {/* Avatar grande animado */}
                     <Animated.Image
                       source={resolveAvatarImage(avatarSeleccionado, mascota?.especie, mascota?.raza)}
                       style={[
@@ -211,7 +181,6 @@ export default function ClosetScreen() {
                     />
                   </View>
 
-                  {/* Nombre del avatar seleccionado */}
                   {avatarSeleccionado && avatares.length > 0 && (
                     <Text style={styles.previewAvatarName}>
                       {avatares.find(a => a.asset_name === avatarSeleccionado)?.nombre ?? ''}
@@ -220,7 +189,6 @@ export default function ClosetScreen() {
                 </View>
               </View>
 
-              {/* ── SECCIÓN GRID ── */}
               <View style={styles.gridSection}>
                 <View style={styles.gridHeaderRow}>
                   <Text style={styles.gridLabel}>Elegí un look</Text>
@@ -254,7 +222,6 @@ export default function ClosetScreen() {
                 )}
               </View>
 
-              {/* ── BOTÓN APLICAR ── */}
               <View style={styles.botonSection}>
                 <Animated.View
                   style={[
@@ -318,7 +285,6 @@ const styles = StyleSheet.create({
   screenBackground: { flex: 1, width: '100%' },
   screenBackgroundImage: { width: '100%', height: '100%' },
 
-  // ── Header ──
   header: {
     height: 56,
     flexDirection: 'row',
@@ -333,10 +299,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
   },
 
-  // ── Scroll ──
   scroll: { paddingBottom: 48 },
 
-  // ── Hero ──
   heroSection: {
     paddingHorizontal: 24,
     paddingTop: 8,
@@ -355,7 +319,6 @@ const styles = StyleSheet.create({
     color: colores.verdeExito,
   },
 
-  // ── Preview card ──
   previewCardOuter: {
     marginHorizontal: 24,
     marginBottom: 28,
@@ -398,7 +361,6 @@ const styles = StyleSheet.create({
     elevation: 8,
     overflow: 'hidden',
   },
-  // Wrapper que contiene el círculo y el avatar, ambos centrados
   previewAvatarWrap: {
     width: 180,
     height: 180,
@@ -435,7 +397,6 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
 
-  // ── Grid ──
   gridSection: {
     backgroundColor: colores.blanco,
     borderRadius: 28,
@@ -482,16 +443,9 @@ const styles = StyleSheet.create({
   gridRow: {
     gap: 12,
     marginBottom: 12,
-    // Centrado y no 'flex-start': la última fila casi nunca viene completa (con
-    // 4 looks queda una sola tarjeta) y alineada a la izquierda se veía como un
-    // hueco al costado en vez de parte de la grilla. Las filas llenas no
-    // cambian: justifyContent solo reparte el espacio que sobra.
     justifyContent: 'center',
   },
 
-  // ── Thumbnail ──
-
-  // ── Empty state ──
   emptyState: {
     alignItems: 'center',
     paddingHorizontal: 32,
@@ -514,7 +468,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // ── Botón ──
   botonSection: {
     alignItems: 'center',
     marginTop: 8,

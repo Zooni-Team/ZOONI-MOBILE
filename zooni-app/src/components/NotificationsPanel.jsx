@@ -1,6 +1,3 @@
-/**
- * NotificationsPanel — Mini pestaña desplegable en Home (debajo del header).
- */
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
@@ -38,10 +35,6 @@ export default function NotificationsPanel({ visible, onClose, onNavigate, onMar
   const [notificaciones, setNotificaciones] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Home pasa onMarcarTodasLeidas como arrow inline (cambia en cada render):
-  // si el efecto dependiera de ella, el panel se recargaba solo a los pocos
-  // segundos (marcar leídas → re-render de Home → callback nueva → efecto
-  // re-disparado → spinner). Con el ref, el efecto depende SOLO de `visible`.
   const onMarcarTodasRef = useRef(onMarcarTodasLeidas);
   onMarcarTodasRef.current = onMarcarTodasLeidas;
 
@@ -49,9 +42,6 @@ export default function NotificationsPanel({ visible, onClose, onNavigate, onMar
     if (!visible) return;
     let cancelado = false;
 
-    // Solo NO leídas: las que ya se marcaron leídas (con "Marcar todas" o al
-    // tocarlas) no vuelven a aparecer al reabrir el panel. Sin auto-marcado al
-    // abrir: las notificaciones persisten hasta que el usuario las marque.
     (async () => {
       setLoading(true);
       try {
@@ -71,39 +61,30 @@ export default function NotificationsPanel({ visible, onClose, onNavigate, onMar
   }, [visible]);
 
   const handleMarkAll = async () => {
-    // Marcar todas como leídas = el panel queda vacío. Optimista: la lista
-    // se limpia al toque aunque el backend tarde o falle.
     setNotificaciones([]);
     onMarcarTodasRef.current?.();
-    try { await marcarTodasLeidas(); } catch { /* sin backend */ }
+    try { await marcarTodasLeidas(); } catch {  }
   };
 
   const handleTap = async (item) => {
     if (!item.leida) {
-      try { await marcarNotificacionLeida(item.id); } catch { /* sin backend */ }
+      try { await marcarNotificacionLeida(item.id); } catch {  }
       setNotificaciones((prev) =>
         prev.map((n) => (n.id === item.id ? { ...n, leida: true } : n)),
       );
     }
-    // Con chatId va directo a la conversación (ej: el chat del match). El
-    // nombre y la foto NO vienen de DataExtra (cualquiera con una relación con
-    // este usuario puede haberlos escrito al crear la notificación — informe
-    // de seguridad #40): se resuelven de la base por la mascota del match.
     if (item.dataExtra?.chatId) {
       onClose();
       let chat = { chatId: item.dataExtra.chatId, nombre: 'Chat', fotoPerfilUrl: null };
       if (item.mascota?.id) {
         try {
           chat = (await chatDeMatchPorMascota(item.mascota.id)) ?? chat;
-        } catch { /* se navega igual, con el nombre genérico */ }
+        } catch {  }
       }
       onNavigate({ screen: 'Chat', params: chat });
       return;
     }
 
-    // Respuesta de una veterinaria / peluquería / pet shop: directo a ese
-    // chat. Nombre y tipo se resuelven de "servicios" por id, no de
-    // DataExtra (informe de seguridad #40).
     if (item.dataExtra?.servicioId) {
       onClose();
       const [servicio] = await fetchServiciosPorId([item.dataExtra.servicioId]).catch(() => []);
@@ -118,20 +99,17 @@ export default function NotificationsPanel({ visible, onClose, onNavigate, onMar
       return;
     }
 
-    // Turnos y pedidos de Zooni Negocios, y paseos
     if (item.tipo === 'turno' || item.tipo === 'pedido') {
       onClose();
       onNavigate({ screen: 'MisTurnos', params: { tab: item.tipo === 'pedido' ? 'pedidos' : 'turnos' } });
       return;
     }
-    // (con `destino` es un aviso para la app de paseador de la misma cuenta)
     if (item.tipo === 'paseo' && !item.dataExtra?.destino) {
       onClose();
       onNavigate({ screen: 'MisPaseos' });
       return;
     }
 
-    // Match sin DataExtra (notificación vieja): buscar el chat en el momento
     if (item.tipo === 'match' && item.mascota?.id) {
       try {
         const chat = await chatDeMatchPorMascota(item.mascota.id);
@@ -140,7 +118,7 @@ export default function NotificationsPanel({ visible, onClose, onNavigate, onMar
           onNavigate({ screen: 'Chat', params: chat });
           return;
         }
-      } catch { /* cae a la pantalla genérica */ }
+      } catch {  }
     }
 
     const ruta = item.redirigea ?? item.redirige_a;
@@ -157,7 +135,6 @@ export default function NotificationsPanel({ visible, onClose, onNavigate, onMar
       style={[styles.item, !item.leida && styles.itemUnread]}
       onPress={() => handleTap(item)}
     >
-      {/* Mini imagen de la mascota a la que pertenece la notificación */}
       <View style={styles.avatarWrap}>
         {item.mascota ? (
           <Image source={resolveMascotaVisual(item.mascota)} style={styles.avatar} />

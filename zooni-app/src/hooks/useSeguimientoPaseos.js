@@ -1,26 +1,11 @@
-/**
- * useSeguimientoPaseos.js — GPS de los paseos en curso (uno o un grupo)
- *
- * Vive en PaseadorAppScreen (no en el tab Paseo) para que el recorrido se siga
- * registrando aunque el paseador esté mirando Inicio u otra sección.
- *
- * Hay UN solo GPS (el del paseador) para todas las mascotas: cada tramo
- * caminado se le suma sólo a los paseos que están corriendo — una mascota en
- * pausa no acumula distancia. Cada ~15 s / 30 m se guarda el punto en
- * PaseoTrack de cada paseo corriendo, para que cada dueño vea el recorrido.
- *
- * navigator.geolocation (web y, si existe, nativo). Descarta lecturas
- * imprecisas y el "temblor" del GPS parado.
- */
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { distanciaMetros } from '../utils/geo';
 import { fetchRecorrido, registrarPunto } from '../services/paseadorApi';
 
-const PRECISION_MAX_M = 60;    // lecturas peores que esto se descartan
-const SALTO_MIN_M = 5;         // menos que esto es temblor del GPS
-const SALTO_MAX_M = 300;       // más que esto entre dos lecturas es un error
+const PRECISION_MAX_M = 60;
+const SALTO_MIN_M = 5;
+const SALTO_MAX_M = 300;
 const GUARDAR_CADA_MS = 15000;
 const GUARDAR_CADA_M = 30;
 
@@ -28,7 +13,6 @@ function geolocalizacion() {
   return typeof navigator !== 'undefined' ? navigator.geolocation : null;
 }
 
-/** Devuelve { posicion, ruta, gpsError }. `setActivos` recibe las distancias nuevas. */
 export default function useSeguimientoPaseos(activos, setActivos) {
   const [posicion, setPosicion] = useState(null);
   const [ruta, setRuta] = useState([]);
@@ -36,19 +20,15 @@ export default function useSeguimientoPaseos(activos, setActivos) {
 
   const corriendo = activos.some((p) => p.reanudadoEn);
   const hayPaseos = activos.length > 0;
-  // El recorrido que se dibuja es el del paseo que arrancó primero: el grupo
-  // camina junto, así que es el mismo para todos.
   const idRuta = hayPaseos
     ? [...activos].sort((a, b) => String(a.horaInicio ?? '').localeCompare(String(b.horaInicio ?? '')))[0].id
     : null;
 
-  // Refs para el callback del GPS (no re-suscribirse en cada lectura)
   const activosRef = useRef(activos);
   activosRef.current = activos;
   const ultimo = useRef(null);
   const guardado = useRef({ t: 0, metros: 0 });
 
-  // Recorrido previo (si la app se recargó a mitad del paseo)
   useEffect(() => {
     if (!idRuta) {
       setRuta([]);
@@ -64,8 +44,6 @@ export default function useSeguimientoPaseos(activos, setActivos) {
     return () => { vivo = false; };
   }, [idRuta]);
 
-  // Al reanudar después de que estaban todos en pausa, el primer punto nuevo
-  // no suma el tramo hecho en pausa
   useEffect(() => {
     if (!corriendo) ultimo.current = null;
   }, [corriendo]);
@@ -86,11 +64,6 @@ export default function useSeguimientoPaseos(activos, setActivos) {
     const salto = distanciaMetros(prev, punto);
     if (salto < SALTO_MIN_M) return;
     if (salto > SALTO_MAX_M) {
-      // Salto grande (se perdió la señal, o el teléfono estuvo bloqueado y el
-      // navegador pausó el GPS): no se suma, pero se re-ancla en el punto
-      // nuevo. Antes se descartaba sin mover el ancla y, como todas las
-      // lecturas siguientes quedaban lejos del punto viejo, el recorrido se
-      // congelaba por el resto del paseo.
       ultimo.current = punto;
       setRuta((r) => [...r, punto]);
       return;
@@ -98,7 +71,6 @@ export default function useSeguimientoPaseos(activos, setActivos) {
 
     ultimo.current = punto;
     setRuta((r) => [...r, punto]);
-    // Updater funcional: si justo se pausó una mascota, no se pisa ese cambio
     setActivos((lista) => lista.map((x) => (x.reanudadoEn
       ? { ...x, distanciaMetros: (x.distanciaMetros ?? 0) + salto } : x)));
 

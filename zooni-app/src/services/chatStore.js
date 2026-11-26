@@ -1,16 +1,3 @@
-/**
- * chatStore.js — Chat sobre Supabase (tabla Mensaje)
- *
- * Dos tipos de conversación en la misma tabla:
- *   - Match (idMatch):    chat 1 a 1 entre dos usuarios que matchearon.
- *   - Servicio (idServicio): el hilo de un usuario con una veterinaria,
- *     peluquería o pet shop. Desde Zooni Negocios (046) el negocio tiene
- *     cuenta y contesta: sus mensajes van en el MISMO hilo (idUsuario = el
- *     dueño) marcados con "deNegocio". Los servicios cargados a mano, sin
- *     negocio detrás, siguen siendo de un solo lado.
- * Cada fila pertenece a uno de los dos, nunca a ambos (ver migración 011).
- */
-
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from '../config/session';
 import { perfilesPorId } from './perfilesPublicos';
@@ -20,39 +7,26 @@ function mapRow(row) {
   return {
     id: row.id,
     texto: row.texto,
-    // En un hilo de servicio idUsuario es siempre el dueño: lo que escribió el
-    // negocio se distingue por deNegocio
     autor: !row.deNegocio && row.idUsuario === getCurrentUserId() ? 'yo' : 'otro',
     fecha: row.fecha,
-    // Para los tildes tipo WhatsApp: en mis mensajes, `leido` dice si el otro
-    // ya lo abrió (lo marca marcarLeidosMatch cuando entra al chat).
     leido: !!row.leido,
   };
 }
 
-/** Cuántos mensajes se traen por chat: los últimos N (antes, el historial entero en cada aviso). */
 const MAX_MENSAJES = 200;
 
-/**
- * Mensajes de un chat de Match o de un chat de Servicio, del más viejo al más
- * nuevo (los últimos MAX_MENSAJES). Si la base falla, TIRA: antes devolvía []
- * y un corte de red en pleno polling vaciaba el chat en pantalla.
- */
 export async function getMensajes({ matchId, servicioId }) {
   if (!matchId && !servicioId) return [];
   let query = supabase.from('Mensaje').select('*')
     .order('fecha', { ascending: false }).order('id', { ascending: false }).limit(MAX_MENSAJES);
   query = matchId
     ? query.eq('idMatch', matchId)
-    // Un servicio puede tener mensajes de varios clientes distintos — sin este
-    // filtro por usuario, cada uno vería la conversación de todos los demás.
     : query.eq('idServicio', servicioId).eq('idUsuario', getCurrentUserId());
   const { data, error } = await query;
   if (error) throw errorBase(error);
   return (data ?? []).reverse().map(mapRow);
 }
 
-/** El otro integrante de un Match, o null si no se encontró (nunca yo mismo). */
 async function resolverOtroUsuario(matchId) {
   const { data } = await supabase.from('Match').select('idUsuarioUno, idUsuarioDos').eq('id', matchId).maybeSingle();
   if (!data) return null;
@@ -68,16 +42,6 @@ async function avisarAlOtroDelMatch(matchId, texto) {
   await notificar(otroId, `Nuevo mensaje de ${nombreMio}`, resumir(texto), { tipo: 'mensaje' });
 }
 
-/**
- * Envía un mensaje mío a un chat de Match o de Servicio y devuelve la lista
- * actualizada (o null si el mensaje se guardó pero la lista no se pudo releer:
- * la pantalla la vuelve a pedir sola).
- *
- * Una vez insertado el mensaje, nada puede hacer que esta función tire: antes
- * la notificación iba después del insert con await, y si fallaba la pantalla
- * decía "no se envió", la persona reintentaba y el mensaje quedaba duplicado.
- * La fecha la pone la base (MIGRACION_071), no el reloj del teléfono.
- */
 export async function enviarMensaje({ matchId, servicioId, texto }) {
   const limpio = String(texto ?? '').trim().slice(0, 2000);
   if (!limpio) return null;
@@ -88,7 +52,6 @@ export async function enviarMensaje({ matchId, servicioId, texto }) {
   const { error } = await supabase.from('Mensaje').insert(row);
   if (error) throw errorBase(error);
 
-  // Avisos: fire-and-forget, nunca rompen el envío.
   if (servicioId) avisarAlNegocio(servicioId, limpio).catch(() => {});
   if (matchId) avisarAlOtroDelMatch(matchId, limpio).catch(() => {});
 
@@ -105,28 +68,24 @@ async function avisarAlNegocio(servicioId, texto) {
   await notificar(negocio.id_user, `Mensaje de ${nombreMio}`, resumir(texto), { tipo: 'negocio', destino: 'mensajes' });
 }
 
-/** El negocio de Zooni detrás de un servicio (pin de Comunidad), o null si es uno cargado a mano. */
 export async function negocioDeServicio(servicioId) {
   if (!servicioId) return null;
   const { data } = await supabase.from('servicios').select('id_negocio').eq('id', servicioId).maybeSingle();
   return data?.id_negocio ?? null;
 }
 
-/** Marca como leídas las respuestas del negocio en mi hilo con un servicio. */
 export async function marcarLeidosServicio(servicioId) {
   if (!servicioId) return;
   await supabase.from('Mensaje').update({ leido: true })
     .eq('idServicio', servicioId).eq('idUsuario', getCurrentUserId()).eq('deNegocio', true).eq('leido', false);
 }
 
-/** Marca como leídos los mensajes que me mandó el otro usuario en un chat de Match. */
 export async function marcarLeidosMatch(matchId) {
   if (!matchId) return;
   await supabase.from('Mensaje').update({ leido: true })
     .eq('idMatch', matchId).neq('idUsuario', getCurrentUserId()).eq('leido', false);
 }
 
-/** Total de mensajes sin leer en todos mis chats de Match (para el badge del menú). */
 export async function contarMensajesNoLeidos() {
   const miId = getCurrentUserId();
   const [deMatches, deNegocios] = await Promise.all([contarNoLeidosMatch(miId), contarRespuestasNegocios(miId)]);
@@ -151,7 +110,6 @@ async function contarNoLeidosMatch(miId) {
   return count ?? 0;
 }
 
-/** Respuestas de veterinarias, peluquerías y pet shops que todavía no leí (sin la 046: 0). */
 async function contarRespuestasNegocios(miId) {
   const { count, error } = await supabase
     .from('Mensaje')
@@ -162,11 +120,6 @@ async function contarRespuestasNegocios(miId) {
   return error ? 0 : (count ?? 0);
 }
 
-// ─────────────────────────────────────────────
-// INBOX — lista de conversaciones para MensajesScreen
-// ─────────────────────────────────────────────
-
-/** Mis conversaciones de Match (con o sin mensajes todavía), la más reciente primero. */
 export async function fetchMisConversacionesMatch() {
   const miId = getCurrentUserId();
   const { data: matches, error } = await supabase
@@ -189,9 +142,6 @@ export async function fetchMisConversacionesMatch() {
   ]);
   const usuarioPorId = new Map((usuarios ?? []).map((u) => [u.Id_User, u]));
   const nombreMascota = new Map((mascotas ?? []).map((x) => [x.Id_Mascota, x.Nombre]));
-  // Con la misma persona puede haber dos Match (uno por cada par de mascotas):
-  // son chats distintos, así que a esos se les agregan las mascotas al nombre
-  // ("uri grin · Luna y Toby") para que no parezca la misma fila repetida.
   const matchesPorPersona = new Map();
   otroIdPorMatch.forEach((otro) => matchesPorPersona.set(otro, (matchesPorPersona.get(otro) ?? 0) + 1));
 
@@ -199,7 +149,7 @@ export async function fetchMisConversacionesMatch() {
     .map((m) => {
       const otro = usuarioPorId.get(otroIdPorMatch.get(m.id));
       const mensajesDelMatch = (mensajes ?? []).filter((msg) => msg.idMatch === m.id);
-      const ultimo = mensajesDelMatch[0]; // ya viene ordenado desc
+      const ultimo = mensajesDelMatch[0];
       const noLeidos = mensajesDelMatch.filter((msg) => !msg.leido && msg.idUsuario !== miId).length;
       const nombre = `${otro?.Nombre ?? ''} ${otro?.Apellido ?? ''}`.trim() || 'Usuario';
       const repetido = matchesPorPersona.get(otroIdPorMatch.get(m.id)) > 1;
@@ -211,9 +161,6 @@ export async function fetchMisConversacionesMatch() {
         ultimoMensaje: ultimo?.texto ?? null,
         fecha: ultimo?.fecha ?? m.fecha,
         noLeidos,
-        // Para el tilde en la vista previa del inbox: solo tiene sentido si el
-        // último mensaje lo mandé yo (si lo mandó el otro, no hay nada que
-        // confirmar de mi lado).
         ultimoEsMio: ultimo ? ultimo.idUsuario === miId : false,
         ultimoLeido: !!ultimo?.leido,
       };
@@ -221,7 +168,6 @@ export async function fetchMisConversacionesMatch() {
     .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 }
 
-/** Últimos mensajes míos por servicio (para mostrar la vista previa en la lista de Servicios). */
 export async function fetchMisUltimosMensajesServicios() {
   const { data: mensajes, error } = await supabase
     .from('Mensaje')
@@ -238,7 +184,6 @@ export async function fetchMisUltimosMensajesServicios() {
         ultimoMensaje: msg.texto, fecha: msg.fecha, ultimoDelNegocio: !!msg.deNegocio, noLeidos: 0,
       });
     }
-    // Respuestas del negocio que todavía no abrí
     if (msg.deNegocio && !msg.leido) porServicio.get(msg.idServicio).noLeidos += 1;
   }
   return porServicio;

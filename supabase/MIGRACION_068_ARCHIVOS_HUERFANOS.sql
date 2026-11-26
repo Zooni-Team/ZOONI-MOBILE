@@ -1,10 +1,3 @@
--- =============================================================================
--- MIGRACION_068_ARCHIVOS_HUERFANOS.sql — Pegar ENTERO en Supabase → SQL Editor → Run.
--- Va DESPUÉS de la 067. Idempotente. No borra ni mueve datos: sólo deja anotado
--- qué archivos sobran y prepara la mudanza de las imágenes viejas de consultas.
--- Si algo no queda como debe, la verificación del final hace ROLLBACK.
--- =============================================================================
-
 BEGIN;
 
 DO $$
@@ -14,41 +7,6 @@ BEGIN
   END IF;
 END $$;
 
--- =============================================================================
--- 068 — Archivos de Storage que quedan sin dueño, e imágenes clínicas viejas
--- en el bucket público.
--- =============================================================================
--- PROBLEMA:
---   · Al borrar una mascota (o una foto suya, o una consulta) se borraban las
---     FILAS, pero el archivo seguía en Storage, público y para siempre. La
---     purga nocturna de mascotas eliminadas (064) tenía el mismo hueco.
---   · Las imágenes de consultas cargadas antes de la 064 viven en el bucket
---     PÚBLICO (columna imagen_url): estudios y recetas que se abren sin sesión.
---
--- POR QUÉ NO SE BORRAN DESDE SQL: Supabase no deja borrar archivos con un
---   DELETE sobre storage.objects (quedaría la fila borrada y el archivo en el
---   disco). Hay que usar la API de Storage. Por eso la base ANOTA y un script
---   con la clave service_role ejecuta:
---       node supabase/scripts/limpiar-storage.mjs
---
--- AHORA:
---   1. archivos_por_borrar: cola de archivos que quedaron sin uso. La llenan
---      triggers al borrar una mascota, una foto de mascota o una consulta, y al
---      reemplazar la foto principal. Nadie la lee desde la app.
---   2. archivos_para_borrar(limite): los de la cola que ya no usa NINGUNA fila
---      (la misma foto puede estar en Mascota.Foto y en mascota_fotos).
---   3. consultas_a_privatizar() + privatizar_imagen_consulta(id, ruta): para
---      que el script copie cada imagen vieja al bucket privado, apunte la
---      consulta a la copia y anote la pública para borrar.
---   Las tres funciones: sólo service_role.
---   4. Se BORRAN las RPC del login viejo (SHA-256 sin sal enviado por la app):
---      login_user, registrar_* / activar_* con p_hash, cambiar_contrasena y las
---      dos de la Edge Function migrar-cuenta, que se eliminó del repo (la
---      migración de cuentas viejas la hace migrar_cuenta_legada, 065 + 067).
---      Estaban revocadas, pero un GRANT equivocado las reactivaba.
--- =============================================================================
-
--- ─── 1. La cola ─────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS archivos_por_borrar (
   id          BIGSERIAL PRIMARY KEY,
   bucket      TEXT NOT NULL,
@@ -60,17 +18,10 @@ CREATE TABLE IF NOT EXISTS archivos_por_borrar (
 );
 CREATE INDEX IF NOT EXISTS idx_archivos_por_borrar_pendientes
   ON archivos_por_borrar (creado_en) WHERE borrado_en IS NULL;
-ALTER TABLE archivos_por_borrar ENABLE ROW LEVEL SECURITY;   -- sin políticas: nadie desde la app
+ALTER TABLE archivos_por_borrar ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON archivos_por_borrar FROM anon, authenticated;
 REVOKE ALL ON SEQUENCE archivos_por_borrar_id_seq FROM anon, authenticated;
 
-/*
-  URL pública o firmada de NUESTRO Storage → (bucket, ruta).
-    https://x.supabase.co/storage/v1/object/public/public-images/<uid>/mascotas/a.jpg?t=1
-      → ('public-images', '<uid>/mascotas/a.jpg')
-  Cualquier otra URL (Google, Facebook, una imagen externa) → NULL: no es
-  nuestra y no hay nada que borrar.
-*/
 CREATE OR REPLACE FUNCTION _archivo_de_url(p_url TEXT, OUT bucket TEXT, OUT ruta TEXT)
 LANGUAGE plpgsql IMMUTABLE SET search_path = public AS $$
 DECLARE m TEXT[];
@@ -101,10 +52,6 @@ BEGIN
   PERFORM _anotar_archivo(a.bucket, a.ruta, p_motivo);
 END $$;
 REVOKE ALL ON FUNCTION _anotar_url(TEXT, TEXT) FROM public, anon, authenticated;
-
--- ─── Triggers que llenan la cola ────────────────────────────────────────────
--- Las fotos de mascota_fotos y las consultas tienen ON DELETE CASCADE desde
--- Mascota (064): sus triggers también corren cuando se borra la mascota.
 
 CREATE OR REPLACE FUNCTION _mascota_archivos_huerfanos()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
@@ -155,11 +102,6 @@ DROP TRIGGER IF EXISTS trg_consulta_imagen_huerfana ON consultas_veterinarias;
 CREATE TRIGGER trg_consulta_imagen_huerfana AFTER DELETE OR UPDATE OF imagen_url, imagen_path
   ON consultas_veterinarias FOR EACH ROW EXECUTE FUNCTION _consulta_imagen_huerfana();
 
--- ─── 2. Lo que el script puede borrar ───────────────────────────────────────
-/*
-  Pendientes de la cola que ya no usa ninguna fila. Un archivo que se anotó
-  pero volvió a usarse (la misma URL quedó en otra foto) no se ofrece.
-*/
 CREATE OR REPLACE FUNCTION archivos_para_borrar(p_limite INTEGER DEFAULT 200)
 RETURNS TABLE (id BIGINT, bucket TEXT, ruta TEXT)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
@@ -180,13 +122,6 @@ $$;
 REVOKE ALL ON FUNCTION archivos_para_borrar(INTEGER) FROM public, anon, authenticated;
 GRANT EXECUTE ON FUNCTION archivos_para_borrar(INTEGER) TO service_role;
 
--- ─── 3. Imágenes viejas de consultas → bucket privado ───────────────────────
-/*
-  Consultas con imagen en el bucket público y todavía sin copia privada, con
-  la carpeta donde va la copia: consultas-privadas/<auth uid del dueño>/consultas/.
-  Las de dueños sin cuenta de Auth (cuentas viejas sin migrar) no se pueden
-  mudar todavía: la política del bucket privado es por auth uid.
-*/
 CREATE OR REPLACE FUNCTION consultas_a_privatizar()
 RETURNS TABLE (id INTEGER, imagen_url TEXT, carpeta TEXT)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
@@ -201,11 +136,6 @@ $$;
 REVOKE ALL ON FUNCTION consultas_a_privatizar() FROM public, anon, authenticated;
 GRANT EXECUTE ON FUNCTION consultas_a_privatizar() TO service_role;
 
-/*
-  La consulta pasa a usar la copia privada. El trigger de arriba anota la
-  imagen pública para borrar. Devuelve FALSE si la consulta ya no estaba como
-  se esperaba (otro proceso la mudó, o la ruta no es de la carpeta del dueño).
-*/
 CREATE OR REPLACE FUNCTION privatizar_imagen_consulta(p_id INTEGER, p_ruta TEXT)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE v_carpeta TEXT; v_filas INTEGER;
@@ -228,9 +158,6 @@ END $$;
 REVOKE ALL ON FUNCTION privatizar_imagen_consulta(INTEGER, TEXT) FROM public, anon, authenticated;
 GRANT EXECUTE ON FUNCTION privatizar_imagen_consulta(INTEGER, TEXT) TO service_role;
 
--- ─── 4. Fuera las RPC del login viejo ───────────────────────────────────────
--- (SUPABASE_PEGAR_TODO.sql las vuelve a crear: por eso esta migración va
--- siempre después de él, como todas.)
 DROP FUNCTION IF EXISTS login_user(TEXT, TEXT);
 DROP FUNCTION IF EXISTS registrar_usuario_con_mascota(JSONB, TEXT, JSONB);
 DROP FUNCTION IF EXISTS registrar_paseador(JSONB, TEXT, JSONB);
@@ -241,7 +168,6 @@ DROP FUNCTION IF EXISTS cambiar_contrasena(TEXT, TEXT, TEXT);
 DROP FUNCTION IF EXISTS _credencial_legada(TEXT);
 DROP FUNCTION IF EXISTS _completar_migracion_cuenta(INTEGER, UUID);
 
--- ─── 5. Verificación (si falla, se deshace todo) ────────────────────────────
 DO $$
 DECLARE a RECORD;
 BEGIN

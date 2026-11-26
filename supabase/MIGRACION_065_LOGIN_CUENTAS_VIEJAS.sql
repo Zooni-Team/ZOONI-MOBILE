@@ -1,16 +1,3 @@
--- =============================================================================
--- MIGRACION_065_LOGIN_CUENTAS_VIEJAS.sql — Arregla el login de cuentas viejas.
--- Pegar ENTERO en Supabase → SQL Editor → Run. Idempotente. Una transacción.
--- No borra datos de usuarios.
---
--- Síntoma que arregla: al entrar con una cuenta vieja, la consola muestra
---   CORS ... functions/v1/migrar-cuenta ... preflight ... not HTTP ok
---   rpc/login_user 401
--- porque la Edge Function migrar-cuenta no está desplegada. Con esto la
--- migración de la cuenta la hace la base y no hace falta desplegar nada.
--- Requiere la app con el commit que llama a rpc('migrar_cuenta_legada').
--- =============================================================================
-
 BEGIN;
 
 DO $requisitos$
@@ -20,33 +7,6 @@ BEGIN
   END IF;
 END
 $requisitos$;
-
--- >>>>>>>>>>>>>>>>>>>>>>>>>>>> 065_migrar_cuenta_sql <<<<<<<<<<<<<<<<<<<<<<<<<<<<
--- =============================================================================
--- 065 — Migrar cuentas viejas a Supabase Auth DESDE LA BASE, sin Edge Function.
--- Idempotente. Requiere 060.
--- =============================================================================
--- ANTES: la primera vez que una cuenta vieja entraba, la app llamaba a la Edge
--- Function migrar-cuenta. Si la función no estaba desplegada (o se desplegó
--- sin --no-verify-jwt), el navegador cortaba con CORS y NADIE con cuenta
--- vieja podía entrar.
---
--- AHORA la misma lógica vive en migrar_cuenta_legada(mail, contraseña), una
--- función de Postgres que la app llama con la clave pública (rpc):
---   1. Busca la cuenta vieja por mail (user_credentials). Si no hay, o ya
---      está migrada → FALSE.
---   2. Compara sha256(contraseña) con el hash viejo. Si no coincide → FALSE.
---      (Mismo FALSE en los dos casos: no revela si el mail existe.)
---   3. Si ya había un usuario de Auth con ese mail SIN vincular (alguien hizo
---      signUp con un mail ajeno), lo borra: sus sesiones dejan de servir.
---   4. Crea el usuario de Auth con ESA contraseña (bcrypt, como Supabase) y
---      su identidad 'email', ya confirmado.
---   5. Vincula "User".auth_id y BORRA el hash viejo.
--- Después la app hace signInWithPassword normal.
---
--- La Edge Function migrar-cuenta ya no existe (era un oráculo de contraseñas
--- sin límite de intentos): la app llama directamente a esta función.
--- =============================================================================
 
 CREATE OR REPLACE FUNCTION migrar_cuenta_legada(p_mail TEXT, p_password TEXT)
 RETURNS BOOLEAN
@@ -76,7 +36,6 @@ BEGIN
   IF v_id_user IS NULL OR v_auth_id IS NOT NULL THEN RETURN FALSE; END IF;
   IF lower(v_hash) <> encode(digest(p_password, 'sha256'), 'hex') THEN RETURN FALSE; END IF;
 
-  -- Un usuario de Auth con ese mail que NO es esta cuenta: fuera
   DELETE FROM auth.users a
   WHERE lower(a.email) = v_mail
     AND NOT EXISTS (SELECT 1 FROM "User" u WHERE u.auth_id = a.id);
@@ -107,7 +66,6 @@ BEGIN
   RETURN TRUE;
 END $$;
 
--- La llama la pantalla de login, SIN sesión todavía: por eso anon.
 REVOKE ALL ON FUNCTION migrar_cuenta_legada(TEXT, TEXT) FROM public;
 GRANT EXECUTE ON FUNCTION migrar_cuenta_legada(TEXT, TEXT) TO anon, authenticated;
 

@@ -1,21 +1,9 @@
-/**
- * registroImages.js — Imágenes del flujo Login/Registro extraídas de
- * ZOONI-MVC (github.com/Zooni-Team/ZOONI-MVC), replicadas en wwwroot/img/
- * con la MISMA estructura que el repo original:
- *   wwwroot/img/cajas/{especie}caja.png
- *   wwwroot/img/mascotas/{especie}s/{raza}/{especie}_basico.png
- *
- * Este archivo es GENERADO (ver prompts/ o pedirle a Claude que lo regenere
- * si se agregan/sacan imágenes de wwwroot/img). No editar los mapas a mano.
- */
-
 const FALLBACK = require('../../assets/perro_basico.png');
 
 export const MASCOTAS_BIENVENIDA = require('../../wwwroot/img/mascotas-bienvenida.png');
 export const GOOGLE_ICON = require('../../wwwroot/img/google-icon.png');
 export const FACEBOOK_ICON = require('../../wwwroot/img/facebook-icon.png');
 
-// ── Caja por especie (Registro Paso 2 / Registro3.cshtml) ──────────────────
 export const CAJAS_POR_ESPECIE = {
   perro: require('../../wwwroot/img/cajas/perrocaja.png'),
   gato: require('../../wwwroot/img/cajas/gatocaja.png'),
@@ -31,7 +19,6 @@ export function resolveCajaImage(especie) {
   return CAJAS_POR_ESPECIE[especie] ?? FALLBACK;
 }
 
-// ── Mascota básica por especie + raza (Registro Paso 3/4 / Registro4-5.cshtml) ──
 const MASCOTAS_POR_ESPECIE_Y_RAZA = {
   perro: {
     'akita inu': require('../../wwwroot/img/mascotas/perros/Akita Inu/perro_basico.png'),
@@ -144,8 +131,6 @@ const MASCOTAS_POR_ESPECIE_Y_RAZA = {
   },
 };
 
-// Alias: nombre de raza (tabla `razas` de Supabase) → carpeta real en wwwroot/img.
-// No todas las razas del catálogo de la app existen tal cual en el MVC original.
 const ALIASES = {
   perro: {
     'bulldog frances': 'bulldog',
@@ -197,12 +182,6 @@ function normalizarRaza(raza) {
     .trim();
 }
 
-/**
- * resolveMascotaBasicoImage(especie, razaNombre)
- * Busca la imagen básica de la mascota (Registro Paso 3/4) para la especie
- * y raza dadas. Si la raza no tiene imagen propia, cae en 'otra raza' de
- * esa especie; si la especie tampoco existe, devuelve el FALLBACK genérico.
- */
 export function resolveMascotaBasicoImage(especie, razaNombre) {
   const mapaEspecie = MASCOTAS_POR_ESPECIE_Y_RAZA[especie];
   if (!mapaEspecie) return FALLBACK;

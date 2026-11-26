@@ -1,15 +1,3 @@
-/**
- * ElegirModoScreen.jsx — "¿Cómo querés entrar hoy?"
- *
- * Para cuentas con más de una app: dueño, paseador y/o negocios (veterinaria,
- * peluquería, pet shop — 046). Aparece al abrir la app con la sesión guardada
- * y después del login de dueños: la misma cuenta tiene todas sus apps y elige
- * cada vez. Sólo se ofrecen las que la cuenta tiene.
- *
- * Si elige paseador y la cuenta tiene el rol pero todavía no el perfil (ej.
- * rol asignado a mano en la base), primero completa el perfil.
- */
-
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator, Image, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text,
@@ -48,7 +36,6 @@ export default function ElegirModoScreen() {
     fetchRolesCuenta().then(setRoles).catch(() => setRoles(null));
   }, []);
 
-  // Mientras no se sabe (o sin red), las dos de siempre
   const opciones = [
     ...OPCIONES.filter((o) => !roles
       || (o.key === MODO_DUENO ? roles.esDueno : roles.esPaseador)),
@@ -74,7 +61,6 @@ export default function ElegirModoScreen() {
         navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
         return;
       }
-      // tienePerfil puede venir del arranque; si no, se consulta acá
       const tienePerfil = route.params?.tienePerfil ?? (await fetchRolesCuenta())?.tienePerfil;
       if (tienePerfil === false) {
         navigation.navigate('PaseadorRegistro', { completar: true });

@@ -1,24 +1,3 @@
-/**
- * MapaPaseo.jsx — Mapa de Zooni Paseadores (mini mapa del Inicio y mapa a
- * pantalla completa del Paseo activo).
- *
- * Misma técnica que el mapa de Comunidad: Leaflet + OpenStreetMap dentro de
- * un iframe (sólo web). El HTML es constante para que el iframe no se recargue
- * nunca; React le pasa los datos por postMessage (no por contentWindow directo:
- * el iframe va con sandbox="allow-scripts", sin allow-same-origin, para que un
- * CDN comprometido no pueda leer el localStorage/sesión de la app — informe
- * de seguridad #24). En nativo muestra un placeholder (no hay react-native-maps
- * en el proyecto).
- *
- * Props:
- *   centro    {lat,lng}           — dónde centrar si no hay posición
- *   posicion  {lat,lng} | null    — punto azul del paseador
- *   destino   {lat,lng} | null    — casa de la mascota (pin ámbar)
- *   ruta      [{lat,lng}]         — recorrido del paseo (línea teal)
- *   seguir    bool                — recentra en cada posición nueva
- *   interactivo bool              — false en el mini mapa (sin gestos)
- */
-
 import { useCallback, useEffect, useRef } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { C } from './PaseadorUI';
 import { colores } from '../../theme';
 
-const CENTRO_DEFAULT = { lat: -34.6189, lng: -58.4380 }; // Caballito
+const CENTRO_DEFAULT = { lat: -34.6189, lng: -58.4380 };
 
 const MAPA_HTML = `<!DOCTYPE html><html><head>
 <meta charset="UTF-8"/>
@@ -82,7 +61,6 @@ html,body,#map{margin:0;padding:0;width:100%;height:100%;background:${colores.me
     centrar:function(lat,lng){map.flyTo([lat,lng],17,{duration:.6})}
   };
   window.addEventListener('message',function(e){
-    // Sólo órdenes de la app que contiene el mapa (no de otra ventana)
     if(e.source!==window.parent)return;
     var m=e.data;
     if(!m||m.tipo!=='zooni-cmd'||typeof api[m.metodo]!=='function')return;
@@ -108,11 +86,9 @@ export default function MapaPaseo({
     );
   }, []);
 
-  // Cada vez que cambian los datos, se los pasa al mapa (sin recargarlo)
   const firma = JSON.stringify([posicion, destino, ruta.length, ruta[ruta.length - 1], seguir, interactivo]);
   useEffect(() => { enviar(); }, [firma, enviar]);
 
-  // Expone "centrar en mí" al padre
   useEffect(() => {
     if (!apiRef) return;
     apiRef.current = {

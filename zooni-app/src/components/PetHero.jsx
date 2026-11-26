@@ -1,13 +1,3 @@
-/**
- * PetHero.jsx — Encabezado unificado de las pantallas de la Ficha Médica
- *
- * Lo usan Vacunas, Tratamientos, Consultas y Curiosidades para que las cuatro
- * se vean igual: ilustración de la mascota sobre el círculo verde, título
- * "<Sección> de <Nombre>" y las mismas tres líneas de datos (Edad, Peso, Raza).
- * Antes cada pantalla lo tenía copiado con variantes propias — Consultas, por
- * ejemplo, mostraba una sola línea y se comía el peso.
- */
-
 import { useEffect, useRef } from 'react';
 import { Animated, Image, StyleSheet, Text, View } from 'react-native';
 
@@ -16,22 +6,14 @@ import { resolveMascotaVisual } from '../constants/petImages';
 import { formatearPeso } from '../constants/pesoPorEspecie';
 import { colores } from '../theme';
 
-// El formato del peso vive en constants/pesoPorEspecie.js: debajo del kilo se
-// muestra en gramos, así un canario dice "35 g" y no "0,04 kg".
 export { formatearPeso };
 
-/**
- * @param {object}  mascota  { nombre, especie, raza, peso, fecha_nacimiento, imagen_asset }
- * @param {string}  titulo   Prefijo del título: "Tratamientos", "Consultas", …
- * @param {object}  anim     { scale, opacity } de la animación de entrada (opcional)
- */
 export default function PetHero({ mascota, titulo, anim }) {
   const scaleLocal   = useRef(new Animated.Value(1)).current;
   const opacityLocal = useRef(new Animated.Value(1)).current;
   const scale   = anim?.scale   ?? scaleLocal;
   const opacity = anim?.opacity ?? opacityLocal;
 
-  // Sin animación desde el padre, entra igual (Curiosidades no la manejaba)
   useEffect(() => {
     if (anim) return;
     scaleLocal.setValue(0.88);

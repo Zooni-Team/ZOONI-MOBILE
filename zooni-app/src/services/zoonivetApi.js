@@ -1,19 +1,3 @@
-/**
- * zoonivetApi.js — Lado cliente de ZooniVet: contexto de la mascota para la
- * pantalla y envío de preguntas a la Edge Function.
- *
- * Recorrido de un mensaje:
- *   VirtualVetScreen → preguntarZooniVet() → supabase.functions.invoke(
- *   'zoonivet-chat') con el JWT de la sesión → la Edge Function comprueba que
- *   la mascota sea de quien pregunta, arma el contexto en el servidor
- *   (get_pet_chat_context), aplica las barandas (emergencias, filtro de dosis)
- *   y recién ahí llama a Groq con la GROQ_API_KEY, que vive SOLO como secret de
- *   la función. Ninguna clave de Groq viaja en el bundle de la app.
- *
- * Lo que queda acá es lo que la pantalla necesita para dibujar: el contexto de
- * la mascota (para los chips de sugerencia) y la lista de mascotas.
- */
-
 import { supabase } from '../lib/supabase';
 import { fetchMisMascotas } from './petsApi';
 import { fetchVacunas, fetchConsultas, fetchHistorialPeso } from './fichaMedicaApi';
@@ -22,14 +6,11 @@ import { diasEntre, toISODateLocal } from '../utils/fechaLocal';
 import { sanitizarTexto } from '../utils/sanitizar';
 import { normalizarBusqueda } from '../utils/texto';
 
-// ─── CONSTRUCCIÓN DEL CONTEXTO DE LA MASCOTA ─────────────────────────────────
-
 function esSenior(especie, edadMeses) {
   if (edadMeses == null) return false;
   const esp = normalizarBusqueda(especie);
-  // Umbral simple; el modelo ya recibe el flag resuelto.
-  if (esp.includes('gato')) return edadMeses >= 132; // ~11 años
-  return edadMeses >= 96; // ~8 años (perros; varía por tamaño, se toma conservador)
+  if (esp.includes('gato')) return edadMeses >= 132;
+  return edadMeses >= 96;
 }
 
 function esCachorro(especie, edadMeses) {
@@ -38,7 +19,6 @@ function esCachorro(especie, edadMeses) {
 }
 
 function tendenciaPeso(registros) {
-  // registros: [{ peso, fecha }] más reciente primero
   if (!registros || registros.length < 2) return null;
   const reciente = registros[0];
   const previo = registros[registros.length - 1];
@@ -51,12 +31,7 @@ function tendenciaPeso(registros) {
   return `${signo} ${abs} kg en ${periodo}`;
 }
 
-/**
- * Arma el contexto completo de una mascota para el chat. Todo calculado en JS,
- * listo para inyectar. Devuelve null si la mascota no existe.
- */
 export async function construirContextoMascota(petId) {
-  // fetchVacunas ya trae la mascota + aplicadas + sugeridas.
   const [{ mascota, aplicadas }, consultas, historialPeso] = await Promise.all([
     fetchVacunas(petId).catch(() => ({ mascota: null, aplicadas: [] })),
     fetchConsultas(petId).catch(() => []),
@@ -67,7 +42,6 @@ export async function construirContextoMascota(petId) {
   const edadMeses = calcularEdadMeses(mascota.fecha_nacimiento);
   const hoy = toISODateLocal(new Date());
 
-  // Vacunas: aplicadas con su fecha, y pendientes/vencidas con días exactos.
   const vacunasAplicadas = (aplicadas ?? [])
     .filter((v) => v.fecha_aplicacion)
     .map((v) => `${v.nombre} (${v.fecha_aplicacion})`);
@@ -88,7 +62,6 @@ export async function construirContextoMascota(petId) {
     raza: mascota.raza ?? null,
     imagenAsset: mascota.imagen_asset ?? null,
     fotoUrl: mascota.fotoUrl ?? null,
-    // Datos ya resueltos para el prompt:
     edadTexto: calcularEdad(mascota.fecha_nacimiento),
     edadMeses,
     etapa: esCachorro(mascota.especie, edadMeses)
@@ -108,29 +81,17 @@ export async function construirContextoMascota(petId) {
   };
 }
 
-/** Lista de mascotas activas para el selector (id, nombre, raza, imagen). */
 export async function fetchMascotasParaChat() {
   const { activas } = await fetchMisMascotas();
   return activas;
 }
 
-// ─── PREGUNTA A ZOONIVET (vía Edge Function) ─────────────────────────────────
-
-/** Error con `code` para que la pantalla elija el mensaje. */
 function errorZooniVet(code, mensaje) {
   const err = new Error(mensaje ?? code);
   err.code = code;
   return err;
 }
 
-/**
- * Pregunta a ZooniVet. Devuelve { texto, emergencia, firma }.
- * `firma` hay que guardarla junto a la respuesta y mandarla de vuelta en el
- * historial: la función descarta los turnos de assistant sin firma válida
- * (así nadie puede inventarle respuestas previas al asistente).
- * Errores (err.code): SIN_API_KEY · RATE_LIMIT · CUPO_AGOTADO (límite diario
- * por usuario, 064) · SERVICIO_NO_DISPONIBLE · RESPUESTA_INVALIDA · GROQ_ERROR.
- */
 export async function preguntarZooniVet({ ctx, historial = [], mensaje, signal }) {
   const { data, error } = await supabase.functions.invoke('zoonivet-chat', {
     body: {
@@ -139,18 +100,15 @@ export async function preguntarZooniVet({ ctx, historial = [], mensaje, signal }
       historial: historial.slice(-12).map((m) => (m.firma
         ? { role: m.role, content: m.content, firma: m.firma }
         : { role: m.role, content: m.content })),
-      // El nombre de la persona lo lee la función de la base: no se manda.
     },
     signal,
   });
 
   if (error) {
-    // FunctionsHttpError trae la Response: el código lo pone la función.
     const cuerpo = await error.context?.json?.().catch(() => null);
     const status = error.context?.status;
     if (cuerpo?.error) throw errorZooniVet(cuerpo.error, cuerpo.message);
     if (status === 404 || error.name === 'FunctionsFetchError' || error.name === 'FunctionsRelayError') {
-      // La función no está desplegada (o no hay red): ver README → ZooniVet.
       throw errorZooniVet('SERVICIO_NO_DISPONIBLE', error.message);
     }
     throw errorZooniVet('GROQ_ERROR', error.message);
@@ -159,12 +117,8 @@ export async function preguntarZooniVet({ ctx, historial = [], mensaje, signal }
   return { texto: data.texto, emergencia: !!data.emergencia, firma: data.firma ?? null };
 }
 
-// ─── CHIPS DE SUGERENCIA personalizados ──────────────────────────────────────
-
 const CANT_CHIPS = 4;
 
-// Para comparar lo que el usuario ya mandó con cada chip sin que importen
-// mayúsculas, tildes ni signos.
 const normalizarPregunta = (s) =>
   String(s ?? '')
     .toLowerCase()
@@ -174,9 +128,6 @@ const normalizarPregunta = (s) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-// Devuelve hasta CANT_CHIPS sugerencias, salteando las que ya se preguntaron:
-// al mandar una, su lugar lo ocupa la siguiente del pool. Cuando se agotan,
-// no hay más chips.
 export function sugerenciasIniciales(ctx, yaPreguntadas = []) {
   if (!ctx) return [];
   const nombre = ctx.nombre ?? 'tu mascota';

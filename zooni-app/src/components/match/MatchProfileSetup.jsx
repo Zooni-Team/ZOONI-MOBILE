@@ -1,26 +1,3 @@
-/**
- * MatchProfileSetup.jsx — Onboarding del perfil de Match, paso a paso
- *
- * MatchScreen lo muestra en vez del swipe mientras al usuario le falte algo de
- * esto: foto de perfil, fecha de nacimiento, género o intereses (ninguno de
- * estos datos se pide en el registro). También se abre desde "Editar mi perfil"
- * en la vista previa "Así te ven".
- *
- * POR QUÉ POR PASOS
- * Antes era un formulario único con las cuatro cosas juntas: una pared de
- * campos vacíos que había que scrollear, y los errores recién aparecían al
- * final, todos de golpe, al tocar "Continuar". Acá se pregunta de a una cosa,
- * con una barra de progreso arriba, y no se puede avanzar hasta que lo de ese
- * paso esté bien — el error se ve donde se cometió.
- *
- * Son cuatro pasos a propósito: es lo mínimo que la app necesita para poder
- * mostrarte y mostrarte a otros. Nada de esto es opcional, así que no hay
- * "saltar" — pero sí se puede volver atrás sin perder lo cargado.
- *
- * El guardado ocurre UNA sola vez, al terminar el último paso: si alguien
- * abandona a la mitad no queda un perfil parcial en la base.
- */
-
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,12 +18,10 @@ const MAX_INTERESES = 5;
 const PASOS = ['foto', 'fecha', 'genero', 'intereses'];
 
 export default function MatchProfileSetup({ onListo, perfilActual, onCancelar }) {
-  // Si ya hay foto de perfil cargada (registro / Perfil), se usa esa directo:
-  // no hace falta volver a subirla.
   const fotoExistente = perfilActual?.fotoPerfilUrl ?? null;
 
   const [paso, setPaso] = useState(0);
-  const [fotoUri, setFotoUri] = useState(null);          // foto nueva elegida acá
+  const [fotoUri, setFotoUri] = useState(null);
   const [fechaNacimiento, setFechaNacimiento] = useState(() => parseFechaLocal(perfilActual?.fechaNacimiento));
   const [verFecha, setVerFecha] = useState(false);
   const [genero, setGenero] = useState(perfilActual?.genero ?? null);
@@ -54,7 +29,6 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
   const [error, setError] = useState(null);
   const [guardando, setGuardando] = useState(false);
 
-  // La que se muestra en la vista previa: la nueva si eligió una, si no la ya cargada
   const fotoMostrada = fotoUri ?? fotoExistente;
 
   const edad = calcularEdadAnios(fechaNacimiento);
@@ -63,8 +37,6 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
     setError(null);
     setIntereses((list) => {
       if (list.includes(label)) return list.filter((i) => i !== label);
-      // Tope de 5: la tarjeta muestra 3 y el resto queda en "+N". Sin límite,
-      // se elegían quince y no significaban nada.
       if (list.length >= MAX_INTERESES) return list;
       return [...list, label];
     });
@@ -77,7 +49,6 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
   const elegirDeGaleria = () => elegirFoto(false);
   const abrirCamara = () => elegirFoto(true);
 
-  /** Qué falta en el paso actual (null = se puede avanzar). */
   const validarPaso = () => {
     switch (PASOS[paso]) {
       case 'foto':
@@ -118,7 +89,7 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
   const atras = () => {
     setError(null);
     if (paso > 0) setPaso((p) => p - 1);
-    else onCancelar?.();   // en el primer paso, la flecha cierra (si se puede)
+    else onCancelar?.();
   };
 
   const esUltimo = paso === PASOS.length - 1;
@@ -128,8 +99,6 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
     <SafeAreaView style={s.safe}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
 
-        {/* Barra de progreso: un segmento por paso, como los onboarding de las
-            apps de citas. Deja ver cuánto falta, que es lo que evita el abandono. */}
         <View style={s.topBar}>
           <TouchableOpacity onPress={atras} disabled={!puedeVolver}
             style={[s.backBtn, !puedeVolver && { opacity: 0 }]}
@@ -241,8 +210,6 @@ export default function MatchProfileSetup({ onListo, perfilActual, onCancelar })
               <View style={s.chipsWrap}>
                 {INTEREST_OPTIONS.map((label) => {
                   const activo = intereses.includes(label);
-                  // Los no elegidos se apagan al llegar al tope, para que se
-                  // entienda por qué dejan de responder.
                   const bloqueado = !activo && intereses.length >= MAX_INTERESES;
                   return (
                     <View key={label} style={bloqueado ? { opacity: 0.4 } : null}>

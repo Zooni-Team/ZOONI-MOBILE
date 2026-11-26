@@ -1,14 +1,3 @@
-/**
- * PopupPaseador.jsx — Ficha de un paseador de Zooni en Comunidad
- *
- * Aparece al tocar su círculo en el mapa o su fila en Servicios. A diferencia
- * de PopupServicio (comercios sin cuenta), un paseador de Zooni es un usuario
- * real: se lo puede contratar y la solicitud le llega a su app.
- *
- * Tocar su foto/nombre o "Opiniones" abre todas sus reseñas
- * (ResenasPaseadorModal): estrellas, preguntas, fotos y videos de los dueños.
- */
-
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,7 +21,7 @@ export default function PopupPaseador({ paseador, onClose }) {
       Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 60 }),
       Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
     ]).start();
-  }, []); // eslint-disable-line
+  }, []);
 
   const contratar = () => {
     onClose();
@@ -71,8 +60,6 @@ export default function PopupPaseador({ paseador, onClose }) {
         </TouchableOpacity>
       </View>
 
-      {/* No se bloquea la reserva (todavía no hay quién verifique), pero el
-          dueño tiene que saberlo antes de contratar. */}
       {!paseador.verificado && (
         <View style={st.infoRow}>
           <Ionicons name="alert-circle-outline" size={14} color={colores.ambar} />

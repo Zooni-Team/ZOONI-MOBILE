@@ -1,11 +1,3 @@
-/**
- * paseador/cuenta.js — Entrar y darse de alta como paseador, y qué roles tiene
- * la cuenta (dueño, paseador, negocios).
- *
- * La contraseña la maneja Supabase Auth (authApi). Las altas pasan por RPC que
- * toman la identidad de la sesión, no de lo que mande la app.
- */
-
 import { supabase } from '../../lib/supabase';
 import { getCurrentUserId, setCurrentUserId, setModo, MODO_PASEADOR } from '../../config/session';
 import { crearCuentaConPassword, iniciarSesionConPassword } from '../authApi';
@@ -20,14 +12,6 @@ async function entrarComoPaseador(id, mail) {
   marcarPresencia(true);
 }
 
-/**
- * Login del paseador. A diferencia del login de dueños, NO entra a la app
- * hasta confirmar que la cuenta tiene perfil de paseador: si no lo tiene,
- * devuelve { necesitaActivar: true, email } para ofrecer sumarlo (la sesión de
- * Auth queda abierta: activarPaseador la usa). Si tiene el rol pero no el
- * perfil, devuelve { necesitaCompletar: true }.
- * Lanza Error('credenciales') si mail/contraseña no coinciden.
- */
 export async function loginPaseador(email, password) {
   const mail = email.trim().toLowerCase();
   const usuario = await iniciarSesionConPassword(mail, password);
@@ -37,8 +21,6 @@ export async function loginPaseador(email, password) {
 
   if (errPerfil) throw errorApp('error_base', errPerfil);
   if (!perfil) {
-    // ¿Ya tiene el rol de paseador (ej. asignado a mano) y sólo le falta el
-    // perfil? Entonces entra y lo completa, sin "activar" de nuevo.
     const { data: rol } = await supabase.from('UserRole').select('Id_Role')
       .eq('Id_User', usuario.id).eq('Id_Role', 2).maybeSingle();
     if (rol) {
@@ -67,16 +49,7 @@ function perfilParaRpc(perfil) {
   };
 }
 
-/**
- * Cuenta nueva de paseador. A diferencia del registro de dueños, entra
- * directo: el paseador viene a trabajar y no tiene sentido mandarlo de nuevo
- * al login.
- * Lanza Error('email_existente') si el mail ya tiene cuenta.
- */
 export async function registrarPaseador({ usuario, perfil }) {
-  // Primero la sesión de Auth (contraseña con bcrypt del lado de Supabase);
-  // después la misma RPC que el alta con Google/Facebook: toma el mail de la
-  // sesión, no de lo que mande la app.
   await crearCuentaConPassword(usuario.email, usuario.password);
 
   const { data, error } = await supabase.rpc('registrar_paseador_social', {
@@ -85,7 +58,7 @@ export async function registrarPaseador({ usuario, perfil }) {
       apellido: usuario.apellido.trim(),
       telefono: usuario.telefono?.trim() || null,
       genero: usuario.genero,
-      fechaNacimiento: usuario.fechaNacimiento, // "YYYY-MM-DD"
+      fechaNacimiento: usuario.fechaNacimiento,
     },
     p_perfil: perfilParaRpc(perfil),
   });
@@ -99,11 +72,6 @@ export async function registrarPaseador({ usuario, perfil }) {
   return data;
 }
 
-/**
- * Alta de paseador que vino de Google / Facebook / Apple: sin contraseña. El
- * mail lo toma el servidor de la sesión del proveedor (043) y `fotoPerfil` es
- * la foto del proveedor (si no eligió otra).
- */
 export async function registrarPaseadorSocial({ usuario, perfil, fotoPerfil }) {
   let data;
   try {
@@ -128,7 +96,6 @@ export async function registrarPaseadorSocial({ usuario, perfil, fotoPerfil }) {
   return data;
 }
 
-/** Cuenta de dueño existente que entró con su proveedor y se suma como paseador. */
 export async function activarPaseadorSocial(perfil) {
   let data;
   try {
@@ -141,10 +108,6 @@ export async function activarPaseadorSocial(perfil) {
   return data;
 }
 
-/**
- * Cuenta de dueño existente que se suma como paseador. Usa la sesión que dejó
- * abierta loginPaseador (ya comprobó la contraseña).
- */
 export async function activarPaseador({ email, perfil }) {
   const { data, error } = await supabase.rpc('activar_paseador_social', {
     p_perfil: perfilParaRpc(perfil),
@@ -157,14 +120,7 @@ export async function activarPaseador({ email, perfil }) {
   return data;
 }
 
-/**
- * Cuenta con rol WALKER (UserRole 2) pero sin fila en paseador_perfil (ej. el
- * rol se asignó a mano en la base): completa el perfil sin pedir contraseña.
- * La RPC verifica en el servidor que el rol exista.
- */
 export async function completarPerfilPaseador(perfil) {
-  // p_id_user queda en la firma por compatibilidad: la base usa el de la
-  // sesión (usuario_actual) y lo ignora (070).
   const { error } = await supabase.rpc('completar_perfil_paseador', {
     p_id_user: null, p_perfil: perfilParaRpc(perfil),
   });
@@ -175,22 +131,11 @@ export async function completarPerfilPaseador(perfil) {
   await setModo(MODO_PASEADOR);
 }
 
-/** Foto de perfil que ya tiene la cuenta logueada (o null). */
 export async function fetchMiFotoPerfil() {
   const { data } = await supabase.from('User').select('FotoPerfil').eq('Id_User', getCurrentUserId()).maybeSingle();
   return data?.FotoPerfil ?? null;
 }
 
-/**
- * Qué "apps" puede usar la cuenta logueada:
- *   esDueno       → rol OWNER o tiene alguna mascota
- *   esPaseador    → rol WALKER o tiene perfil de paseador
- *   tienePerfil   → ya existe su fila en paseador_perfil (si es paseador
- *                   por rol pero sin perfil, hay que completarlo)
- *   negocios      → [{ id, tipo, nombre }] veterinaria / peluquería / pet
- *                   shop de la cuenta (046; sin la migración, [])
- * Devuelve null si no se pudo consultar (sin red): quien llama decide.
- */
 export async function fetchRolesCuenta(id = getCurrentUserId()) {
   if (id == null) return null;
   const [roles, mascotas, perfil, negocios] = await Promise.all([

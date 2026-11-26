@@ -1,15 +1,3 @@
-/**
- * ConfiguracionScreen.jsx — Índice de Configuración (Instruction-Configuracion v1.0)
- *
- * Pantalla de NAVEGACIÓN pura: 11 destinos en 3 grupos (4+4+3), sin ningún
- * control suelto — switches, sliders y selects viven en las sub-pantallas.
- * Única excepción: el bloque destructivo del pie (Cerrar sesión / Eliminar
- * cuenta), separado de los grupos.
- *
- * Se abre desde el drawer (☰ → Configuración). El ☰ de este header vuelve a
- * abrir el drawer, no funciona como "atrás" (§2.3).
- */
-
 import React, { useCallback, useState } from 'react';
 import {
   Alert,
@@ -38,10 +26,8 @@ import { colores } from '../../theme';
 import { alerta } from '../../utils/dialogo';
 import appJson from '../../../app.json';
 
-// La versión sale de app.json: una sola fuente para la tienda y para la app.
 const APP_VERSION = `Zooni ${appJson.expo.version}`;
 
-// Valores secundarios legibles (§3.4)
 const TEMA_LABEL = { light: 'Claro', dark: 'Oscuro', auto: 'Automático' };
 const CALIDAD_LABEL = { high: 'Alta', medium: 'Media', low: 'Baja', auto: 'Automática' };
 
@@ -51,18 +37,15 @@ export default function ConfiguracionScreen() {
   const [settings, setSettings] = useState(getSettings());
   const [homeData, setHomeData] = useState(null);
 
-  // Refresca los valores secundarios al volver de una sub-pantalla
   useFocusEffect(useCallback(() => {
     setSettings({ ...getSettings() });
     return subscribeSettings(() => setSettings({ ...getSettings() }));
   }, []));
 
-  // Usuario y mascota activa para el encabezado del drawer (igual que Home)
   useFocusEffect(useCallback(() => {
     fetchHome().then(setHomeData).catch(() => {});
   }, []));
 
-  // Mail de la sesión (el de Supabase Auth) y tiempo de uso de hoy
   const [mail, setMail] = useState(null);
   const [usoHoy, setUsoHoy] = useState(null);
   useFocusEffect(useCallback(() => {
@@ -70,7 +53,6 @@ export default function ConfiguracionScreen() {
     setUsoHoy(segundosHoy());
   }, []));
 
-  // Cantidad real de mascotas activas del usuario (valor secundario de la fila)
   const [mascotasCount, setMascotasCount] = useState(null);
   useFocusEffect(useCallback(() => {
     fetchMisMascotas()
@@ -94,7 +76,6 @@ export default function ConfiguracionScreen() {
     ]);
   };
 
-  // Toque largo sobre la versión: copia datos de diagnóstico (§3.3.F)
   const copiarDiagnostico = () => {
     const info = `${APP_VERSION} · ${Platform.OS} ${Platform.Version ?? ''}`.trim();
     if (Platform.OS === 'web' && navigator?.clipboard) {
@@ -112,7 +93,6 @@ export default function ConfiguracionScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={s.content}
         showsVerticalScrollIndicator={false}>
 
-        {/* Header: solo el ☰, sin campana (§3.3.A) */}
         <View style={s.header}>
           <TouchableOpacity onPress={() => setDrawerOpen(true)} accessibilityRole="button"
             accessibilityLabel="Abrir menú" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -120,13 +100,11 @@ export default function ConfiguracionScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Título */}
         <View style={s.titleRow}>
           <Text style={s.title}>Configuración</Text>
           <Ionicons name="settings-outline" size={24} color={T.textSoft} style={{ marginLeft: 10 }} />
         </View>
 
-        {/* Grupo 1 — Cuenta */}
         <SettingsGroup label="Cuenta">
           <SettingsRow icon="person-outline" tint="cuenta" label="Cuenta y Seguridad"
             value={mail ?? undefined} onPress={ir('ConfigCuenta')} />
@@ -138,7 +116,6 @@ export default function ConfiguracionScreen() {
             value={usoHoy != null ? `${formatoDuracion(usoHoy)} hoy` : undefined} onPress={ir('ConfigTiempo')} />
         </SettingsGroup>
 
-        {/* Grupo 2 — Mascotas y privacidad */}
         <SettingsGroup label="Mascotas y privacidad">
           <SettingsRow icon="paw-outline" tint="mascotas" label="Mis Mascotas"
             value={mascotasCount != null
@@ -153,7 +130,6 @@ export default function ConfiguracionScreen() {
             etiqueta="Vista previa" onPress={ir('ConfigNotificaciones')} />
         </SettingsGroup>
 
-        {/* Grupo 3 — App y soporte */}
         <SettingsGroup label="App y soporte">
           <SettingsRow icon="card-outline" tint="pagos" label="Suscripciones y pagos"
             etiqueta="Vista previa" onPress={ir('ConfigSuscripciones')} />
@@ -163,24 +139,11 @@ export default function ConfiguracionScreen() {
             etiqueta="Vista previa" onPress={ir('ConfigAyuda')} />
         </SettingsGroup>
 
-        {/* Bloque destructivo (§3.3.E) */}
         <TouchableOpacity style={s.logoutCard} onPress={confirmarCerrarSesion}
           accessibilityRole="button" accessibilityLabel="Cerrar sesión">
           <Text style={s.logoutTxt}>Cerrar sesión</Text>
         </TouchableOpacity>
 
-        {/*
-          Acá había un enlace directo a "Eliminar mi cuenta", suelto debajo de
-          "Cerrar sesión". Se sacó de la vista principal: es la acción más
-          destructiva de la app —y sin vuelta atrás— como para ofrecerla a un
-          toque de distancia, justo al lado de un botón que se usa seguido.
-
-          La pantalla sigue existiendo y se llega desde Legal y Términos
-          (LegalScreen), que es donde corresponde y donde el usuario que
-          realmente la busca la va a encontrar.
-        */}
-
-        {/* Pie */}
         <Pressable onLongPress={copiarDiagnostico} delayLongPress={600}>
           <Text style={s.version}>{APP_VERSION}</Text>
         </Pressable>

@@ -1,24 +1,3 @@
-/**
- * MisTurnosScreen.jsx — "Turnos y pedidos" del dueño
- *
- * Todo lo que contrató en veterinarias, peluquerías y pet shops de Zooni:
- *
- *   Turnos   Próximos (por confirmar / confirmados) y Anteriores. Cada uno con
- *            el negocio, la mascota, el servicio, cuándo y cuánto. Se puede
- *            cancelar mientras no pasó, chatear con el negocio, ver el informe
- *            de la consulta (veterinaria: diagnóstico, indicaciones, peso,
- *            temperatura y próximo control) o las fotos de cómo quedó
- *            (peluquería), y "Volver a pedir" el mismo servicio.
- *   Pedidos  Con el seguimiento paso a paso (recibido → en preparación →
- *            listo / en camino → entregado). Se cancela mientras el pet shop
- *            no lo aceptó.
- *
- * Se refresca sola cada 30 s mientras está abierta (para ver confirmaciones).
- * Llegan acá las notificaciones de turnos y pedidos.
- *
- * Params: { tab?: 'turnos' | 'pedidos', aviso? }
- */
-
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator, Image, Modal, RefreshControl, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text,
@@ -43,7 +22,6 @@ import { colores } from '../theme';
 import { INTERVALO_LISTAS_MS } from '../constants/intervalos';
 import { formatearFecha } from '../utils/fechaLocal';
 
-// Mismos estados que ve el negocio, contados desde el lado del dueño
 const ESTADO_TURNO = {
   pendiente: { txt: 'Esperando confirmación', icono: 'hourglass-outline', color: colores.ambar, fondo: colores.ambarFondo },
   confirmado: { txt: 'Confirmado', icono: 'checkmark-circle', color: colores.verde, fondo: colores.mentaTarjeta },
@@ -85,7 +63,6 @@ function LogoNegocio({ negocio, size = 46 }) {
     );
 }
 
-/** Pasos del pedido según cómo se entrega. */
 function Seguimiento({ pedido }) {
   const pasos = ['nuevo', 'preparando', pedido.entrega === 'envio' ? 'en_camino' : 'listo', 'entregado'];
   const textos = { nuevo: 'Recibido', preparando: 'Preparando', listo: 'Para retirar', en_camino: 'En camino', entregado: 'Entregado' };
@@ -111,7 +88,6 @@ function Seguimiento({ pedido }) {
   );
 }
 
-/** Lo que dejó el negocio al atender: informe veterinario o fotos de la peluquería. */
 function InformeDueno({ turno, onCerrar }) {
   const i = turno?.informe ?? {};
   const esVet = turno?.negocio?.tipo === 'veterinaria';
@@ -223,7 +199,6 @@ export default function MisTurnosScreen() {
     return () => clearInterval(t);
   }, [cargar]));
 
-  // Si llega una notificación con otra pestaña / aviso estando ya abierta
   useEffect(() => {
     if (route.params?.tab) setTab(route.params.tab);
     if (route.params?.aviso) setAviso(route.params.aviso);
@@ -563,7 +538,6 @@ const s = StyleSheet.create({
   vacioTitulo: { fontSize: 17, fontWeight: '800', color: colores.texto, marginTop: 6 },
   vacioTxt: { fontSize: 14, color: colores.textoSecundario, textAlign: 'center', lineHeight: 20 },
 
-  // Informe
   dato: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   datoTitulo: { fontSize: 13, fontWeight: '800', color: colores.textoSecundario },
   datoTxt: { fontSize: 15, color: colores.texto, marginTop: 2, lineHeight: 21 },

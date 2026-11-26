@@ -1,9 +1,3 @@
-/**
- * PiezasCloset.jsx — Piezas de la pantalla Closet (ClosetScreen): el
- * esqueleto de carga y la miniatura de cada avatar de la grilla.
- * Antes vivían dentro de la pantalla (informe de la devolución, FEC-GOD).
- */
-
 import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,11 +10,8 @@ import Skeleton from '../ui/Skeleton';
 
 export const SCREEN_WIDTH = Dimensions.get('window').width;
 
-/** Lado de cada miniatura de la grilla de 3 columnas. */
 export const THUMBNAIL_SIZE = (SCREEN_WIDTH - 48 - 24) / 3;
 
-// El pulso es el de ui/Skeleton (antes había una copia propia que además
-// nunca frenaba el loop al desmontar); acá sólo cambia el tono, el del Closet.
 export function SkeletonBox({ style }) {
   return <Skeleton min={0.4} duracionMs={700} style={[{ backgroundColor: '#B8E8CA' }, style]} />;
 }
@@ -80,13 +71,11 @@ export function AvatarThumbnail({ avatar, mascota, isSelected, isActual, onPress
             style={styles.thumbnailImage}
             resizeMode="contain"
           />
-          {/* Badge de avatar actual */}
           {isActual && (
             <View style={styles.badgeActual}>
               <Ionicons name="checkmark" size={11} color={colores.blanco} />
             </View>
           )}
-          {/* Nombre del avatar */}
           {avatar.nombre && (
             <Text style={styles.thumbnailLabel} numberOfLines={1}>
               {avatar.nombre}
@@ -101,7 +90,7 @@ export function AvatarThumbnail({ avatar, mascota, isSelected, isActual, onPress
 const styles = StyleSheet.create({
   thumbnail: {
     width: THUMBNAIL_SIZE,
-    height: THUMBNAIL_SIZE + 22, // espacio extra para el label
+    height: THUMBNAIL_SIZE + 22,
     backgroundColor: '#F9FFF9',
     borderRadius: 16,
     padding: 8,

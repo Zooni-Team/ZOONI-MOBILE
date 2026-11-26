@@ -1,13 +1,3 @@
--- ⚠ NO PEGAR EN SUPABASE. Archivo de pruebas para un Postgres LOCAL (lo corre
---   supabase/scripts/probar-esquema.mjs). Crea usuarios de prueba.
--- pruebas_070.sql — correr DESPUÉS de pruebas_rls.sql (helpers pg_temp.como / salir).
---   · "Mascota" sólo devuelve filas propias, y mascota_publica muestra las
---     ajenas SIN los datos sensibles (#12).
---   · Las notificaciones no se escriben por INSERT directo (#5).
---   · El paseador no puede inflar su progreso ni aceptar su propio paseo
---     (#17, #64), y la reseña sólo entra con el paseo finalizado (#61).
---   · Lo que trajeron la 064-068 sigue en pie después de endurecer.
-
 DO $$
 DECLARE
   sufijo TEXT := substr(md5(random()::TEXT), 1, 8);
@@ -37,7 +27,6 @@ BEGIN
   SELECT "Id_Mascota" INTO mascota_ana FROM "Mascota" WHERE "Id_User" = ana;
   SELECT "Id_Mascota" INTO mascota_beto FROM "Mascota" WHERE "Id_User" = beto;
 
-  -- ── #12: la tabla, sólo lo propio; la vista, lo ajeno sin datos sensibles ──
   PERFORM pg_temp.como(ana_auth);
 
   ASSERT EXISTS (SELECT 1 FROM "Mascota" WHERE "Id_Mascota" = mascota_ana),
@@ -50,7 +39,6 @@ BEGIN
   ASSERT (SELECT "Nombre" FROM mascota_publica WHERE "Id_Mascota" = mascota_beto) = 'Luna',
     'mascota_publica tiene que traer el nombre';
 
-  -- La vista no puede exponer nada clínico ni la fecha exacta de nacimiento.
   ASSERT NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = 'mascota_publica'
@@ -62,7 +50,6 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'mascota_publica' AND column_name = 'EdadAnios'
   ), 'mascota_publica tiene que exponer EdadAnios en lugar de FechaNacimiento';
 
-  -- ── #5: nadie escribe notificaciones a mano ────────────────────────────────
   fallo := FALSE;
   BEGIN
     INSERT INTO "Notificacion" ("Id_User", "Tipo", "Titulo") VALUES (beto, 'match', 'falsa');
@@ -70,17 +57,14 @@ BEGIN
   END;
   ASSERT fallo, 'no se puede insertar una notificación directo en la tabla (#5)';
 
-  -- ── #11: subscriptions es de sólo lectura para el cliente ──────────────────
   ASSERT NOT has_table_privilege('authenticated', 'subscriptions', 'INSERT'),
     'subscriptions sigue escribible desde la app (#11)';
 
   PERFORM pg_temp.salir();
 
-  -- ── #1: la función de perfil de paseador no es para anon ───────────────────
   ASSERT NOT has_function_privilege('anon', 'completar_perfil_paseador(integer, jsonb)', 'EXECUTE'),
     'completar_perfil_paseador sigue otorgada a anon (#1)';
 
-  -- ── Lo de 064-068 sigue en pie ─────────────────────────────────────────────
   ASSERT has_function_privilege('anon', 'migrar_cuenta_legada(text, text)', 'EXECUTE'),
     'el login de cuentas viejas (065) tiene que seguir andando';
   ASSERT EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'consultas-privadas' AND NOT public),
@@ -93,7 +77,6 @@ BEGIN
   RAISE NOTICE '070 (mascotas, notificaciones, permisos) OK';
 END $$;
 
--- ── Paseos: anti-trampa del progreso, autoasignación y reseña (#17, #61, #64) ──
 DO $$
 DECLARE
   sufijo TEXT := substr(md5(random()::TEXT), 1, 8);
@@ -127,7 +110,6 @@ BEGIN
   VALUES (duena, mascota, 'pendiente', 1000, 1000, 30)
   RETURNING "Id_Paseo" INTO paseo;
 
-  -- #64: el dueño no puede tomar su propio paseo
   PERFORM pg_temp.como(duena_auth);
   fallo := FALSE;
   BEGIN
@@ -137,20 +119,14 @@ BEGIN
   ASSERT fallo, 'nadie puede aceptar su propio paseo (#64)';
   PERFORM pg_temp.salir();
 
-  -- Queda asignado al paseador (como superusuario: aceptar por la app es la
-  -- RPC aceptar_solicitud_paseo, que pide perfil de paseador; acá interesa
-  -- el progreso). Un UPDATE directo del paseador no lo toma: la RLS no le
-  -- deja ver un paseo abierto, y el UPDATE pasaba en silencio sin filas.
   UPDATE "Paseo" SET "Estado" = 'aceptado', "Id_Walker" = pas WHERE "Id_Paseo" = paseo;
 
-  -- El paseador lo arranca
   PERFORM pg_temp.como(pas_auth);
   UPDATE "Paseo" SET "Estado" = 'en_curso', "HoraInicio" = now(), "ReanudadoEn" = now()
   WHERE "Id_Paseo" = paseo;
   ASSERT (SELECT "Estado" FROM "Paseo" WHERE "Id_Paseo" = paseo) = 'en_curso',
     'el paseador arranca su paseo (si no, lo de abajo no prueba nada)';
 
-  -- #17: no puede reportar más segundos que los que pasaron de verdad
   fallo := FALSE;
   BEGIN
     UPDATE "Paseo" SET "SegundosAcumulados" = 99999 WHERE "Id_Paseo" = paseo;
@@ -158,7 +134,6 @@ BEGIN
   END;
   ASSERT fallo, 'el paseador no puede inflar SegundosAcumulados (#17)';
 
-  -- …ni retroceder la distancia
   UPDATE "Paseo" SET "DistanciaMetros" = 100 WHERE "Id_Paseo" = paseo;
   fallo := FALSE;
   BEGIN
@@ -168,7 +143,6 @@ BEGIN
   ASSERT fallo, 'la distancia no puede retroceder (#17)';
   PERFORM pg_temp.salir();
 
-  -- #61: la dueña no puede dejar reseña con el paseo sin finalizar
   PERFORM pg_temp.como(duena_auth);
   fallo := FALSE;
   BEGIN

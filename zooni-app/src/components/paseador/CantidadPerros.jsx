@@ -1,13 +1,3 @@
-/**
- * CantidadPerros.jsx — Cuántos perros saca el paseador por paseo
- *
- * Botones − / + y el número en el medio se puede escribir directo (sin tope:
- * antes no dejaba pasar de 6). Mínimo 1. Mientras se escribe puede quedar
- * vacío: en ese caso onCambio recibe null y la pantalla lo marca como error.
- *
- * Props: valor (número | null) · onCambio(número | null) · error (bool)
- */
-
 import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 

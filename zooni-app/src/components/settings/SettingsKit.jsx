@@ -1,15 +1,3 @@
-/**
- * SettingsKit.jsx — Componentes compartidos de Configuración (Instruction-Configuracion v1.0)
- *
- * Única fuente de tokens y controles para el índice y las 11 sub-pantallas.
- * Reglas duras que este kit garantiza:
- *   - Texto sobre menta usa --text-soft-mint (#6B6B6B no llega a 4.5:1).
- *   - Chevron #8A8A8A (el #AAAAAA no llega al 3:1 de gráficos).
- *   - Switch encendido en --brand-text #177046 (el #2DBD72 con knob blanco
- *     da 2.43:1 y no distingue estados).
- *   - Filas con cambio de fondo al presionar, nunca scale.
- */
-
 import React, { useRef, useState } from 'react';
 import {
   Animated,
@@ -28,8 +16,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../theme';
 import { colores } from '../../theme';
-
-// ─── TOKENS (§3.1) ───────────────────────────────────────────────────────────
 
 export const T = {
   bgMain: colores.menta,
@@ -51,7 +37,6 @@ export const T = {
   pressedRow: '#F2F7F4',
 };
 
-// Tintes de ícono por grupo temático (§3.1)
 export const TINTS = {
   cuenta:        { bg: '#E8EEFB', glifo: '#3A5CA8' },
   apariencia:    { bg: '#FDEAF2', glifo: '#A83A6B' },
@@ -65,8 +50,6 @@ export const TINTS = {
   legal:         { bg: '#EFF1F3', glifo: '#4A5560' },
   ayuda:         { bg: colores.rojoFondo, glifo: colores.rojoOscuro },
 };
-
-// ─── CHASIS DE SUB-PANTALLA (§3.5) ──────────────────────────────────────────
 
 export function SettingsScreen({ title, children }) {
   const navigation = useNavigation();
@@ -90,15 +73,12 @@ export function SettingsScreen({ title, children }) {
   );
 }
 
-// ─── GRUPO (label + card blanca) ─────────────────────────────────────────────
-
 export function SettingsGroup({ label, children }) {
   const { highContrast } = useTheme();
   const hijos = React.Children.toArray(children).filter(Boolean);
   return (
     <View style={k.group}>
       {label ? <Text style={k.groupLabel}>{label}</Text> : null}
-      {/* Alto contraste: la tarjeta suma borde y los divisores se oscurecen */}
       <View style={[k.groupCard, highContrast && k.groupCardHC]} accessibilityRole="list">
         {hijos.map((child, i) => (
           <View key={i}>
@@ -110,8 +90,6 @@ export function SettingsGroup({ label, children }) {
     </View>
   );
 }
-
-// ─── FILA DE NAVEGACIÓN (§3.3.D) ─────────────────────────────────────────────
 
 export function SettingsRow({ icon, tint, label, value, etiqueta, badge, disabled, onPress }) {
   const [pressed, setPressed] = useState(false);
@@ -145,13 +123,10 @@ export function SettingsRow({ icon, tint, label, value, etiqueta, badge, disable
   );
 }
 
-// ─── SWITCH (§3.5 SettingsToggle) ────────────────────────────────────────────
-
 function Knob({ on }) {
   const { reduceMotion } = useTheme();
   const x = useRef(new Animated.Value(on ? 20 : 0)).current;
   React.useEffect(() => {
-    // Con "reducir movimiento" el knob salta sin animar
     Animated.timing(x, {
       toValue: on ? 20 : 0,
       duration: reduceMotion ? 0 : 180,
@@ -180,8 +155,6 @@ export function SettingsToggle({ label, apoyo, value, onChange, disabled }) {
     </Pressable>
   );
 }
-
-// ─── SELECT (bottom sheet con radio list) ────────────────────────────────────
 
 export function SettingsSelect({ label, apoyo, options, value, onChange, disabled }) {
   const [open, setOpen] = useState(false);
@@ -226,8 +199,6 @@ export function SettingsSelect({ label, apoyo, options, value, onChange, disable
   );
 }
 
-// ─── SLIDER ESCALONADO (marcas discretas tocables) ───────────────────────────
-
 export function SettingsSlider({ label, steps, value, onChange }) {
   const idx = Math.max(0, steps.findIndex((s) => s.value === value));
   return (
@@ -250,8 +221,6 @@ export function SettingsSlider({ label, steps, value, onChange }) {
     </View>
   );
 }
-
-// ─── ACCIÓN Y SOLO-LECTURA ───────────────────────────────────────────────────
 
 export function SettingsAction({ label, apoyo, destructive, centered, onPress, disabled }) {
   const [pressed, setPressed] = useState(false);
@@ -280,8 +249,6 @@ export function SettingsInfo({ label, value, apoyo }) {
   );
 }
 
-// ─── BANNER DE ATENCIÓN (V3 / V4) ────────────────────────────────────────────
-
 export function SettingsBanner({ icon, text, color = T.amberText, bg = T.amberTint, action, onAction }) {
   return (
     <View style={[k.banner, { backgroundColor: bg }]}>
@@ -296,11 +263,6 @@ export function SettingsBanner({ icon, text, color = T.amberText, bg = T.amberTi
   );
 }
 
-// ─── VISTA PREVIA: lo que se ve pero todavía no funciona ─────────────────────
-// Va arriba de una pantalla (o de un grupo) cuyos controles se guardan pero
-// todavía no cambian nada en la app. Sobrio a propósito: gris, sin alarma,
-// para que la pantalla se pueda mostrar igual sin que parezca que anda.
-
 export function SettingsVistaPrevia({ texto }) {
   const tinte = TINTS.legal;
   return (
@@ -313,8 +275,6 @@ export function SettingsVistaPrevia({ texto }) {
     </View>
   );
 }
-
-// ─── ESTILOS ─────────────────────────────────────────────────────────────────
 
 const k = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: T.bgMain },

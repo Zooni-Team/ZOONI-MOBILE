@@ -1,12 +1,3 @@
-/**
- * negocio/turnos.js — Turnos de veterinaria y peluquería (tabla negocio_turnos):
- *
- *   pendiente → confirmado → completado (con informe)
- *             ↘ rechazado / cancelado / ausente
- *
- * Todo cambio de estado le llega al otro lado como notificación.
- */
-
 import { supabase } from '../../lib/supabase';
 import { getCurrentUserId } from '../../config/session';
 import { tamanoPorPeso } from '../../constants/negocios';
@@ -50,7 +41,6 @@ export async function enriquecerTurnos(rows, { conNegocio = false } = {}) {
   return rows.map((r) => mapTurno(r, mascotas, usuarios, negocios));
 }
 
-/** Turnos del negocio. `desde`/`hasta` son Date; `estados` filtra. */
 export async function fetchTurnosNegocio(idNegocio, { desde, hasta, estados } = {}) {
   let q = supabase.from('negocio_turnos').select('*').eq('id_negocio', idNegocio);
   if (desde) q = q.gte('fecha', desde.toISOString());
@@ -61,14 +51,8 @@ export async function fetchTurnosNegocio(idNegocio, { desde, hasta, estados } = 
   return enriquecerTurnos(data ?? []);
 }
 
-// El turno más largo que puede empezar el día anterior y seguir en este.
 const TURNO_MAX_MS = 12 * 60 * 60000;
 
-/**
- * Lo ya ocupado de un día: turnos pedidos o confirmados → [{ fecha, duracionMin }].
- * Incluye los que empezaron el día anterior y siguen después de medianoche
- * (antes no se veían y se podía reservar encima).
- */
 export async function fetchOcupados(idNegocio, dia) {
   const desde = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate());
   const hasta = new Date(desde);
@@ -79,15 +63,9 @@ export async function fetchOcupados(idNegocio, dia) {
   if (error) throw errorBase(error);
   return (data ?? [])
     .map((r) => ({ fecha: r.fecha, duracionMin: r.duracion_min ?? 30 }))
-    // Del día anterior, sólo los que todavía ocupan algo de este día
     .filter((o) => new Date(o.fecha).getTime() + o.duracionMin * 60000 > desde.getTime());
 }
 
-/**
- * El negocio cambia el estado de un turno y le avisa al dueño.
- * `informe` (al completar): veterinaria → { motivo, diagnostico, tratamiento,
- * peso, temperatura, proximoControl, notas }; peluquería → { notas, fotos }.
- */
 export async function cambiarEstadoTurno(negocio, turno, estado, { informe, motivo } = {}) {
   if (!ACCIONES_TURNO[turno.estado]?.includes(estado)) throw new Error('transicion_invalida');
   const fila = { estado, actualizado_en: new Date().toISOString() };
@@ -96,10 +74,10 @@ export async function cambiarEstadoTurno(negocio, turno, estado, { informe, moti
     .eq('id', turno.id).eq('id_negocio', negocio.id).eq('estado', turno.estado)
     .select('id');
   if (error) throw errorBase(error);
-  if (!data?.length) throw new Error('turno_cambiado'); // lo canceló el dueño mientras tanto
+  if (!data?.length) throw new Error('turno_cambiado');
 
   const quien = turno.mascota?.nombre ?? 'tu mascota';
-  const cuando = fechaHoraFija(turno.fecha); // queda guardado: sin "Hoy"
+  const cuando = fechaHoraFija(turno.fecha);
   const avisos = {
     confirmado: [`Turno confirmado ✅`, `${negocio.nombre} confirmó el turno de ${quien}: ${turno.servicio}, ${cuando}.`],
     rechazado: ['Turno no disponible', `${negocio.nombre} no puede atender a ${quien} ${cuando}.${motivo ? ` "${motivo}"` : ''} Probá con otro horario.`],
@@ -114,11 +92,6 @@ export async function cambiarEstadoTurno(negocio, turno, estado, { informe, moti
   return { ...turno, estado, informe: informe ?? turno.informe };
 }
 
-/**
- * Guarda / corrige el informe de un turno ya atendido (sin cambiar el estado).
- * Sólo de un turno COMPLETADO: antes se podía escribir el informe de uno
- * pendiente o cancelado.
- */
 export async function guardarInforme(negocio, turno, informe) {
   const { data, error } = await supabase.from('negocio_turnos')
     .update({ informe, actualizado_en: new Date().toISOString() })
@@ -129,13 +102,6 @@ export async function guardarInforme(negocio, turno, informe) {
   return { ...turno, informe };
 }
 
-/**
- * El dueño pide un turno. El precio sale del servicio elegido (y del tamaño de
- * la mascota en peluquería), más el busca y lleva si lo pidió. El chequeo de
- * horario libre de acá es para avisar rápido; la garantía es el trigger
- * _turno_al_crear (062), que serializa las reservas de cada negocio y valida
- * que el precio sea uno de los del servicio.
- */
 export async function crearTurno({
   negocio, item, mascota, fecha, tamano, urgencia = false, aDomicilio = false, direccion = null, notas = '',
 }) {
@@ -149,8 +115,6 @@ export async function crearTurno({
   });
   if (pisa) throw new Error('horario_ocupado');
 
-  // El tamaño sale de la mascota (mascota_publica lo expone); tamanoPorPeso
-  // queda para cuando se elige una mascota propia, que sí trae el peso.
   const precio = precioTurno(
     negocio, item, tamano ?? mascota?.tamano ?? tamanoPorPeso(mascota?.peso), aDomicilio,
   );
@@ -169,8 +133,6 @@ export async function crearTurno({
     notas_dueno: notas?.trim().slice(0, 500) || null,
   }).select('id').single();
   if (error) {
-    // La base re-chequea con un candado por negocio: si otro reservó ese
-    // horario entre la consulta de arriba y este insert, gana el primero.
     const codigo = ['horario_ocupado', 'precio_invalido', 'servicio_inexistente', 'negocio_cerrado']
       .find((c) => String(error.message ?? '').includes(c));
     throw codigo ? new Error(codigo) : errorBase(error);
@@ -183,7 +145,6 @@ export async function crearTurno({
   return data.id;
 }
 
-/** Mis turnos como dueño (los más nuevos primero). */
 export async function fetchMisTurnos() {
   const { data, error } = await supabase.from('negocio_turnos').select('*')
     .eq('id_dueno', getCurrentUserId()).order('fecha', { ascending: false }).limit(100);
@@ -191,7 +152,6 @@ export async function fetchMisTurnos() {
   return enriquecerTurnos(data ?? [], { conNegocio: true });
 }
 
-/** El dueño cancela un turno pedido o confirmado y le avisa al negocio. */
 export async function cancelarTurnoDueno(turno) {
   const { error } = await supabase.from('negocio_turnos')
     .update({ estado: 'cancelado', actualizado_en: new Date().toISOString() })
@@ -201,13 +161,6 @@ export async function cancelarTurnoDueno(turno) {
     `${turno.mascota?.nombre ?? 'Mascota'} · ${turno.servicio} · ${fechaHoraFija(turno.fecha)}`, { destino: 'turnos' });
 }
 
-// ── Pacientes (veterinaria) / clientes (peluquería) ──────────────────────────
-
-/**
- * Una ficha por mascota atendida (o con turno), armada con sus turnos:
- * visitas del más nuevo al más viejo, próximo turno, último informe y cuánto
- * se facturó. Ordenadas por la última actividad.
- */
 export async function fetchPacientes(idNegocio) {
   const turnos = await fetchTurnosNegocio(idNegocio, { estados: ['pendiente', 'confirmado', 'completado', 'ausente'] });
   const ahora = Date.now();

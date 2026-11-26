@@ -1,9 +1,3 @@
-/**
- * AvisoError.jsx — Franja "no se pudo cargar" con botón para reintentar.
- * Evita el peor error de una lista: mostrar "no hay nada" cuando en realidad
- * falló la consulta.
- */
-
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 

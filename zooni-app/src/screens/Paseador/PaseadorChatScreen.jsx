@@ -1,15 +1,3 @@
-/**
- * PaseadorChatScreen.jsx — Chat paseador ↔ dueño de un paseo
- *
- * Se abre desde una solicitud, la agenda o el paseo activo (no es un tab), y
- * también del lado dueño (Mis paseos / Mensajes): la pantalla detecta quién
- * soy en ese paseo y muestra al OTRO en el header.
- * Mismas burbujas que el chat de Zooni: verde menta medio para el paseador
- * (derecha), blancas para el dueño (izquierda). Respuestas rápidas arriba del
- * input porque el paseador escribe con una mano y la correa en la otra.
- * Polling liviano mientras está en foco, como ChatScreen.
- */
-
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet,
@@ -31,9 +19,6 @@ import { etiquetaDia, horaCorta, mismoDia } from '../../utils/tiempoRelativo';
 import { colores } from '../../theme';
 import { useRecargaEnVivo } from '../../hooks/useRecargaEnVivo';
 
-// Respuestas rápidas del paseador según el estado del paseo, en el orden en
-// que conviene mandarlas. Se muestran RAPIDAS_VISIBLES a la vez: la que ya
-// mandó en este paseo desaparece y entra la siguiente de la lista.
 const RAPIDAS_VISIBLES = 3;
 const RAPIDAS = {
   pendiente: [
@@ -106,9 +91,6 @@ const ESTADO_TXT = {
 
 export default function PaseadorChatScreen() {
   const navigation = useNavigation();
-  // idsPaseos llega desde el inbox (que agrupa por persona) con TODOS los
-  // paseos compartidos con ella. Entrando desde una solicitud o desde el paseo
-  // activo no viene, y entonces se usa solo este paseo.
   const { paseoId, idsPaseos } = useRoute().params ?? {};
   const idsConversacion = idsPaseos?.length ? idsPaseos : paseoId;
   const claveConversacion = Array.isArray(idsConversacion) ? idsConversacion.join(',') : String(idsConversacion);
@@ -128,15 +110,9 @@ export default function PaseadorChatScreen() {
       setMensajes(await getMensajesPaseo(idsConversacion));
       marcarLeidosPaseo(idsConversacion).catch(() => {});
     } catch {
-      // sin red: queda lo anterior
     }
-    // Clave por contenido: idsPaseos viene de los params y cambia de identidad
-    // en cada render, así que como dependencia directa recrearía el callback
-    // (y reiniciaría la suscripción de Realtime) a cada rato.
-  }, [claveConversacion]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [claveConversacion]);
 
-  // Mensajes nuevos por Supabase Realtime (respaldo cada 30 s). El filtro usa
-  // la misma clave por contenido que `cargar`, así no se re-suscribe a cada render.
   useRecargaEnVivo(cargar, {
     tabla: 'paseo_mensajes',
     filtro: `id_paseo=in.(${claveConversacion})`,
@@ -149,28 +125,21 @@ export default function PaseadorChatScreen() {
     setEnviando(true);
     setTexto('');
     try {
-      // `cargar()` y no el valor que devuelve enviarMensajePaseo: ese trae solo
-      // los mensajes de ESTE paseo, y acá la conversación puede abarcar varios.
       await enviarMensajePaseo(paseo, limpio);
       await cargar();
     } catch {
-      setTexto(limpio); // que no se pierda lo escrito
+      setTexto(limpio);
     } finally {
       setEnviando(false);
     }
   };
 
-  // ¿Soy el dueño de este paseo? Entonces el "otro" es el paseador
   const soyDueno = !!paseo && paseo.idDueno === getCurrentUserId();
   const otro = paseo
     ? (soyDueno
       ? { nombre: paseo.paseador?.nombre ?? 'Paseador', foto: paseo.paseador?.foto ?? null }
       : { nombre: paseo.dueno.nombre, foto: paseo.dueno.foto })
     : null;
-  // Las respuestas rápidas son para el paseador (escribe con la correa en la
-  // mano). Las que ya mandó en ESTE paseo no se ofrecen de nuevo: entra la
-  // siguiente. Sólo este paseo porque la conversación puede juntar varios con
-  // el mismo dueño, y "Estoy llegando" vuelve a servir en el próximo.
   const yaMandadas = new Set(mensajes
     .filter((m) => m.autor === 'yo' && (m.idPaseo == null || String(m.idPaseo) === String(paseo?.id)))
     .map((m) => String(m.texto ?? '').trim()));
@@ -237,8 +206,6 @@ export default function PaseadorChatScreen() {
         ) : (
           <>
             {rapidas.length > 0 && (
-              // En web un ScrollView horizontal sin alto fijo se estira y se come
-              // media pantalla: va dentro de una franja de alto fijo.
               <View style={s.rapidasFranja}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.rapidasScroll}
                 contentContainerStyle={s.rapidas} keyboardShouldPersistTaps="handled">

@@ -1,31 +1,3 @@
-/**
- * PaseoTab.jsx — Tab 3 de Zooni Paseadores
- *
- * CON paseos en curso: mapa a pantalla completa + card flotante blanca.
- *   · Una mascota: su timer y su distancia en números grandes, y Pausar /
- *     Finalizar.
- *   · Un grupo: una fila por mascota con su tiempo, su distancia y sus propios
- *     botones de pausar y finalizar (cada una es un paseo aparte, con su
- *     dueño y su precio), más "Pausar todos". Tocar una fila marca su casa en
- *     el mapa.
- *   En los dos casos se puede sumar otra mascota de la agenda.
- *
- * SIN paseo en curso: los paseos aceptados listos para iniciar, o el resumen
- * del paseo que se acaba de terminar.
- *
- * COBRO: precio fijo, el pactado al contratar; el tiempo no suma ni resta.
- * Al terminar, el paseador anota si le pagaron o si el dueño le paga después
- * (cada semana / fin de mes, con recordatorio).
- *
- * TOQUES SIN QUERER: finalizar antes del tiempo pactado pide una segunda
- * confirmación, y en el resumen hay "Retomar paseo" durante RETOMAR_MINUTOS
- * por si igual se finalizó por error.
- *
- * Las acciones (pausar, finalizar…) y el GPS viven en PaseadorAppScreen /
- * useSeguimientoPaseos, así Inicio puede usarlas igual y el recorrido se
- * sigue registrando fuera de este tab.
- */
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View,
@@ -61,17 +33,12 @@ import { colores } from '../../../theme';
 export default function PaseoTab(props) {
   const { paseosActivos, resumen, setResumen, retomado } = props;
 
-  // Con el grupo todavía en curso, el resumen se abre encima (PaseadorAppScreen)
   if (resumen && !paseosActivos.length) {
     return <Resumen paseo={resumen} onCerrar={() => setResumen(null)} onRetomado={retomado} irA={props.irA} avisar={props.avisar} />;
   }
   if (paseosActivos.length) return <PaseoEnCurso {...props} />;
   return <SinPaseo {...props} />;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// PASEO EN CURSO (una mascota o un grupo)
-// ─────────────────────────────────────────────────────────────────────────────
 
 function PaseoEnCurso({
   paseosActivos, perfil, seguimiento, ocupado, pausarOReanudar, pausarOReanudarTodos, finalizar,
@@ -83,14 +50,10 @@ function PaseoEnCurso({
   const mapaApi = useRef(null);
 
   const grupo = paseosActivos.length > 1;
-  // La mascota cuya casa se marca en el mapa (la primera si no se tocó ninguna)
   const elegido = paseosActivos.find((p) => p.id === elegidoId) ?? paseosActivos[0];
   const corriendo = paseosActivos.some((p) => p.reanudadoEn);
   const enPausa = paseosActivos.filter((p) => !p.reanudadoEn).length;
   const puedeSumar = paseosActivos.length < (perfil?.maxPerros ?? 3);
-
-  // El cronómetro avanza dentro de PaseoUnico / FilaPaseo (useReloj): ya no se
-  // re-dibuja la pestaña entera (con el mapa) cada segundo.
 
   const centrar = () => {
     if (posicion) mapaApi.current?.centrar(posicion.lat, posicion.lng);
@@ -119,9 +82,7 @@ function PaseoEnCurso({
         apiRef={mapaApi}
       />
 
-      {/* Arriba: estado en vivo + controles del mapa */}
       <View style={s.topBar} pointerEvents="box-none">
-        {/* Sin header en pantalla completa: el menú flota sobre el mapa */}
         <TouchableOpacity style={[s.mapBtn, { marginRight: 10 }]} onPress={abrirMenu} accessibilityLabel="Abrir menú">
           <Ionicons name="menu" size={24} color={colores.negroSuave} />
         </TouchableOpacity>
@@ -149,7 +110,6 @@ function PaseoEnCurso({
         </View>
       )}
 
-      {/* Abajo: card flotante */}
       <View style={s.flotante}>
         {grupo ? (
           <>
@@ -188,7 +148,6 @@ function PaseoEnCurso({
   );
 }
 
-/** Card de una sola mascota: timer y distancia grandes, como siempre. */
 function PaseoUnico({ paseo, ocupado, onPausa, onFinalizar, onChat }) {
   const corriendo = !!paseo.reanudadoEn;
   useReloj(corriendo);
@@ -245,14 +204,11 @@ function PaseoUnico({ paseo, ocupado, onPausa, onFinalizar, onChat }) {
   );
 }
 
-/** Una mascota del grupo: su tiempo, distancia, progreso y sus propios botones. */
 export function FilaPaseo({ paseo, elegido = false, onElegir, ocupado, onPausa, onFinalizar, onChat }) {
   const corriendo = !!paseo.reanudadoEn;
   useReloj(corriendo);
   const segundos = segundosDePaseo(paseo);
   const progreso = Math.min(1, segundos / (paseo.duracionMin * 60));
-  // Sin onElegir (en Inicio) la fila es un View: un Touchable deshabilitado
-  // alrededor puede tragarse los toques de los botones en web
   const Contenedor = onElegir ? TouchableOpacity : View;
   const tocable = onElegir ? { onPress: onElegir, activeOpacity: 0.8 } : {};
   return (
@@ -290,7 +246,6 @@ export function FilaPaseo({ paseo, elegido = false, onElegir, ocupado, onPausa, 
   );
 }
 
-/** Lista de la agenda para sumar otra mascota al paseo que está en curso. */
 function SumarMascotaModal({ visible, onCerrar, onIniciar, ocupado }) {
   const [agenda, setAgenda] = useState(null);
 
@@ -331,20 +286,11 @@ function SumarMascotaModal({ visible, onCerrar, onIniciar, ocupado }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// RESUMEN DEL PASEO TERMINADO
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * `enGrupo` = cuántas mascotas siguen en curso (0 si era la única): en ese caso
- * se muestra encima del paseo y el botón principal vuelve al grupo.
- */
 export function Resumen({ paseo, onCerrar, onRetomado, irA, avisar, enGrupo = 0 }) {
   const [cuenta, setCuenta] = useState(null);
   const [retomando, setRetomando] = useState(false);
   const [puedeRetomar, setPuedeRetomar] = useState(() => sePuedeRetomar(paseo));
 
-  // El botón "Retomar paseo" se va solo cuando pasa el plazo
   useEffect(() => {
     if (!puedeRetomar) return undefined;
     const t = setInterval(() => setPuedeRetomar(sePuedeRetomar(paseo)), 15000);
@@ -367,7 +313,7 @@ export function Resumen({ paseo, onCerrar, onRetomado, irA, avisar, enGrupo = 0 
       avisar?.('No se pudo retomar el paseo. Probá de nuevo.', 'alert-circle');
     }
   };
-  const [cobro, setCobro] = useState(null); // null · 'pagado' · 'despues'
+  const [cobro, setCobro] = useState(null);
   const [verForm, setVerForm] = useState(false);
 
   const cargarCuenta = useCallback(() => {
@@ -442,7 +388,6 @@ export function Resumen({ paseo, onCerrar, onRetomado, irA, avisar, enGrupo = 0 
         </View>
       </Card>
 
-      {/* Cobro: ¿le pagó ahora o lo anota en la cuenta corriente? */}
       <Card style={{ marginTop: 14 }}>
         {cobro === 'pagado' ? (
           <View style={s.cobroOk}>
@@ -497,10 +442,6 @@ export function Resumen({ paseo, onCerrar, onRetomado, irA, avisar, enGrupo = 0 
     </ScrollView>
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SIN PASEO EN CURSO
-// ─────────────────────────────────────────────────────────────────────────────
 
 function SinPaseo({ empezarPaseo, abrirChat, irA }) {
   const [agenda, setAgenda] = useState(null);

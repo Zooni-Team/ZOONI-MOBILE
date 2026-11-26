@@ -1,23 +1,3 @@
-/**
- * Toast.jsx — Aviso flotante breve ("Vacuna guardada ✓").
- *
- * Se usa SIEMPRE junto con el hook useToast (src/hooks/useToast.js), que
- * maneja el estado y el temporizador:
- *
- *   const { toast, mostrarToast, ocultarToast } = useToast();
- *   mostrarToast('Guardado');                     // verde
- *   mostrarToast('No se pudo guardar', colores.rojo);
- *   mostrarToast('Archivada', { accion: { texto: 'Deshacer', onPress } });
- *   ...
- *   <Toast {...toast} />                          // arriba (default)
- *   <Toast {...toast} posicion="abajo" onCerrar={ocultarToast} />
- *
- * Con `accion` u `onCerrar` el aviso se puede tocar; si no, deja pasar los
- * toques a lo que hay debajo.
- *
- * Catálogo de componentes compartidos: docs/claude/componentes.md
- */
-
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';

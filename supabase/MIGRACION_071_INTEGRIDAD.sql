@@ -1,21 +1,3 @@
--- =============================================================================
--- MIGRACION_071_INTEGRIDAD.sql — Pegar ENTERO en Supabase → SQL Editor → Run.
--- Va DESPUÉS de la 070. Idempotente: volver a pegarla no rompe nada.
--- Si algo no queda como debe, la verificación del final hace ROLLBACK.
--- =============================================================================
--- Correcciones del informe de errores de nov-2026 (informe-errores-zooni.md):
---
---   #1  Anti-trampa del paseo: el margen ya no se acumula update a update.
---   #8  Límite de 10 mascotas activas por cuenta, en la base (antes sólo en la app).
---   #15 marcar_mascota_principal(): baja la principal anterior y sube la nueva
---       en UNA transacción (antes, dos UPDATE sueltos desde la app).
---   #22 La fecha de un mensaje la pone la base, no el reloj del teléfono.
---
--- La app nueva funciona también SIN esta migración (marcar principal cae al
--- camino viejo si la RPC no existe), así que el orden "deploy de la app →
--- pegar la 071" no rompe nada. Lo que no hay hasta pegarla son las garantías.
--- =============================================================================
-
 BEGIN;
 
 DO $guarda$
@@ -25,8 +7,6 @@ BEGIN
   END IF;
 END $guarda$;
 
--- ─── 1. Paseos: anti-trampa con ancla fija (#1) ─────────────────────────────
--- Misma función que la 070, cambia SOLO el bloque del walker (y v_tramo).
 CREATE OR REPLACE FUNCTION _paseo_al_actualizar()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
@@ -35,9 +15,6 @@ DECLARE
   v_tramo INTEGER;
 BEGIN
   NEW."Id_Dueno" := OLD."Id_Dueno";
-  -- Excepción (064): al purgar la mascota la FK pone Id_Mascota en NULL para
-  -- que el paseo (y lo que cobró el paseador) no se borre. Sólo se acepta el
-  -- NULL si la mascota ya no existe; si no, se pisaría a mano.
   IF NEW."Id_Mascota" IS NULL
      AND NOT EXISTS (SELECT 1 FROM "Mascota" WHERE "Id_Mascota" = OLD."Id_Mascota") THEN
     NEW."Id_Mascota" := NULL;
@@ -46,9 +23,6 @@ BEGIN
   END IF;
   NEW."PrecioPactado" := COALESCE(OLD."PrecioPactado", OLD."Precio");
 
-  -- Una vez que alguien tomó el pedido, los datos del encargo quedan fijos:
-  -- ya se aceptó sobre esa duración/dirección (#17). Mientras sigue
-  -- 'pendiente' (nadie lo tomó todavía) el dueño puede seguir ajustándolo.
   IF OLD."Estado" <> 'pendiente' THEN
     NEW."DuracionMin" := OLD."DuracionMin";
     NEW."FechaProgramada" := OLD."FechaProgramada";
@@ -58,7 +32,6 @@ BEGIN
     NEW."Notas" := OLD."Notas";
   END IF;
 
-  -- Sin JWT (service_role / mantenimiento desde el SQL Editor): sin reglas de rol
   IF v_yo IS NOT NULL THEN
     v_rol := CASE
       WHEN v_yo = OLD."Id_Dueno" THEN 'dueno'
@@ -66,12 +39,10 @@ BEGIN
     END;
     IF v_rol IS NULL THEN RAISE EXCEPTION 'sin_permiso'; END IF;
 
-    -- Un paseador no puede aceptar su propio pedido (#64: sería dueño y walker a la vez)
     IF v_rol = 'walker' AND OLD."Id_Walker" IS NULL AND NEW."Id_Walker" = OLD."Id_Dueno" THEN
       RAISE EXCEPTION 'no_podes_aceptar_tu_propio_paseo';
     END IF;
 
-    -- El paseador sólo cambia cuando alguien TOMA una solicitud
     IF NEW."Id_Walker" IS DISTINCT FROM OLD."Id_Walker"
        AND NOT (OLD."Estado" = 'pendiente' AND NEW."Estado" = 'aceptado' AND NEW."Id_Walker" = v_yo) THEN
       RAISE EXCEPTION 'transicion_invalida';
@@ -88,7 +59,6 @@ BEGIN
       END IF;
     END IF;
 
-    -- La reseña la escribe sólo el dueño; el recorrido, sólo el paseador
     IF v_rol <> 'dueno' THEN
       NEW."Rating" := OLD."Rating";
       NEW."Resena" := OLD."Resena";
@@ -101,8 +71,6 @@ BEGIN
       NEW."ReanudadoEn" := OLD."ReanudadoEn";
       NEW."SegundosAcumulados" := OLD."SegundosAcumulados";
       NEW."DistanciaMetros" := OLD."DistanciaMetros";
-      -- La reseña (#61): sólo si el paseo YA está finalizado. Si todavía no
-      -- lo está, lo que mande el dueño en esos campos se descarta.
       IF NEW."Estado" <> 'finalizado' OR OLD."Estado" <> 'finalizado' THEN
         IF NEW."Rating" IS DISTINCT FROM OLD."Rating"
            OR NEW."Resena" IS DISTINCT FROM OLD."Resena" THEN
@@ -111,31 +79,13 @@ BEGIN
       END IF;
     END IF;
 
-    -- El walker reporta su propio progreso: nunca puede retroceder ni "saltar"
-    -- más rápido que el reloj real (#17 — alimentan el cobro proporcional).
-    -- El margen (+30 s, y 15 m/s de tope) cubre el teléfono que estuvo sin
-    -- señal y manda todo junto al reconectar; si en la prueba real resulta
-    -- demasiado estricto, es acá donde se afloja.
     IF v_rol = 'walker' THEN
-      -- 071: el margen se calcula desde un ancla FIJA y no desde OLD. Antes el
-      -- tope era OLD + (now - ReanudadoEn) + 30 s en cada UPDATE: como OLD
-      -- crecía con cada update, mandando muchos seguidos (o estando en pausa,
-      -- con ReanudadoEn NULL) se podía inflar el tiempo y la distancia sin
-      -- límite, y con eso el cobro proporcional.
-      --
-      -- Y el ancla la pone el reloj del SERVIDOR: la app manda ReanudadoEn con
-      -- la hora del teléfono. Con un reloj adelantado, al pausar el tramo que
-      -- calcula la base quedaba corto y se rechazaba un paseo legítimo; con
-      -- uno "atrasado a propósito" se inflaba el tramo. Lo que la app guarda
-      -- localmente sigue siendo su hora: sólo mide duraciones, que coinciden.
       IF NEW."ReanudadoEn" IS NOT NULL AND NEW."ReanudadoEn" IS DISTINCT FROM OLD."ReanudadoEn" THEN
         NEW."ReanudadoEn" := now();
       END IF;
       v_tramo := CASE WHEN OLD."ReanudadoEn" IS NULL THEN 0
                       ELSE GREATEST(0, EXTRACT(EPOCH FROM (now() - OLD."ReanudadoEn"))::INTEGER) END;
 
-      -- Los segundos sólo suben al CERRAR el tramo en curso (pausar o
-      -- finalizar: ReanudadoEn pasa a NULL), y como mucho lo que duró el tramo.
       IF NEW."SegundosAcumulados" < OLD."SegundosAcumulados" THEN
         RAISE EXCEPTION 'progreso_invalido';
       END IF;
@@ -146,17 +96,15 @@ BEGIN
         RAISE EXCEPTION 'progreso_invalido';
       END IF;
 
-      -- La distancia total nunca puede superar lo que se puede caminar en el
-      -- tiempo total del paseo (15 m/s de tope): no se acumula update a update.
       IF NEW."DistanciaMetros" < OLD."DistanciaMetros"
          OR NEW."DistanciaMetros" > (OLD."SegundosAcumulados" + v_tramo + 30) * 15 THEN
         RAISE EXCEPTION 'progreso_invalido';
       END IF;
       IF OLD."HoraInicio" IS NOT NULL THEN
-        NEW."HoraInicio" := OLD."HoraInicio"; -- una vez fijada, no se vuelve a tocar
+        NEW."HoraInicio" := OLD."HoraInicio";
       ELSIF NEW."HoraInicio" IS NOT NULL
             AND abs(EXTRACT(EPOCH FROM (NEW."HoraInicio" - now()))) > 300 THEN
-        RAISE EXCEPTION 'hora_invalida'; -- no se puede "adelantar/atrasar" el inicio
+        RAISE EXCEPTION 'hora_invalida';
       END IF;
     END IF;
   END IF;
@@ -176,12 +124,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END $$;
--- (El trigger trg_paseo_al_actualizar ya apunta a esta función.)
 
--- ─── 2. Límite de mascotas activas (#8) ─────────────────────────────────────
--- Antes lo contaba sólo la app (petsApi.LIMITE_ACTIVAS), con un "contar y
--- después insertar" que además admitía carreras. El candado por usuario
--- serializa dos altas simultáneas de la misma cuenta.
 CREATE OR REPLACE FUNCTION _mascota_limite_activas()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
@@ -189,7 +132,7 @@ DECLARE
 BEGIN
   IF NEW."Estado" IS DISTINCT FROM 'active' THEN RETURN NEW; END IF;
   IF TG_OP = 'UPDATE' AND OLD."Estado" = 'active' AND OLD."Id_User" = NEW."Id_User" THEN
-    RETURN NEW; -- ya contaba como activa
+    RETURN NEW;
   END IF;
   PERFORM pg_advisory_xact_lock(hashtext('zooni_mascotas_activas'), NEW."Id_User");
   SELECT count(*) INTO v_activas FROM "Mascota"
@@ -207,10 +150,6 @@ CREATE TRIGGER trg_mascota_limite_activas
   BEFORE INSERT OR UPDATE OF "Estado", "Id_User" ON "Mascota"
   FOR EACH ROW EXECUTE FUNCTION _mascota_limite_activas();
 
--- ─── 3. Mascota principal en una transacción (#15) ─────────────────────────
--- El índice único "una principal por usuario" obliga a bajar la anterior
--- antes de subir la nueva; hecho desde la app en dos UPDATE, si el segundo
--- fallaba la cuenta quedaba sin principal.
 CREATE OR REPLACE FUNCTION marcar_mascota_principal(p_id_mascota INTEGER)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
@@ -229,8 +168,6 @@ END $$;
 REVOKE ALL ON FUNCTION marcar_mascota_principal(INTEGER) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION marcar_mascota_principal(INTEGER) TO authenticated;
 
--- ─── 4. La fecha de cada mensaje la pone la base (#22) ─────────────────────
--- Con el reloj del teléfono desfasado, los mensajes salían desordenados.
 CREATE OR REPLACE FUNCTION _mensaje_fecha_servidor()
 RETURNS TRIGGER LANGUAGE plpgsql SET search_path = public AS $$
 BEGIN
@@ -244,7 +181,6 @@ CREATE TRIGGER trg_mensaje_fecha_servidor
   BEFORE INSERT ON "Mensaje"
   FOR EACH ROW EXECUTE FUNCTION _mensaje_fecha_servidor();
 
--- ─── Verificación final ─────────────────────────────────────────────────────
 DO $verificacion$
 BEGIN
   ASSERT to_regprocedure('public.marcar_mascota_principal(integer)') IS NOT NULL,

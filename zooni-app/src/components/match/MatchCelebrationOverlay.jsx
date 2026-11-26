@@ -1,7 +1,3 @@
-/**
- * Overlay de celebración cuando hay match mutuo.
- */
-
 import React, { useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Animated, Image, Modal,

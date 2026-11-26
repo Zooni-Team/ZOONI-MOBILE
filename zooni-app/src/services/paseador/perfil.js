@@ -1,13 +1,8 @@
-/**
- * paseador/perfil.js — Perfil del paseador logueado (tabla paseador_perfil).
- */
-
 import { supabase } from '../../lib/supabase';
 import { getCurrentUserId } from '../../config/session';
 import { HORARIOS_DEFAULT, serviciosDe } from '../../domain/paseos';
 import { errorApp } from '../comun';
 
-/** Fila de paseador_perfil (+ datos de User) → objeto que usan las pantallas. */
 export function mapPerfil(row, user) {
   return {
     idUser: row.id_user,
@@ -30,7 +25,6 @@ export function mapPerfil(row, user) {
     disponible: !!row.disponible,
     horarios: { ...HORARIOS_DEFAULT(), ...(row.horarios ?? {}) },
     verificado: !!row.verificado,
-    // Desde cuándo es paseador de Zooni (para la antigüedad del perfil)
     desde: row.creado_en ?? null,
   };
 }
@@ -46,7 +40,6 @@ export async function fetchPerfilPaseador() {
   return mapPerfil(row, user);
 }
 
-/** Actualiza campos del perfil (camelCase → columnas). */
 export async function actualizarPerfilPaseador(campos) {
   const columnas = {
     bio: 'bio', zona: 'zona', zonas: 'zonas', radioKm: 'radio_km', lat: 'lat', lng: 'lng',

@@ -1,10 +1,3 @@
-/**
- * TiempoAppScreen.jsx — Configuración › Tiempo en la app (§3.5.4)
- *
- * Bienestar digital. Regla de tono: descriptivo, jamás evaluativo, y el
- * límite AVISA, no bloquea (bloquear podría dejar a alguien sin llegar a SOS).
- */
-
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -16,13 +9,11 @@ import { getSettings, patchSettings } from '../../services/settingsStore';
 import { fetchUsoSemana, formatoDuracion } from '../../services/usoApp';
 import { colores, sombras } from '../../theme';
 
-// Los 7 días terminan hoy: el último es el de hoy.
 const HOY = 6;
 
 export default function TiempoAppScreen() {
   const [wellbeing, setWellbeing] = useState({ ...getSettings().wellbeing });
   const [barraActiva, setBarraActiva] = useState(null);
-  // null mientras carga; si no se pudo leer, queda el error (sin números inventados)
   const [semana, setSemana] = useState(null);
   const [error, setError] = useState(false);
 
@@ -44,7 +35,6 @@ export default function TiempoAppScreen() {
   return (
     <SettingsScreen title="Tiempo en la app">
 
-      {/* Gráfico de barras de los últimos 7 días (§3.5.4) */}
       <View style={s.chartCard}>
         {error ? (
           <Text style={s.aviso}>No pudimos leer tu tiempo de uso. Revisá tu conexión.</Text>
@@ -70,7 +60,6 @@ export default function TiempoAppScreen() {
               ))}
             </View>
 
-            {/* Resumen: Hoy / Promedio / Semana */}
             <View style={s.statsRow}>
               <View style={s.stat}>
                 <Text style={s.statValor}>{formatoDuracion(semana[HOY].segundos)}</Text>

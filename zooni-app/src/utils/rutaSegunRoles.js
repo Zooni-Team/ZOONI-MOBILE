@@ -1,19 +1,3 @@
-/**
- * rutaSegunRoles.js — A qué "app" entra una cuenta
- *
- * Una cuenta puede ser dueño, paseador y tener uno o más negocios. Esta
- * decisión estaba repetida en el arranque (App.jsx), el login de dueños y la
- * vuelta del login social; ahora vive acá y contempla los negocios (046):
- *
- *   · más de una app            → "¿Cómo querés entrar hoy?" (ElegirModo)
- *   · sólo paseador             → Zooni Paseadores (o completar el perfil)
- *   · sólo un negocio           → la app de ese negocio
- *   · sólo dueño / nada         → Home
- *   · sin roles (sin red)       → el último modo guardado
- *
- * Deja guardado el modo con el que entra. Devuelve [ruta, params].
- */
-
 import {
   MODO_DUENO, MODO_PASEADOR, modoNegocio, setModo, tipoNegocioDeModo,
 } from '../config/session';

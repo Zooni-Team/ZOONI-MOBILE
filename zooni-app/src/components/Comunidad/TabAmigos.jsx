@@ -31,20 +31,17 @@ export default function TabAmigos({ onVerEnMapa }) {
         keyExtractor={a => String(a.usuario_id)}
         renderItem={({ item: a }) => (
           <View style={styles.item}>
-            {/* Tocar avatar + nombre abre la ficha de perfil */}
             <TouchableOpacity style={styles.persona} onPress={() => setPerfilId(a.usuario_id)}
               accessibilityRole="button" accessibilityLabel={`Ver perfil de ${a.nombre}`}>
               <View style={styles.avatarWrap}>
                 <View style={[styles.avatar, { borderColor: a.online ? colores.verde : colores.gris420 }]}>
                   <Ionicons name="person" size={18} color={colores.textoTenue} />
                 </View>
-                {/* Punto verde de presencia, como en cualquier app de mensajes */}
                 {a.online && <View style={styles.puntoOnline} />}
               </View>
               <View style={styles.info}>
                 <Text style={styles.nombre}>{a.nombre}</Text>
                 <Text style={styles.sub}>{a.mascota_nombre || 'Sin mascota'}{a.distancia_km != null ? `  ·  ${a.distancia_km} km` : ''}</Text>
-                {/* Última vez en línea: "En línea" o "Últ. vez hace 20 minutos" */}
                 <Text style={[styles.presencia, a.online && styles.presenciaOnline]}>
                   {estadoPresencia(a.ultima_conexion).texto}
                 </Text>

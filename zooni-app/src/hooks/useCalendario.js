@@ -1,13 +1,3 @@
-/**
- * useCalendario.js — Datos del Calendario de Cuidados: las mascotas del
- * usuario, de cuál se está viendo el calendario y sus recordatorios (tabla
- * eventos_calendario, vía services/calendarioStore).
- *
- * Cada mascota tiene su propio calendario. La lista se relee cuando cambia la
- * mascota y cada vez que la pantalla vuelve a tener foco (por ejemplo al
- * volver de Eventos después de sumar uno).
- */
-
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
 
@@ -28,7 +18,6 @@ export function useCalendario() {
   const [cargando, setCargando] = useState(true);
   const [refrescando, setRefrescando] = useState(false);
 
-  // La que vino por parámetro o eligió el usuario; si no, la activa; si no, la primera.
   const idMascota = mascotaElegidaId ?? mascotaActiva?.id ?? mascotas[0]?.id ?? null;
 
   const cargar = useCallback(async () => {
@@ -45,10 +34,8 @@ export function useCalendario() {
     setRefrescando(false);
   }, [cargar]);
 
-  /** Crea el recordatorio en el calendario de `paraMascota`. */
   const crear = useCallback(async (datos, paraMascota) => {
     const nuevo = await crearEventoCalendario(paraMascota, datos);
-    // Si es de OTRA mascota, se pasa a su calendario para que se vea que quedó.
     if (paraMascota !== idMascota) setMascotaElegidaId(paraMascota);
     else setRecordatorios((prev) => [...prev, nuevo].sort(porFecha));
   }, [idMascota]);
@@ -66,7 +53,6 @@ export function useCalendario() {
   return {
     usuario, mascotaActiva, mascotas, idMascota, elegirMascota: setMascotaElegidaId,
     recordatorios, crear, editar, eliminar,
-    // Sin mascota todavía resuelta no hay nada que esperar de la lista
     cargando: cargando || (cargandoMascotas && !idMascota),
     refrescando, refrescar,
   };

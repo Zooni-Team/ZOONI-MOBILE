@@ -1,14 +1,3 @@
-/**
- * NegocioUI.jsx — Piezas de Zooni Negocios (mismo diseño que PaseadorUI)
- *
- *   EstadoChip    estado de un turno o un pedido, con su color
- *   Segmento      control segmentado (Pendientes / Agenda / Historial…)
- *   TurnoCard     un turno: mascota, dueño, servicio, hora, precio, urgencia
- *   PedidoCard    un pedido: productos, total, entrega y pago
- *   MotivoModal   pide un motivo opcional antes de rechazar / cancelar
- *   Etiqueta      etiqueta chiquita de color (Urgencia, A domicilio, Sin stock)
- */
-
 import { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View,
@@ -60,10 +49,6 @@ export function Segmento({ opciones, valor, onCambio, style }) {
   );
 }
 
-/**
- * Props: turno · mostrarFecha (default: sólo la hora) · onPress · onChat ·
- *        children (botones de acción abajo)
- */
 export function TurnoCard({ turno, mostrarFecha = false, onPress, onChat, children }) {
   const pasado = new Date(turno.fecha).getTime() < Date.now();
   return (
@@ -183,10 +168,6 @@ export function PedidoCard({ pedido, onChat, children, mostrarCliente = true }) 
   );
 }
 
-/**
- * Pide un motivo (opcional) y confirma. Props: visible · titulo · texto ·
- * textoOk · onConfirmar(motivo) · onCerrar
- */
 export function MotivoModal({ visible, titulo, texto, textoOk = 'Confirmar', placeholder, onConfirmar, onCerrar }) {
   const [motivo, setMotivo] = useState('');
   const [enviando, setEnviando] = useState(false);
