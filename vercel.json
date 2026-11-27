@@ -21,7 +21,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' https://unpkg.com/leaflet@1.9.4/; style-src 'self' 'unsafe-inline' https://unpkg.com/leaflet@1.9.4/; img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org; connect-src 'self' https://*.supabase.co https://places.googleapis.com https://nominatim.openstreetmap.org; font-src 'self' data:; media-src 'self' blob: https://*.supabase.co; worker-src 'self' blob:; frame-src 'self'"
+          "value": "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self' https://unpkg.com/leaflet@1.9.4/ 'sha256-+WecDTpm+H53YD9hTdTNCsXguiifrqMQEN152MYMOSk=' 'sha256-g0YQra6oR20QdiK2dMwTMsVdISkbtmKkY3t0UJBQifE=' 'sha256-Jq+aZFTpQ3dludzdVQYTCRDWu0IeBXTlk5lpoY36Z2Y='; style-src 'self' 'unsafe-inline' https://unpkg.com/leaflet@1.9.4/; img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org; connect-src 'self' data: blob: https://*.supabase.co https://places.googleapis.com https://nominatim.openstreetmap.org; font-src 'self' data:; media-src 'self' blob: https://*.supabase.co; worker-src 'self' blob:; frame-src 'self'"
         },
         { "key": "X-Frame-Options", "value": "DENY" },
         { "key": "X-Content-Type-Options", "value": "nosniff" },

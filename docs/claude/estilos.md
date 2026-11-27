@@ -32,7 +32,7 @@ codemod sobre el AST: ~2.500 literales en 125 archivos, sin cambiar ningún valo
   unificaron al más cercano.
 - `npm test` corre `scripts/verificar-colores.mjs`: falla si un hex de la
   paleta (o uno de los grises viejos) aparece escrito a mano fuera de
-  `colores.js`. En HTML armado como texto (mapas de Leaflet, PDF) se interpola:
+  `colores.js`. En HTML armado como texto (mapas de Leaflet en `components/mapas/mapasHtml.js`, PDF) se interpola:
   `` `background:${colores.verde}` ``.
 
 ## Sombras (`theme/sombras.js`)

@@ -121,6 +121,18 @@ Las notificaciones a otra persona no se insertan: van por
 destino (`services/comun.js` la llama y se traga el error, para no cortar el
 flujo si no hay relación).
 
+## CSP de la web (`vercel.json`)
+La política no permite scripts inline (`'unsafe-inline'`). Los mapas de
+Leaflet son `iframe` con `srcDoc` y **heredan la CSP de la página**, así que
+su `<script>` sólo corre si su hash está en `script-src`. Por eso el HTML de
+los tres mapas (Comunidad, paseo en curso, zona del paseador) vive en
+`components/mapas/mapasHtml.js`, y `tests/csp.test.mjs` calcula el hash de
+cada script y falla si falta en `vercel.json` (o si sobra uno viejo): si
+tocás un mapa, el test te dice qué hash poner. `connect-src` incluye `data:`
+y `blob:` porque `imagenStorage` lee con `fetch` la foto que se elige en la
+web; sin eso no se puede subir ninguna foto. El aviso de DevTools sobre
+`leaflet.js.map` es sólo del depurador y no afecta al mapa.
+
 ## Riesgos conocidos que quedan
 - `paseador_perfil.lat/lng` se ven exactos (el mapa los usa): conviene
   redondearlos o que el paseador marque un punto de zona, no su casa. Los de

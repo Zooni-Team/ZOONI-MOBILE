@@ -7,8 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { C } from './PaseadorUI';
 import { barrioDe, buscarLugar } from '../../services/geocodificacion';
 import { colores } from '../../theme';
+import { CENTRO_MAPA, MAPA_ZONA_HTML } from '../mapas/mapasHtml';
 
-const BASE_DEFAULT = { lat: -34.6189, lng: -58.4380 };
 export const RADIO_MIN = 0.5;
 export const RADIO_MAX = 30;
 
@@ -26,73 +26,6 @@ function sanitizarKm(v) {
 }
 
 const formatoKm = (n) => (n == null ? '' : String(n).replace('.', ','));
-
-const MAPA_HTML = `<!DOCTYPE html><html><head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous"/>
-<style>
-html,body,#map{margin:0;padding:0;width:100%;height:100%;background:${colores.mentaSuave}}
-.centro{width:40px;height:40px;border-radius:50%;background:${colores.verde};border:3px solid #fff;
-  display:flex;align-items:center;justify-content:center;font-size:18px;
-  box-shadow:0 2px 8px rgba(0,0,0,.3);cursor:grab}
-.leaflet-control-attribution{font-size:9px}
-</style>
-</head><body>
-<div id="map"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
-<script>
-(function(){
-  var map=L.map('map',{zoomControl:false}).setView([${BASE_DEFAULT.lat},${BASE_DEFAULT.lng}],14);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
-  var icon=L.divIcon({className:'',html:'<div class="centro"><svg viewBox="0 0 24 24" width="20" height="20" fill="#fff"><circle cx="5" cy="9.5" r="2.2"/><circle cx="9" cy="5.5" r="2.2"/><circle cx="15" cy="5.5" r="2.2"/><circle cx="19" cy="9.5" r="2.2"/><path d="M12 10.5c-3 0-6.5 4.6-6.5 7.3 0 1.8 1.4 2.7 3 2.7 1.4 0 2.3-.8 3.5-.8s2.1.8 3.5.8c1.6 0 3-.9 3-2.7 0-2.7-3.5-7.3-6.5-7.3z"/></svg></div>',iconSize:[40,40],iconAnchor:[20,20]});
-  var circulo=null, centro=null, radio=0;
-
-  function avisar(){
-    var p=centro.getLatLng();
-    try{window.parent.postMessage({tipo:'zooni-zona-evento',payload:{lat:p.lat,lng:p.lng}},'*')}catch(e){}
-  }
-  function encuadrar(){
-    if(radio>0) map.fitBounds(circulo.getBounds().pad(0.15),{animate:true});
-    else map.setView(centro.getLatLng(),14,{animate:true});
-  }
-  function dibujar(lat,lng){
-    if(!circulo){
-      circulo=L.circle([lat,lng],{radius:radio,color:'${colores.verde}',weight:3,fillColor:'${colores.verde}',fillOpacity:.18}).addTo(map);
-      centro=L.marker([lat,lng],{icon:icon,draggable:true,zIndexOffset:1000}).addTo(map);
-      centro.on('drag',function(e){circulo.setLatLng(e.target.getLatLng())});
-      centro.on('dragend',avisar);
-      var arrastrando=false;
-      circulo.on('mousedown touchstart',function(){arrastrando=true;map.dragging.disable()});
-      map.on('mousemove',function(e){if(arrastrando){circulo.setLatLng(e.latlng);centro.setLatLng(e.latlng)}});
-      map.on('mouseup',function(){if(arrastrando){arrastrando=false;map.dragging.enable();avisar()}});
-    }else{
-      circulo.setLatLng([lat,lng]);centro.setLatLng([lat,lng]);
-    }
-  }
-  map.on('click',function(e){dibujar(e.latlng.lat,e.latlng.lng);avisar()});
-
-  var api={
-    set:function(d,mover){
-      radio=d.radioKm>0?d.radioKm*1000:0;
-      dibujar(d.lat,d.lng);
-      circulo.setRadius(radio||1);
-      circulo.setStyle(radio?{opacity:1,fillOpacity:.18}:{opacity:0,fillOpacity:0});
-      if(mover) encuadrar();
-    }
-  };
-  window.addEventListener('message',function(e){
-    if(e.source!==window.parent)return;
-    var m=e.data;
-    if(!m||m.tipo!=='zooni-cmd'||typeof api[m.metodo]!=='function')return;
-    api[m.metodo].apply(null,m.args||[]);
-  });
-  try{window.parent.postMessage({tipo:'zooni-zona-listo'},'*')}catch(e){}
-})();
-</script>
-</body></html>`;
 
 function obtenerGps() {
   return new Promise((resolve) => {
@@ -174,7 +107,7 @@ export default function ZonaMapaPicker({ valor, onCambio, baseTexto, conRadio = 
       let base = baseTexto ? await buscarLugar(baseTexto) : null;
       if (!base) base = await obtenerGps();
       if (!vivo) return;
-      moverA(base ?? BASE_DEFAULT, { mover: true });
+      moverA(base ?? CENTRO_MAPA, { mover: true });
     })();
     return () => { vivo = false; };
   }, []);
@@ -229,7 +162,7 @@ export default function ZonaMapaPicker({ valor, onCambio, baseTexto, conRadio = 
         <View style={s.mapa}>
           <iframe
             ref={iframeRef}
-            srcDoc={MAPA_HTML}
+            srcDoc={MAPA_ZONA_HTML}
             onLoad={() => enviarAlMapa(true)}
             sandbox="allow-scripts"
             style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
