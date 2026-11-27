@@ -12,7 +12,10 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
-  .split(",").map((s) => s.trim()).filter(Boolean);
+  .split(",").map((s) => s.trim()).filter(Boolean)
+  .map((o) => new RegExp(`^${o.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replaceAll("*", "[a-z0-9-]+")}$`));
+
+const origenPermitido = (origin: string) => ALLOWED_ORIGINS.some((re) => re.test(origin));
 
 function corsHeaders(origin: string | null) {
   const h: Record<string, string> = {
@@ -21,7 +24,7 @@ function corsHeaders(origin: string | null) {
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     Vary: "Origin",
   };
-  if (origin && ALLOWED_ORIGINS.includes(origin)) h["Access-Control-Allow-Origin"] = origin;
+  if (origin && origenPermitido(origin)) h["Access-Control-Allow-Origin"] = origin;
   return h;
 }
 

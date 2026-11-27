@@ -11,11 +11,12 @@ con "New secret key".)
 
 ## 2. Para terminar de poner en producción
 
-0. **ZooniVet da `net::ERR_FAILED` en la web** (27/11): la respuesta llega sin
-   CORS. Revisar en Edge Functions → `zoonivet-chat`: que esté desplegada,
-   sus **Logs**, el secret `ALLOWED_ORIGINS=https://zooni-mobile.vercel.app`
-   y que `GROQ_API_KEY` siga cargado. Después **redesplegar** `index.ts`: ahora
-   un error inesperado responde con CORS (`ERROR_INTERNO`) y queda en los Logs.
+0. **ZooniVet en las URLs de deployment de Vercel** (27/11): se abría desde
+   `zooni-mobile-<hash>-eske555s-projects.vercel.app`, que no estaba en
+   `ALLOWED_ORIGINS` (el OPTIONS salía sin CORS y el POST ni se mandaba).
+   Secret `ALLOWED_ORIGINS=https://zooni-mobile.vercel.app,https://zooni-mobile-*-eske555s-projects.vercel.app`
+   y **redesplegar** `index.ts` (acepta `*` y un error inesperado responde con
+   CORS como `ERROR_INTERNO`).
 
 0. **Push del commit `0151218`** (072 en la app: baja de cuenta, fotos por
    bytes, peso para paseador/negocio). Hasta el push, Vercel sirve la versión
@@ -149,7 +150,7 @@ node --use-system-ca supabase/scripts/limpiar-storage.mjs --aplicar  # lo hace
 van con `set NOMBRE=valor`, sin comillas.
 
 **ZooniVet**: secrets `GROQ_API_KEY` y
-`ALLOWED_ORIGINS=https://zooni-mobile.vercel.app` (sin barra final; para
+`ALLOWED_ORIGINS=https://zooni-mobile.vercel.app,https://zooni-mobile-*-eske555s-projects.vercel.app` (sin barra final; el `*` cubre cada deployment de Vercel; para
 probar en local, agregar `,http://localhost:8081`). Se despliega pegando
 `supabase/functions/zoonivet-chat/index.ts` en Edge Functions → Code →
 Deploy.
