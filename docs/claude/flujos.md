@@ -21,6 +21,13 @@ Logout: `clearCurrentUserId()` → `auth.signOut({ scope: 'local' })`.
 (`disponibilidad_registro`) → `signUp` → sube la foto a Storage →
 `registrar_social_con_mascota` (usuario + mascota + rol en **una transacción**)
 → cierra la sesión y vuelve al login.
+Los errores de `signUp` se traducen en `errorDeAlta` (`red`,
+`demasiados_intentos`, `mail_no_autorizado`, `email_invalido`,
+`password_debil`, `registro_cerrado`) y los de la foto quedan como
+`archivo_*`; `RegisterStep4Screen` tiene un mensaje para cada uno. Lo que no
+se reconoce sale como `error_registro`/`error_foto` con el detalle real en el
+aviso y en la consola: nunca más "Revisá tu internet" para un error que no es
+de red.
 
 ## Pedido en un pet shop {#pedidos}
 `NegocioPublicoScreen` → `negocioApi.crearPedido` → INSERT en `negocio_pedidos`.

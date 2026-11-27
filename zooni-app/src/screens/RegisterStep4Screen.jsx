@@ -49,6 +49,18 @@ function PaisPicker({ visible, valor, onSeleccionar, onCerrar }) {
   );
 }
 
+const ERRORES_REGISTRO = {
+  red: ['Sin conexión', 'Revisá tu internet e intentá de nuevo.'],
+  demasiados_intentos: ['Demasiados intentos', 'Se hicieron muchos registros seguidos. Esperá unos minutos y probá de nuevo.'],
+  mail_no_autorizado: ['No pudimos mandarte el mail', 'Por ahora no podemos mandar el mail de confirmación a esa dirección. Probá más tarde o con otro mail.'],
+  email_invalido: ['Mail inválido', 'Revisá el mail que pusiste: volvé atrás y corregilo.'],
+  password_debil: ['Contraseña débil', 'Elegí una contraseña más segura: volvé atrás y cambiala.'],
+  registro_cerrado: ['Registro cerrado', 'Por ahora no se pueden crear cuentas nuevas.'],
+  archivo_muy_grande: ['Foto muy pesada', 'La foto de tu mascota pesa más de 5 MB. Volvé atrás y elegí otra.'],
+  archivo_invalido: ['Foto no admitida', 'Usá una foto JPG, PNG, WEBP o HEIC. Volvé atrás y elegí otra.'],
+  archivo_ilegible: ['No pudimos leer la foto', 'Volvé atrás y elegí la foto de nuevo.'],
+};
+
 function limpiarTelefono(v) {
   return (v ?? '').replace(/[^\d\s-]/g, '');
 }
@@ -158,7 +170,12 @@ export default function RegisterStep4Screen() {
       } else if (err?.message === 'password_corta') {
         alerta('Contraseña inválida', MENSAJE_PASSWORD_CORTA);
       } else {
-        alerta('No se pudo crear la cuenta', 'Revisá tu internet e intentá de nuevo.');
+        console.error('[registro]', err?.message ?? err, err?.detalle ?? '');
+        const [titulo, texto] = ERRORES_REGISTRO[err?.message] ?? [
+          'No se pudo crear la cuenta',
+          `Probá de nuevo en un rato.${err?.detalle || err?.message ? `\n(${err?.detalle || err?.message})` : ''}`,
+        ];
+        alerta(titulo, texto);
       }
     } finally {
       setCargando(false);

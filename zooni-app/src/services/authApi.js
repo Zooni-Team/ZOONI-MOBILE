@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase';
 import { setCurrentUserId, setModo, MODO_DUENO } from '../config/session';
 import { toISODateLocal } from '../utils/fechaLocal';
 import { borrarImagenPublica, subirImagenPublica } from './imagenStorage';
-import { errorBase } from './comun';
+import { errorApp, errorBase } from './comun';
 import { marcarPresencia } from './presenciaApi';
 import { esPasswordValida } from '../utils/validacion';
 
@@ -72,6 +72,19 @@ export async function iniciarSesionConPassword(email, password) {
   };
 }
 
+function errorDeAlta(error) {
+  const texto = `${error?.code ?? ''} ${error?.message ?? ''}`;
+  if (error?.status === 429 || /rate.?limit|over_\w*_limit/i.test(texto)) return errorApp('demasiados_intentos', error);
+  if (/not.?authorized/i.test(texto)) return errorApp('mail_no_autorizado', error);
+  if (/weak_password|password should/i.test(texto)) return errorApp('password_debil', error);
+  if (/email_address_invalid|email.*invalid|invalid.*email/i.test(texto)) return errorApp('email_invalido', error);
+  if (/signup_disabled|signups? not allowed/i.test(texto)) return errorApp('registro_cerrado', error);
+  if (error?.name === 'AuthRetryableFetchError' || /failed to fetch|network/i.test(texto)) return errorApp('red', error);
+  return errorApp('error_registro', error);
+}
+
+const ERRORES_DE_FOTO = ['archivo_muy_grande', 'archivo_invalido', 'archivo_ilegible'];
+
 export async function crearCuentaConPassword(email, password) {
   const mail = email.trim().toLowerCase();
   if (!esPasswordValida(password)) throw new Error('password_corta');
@@ -79,7 +92,7 @@ export async function crearCuentaConPassword(email, password) {
   const { data, error } = await supabase.auth.signUp({ email: mail, password });
   if (error) {
     if (!/already registered|already exists|user_already_exists/i.test(`${error.code} ${error.message}`)) {
-      throw error;
+      throw errorDeAlta(error);
     }
     const { error: errLogin } = await supabase.auth.signInWithPassword({ email: mail, password });
     if (errLogin) throw new Error('email_existente');
@@ -188,7 +201,7 @@ export async function registro(datos) {
       : null;
   } catch (e) {
     await deshacer();
-    throw e;
+    throw ERRORES_DE_FOTO.includes(e?.message) ? e : errorApp('error_foto', e);
   }
 
   const ubicacionDisplay = [usuario.ciudad, usuario.provincia].filter(Boolean).join(', ') || null;
@@ -221,7 +234,8 @@ export async function registro(datos) {
       throw new Error('email_existente');
     }
     if (/JWT|token|sin_sesion_social/i.test(String(error.message ?? ''))) throw new Error('sesion_social_vencida');
-    throw error;
+    if (String(error.message ?? '').includes('email_no_verificado')) throw new Error('confirmar_mail');
+    throw errorApp('error_registro', error);
   }
 
   let usuarioNoGuardado = false;
