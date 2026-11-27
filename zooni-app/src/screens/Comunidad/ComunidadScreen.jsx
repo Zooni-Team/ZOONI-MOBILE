@@ -233,7 +233,6 @@ export default function ComunidadScreen() {
           <iframe
             ref={iframeRef}
             srcDoc={MAPA_COMUNIDAD_HTML}
-            sandbox="allow-scripts"
             style={{ width: '100%', height: '100%', border: 'none' }}
             title="Mapa Zooni"
           />

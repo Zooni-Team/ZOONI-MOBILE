@@ -48,7 +48,6 @@ export default function MapaPaseo({
         ref={iframeRef}
         srcDoc={MAPA_PASEO_HTML}
         onLoad={enviar}
-        sandbox="allow-scripts"
         style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
         title="Mapa del paseo"
       />

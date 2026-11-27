@@ -164,7 +164,6 @@ export default function ZonaMapaPicker({ valor, onCambio, baseTexto, conRadio = 
             ref={iframeRef}
             srcDoc={MAPA_ZONA_HTML}
             onLoad={() => enviarAlMapa(true)}
-            sandbox="allow-scripts"
             style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
             title="Zona de atención"
           />

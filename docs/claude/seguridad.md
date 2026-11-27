@@ -130,7 +130,14 @@ los tres mapas (Comunidad, paseo en curso, zona del paseador) vive en
 cada script y falla si falta en `vercel.json` (o si sobra uno viejo): si
 tocás un mapa, el test te dice qué hash poner. `connect-src` incluye `data:`
 y `blob:` porque `imagenStorage` lee con `fetch` la foto que se elige en la
-web; sin eso no se puede subir ninguna foto. El aviso de DevTools sobre
+web; sin eso no se puede subir ninguna foto. Los iframes de los mapas **no llevan
+`sandbox`**: con un sandbox sin `allow-same-origin` el origen es opaco, el
+navegador no manda `Referer` (ni con `referrerPolicy`) y OpenStreetMap
+bloquea los tiles ("Access blocked"); con `allow-same-origin` el sandbox ya no
+aísla nada. Lo que protege es la CSP heredada y que el único dato ajeno que
+entra al HTML del mapa (la foto del paseador) se filtra a `http(s):`/`data:image`
+y escapa `"`. Los tiles se piden a `tile.openstreetmap.org` (sin los
+subdominios `a/b/c`, obsoletos), que es lo que permite `img-src`. El aviso de DevTools sobre
 `leaflet.js.map` es sólo del depurador y no afecta al mapa.
 
 ## Riesgos conocidos que quedan
