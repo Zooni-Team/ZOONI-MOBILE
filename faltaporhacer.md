@@ -11,6 +11,12 @@ con "New secret key".)
 
 ## 2. Para terminar de poner en producción
 
+0. **ZooniVet da `net::ERR_FAILED` en la web** (27/11): la respuesta llega sin
+   CORS. Revisar en Edge Functions → `zoonivet-chat`: que esté desplegada,
+   sus **Logs**, el secret `ALLOWED_ORIGINS=https://zooni-mobile.vercel.app`
+   y que `GROQ_API_KEY` siga cargado. Después **redesplegar** `index.ts`: ahora
+   un error inesperado responde con CORS (`ERROR_INTERNO`) y queda en los Logs.
+
 0. **Push del commit `0151218`** (072 en la app: baja de cuenta, fotos por
    bytes, peso para paseador/negocio). Hasta el push, Vercel sirve la versión
    anterior; la base ya tiene la 072 y la app vieja anda igual con ella.

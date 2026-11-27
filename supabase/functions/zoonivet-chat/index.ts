@@ -276,8 +276,7 @@ async function llamarGroq(model: string, messages: unknown[]) {
   });
 }
 
-Deno.serve(async (req) => {
-  const origin = req.headers.get("Origin");
+async function atender(req: Request, origin: string | null): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(origin) });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405, origin);
 
@@ -409,4 +408,14 @@ Deno.serve(async (req) => {
 
   const firma = await firmar(yo.Id_User, petId, texto);
   return json({ texto, emergencia: emergencia || emergenciaCapa1, firma }, 200, origin);
+}
+
+Deno.serve(async (req) => {
+  const origin = req.headers.get("Origin");
+  try {
+    return await atender(req, origin);
+  } catch (e) {
+    console.error("zoonivet-chat", e);
+    return json({ error: "ERROR_INTERNO", message: "ZooniVet tuvo un error inesperado." }, 500, origin);
+  }
 });
